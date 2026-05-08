@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends
 
 from src.application.game_registry import get_game_registry
+from src.infraestructure.immich.provider import ImmichProvider
+from src.presentation.api.dependencies import get_immich_provider
 from pydantic import BaseModel
 
 
@@ -33,13 +35,18 @@ router = APIRouter(prefix="/games", tags=["games"])
 
 
 @router.get("", response_model=list[GameResponse])
-async def list_games() -> list[GameResponse]:
+async def list_games(
+    immich_provider: ImmichProvider = Depends(get_immich_provider),
+) -> list[GameResponse]:
     """List all available games with their modes."""
     registry = get_game_registry()
     games: list[GameResponse] = []
     
     for game_slug in registry.list_games():
-        plugin = registry.create_instance(game_slug)
+        # Create game instance with Immich provider
+        plugin_class = registry.get(game_slug)
+        plugin = plugin_class(immich_provider)
+        
         game_info = await plugin.get_game_info()
         
         modes = [

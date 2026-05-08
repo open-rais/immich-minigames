@@ -1,10 +1,7 @@
 """Game plugins bootstrap and initialization."""
 
 from src.application.game_registry import get_game_registry
-
-# Import future game plugins here as they're implemented
-# from src.games.more_or_less import MoreOrLessGame
-# from src.games.geoguessr import GeoguessrGame
+from src.games.more_or_less import MoreOrLessGame
 
 
 def initialize_games() -> None:
@@ -14,9 +11,6 @@ def initialize_games() -> None:
     """
     registry = get_game_registry()
     
-    # Register games here as they're implemented
-    # registry.register("more_or_less", MoreOrLessGame)
-    # registry.register("geoguessr", GeoguessrGame)
-    
-    # Placeholder for testing
-    # When no games are registered, the registry will return an empty list
+    # Register games - using factory since they need Immich provider
+    # Actual instantiation happens at request time via dependency injection
+    registry.register("more_or_less", MoreOrLessGame)
