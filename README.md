@@ -29,21 +29,43 @@ Transform your self-hosted photo library into interactive minigames.
 - Docker & Docker Compose
 - An active Immich instance with photos and metadata
 
-### Deploy
+### Deploy with Docker (Recommended)
 
 ```bash
 git clone https://github.com/yourusername/immich-minigames.git
 cd immich-minigames
 
-# Copy and configure environment
-cp backend/.env.example backend/.env
-# Edit backend/.env with your database and Redis URLs
-
-# Start services
+# Start all services (PostgreSQL, Redis, Backend, Frontend)
 docker compose up -d
+
+# Or use the startup script for easier management
+chmod +x docker-startup.sh
+./docker-startup.sh start
 ```
 
-Then visit `http://localhost:3000` and connect to your Immich instance.
+Then visit **`http://localhost:3000`** and connect to your Immich instance.
+
+**Full Docker guide:** See [DOCKER.md](DOCKER.md) for detailed Docker setup, configuration, troubleshooting, and production deployment.
+
+### Local Development
+
+For local development without Docker:
+
+```bash
+# Terminal 1: Backend
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+uvicorn src.main:app --reload
+
+# Terminal 2: Frontend
+cd frontend
+npm install
+npm run dev
+```
+
+Visit `http://localhost:3000` and configure your Immich connection.
 
 ## 📚 Documentation
 
