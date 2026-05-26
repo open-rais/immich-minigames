@@ -58,24 +58,25 @@ services:
     networks:
       - immich-minigames
 
-  # Not yet implemented
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: Dockerfile
-  #   container_name: immich-minigames-frontend
-  #   ports:
-  #     - "${FRONTEND_PORT:-3000}:3000"
-  #   depends_on:
-  #     - backend
-  #   environment:
-  #     NEXT_PUBLIC_API_URL: http://backend:8000/api
-  #   volumes:
-  #     - ./frontend:/app
-  #     - /app/.next
-  #   command: npm run dev
-  #   networks:
-  #     - immich-minigames
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: immich-minigames-frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    networks:
+      - immich-minigames
+    # For development with hot reload, uncomment below and comment out the production Dockerfile
+    # volumes:
+    #   - ./frontend:/app
+    #   - /app/node_modules
+    #   - /app/.next
+    # command: npm run dev
 
 volumes:
   postgres_data:

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, HttpUrl, Field, ConfigDict
 from fastapi import APIRouter, Depends, HTTPException, status
 import httpx
 
@@ -16,30 +16,34 @@ from src.infraestructure.db.repositories.settings_repository import (
 
 class SettingsRequest(BaseModel):
     """Request schema for settings."""
-    immich_url: HttpUrl
-    immich_api_key: str
-
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        populate_by_name=True,
+        json_schema_extra={
             "example": {
-                "immich_url": "http://immich.example.com",
-                "immich_api_key": "abc123def456",
+                "immichUrl": "http://immich.example.com",
+                "apiKey": "abc123def456",
             }
         }
+    )
+
+    immich_url: HttpUrl = Field(alias="immichUrl")
+    immich_api_key: str = Field(alias="apiKey")
 
 
 class SettingsResponse(BaseModel):
     """Response schema for settings."""
-    immich_url: str
-    immich_api_key: str
-
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        populate_by_name=True,
+        json_schema_extra={
             "example": {
-                "immich_url": "http://immich.example.com",
-                "immich_api_key": "abc123def456",
+                "immichUrl": "http://immich.example.com",
+                "apiKey": "abc123def456",
             }
         }
+    )
+
+    immich_url: str = Field(alias="immichUrl")
+    immich_api_key: str = Field(alias="apiKey")
 
 
 class TestConnectionResponse(BaseModel):

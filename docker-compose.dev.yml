@@ -1,0 +1,17 @@
+version: "3.8"
+
+# Development override for docker-compose.yml
+# Use with: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+
+services:
+  frontend:
+    # Mount source code for hot-reload
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    # Use npm run dev for hot-reload
+    command: npm run dev
+    # Expose debug port if needed
+    ports:
+      - "3000:3000"
