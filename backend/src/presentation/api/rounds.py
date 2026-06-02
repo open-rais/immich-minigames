@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from src.application.game_registry import get_game_registry
-from src.domain.entities.game import Round
+from src.domain.entities.session import Session
 from src.infraestructure.immich.provider import ImmichProvider
 from src.presentation.api.dependencies import get_immich_provider
 
@@ -34,7 +34,6 @@ class AnswerRequest(BaseModel):
 class AnswerResponse(BaseModel):
     """Response schema for answer validation."""
     is_correct: bool
-    correct_answer: str
     score: int
 
 
@@ -126,21 +125,18 @@ async def submit_answer(
         # Validate answer
         is_correct = await plugin.validate_answer(
             mode_slug=mode_slug,
-            correct_answer=round_data.correct_answer,
             user_answer=request.answer,
         )
 
         # Calculate score
         score = await plugin.calculate_score(
             mode_slug=mode_slug,
-            correct_answer=round_data.correct_answer,
             user_answer=request.answer,
             is_correct=is_correct,
         )
 
         return AnswerResponse(
             is_correct=is_correct,
-            correct_answer=str(round_data.correct_answer),
             score=score,
         )
 

@@ -1,22 +1,22 @@
 import axios, { AxiosError, AxiosInstance } from 'axios';
 import {
-  ImmichSettings,
   GameSession,
-  GameStats,
   GameInfo,
-  RoundData,
-  RoundGuessRequest,
-  RoundGuessResponse,
+  PublicRound,
+  SubmitAnswerResponse,
   HealthResponse,
   ApiErrorResponse,
+  ImmichSettings,
 } from '@/types/api';
 
 class ApiClient {
   private client: AxiosInstance;
-  private baseURL: string;
 
-  constructor(baseURL: string = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000') {
-    this.baseURL = baseURL;
+  constructor(
+    baseURL: string =
+      process.env.NEXT_PUBLIC_API_URL ||
+      'http://localhost:8000',
+  ) {
     this.client = axios.create({
       baseURL,
       headers: {
@@ -25,146 +25,90 @@ class ApiClient {
     });
   }
 
-  // ============== Settings ==============
+  // SETTINGS
   async getSettings(): Promise<ImmichSettings> {
-    try {
-      const response = await this.client.get<ImmichSettings>('/api/settings');
-      return response.data;
-    } catch (error) {
-      throw this.handleError(error);
-    }
+    const res = await this.client.get('/api/settings');
+    return res.data;
   }
 
-  async updateSettings(settings: ImmichSettings): Promise<ImmichSettings> {
-    try {
-      const response = await this.client.post<ImmichSettings>('/api/settings', settings);
-      return response.data;
-    } catch (error) {
-      throw this.handleError(error);
-    }
+  async updateSettings(data: ImmichSettings): Promise<ImmichSettings> {
+    const res = await this.client.post('/api/settings', data);
+    return res.data;
   }
 
-  async testImmichConnection(url: string, apiKey: string): Promise<boolean> {
-    try {
-      await this.client.post('/api/settings/test', { immichUrl: url, apiKey });
-      return true;
-    } catch (error) {
-      throw this.handleError(error);
-    }
+  async testImmichConnection(immichUrl: string, apiKey: string): Promise<void> {
+    await this.client.post('/api/settings/test', {
+      immichUrl,
+      apiKey,
+    });
   }
 
   // ============== Games ==============
   async getAvailableGames(): Promise<GameInfo[]> {
-    try {
-      const response = await this.client.get<GameInfo[]>('/api/games');
-      return response.data;
-    } catch (error) {
-      throw this.handleError(error);
-    }
+    const res = await this.client.get('/api/games');
+    return res.data;
   }
 
   // ============== Sessions ==============
-  async createSession(gameType: string, gameMode?: string): Promise<GameSession> {
-    try {
-      const response = await this.client.post<GameSession>('/api/sessions', {
-        gameType,
-        gameMode,
-      });
-      return response.data;
-    } catch (error) {
-      throw this.handleError(error);
-    }
+  async createSession(
+    game_slug: string,
+    mode_slug: string,
+  ): Promise<GameSession> {
+    const res = await this.client.post(
+      '/api/sessions',
+      {
+        game_slug,
+        mode_slug,
+      },
+    );
+    return res.data;
   }
 
-  async getSession(sessionId: string): Promise<GameSession> {
-    try {
-      const response = await this.client.get<GameSession>(`/api/sessions/${sessionId}`);
-      return response.data;
-    } catch (error) {
-      throw this.handleError(error);
-    }
+  async getSession(
+    session_id: string,
+  ): Promise<GameSession> {
+    const res = await this.client.get(
+      `/api/sessions/${session_id}`,
+    );
+    return res.data;
   }
 
-  async completeSession(sessionId: string): Promise<GameSession> {
-    try {
-      const response = await this.client.post<GameSession>(
-        `/api/sessions/${sessionId}/complete`
-      );
-      return response.data;
-    } catch (error) {
-      throw this.handleError(error);
-    }
+  async endSession(
+    session_id: string,
+  ): Promise<void> {
+    await this.client.delete(
+      `/api/sessions/${session_id}`,
+    );
   }
 
-  // ============== Rounds ==============
-  async getNextRound(sessionId: string): Promise<RoundData> {
-    try {
-      const response = await this.client.get<RoundData>(`/api/rounds/${sessionId}/next`);
-      return response.data;
-    } catch (error) {
-      throw this.handleError(error);
-    }
-  }
-
-  async submitGuess(sessionId: string, request: RoundGuessRequest): Promise<RoundGuessResponse> {
-    try {
-      const response = await this.client.post<RoundGuessResponse>(
-        `/api/rounds/${sessionId}/guess`,
-        request
-      );
-      return response.data;
-    } catch (error) {
-      throw this.handleError(error);
-    }
-  }
-
-  // ============== Stats ==============
-  async getGameStats(gameType?: string): Promise<GameStats[]> {
-    try {
-      const params = gameType ? { gameType } : {};
-      const response = await this.client.get<GameStats[]>('/api/stats', { params });
-      return response.data;
-    } catch (error) {
-      throw this.handleError(error);
-    }
-  }
-
-  async getSessionStats(sessionId: string): Promise<GameStats> {
-    try {
-      const response = await this.client.get<GameStats>(`/api/stats/${sessionId}`);
-      return response.data;
-    } catch (error) {
-      throw this.handleError(error);
-    }
+  async submitAnswer(
+    session_id: string,
+    answer: 'more' | 'less',
+  ): Promise<SubmitAnswerResponse> {
+    const res = await this.client.post(
+      `/api/sessions/${session_id}/answer`,
+      { answer },
+    );
+    return res.data;
   }
 
   // ============== Health ==============
   async checkHealth(): Promise<HealthResponse> {
-    try {
-      const response = await this.client.get<HealthResponse>('/api/health');
-      return response.data;
-    } catch (error) {
-      throw this.handleError(error);
-    }
+    const res = await this.client.get('/api/health');
+    return res.data;
   }
 
-  // ============== Error Handling ==============
+  // ERROR
   private handleError(error: unknown): Error {
     if (axios.isAxiosError(error)) {
-      const axiosError = error as AxiosError<ApiErrorResponse>;
-      const message =
-        typeof axiosError.response?.data?.detail === 'string'
-          ? axiosError.response.data.detail
-          : axiosError.message;
-
-      const err = new Error(message);
-      (err as any).status = axiosError.response?.status;
-      (err as any).data = axiosError.response?.data;
+      const err = new Error(
+        (error.response?.data as ApiErrorResponse)?.detail?.toString() ||
+          error.message,
+      );
       return err;
     }
-    return error instanceof Error ? error : new Error(String(error));
+    return new Error(String(error));
   }
 }
 
 export const apiClient = new ApiClient();
-export default ApiClient;

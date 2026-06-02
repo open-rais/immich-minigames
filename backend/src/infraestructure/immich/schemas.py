@@ -9,6 +9,7 @@ class PersonDTO:
     id: str
     name: str
     asset_count: int
+    thumbnail_url: str | None = None
 
 
 @dataclass

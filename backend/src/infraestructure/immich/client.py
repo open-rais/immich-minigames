@@ -1,3 +1,4 @@
+import asyncio
 import httpx
 from typing import Any
 
@@ -131,21 +132,35 @@ class ImmichHTTPClient:
         except ImmichAPIError:
             raise
 
+    async def _fetch_person_stats(self, person: dict) -> tuple[dict, int]:
+        try:
+            stats = await self._request("GET", f"/people/{person['id']}/statistics")
+            return person, stats.get("assets", 0)
+        except Exception:
+            return person, 0
+
     async def list_people(self, limit: int = 100) -> list[PersonDTO]:
-        """List people from Immich."""
+        """List people from Immich with asset counts from /people/{id}/statistics."""
         data = await self._request("GET", "/people", params={"withHidden": False})
-        
+        people_raw = data.get("people", [])[:limit]
+
+        results = await asyncio.gather(
+            *[self._fetch_person_stats(p) for p in people_raw]
+        )
+
         people = []
-        for person in data.get("people", []):
+        for person, asset_count in results:
+            person_id = person["id"]
             people.append(
                 PersonDTO(
-                    id=person["id"],
+                    id=person_id,
                     name=person.get("name", "Unknown"),
-                    asset_count=person.get("assetCount", 0),
+                    asset_count=asset_count,
+                    thumbnail_url=f"{self.base_url}/api/people/{person_id}/thumbnail?apiKey={self.api_key}",
                 )
             )
-        
-        return people[:limit]
+
+        return people
 
     async def get_person(self, person_id: str) -> PersonDTO:
         """Get a specific person."""

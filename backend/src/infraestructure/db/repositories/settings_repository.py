@@ -53,5 +53,6 @@ class SQLAlchemySettingsRepository(SettingsRepository):
                 row = SettingsModel(key=key, value=value)
                 self.session.add(row)
 
+        await self.session.flush()
         await self.session.commit()
         return settings
