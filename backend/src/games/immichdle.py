@@ -13,12 +13,13 @@ Se tiene una persona incognita, hay que adivinar escribiendo otras personas y ha
 """
 ImmichdleGame(BaseGame):
     Atributos:
-        puntaje: comienza en 100
+        puntaje: comienza en 100 (subirá a 200 cuando exista el sistema de pistas por intento, ver
+            docs/GAMES/IMMICHDLE.md). Nunca baja de 0 (se floorea en 0 al aplicar un delta negativo).
 
     Metodos:
         hay_nuevo_round?:
             si le achuntó al resultado, no hay nuevo round
-            Si puntaje == 0, no hay nuevo round
+            Si puntaje (ya floreado en 0) == 0, no hay nuevo round
             En otro caso, se crea nuevo round
 """
 
@@ -28,5 +29,5 @@ ImmichdleRound(BaseRound):
 
     Metodos:
         calcular_puntaje:
-            si es correcto, puntaje es 0, si es incorrecto baja puntaje.
+            devuelve el delta: 0 si es correcto, negativo si es incorrecto (baja el puntaje).
 """
