@@ -2,9 +2,9 @@
 
 ## Inspiración
 
-Los juegos estilo Wordle ("*dle"), en particular su variante "adivina al personaje/persona"
-(persondle): hay un objetivo oculto y cada intento revela pistas comparativas que van acotando la
-respuesta.
+Los juegos estilo [Wordle](https://www.nytimes.com/games/wordle/) ("*dle"), en particular su
+variante "adivina al personaje/persona" (persondle): hay un objetivo oculto y cada intento revela
+pistas comparativas que van acotando la respuesta.
 
 ## Cómo se juega
 

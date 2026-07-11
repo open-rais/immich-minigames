@@ -2,7 +2,7 @@
 
 ## Inspiración
 
-El juego de mesa ["Timeline"](https://en.wikipedia.org/wiki/Timeline_(card_game)): se van
+El juego de mesa [Timeline](https://www.zygomatic-games.com/en/game/timeline-classic/): se van
 insertando cartas de eventos en el orden cronológico correcto respecto a las cartas ya puestas en la
 mesa.
 

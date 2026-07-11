@@ -2,7 +2,7 @@
 
 ## Inspiración
 
-El segmento ["Who's That Pokémon?"](https://bulbapedia.bulbagarden.net/wiki/Who's_That_Pok%C3%A9mon%3F)
+El segmento ["Who's That Pokémon?"](https://pokemon.fandom.com/wiki/Who's_That_Pok%C3%A9mon%3F)
 del anime de Pokémon: se muestra una silueta y hay que adivinar de quién se trata antes de que se
 revele.
 

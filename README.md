@@ -19,12 +19,12 @@ juegos - un incentivo simpático para no dejar el catalogueo a medias.
 
 | Juego | Inspirado en | La idea |
 |---|---|---|
-| **MoreOrLess** | El clásico "más o menos" | ¿Esta persona tiene más o menos fotos que la anterior? |
+| **MoreOrLess** | El clásico [More Or Less](https://moreorless.io/) | ¿Esta persona tiene más o menos fotos que la anterior? |
 | **Geoguessr** | [GeoGuessr](https://www.geoguessr.com/) | Adivina en un mapa dónde se tomó la foto |
 | **Dateguessr** | Geoguessr, pero con fechas | Adivina en una línea de tiempo cuándo se tomó la foto |
-| **Immichdle** | Los juegos *dle (Wordle) | Adivina a la persona incógnita con pistas comparativas |
-| **Timeline** | El juego de mesa *Timeline* | Ordena las fotos cronológicamente entre ellas |
-| **Who'sThatPerson** | "Who's That Pokémon?" | Adivina quién es la persona de la cara tapada |
+| **Immichdle** | Los juegos *dle ([Wordle](https://www.nytimes.com/games/wordle/)) | Adivina a la persona incógnita con pistas comparativas |
+| **Timeline** | El juego de mesa [Timeline](https://www.zygomatic-games.com/en/game/timeline-classic/) | Ordena las fotos cronológicamente entre ellas |
+| **Who'sThatPerson** | ["Who's That Pokémon?"](https://pokemon.fandom.com/wiki/Who's_That_Pok%C3%A9mon%3F) | Adivina quién es la persona de la cara tapada |
 
 Cómo se juega cada uno en detalle, con sus modos y reglas de puntaje, está en
 [`docs/GAMES/`](./docs/GAMES/OVERVIEW.md).

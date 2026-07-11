@@ -2,8 +2,9 @@
 
 ## Inspiración
 
-El clásico juego de "más o menos": comparar si un valor desconocido es mayor o menor que uno ya
-conocido. Es el mismo mecanismo detrás de segmentos como "adivina el precio" en programas de TV.
+El clásico [More Or Less](https://moreorless.io/): comparar si un valor desconocido es mayor o menor
+que uno ya conocido. Es el mismo mecanismo detrás de segmentos como "adivina el precio" en programas
+de TV.
 
 ## Cómo se juega
 
