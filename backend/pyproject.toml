@@ -1,0 +1,18 @@
+[project]
+name = "immich-minigames-backend"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "psycopg[binary]>=3.1",
+    "pydantic-settings>=2",
+    "sqlalchemy>=2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
