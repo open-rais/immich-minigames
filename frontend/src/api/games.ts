@@ -1,5 +1,13 @@
 import { apiClient } from "./client"
-import type { CreateGameIn, GameOut, Guess, MoreOrLessPlayRoundIn, GeoguessrPlayRoundIn, PlayRoundOut } from "./types"
+import type {
+  CreateGameIn,
+  GameOut,
+  Guess,
+  MoreOrLessPlayRoundIn,
+  GeoguessrPlayRoundIn,
+  DateguessrPlayRoundIn,
+  PlayRoundOut,
+} from "./types"
 
 export async function createGame(type: string, mode: string): Promise<GameOut> {
   const body: CreateGameIn = { type, mode }
@@ -25,6 +33,12 @@ export async function playGeoguessrRound(
   longitude: number,
 ): Promise<PlayRoundOut> {
   const body: GeoguessrPlayRoundIn = { latitude, longitude }
+  const { data } = await apiClient.post<PlayRoundOut>(`/games/${gameId}/rounds/${roundId}`, body)
+  return data
+}
+
+export async function playDateguessrRound(gameId: string, roundId: string, isoDate: string): Promise<PlayRoundOut> {
+  const body: DateguessrPlayRoundIn = { date: isoDate }
   const { data } = await apiClient.post<PlayRoundOut>(`/games/${gameId}/rounds/${roundId}`, body)
   return data
 }

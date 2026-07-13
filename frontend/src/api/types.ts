@@ -36,7 +36,19 @@ export interface GeoguessrRoundOut {
   score_delta: number | null
 }
 
-export type RoundOut = MoreOrLessRoundOut | GeoguessrRoundOut
+export interface DateguessrRoundOut {
+  game_type: "dateguessr"
+  id: string
+  round_index: number
+  asset_id: string
+  guess_date: string | null
+  // Redacted (null) until this round has been answered.
+  actual_date: string | null
+  days_off: number | null
+  score_delta: number | null
+}
+
+export type RoundOut = MoreOrLessRoundOut | GeoguessrRoundOut | DateguessrRoundOut
 
 export interface GameOut {
   id: string
@@ -56,6 +68,10 @@ export interface MoreOrLessPlayRoundIn {
 export interface GeoguessrPlayRoundIn {
   latitude: number
   longitude: number
+}
+
+export interface DateguessrPlayRoundIn {
+  date: string
 }
 
 export interface PlayRoundOut {
