@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import type { TransitionEvent } from "react"
 import { useTranslation } from "react-i18next"
+import { useNavigate } from "react-router-dom"
 
 import { createGame, personThumbnailUrl, playRound } from "../../api/games"
 import type { GameOut, Guess, RoundOut } from "../../api/types"
@@ -28,6 +29,8 @@ type PersonRef = { id: string; name: string }
 
 export function MoreOrLessGame() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
+  const backToMenu = () => navigate("/")
 
   const [screen, setScreen] = useState<Screen>("idle")
   const [busy, setBusy] = useState(false)
@@ -154,6 +157,7 @@ export function MoreOrLessGame() {
   if (screen === "idle") {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-app-bg px-6 text-center">
+        <BackButton label={t("moreOrLess.back")} onClick={backToMenu} />
         <h1 className="text-3xl font-bold text-ink">{t("moreOrLess.title")}</h1>
         <p className="max-w-md text-muted">{t("moreOrLess.start.description")}</p>
         <Button variant="primary" className="px-8 py-3" onClick={startGame} disabled={busy}>
@@ -166,6 +170,7 @@ export function MoreOrLessGame() {
   if (screen === "error") {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-app-bg px-6 text-center">
+        <BackButton label={t("moreOrLess.back")} onClick={backToMenu} />
         <p className="text-body">{t("moreOrLess.error.message")}</p>
         <Button variant="primary" className="px-6 py-3" onClick={startGame} disabled={busy}>
           {t("moreOrLess.error.retry")}
@@ -177,6 +182,7 @@ export function MoreOrLessGame() {
   if (screen === "finished") {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-app-bg px-6 text-center">
+        <BackButton label={t("moreOrLess.back")} onClick={backToMenu} />
         <h1 className="text-3xl font-bold text-ink">{t("moreOrLess.finished.title")}</h1>
         <p className="text-xl text-muted">{t("moreOrLess.finished.finalScore", { score: game?.score ?? 0 })}</p>
         <Button variant="primary" className="px-8 py-3" onClick={startGame} disabled={busy}>
