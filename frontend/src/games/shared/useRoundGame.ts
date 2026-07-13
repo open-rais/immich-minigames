@@ -1,7 +1,16 @@
 import { useEffect, useRef, useState } from "react"
 
 import { createGame } from "../../api/games"
-import type { GameOut, PlayRoundOut, RoundOut } from "../../api/types"
+import type { PlayRoundOut, RoundOut } from "../../api/types"
+
+// Only the fields that stay live for the whole game. The full GameOut also carries `rounds`, but
+// after the first round it would go stale (guesses update score/finished, not the round list), so
+// we deliberately don't keep it - a stale `game.rounds` would be a trap for the finished screen.
+interface GameState {
+  id: string
+  score: number
+  finished: boolean
+}
 
 // Shared state machine for the "fixed number of rounds, one picker per round, auto-advance after a
 // reveal hold" games (Geoguessr, Dateguessr). Both were near-identical copies; the only real
@@ -36,7 +45,7 @@ export function useRoundGame<TRound extends RoundOut, TGuess>({
 }: UseRoundGameConfig<TRound, TGuess>) {
   const [screen, setScreen] = useState<Screen>("idle")
   const [busy, setBusy] = useState(false)
-  const [game, setGame] = useState<GameOut | null>(null)
+  const [game, setGame] = useState<GameState | null>(null)
   const [round, setRound] = useState<TRound | null>(null)
   const [pendingNextRound, setPendingNextRound] = useState<TRound | null>(null)
   const [phase, setPhase] = useState<RoundPhase>("guessing")
@@ -67,7 +76,7 @@ export function useRoundGame<TRound extends RoundOut, TGuess>({
         setScreen("error")
         return
       }
-      setGame(g)
+      setGame({ id: g.id, score: g.score, finished: g.finished })
       setRound(firstRound)
       setPendingNextRound(null)
       onNewRoundRef.current()

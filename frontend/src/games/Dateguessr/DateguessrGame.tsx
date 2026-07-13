@@ -13,7 +13,7 @@ import { RevealResultCard } from "../shared/RevealResultCard"
 import { RoundBadge } from "../shared/RoundBadge"
 import { ScoreBadge } from "../shared/ScoreBadge"
 import { useRoundGame } from "../shared/useRoundGame"
-import { TimelineRuler } from "./TimelineRuler"
+import { ABOVE_RULER_BOTTOM_CLASS, TimelineRuler } from "./TimelineRuler"
 
 const GAME_TYPE = GameType.Dateguessr
 const MODE = Mode.DaysToDate
@@ -85,7 +85,7 @@ export function DateguessrGame() {
       />
 
       {phase === "guessing" && (
-        <div className="fixed bottom-[124px] left-[18px] z-30 md:bottom-[156px] md:left-10">
+        <div className={`fixed ${ABOVE_RULER_BOTTOM_CLASS} left-[18px] z-30 md:left-10`}>
           <Button
             variant="primary"
             className="px-6 py-3 shadow-card"
@@ -99,7 +99,7 @@ export function DateguessrGame() {
 
       {revealed && round.days_off !== null && round.score_delta !== null && (
         <RevealResultCard
-          positionClassName="bottom-[124px] left-[18px] md:bottom-[156px] md:left-10"
+          positionClassName={`${ABOVE_RULER_BOTTOM_CLASS} left-[18px] md:left-10`}
           scoreDelta={round.score_delta}
           subtitle={t("dateguessr.result.daysOff", { count: round.days_off })}
         />

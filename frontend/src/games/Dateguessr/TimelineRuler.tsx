@@ -25,6 +25,13 @@ const REVEAL_FIT_FRACTION = 0.7
 const GUESS_MARKER_COLOR = "#3055b6" // --color-primary, matches MapPicker's GUESS_MARKER_COLOR
 const ACTUAL_MARKER_COLOR = "#e11d48" // matches MapPicker's ACTUAL_MARKER_COLOR
 
+// The ruler is a full-width bar pinned to the bottom of the screen. Its height and the matching
+// bottom offset for controls that sit just above it (DateguessrGame's confirm button / result card)
+// live here together so a height change is a single edit, not a hunt across files - the pixel
+// coupling CLAUDE.md warns about. Offset = ruler height (112/144px) + a 12px gap.
+const RULER_HEIGHT_CLASS = "h-28 md:h-36"
+export const ABOVE_RULER_BOTTOM_CLASS = "bottom-[124px] md:bottom-[156px]"
+
 type LodTier = "year" | "month" | "day"
 
 interface Tick {
@@ -197,8 +204,8 @@ export function TimelineRuler({ selected, onSelectedChange, actual = null, disab
       for (let offset = 0; offset < daysInYear; offset++) {
         const dayIndex = yearDayIndex + offset
         if (dayIndex < minDayIndex || dayIndex > maxDayIndex) continue
-        if (offset % 30 === 0) continue // that day already has a month/year tick above
         const dayOfMonth = dateFromDayIndex(dayIndex).getUTCDate()
+        if (dayOfMonth === 1) continue // the 1st already has a month/year tick above
         result.push({
           dayIndex,
           x: dayIndexToX(dayIndex),
@@ -290,7 +297,7 @@ export function TimelineRuler({ selected, onSelectedChange, actual = null, disab
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
-      className="fixed bottom-0 left-0 right-0 z-20 h-28 touch-none overflow-hidden border-t border-line bg-white shadow-card select-none md:h-36"
+      className={`fixed bottom-0 left-0 right-0 z-20 ${RULER_HEIGHT_CLASS} touch-none overflow-hidden border-t border-line bg-white shadow-card select-none`}
     >
       <div className="relative h-full w-full">
         {ticks.map((tick) => (
