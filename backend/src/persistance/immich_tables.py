@@ -94,4 +94,4 @@ asset_face = Table(
 
 @lru_cache(maxsize=1)
 def get_engine() -> Engine:
-    return create_engine(Settings().sqlalchemy_url)
+    return create_engine(Settings().db_url)

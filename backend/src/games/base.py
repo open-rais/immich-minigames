@@ -1,44 +1,101 @@
 """
-(ABC) Clase base para cada juego.
-Define lo minimo que debe implementar un juego para ser compatible con el sistema.
+(ABC) Base classes every minigame implements to plug into the shared game loop - see
+docs/GAMES/OVERVIEW.md ("Base compartida: Game y Round"). Pure domain objects, not ORM models -
+GamesService (services/games_service.py) is responsible for loading/saving them via
+persistance/games.py.
 """
 
-"""
-BaseGame:
-    Atributos:
-        ID
-        Owner
-        tipo (slug del minijuego)
-        modo (slug del modo - se guarda desde el día 1 aunque cada juego tenga un solo modo válido)
-        *Seed* (no en la versión inicial - se agrega al implementar el daily game, para que todos
-            los jugadores de un mismo día vean el mismo desafío)
-        puntaje: int
-        rounds: list[Round]
-        finalizado: bool
-    
-    Metodos:
-        Crear
-        Jugar_round
-            Da una respuesta
-            aplica sobre el puntaje el delta devuelto por calcular_puntaje del round
-            Valida si con esto el juego termina o se crea un nuevo round
-        Hay_nuevo_round?
-        crear_nuevo_round (La idea es que esto conozca los rounds anteriores para no repetir)
-"""
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Any
+from uuid import UUID
 
-"""
-BaseRound:
-    Atributos:
-        ID
-        Game
-        round_index
-        respuesta_correcta
-        guess_del_jugador
-        entidades_mostradas (ids de assets y/o personas mostrados en la ronda - necesario para
-            "Ver rounds" y para la futura feature de reportar metadata incorrecta)
 
-    Métodos:
-        calcular_puntaje:
-            Devuelve el delta (puede ser negativo) a aplicar sobre el puntaje del Game,
-            no el puntaje absoluto de la ronda. Es el Game quien lo suma/resta sobre su total.
-"""
+class BaseRound(ABC):
+    def __init__(self, id: UUID, game_id: UUID, round_index: int, shown_entities: list[UUID]) -> None:
+        self.id = id
+        self.game_id = game_id
+        self.round_index = round_index
+        self.shown_entities = shown_entities
+        self.guess: Any = None
+        self.score_delta: int | None = None
+
+    @property
+    def answered(self) -> bool:
+        return self.guess is not None
+
+    @abstractmethod
+    def calculate_score(self) -> int:
+        """Score delta to apply to the game's total. Only called once `guess` has been set."""
+
+    @abstractmethod
+    def to_payload(self) -> dict[str, Any]:
+        """Serializes this round's game-specific data (shown entities, answer, guess) for the
+        `payload` JSONB column in persistance/games.py."""
+
+    @classmethod
+    @abstractmethod
+    def from_payload(
+        cls,
+        id: UUID,
+        game_id: UUID,
+        round_index: int,
+        payload: dict[str, Any],
+        score_delta: int | None,
+    ) -> "BaseRound":
+        """Reconstructs a round from its persisted row (payload + the score_delta column)."""
+
+
+@dataclass
+class PlayRoundResult:
+    score_delta: int
+    score: int
+    finished: bool
+
+
+class BaseGame(ABC):
+    def __init__(
+        self,
+        id: UUID,
+        owner: str,
+        game_type: str,
+        mode: str,
+        rounds: list[BaseRound],
+        score: int = 0,
+        finished: bool = False,
+    ) -> None:
+        self.id = id
+        self.owner = owner
+        self.game_type = game_type
+        self.mode = mode
+        self.rounds = rounds
+        self.score = score
+        self.finished = finished
+
+    @property
+    def current_round(self) -> BaseRound:
+        return self.rounds[-1]
+
+    def play_round(self, guess: Any) -> PlayRoundResult:
+        if self.finished:
+            raise ValueError("game is already finished")
+
+        current = self.current_round
+        current.guess = guess
+        current.score_delta = current.calculate_score()
+        self.score += current.score_delta
+
+        if self.has_next_round():
+            self.rounds.append(self.create_next_round())
+        else:
+            self.finished = True
+
+        return PlayRoundResult(score_delta=current.score_delta, score=self.score, finished=self.finished)
+
+    @abstractmethod
+    def has_next_round(self) -> bool:
+        """Whether the game continues after the round that was just answered."""
+
+    @abstractmethod
+    def create_next_round(self) -> BaseRound:
+        """Builds the next round, aware of previous rounds so it doesn't repeat candidates."""
