@@ -9,12 +9,16 @@ it disagreed with the game's actual type, nothing would catch the mismatch befor
 domain layer as a wrongly-shaped guess.
 """
 
+from datetime import date
 from typing import Annotated, Any, Literal, Union
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 from games.base import BaseGame, BaseRound
+from games.dateguessr import GAME_TYPE as DATEGUESSR_TYPE
+from games.dateguessr import MODE_DAYS_TO_DATE
+from games.dateguessr import DateguessrRound
 from games.geoguessr import GAME_TYPE as GEOGUESSR_TYPE
 from games.geoguessr import MODE_DISTANCE_BETWEEN_GUESS
 from games.geoguessr import LatLng, GeoguessrRound
@@ -89,14 +93,44 @@ class GeoguessrRoundOut(BaseModel):
         )
 
 
-RoundOut = Annotated[Union[MoreOrLessRoundOut, GeoguessrRoundOut], Field(discriminator="game_type")]
+class DateguessrRoundOut(BaseModel):
+    game_type: Literal["dateguessr"] = DATEGUESSR_TYPE
+    id: UUID
+    round_index: int
+    asset_id: UUID
+    guess_date: date | None
+    # Redacted (null) until this round has been answered - same rationale as
+    # GeoguessrRoundOut.actual_latitude.
+    actual_date: date | None
+    days_off: int | None
+    score_delta: int | None
+
+    @classmethod
+    def from_round(cls, round_: DateguessrRound) -> "DateguessrRoundOut":
+        answered = round_.answered
+        return cls(
+            id=round_.id,
+            round_index=round_.round_index,
+            asset_id=round_.asset.id,
+            guess_date=round_.guess,
+            actual_date=round_.asset.date if answered else None,
+            days_off=round_.days_off if answered else None,
+            score_delta=round_.score_delta if answered else None,
+        )
 
 
-def round_out_from_round(round_: BaseRound) -> MoreOrLessRoundOut | GeoguessrRoundOut:
+RoundOut = Annotated[
+    Union[MoreOrLessRoundOut, GeoguessrRoundOut, DateguessrRoundOut], Field(discriminator="game_type")
+]
+
+
+def round_out_from_round(round_: BaseRound) -> MoreOrLessRoundOut | GeoguessrRoundOut | DateguessrRoundOut:
     if isinstance(round_, MoreOrLessRound):
         return MoreOrLessRoundOut.from_round(round_)
     if isinstance(round_, GeoguessrRound):
         return GeoguessrRoundOut.from_round(round_)
+    if isinstance(round_, DateguessrRound):
+        return DateguessrRoundOut.from_round(round_)
     raise TypeError(f"unsupported round type: {type(round_)}")
 
 
@@ -135,9 +169,17 @@ class GeoguessrPlayRoundIn(BaseModel):
         return LatLng(latitude=self.latitude, longitude=self.longitude)
 
 
+class DateguessrPlayRoundIn(BaseModel):
+    date: date
+
+    def to_domain(self) -> date:
+        return self.date
+
+
 _PLAY_ROUND_SCHEMAS: dict[tuple[str, str], type[BaseModel]] = {
     (MORE_OR_LESS_TYPE, MODE_PERSON_ASSETS): MoreOrLessPlayRoundIn,
     (GEOGUESSR_TYPE, MODE_DISTANCE_BETWEEN_GUESS): GeoguessrPlayRoundIn,
+    (DATEGUESSR_TYPE, MODE_DAYS_TO_DATE): DateguessrPlayRoundIn,
 }
 
 
