@@ -1,0 +1,31 @@
+{
+  "moreOrLess": {
+    "title": "More or Less",
+    "start": {
+      "description": "Guess whether the next person has more or fewer assets than the last. One wrong guess ends the run.",
+      "cta": "Start game"
+    },
+    "back": "Back",
+    "score": "Score",
+    "has": "has",
+    "unit_one": "asset",
+    "unit_other": "assets",
+    "question": "Does {{name}} have more or fewer assets?",
+    "guessMore": "More",
+    "guessLess": "Fewer",
+    "result": {
+      "correct": "Correct!",
+      "incorrect": "Not quite.",
+      "continue": "Continue",
+      "playAgain": "Play again"
+    },
+    "finished": {
+      "title": "Game over",
+      "finalScore": "Final score: {{score}}"
+    },
+    "error": {
+      "message": "Something went wrong talking to the server.",
+      "retry": "Retry"
+    }
+  }
+}

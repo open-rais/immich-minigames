@@ -10,10 +10,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource/overpass": "^5.2.8",
+    "@fontsource/overpass-mono": "^5.2.8",
     "@tailwindcss/vite": "^4.3.2",
     "axios": "^1.18.1",
+    "i18next": "^26.3.6",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "react-i18next": "^17.0.9",
     "tailwindcss": "^4.3.2"
   },
   "devDependencies": {
