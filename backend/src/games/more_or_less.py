@@ -19,8 +19,15 @@ GAME_TYPE = "more-or-less"
 MODE_PERSON_ASSETS = "personAssets"
 
 # How many random candidates to sample when looking for one whose asset count doesn't tie the
-# reference's - a tie would make the round unanswerable (neither "more" nor "less" would be right).
+# reference's. Not required for correctness (a tie always counts as a win either way - see
+# MoreOrLessRound.calculate_score) - just to keep most rounds a real more/less choice instead of a
+# free pass.
 _CANDIDATE_SAMPLE_SIZE = 10
+
+# How many of the most-recently-shown people to avoid repeating immediately. The game is infinite
+# (it doesn't end just because the library's been fully cycled through) - once a person ages out
+# of this window, they're fair game again.
+_RECENT_EXCLUDE_WINDOW = 10
 
 
 @dataclass(frozen=True)
@@ -68,6 +75,9 @@ class MoreOrLessRound(BaseRound):
         self.guess: Guess | None = None
 
     def calculate_score(self) -> int:
+        if self.candidate.asset_count == self.reference.asset_count:
+            # A tie isn't a fair "wrong" either way - always counts as a win.
+            return 1
         actual: Guess = "more" if self.candidate.asset_count > self.reference.asset_count else "less"
         return 1 if self.guess == actual else 0
 
@@ -131,8 +141,17 @@ class MoreOrLessGame(BaseGame):
         )
         return cls(id=id, owner=owner, rounds=[first_round], immich_service=immich_service)
 
-    def _shown_ids(self) -> frozenset[UUID]:
-        return frozenset(entity_id for round_ in self.rounds for entity_id in round_.shown_entities)
+    def _recent_shown_ids(self) -> frozenset[UUID]:
+        """The most-recently-shown people (deduplicated, capped at _RECENT_EXCLUDE_WINDOW) - see
+        that constant's docstring. Walks rounds newest-first so "most recent" is accurate."""
+        recent: list[UUID] = []
+        for round_ in reversed(self.rounds):
+            for entity_id in reversed(round_.shown_entities):
+                if entity_id not in recent:
+                    recent.append(entity_id)
+                if len(recent) >= _RECENT_EXCLUDE_WINDOW:
+                    return frozenset(recent)
+        return frozenset(recent)
 
     def has_next_round(self) -> bool:
         if self.current_round.score_delta != 1:
@@ -140,13 +159,13 @@ class MoreOrLessGame(BaseGame):
         # Cheap existence check - create_next_round()'s tie-aware pick always succeeds as long as
         # the candidate pool isn't empty (see _pick_non_tied_candidate's fallback), so this is
         # consistent with it without needing to sample _CANDIDATE_SAMPLE_SIZE rows twice.
-        remaining = self._immich_service.get_persons(named_only=True, limit=1, exclude_ids=self._shown_ids())
+        remaining = self._immich_service.get_persons(named_only=True, limit=1, exclude_ids=self._recent_shown_ids())
         return bool(remaining)
 
     def create_next_round(self) -> MoreOrLessRound:
         previous = self.current_round
         candidate = _pick_non_tied_candidate(
-            self._immich_service, previous.candidate.asset_count, exclude_ids=self._shown_ids()
+            self._immich_service, previous.candidate.asset_count, exclude_ids=self._recent_shown_ids()
         )
         if candidate is None:
             raise ValueError("no more candidates left - has_next_round() should have returned False")
