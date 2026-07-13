@@ -9,6 +9,8 @@ from uuid import UUID, uuid4
 from sqlalchemy.orm import Session
 
 from games.base import BaseGame, BaseRound
+from games.geoguessr import GAME_TYPE as GEOGUESSR_TYPE
+from games.geoguessr import MODE_DISTANCE_BETWEEN_GUESS, GeoguessrGame, GeoguessrRound
 from games.more_or_less import GAME_TYPE as MORE_OR_LESS_TYPE
 from games.more_or_less import MODE_PERSON_ASSETS, MoreOrLessGame, MoreOrLessRound
 from persistance.games import GameModel, RoundModel
@@ -16,9 +18,11 @@ from services.immich_service import ImmichService
 
 _GAME_CLASSES: dict[tuple[str, str], type[BaseGame]] = {
     (MORE_OR_LESS_TYPE, MODE_PERSON_ASSETS): MoreOrLessGame,
+    (GEOGUESSR_TYPE, MODE_DISTANCE_BETWEEN_GUESS): GeoguessrGame,
 }
 _ROUND_CLASSES: dict[tuple[str, str], type[BaseRound]] = {
     (MORE_OR_LESS_TYPE, MODE_PERSON_ASSETS): MoreOrLessRound,
+    (GEOGUESSR_TYPE, MODE_DISTANCE_BETWEEN_GUESS): GeoguessrRound,
 }
 
 

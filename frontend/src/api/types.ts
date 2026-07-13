@@ -7,7 +7,8 @@ export interface CreateGameIn {
   mode: string
 }
 
-export interface RoundOut {
+export interface MoreOrLessRoundOut {
+  game_type: "more-or-less"
   id: string
   round_index: number
   reference_id: string
@@ -21,6 +22,22 @@ export interface RoundOut {
   correct: boolean | null
 }
 
+export interface GeoguessrRoundOut {
+  game_type: "geoguessr"
+  id: string
+  round_index: number
+  asset_id: string
+  guess_latitude: number | null
+  guess_longitude: number | null
+  // Redacted (null) until this round has been answered.
+  actual_latitude: number | null
+  actual_longitude: number | null
+  distance_km: number | null
+  score_delta: number | null
+}
+
+export type RoundOut = MoreOrLessRoundOut | GeoguessrRoundOut
+
 export interface GameOut {
   id: string
   type: string
@@ -30,16 +47,24 @@ export interface GameOut {
   rounds: RoundOut[]
 }
 
-export interface PlayRoundIn {
+// No game_type here (unlike RoundOut) - game_id already fixes a round's game/mode server-side, so
+// the guess body only needs the guess itself; see backend/src/api/schemas.py's parse_guess.
+export interface MoreOrLessPlayRoundIn {
   guess: Guess
 }
 
+export interface GeoguessrPlayRoundIn {
+  latitude: number
+  longitude: number
+}
+
 export interface PlayRoundOut {
-  correct: boolean
+  // Binary-guess concept (MoreOrLess) - null for games with a continuous score (Geoguessr).
+  correct: boolean | null
   score_delta: number
   score: number
   finished: boolean
-  // The just-answered round, with candidate_asset_count now revealed.
+  // The just-answered round, with its answer now revealed.
   answered_round: RoundOut
   next_round: RoundOut | null
 }

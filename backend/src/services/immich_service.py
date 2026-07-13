@@ -147,6 +147,23 @@ class ImmichService:
 
         return [self._row_to_person(row) for row in rows]
 
+    def get_asset_thumbnail(self, asset_id: UUID, size: str = "preview") -> tuple[bytes, str]:
+        """Fetches an asset's image bytes via Immich's REST API (not the DB - see module
+        docstring). `size="preview"` (~1440px JPEG derivative) rather than the default `thumbnail`
+        (~250px, too small for fullscreen) or `original` (may be HEIC/RAW/video, not safely
+        renderable in a browser <img>).
+
+        Raises httpx.HTTPStatusError (e.g. 404 - no thumbnail, 401 - bad IMMICH_API_KEY) or
+        httpx.RequestError (Immich unreachable/timed out) - see api/api.py for how each maps to a
+        response."""
+        response = _get_http_client().get(
+            f"{self._settings.immich_server_url}/api/assets/{asset_id}/thumbnail",
+            params={"size": size},
+            headers={"x-api-key": self._settings.immich_api_key},
+        )
+        response.raise_for_status()
+        return response.content, response.headers.get("content-type", "image/jpeg")
+
     def get_person_thumbnail(self, person_id: UUID) -> tuple[bytes, str]:
         """Fetches a person's face thumbnail via Immich's REST API (not the DB - see module
         docstring). Returns (image bytes, content-type).

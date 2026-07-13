@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next"
 
 import type { Guess } from "../../api/types"
-import { Button } from "./Button"
+import { Button } from "../shared/Button"
 import { CountBadge } from "./CountBadge"
 import { StatCard } from "./StatCard"
 
