@@ -12,7 +12,7 @@ WhosThatPersonGame(BaseGame):
     Atributos: Tal cuál ABC
 
     Metodos:
-        hay_nuevo_round?:
+        has_next_round():
             hay nuevo round mientras round_index < 15; en el 15avo, termina.
 """
 
@@ -21,8 +21,8 @@ WhosThatPersonRound(BaseRound):
     Atributos: Tal cuál ABC
 
     Metodos:
-        calcular_puntaje:
+        calculate_score():
             devuelve el delta tipo combo: si acierta, el valor de la racha actual (que sube en 1
             respecto al acierto anterior consecutivo, partiendo en 1); si falla, 0 y resetea la
-            racha a 0 (no resta puntaje ya ganado).
+            racha a 0 (no resta score ya ganado).
 """

@@ -13,7 +13,7 @@ ya está resuelto por la base compartida.
 ## Base compartida: `Game` y `Round`
 
 Cada partida jugada es un **`Game`**: tiene un id, un owner (quién juega), un puntaje acumulado, la
-lista de `Round`s jugados hasta ahora, y una bandera de si ya terminó (`finalizado`).
+lista de `Round`s jugados hasta ahora, y una bandera de si ya terminó (`finished`).
 
 Cada pregunta individual dentro de una partida es un **`Round`**: tiene un id, referencia a su
 `Game`, un índice (qué ronda es), la respuesta correcta contra la que se compara el guess del
@@ -26,18 +26,23 @@ El loop de juego es siempre el mismo, sin importar cuál minijuego sea:
 1. Se le muestra al jugador la pregunta del round actual (definida por la respuesta correcta que
    guarda el `Round`).
 2. El jugador envía su guess.
-3. El `Round` calcula el *delta* de puntaje de esa jugada (`calcular_puntaje`) - puede ser positivo
+3. El `Round` calcula el *delta* de puntaje de esa jugada (`calculate_score()`) - puede ser positivo
    o negativo, y esta regla es específica de cada juego (ver el doc de cada uno).
 4. El `Game` aplica ese delta sobre su puntaje acumulado.
-5. El `Game` decide si corresponde crear un nuevo round (`hay_nuevo_round?`) - esta regla también es
+5. El `Game` decide si corresponde crear un nuevo round (`has_next_round()`) - esta regla también es
    específica de cada juego (por ejemplo: "hasta la 5ta ronda", "hasta que se falle una vez", "hasta
    adivinar o quedarse sin puntaje"). Si se crea un nuevo round, este conoce las rondas anteriores
    para no repetir candidatos dentro de la misma partida.
-6. Si no hay nuevo round, el `Game` queda `finalizado`.
+6. Si no hay nuevo round, el `Game` queda `finished`.
 
 Gracias a este diseño (patrón Template Method), cada juego nuevo solo necesita responder dos
 preguntas - "¿cuándo termina esta partida?" y "¿cuántos puntos vale este guess?" - todo lo demás
 (API, persistencia, orquestación) es compartido.
+
+> Nota de idioma: los nombres de clases/métodos/atributos del código son en inglés (`finished`,
+> `has_next_round()`, `calculate_score()`, etc., ver `games/base.py`) - las descripciones en
+> español de este doc y de cada juego son a propósito (diseño/brainstorming en el idioma natal del
+> dueño del proyecto), no una traducción pendiente.
 
 ## Catálogo de juegos
 

@@ -19,7 +19,7 @@ rondas.
 - Acertar dentro de 1 km da el máximo: 5000 puntos. Más allá de eso, el puntaje va bajando a medida
   que la distancia marcada se aleja del lugar real (fórmula de decaimiento, sin ecuación exacta
   definida todavía).
-- `hay_nuevo_round?`: hay ronda nueva mientras no se haya llegado a la 5ta ronda; en la 5ta, la
+- `has_next_round()`: hay ronda nueva mientras no se haya llegado a la 5ta ronda; en la 5ta, la
   partida termina.
 
 ## Modos

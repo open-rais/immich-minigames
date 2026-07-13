@@ -19,7 +19,7 @@ Se repite 5 veces, con fotos de fechas distintas cada vez, y se suma el puntaje 
 - Acertar la fecha exacta da el máximo: 5000 puntos. Más allá de eso, el puntaje va bajando a
   medida que la fecha marcada se aleja de la real (misma lógica de decaimiento que Geoguessr, sin
   ecuación exacta definida todavía).
-- `hay_nuevo_round?`: hay ronda nueva mientras no se haya llegado a la 5ta ronda; en la 5ta, la
+- `has_next_round()`: hay ronda nueva mientras no se haya llegado a la 5ta ronda; en la 5ta, la
   partida termina.
 
 ## Modos

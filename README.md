@@ -37,5 +37,6 @@ todo esto está en [`docs/TODO/ROADMAP.md`](./docs/TODO/ROADMAP.md).
 
 ## Estado
 
-Recién empezando - todavía no hay nada jugable. Este README se va a poner serio (instalación, stack,
-capturas) cuando haya al menos 3 o 4 minijuegos funcionando.
+**MoreOrLess** ya se puede jugar de punta a punta (PC y celular, en inglés - la traducción al
+español todavía no está). El resto de los juegos siguen sin implementar. Este README se va a poner
+serio (instalación, stack, capturas) cuando haya al menos 3 o 4 minijuegos funcionando.

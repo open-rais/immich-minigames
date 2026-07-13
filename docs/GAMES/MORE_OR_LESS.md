@@ -12,14 +12,24 @@ Se muestra un candidato A junto con su número real (ej: "la persona A tiene 107
 un candidato B, sin su número. El jugador debe decir si B tiene **más** o **menos** que A.
 
 - Si acierta: B pasa a ser la nueva referencia (con su número ahora visible), se elige un candidato
-  C al azar (sin repetir candidatos ya mostrados en esta partida) y se repite la pregunta.
+  C al azar y se repite la pregunta.
 - Si falla: la partida termina.
+- **Empate** (A y B tienen exactamente el mismo número): no cuenta como fallo sin importar qué haya
+  respondido el jugador - siempre se trata como acierto. Se intenta evitar el empate al elegir
+  candidato (ver `_pick_non_tied_candidate` en `more_or_less.py`), pero si igual ocurre (ej. muchas
+  personas con el mismo conteo), no debe terminar la partida injustamente.
+- La partida es **infinita**: los candidatos sí se pueden repetir (no hay una cantidad fija de
+  personas en la biblioteca, así que el juego no puede depender de "no repetir nunca"). Lo que se
+  evita es repetir a alguien mostrado muy recientemente - se recuerdan las últimas
+  `_RECENT_EXCLUDE_WINDOW` personas (10 al momento de escribir esto) y esas no se vuelven a elegir
+  hasta que "se les pierda el rastro" (salgan de esa ventana).
 
 ## Puntaje y fin de partida
 
-- Cada ronda acertada vale 1 punto; el puntaje total de la partida es la cantidad de aciertos
-  seguidos (la racha).
-- `hay_nuevo_round?`: si acertó, hay ronda nueva; si falló, la partida termina.
+- Cada ronda acertada (o empatada) vale 1 punto; el puntaje total de la partida es la cantidad de
+  aciertos seguidos (la racha).
+- `has_next_round()`: si acertó (o empató), hay ronda nueva; si falló, la partida termina. No
+  termina por quedarse sin candidatos nuevos - ver la nota de "partida infinita" arriba.
 
 ## Modos
 

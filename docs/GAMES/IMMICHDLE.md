@@ -35,7 +35,7 @@ comparativas de arriba están desde el principio, y las reveladas por intentos q
 - Cada intento fallido resta 5 puntos; cada pista extra revelada (de las que se agregan después)
   resta 10 puntos.
 - El puntaje nunca baja de 0: si un descuento lo dejaría negativo, se floorea en 0.
-- `hay_nuevo_round?`: si el intento fue correcto, la partida termina (ganada); si el puntaje
+- `has_next_round()`: si el intento fue correcto, la partida termina (ganada); si el puntaje
   (ya floreado en 0) llega a 0, la partida termina (perdida); en cualquier otro caso, hay una ronda
   nueva.
 

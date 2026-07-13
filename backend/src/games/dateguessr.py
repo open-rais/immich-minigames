@@ -8,7 +8,7 @@ DateguessrGame(BaseGame):
     Atributos: Tal cuál ABC
 
     Metodos:
-        hay_nuevo_round?:
+        has_next_round():
             si round actual == 5, no hay más rounds.
 """
 
@@ -17,6 +17,6 @@ DateguessrRound(BaseRound):
     Atributos: Tal cuál ABC
 
     Metodos:
-        calcular_puntaje:
+        calculate_score():
             Clavar la fecha da 5000, mientras uno se aleja el puntaje va bajando.
 """

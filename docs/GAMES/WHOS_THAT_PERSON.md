@@ -18,9 +18,9 @@ esos cuadros y escribe el nombre de la persona que cree que está ahí.
 
 ## Puntaje y fin de partida
 
-- `hay_nuevo_round?`: hay ronda nueva mientras no se haya preguntado por la 15ª persona
+- `has_next_round()`: hay ronda nueva mientras no se haya preguntado por la 15ª persona
   (`round_index < 15`); en la 15ª, la partida termina.
-- `calcular_puntaje`: puntaje acumulado tipo combo - cada acierto suma el valor de la racha actual
+- `calculate_score()`: puntaje acumulado tipo combo - cada acierto suma el valor de la racha actual
   (que crece con cada acierto consecutivo, partiendo en 1); un fallo resetea la racha a 0 y no suma
   puntos en esa ronda (pero no resta lo ya ganado en rondas previas). Ejemplo con 6 rondas
   acierto-acierto-acierto-fallo-acierto-acierto: +1, +2, +3, +0, +1, +2 → puntaje final 9.
