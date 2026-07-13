@@ -78,6 +78,9 @@ class PlayRoundOut(BaseModel):
     score_delta: int
     score: int
     finished: bool
+    # The just-answered round, now with candidate_asset_count revealed - lets the frontend show
+    # the revealed count without a follow-up GET /games/{id} just to read one field.
+    answered_round: RoundOut
     next_round: RoundOut | None
 
     @classmethod
@@ -88,5 +91,6 @@ class PlayRoundOut(BaseModel):
             score_delta=answered_round.score_delta,
             score=game.score,
             finished=game.finished,
+            answered_round=RoundOut.from_round(answered_round),
             next_round=next_round,
         )

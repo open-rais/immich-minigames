@@ -1,6 +1,11 @@
-"""REST API entrypoint - routes are mounted here."""
+"""REST API entrypoint - routes are mounted here.
+
+Routes don't catch this app's own domain exceptions (GameNotFoundError etc.) - those propagate to
+the app-level handlers registered in main.py, which is the single place mapping them to HTTP
+status codes."""
 
 from collections.abc import Iterator
+from functools import lru_cache
 from typing import Annotated
 from uuid import UUID
 
@@ -10,13 +15,7 @@ from sqlalchemy.orm import Session
 
 from api.schemas import CreateGameIn, GameOut, PlayRoundIn, PlayRoundOut
 from persistance.games import get_session_factory
-from services.games_service import (
-    GameNotFoundError,
-    GameOwnershipError,
-    GamesService,
-    RoundNotPendingError,
-    UnsupportedGameError,
-)
+from services.games_service import GamesService
 from services.immich_service import ImmichService
 
 router = APIRouter(prefix="/api/v1")
@@ -32,6 +31,7 @@ def get_db_session() -> Iterator[Session]:
         session.close()
 
 
+@lru_cache(maxsize=1)
 def get_immich_service() -> ImmichService:
     return ImmichService()
 
@@ -53,10 +53,7 @@ def create_game(
     owner: Annotated[str, Depends(get_owner_id)],
     games_service: Annotated[GamesService, Depends(get_games_service)],
 ) -> GameOut:
-    try:
-        game = games_service.create_game(owner=owner, game_type=body.type, mode=body.mode)
-    except UnsupportedGameError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    game = games_service.create_game(owner=owner, game_type=body.type, mode=body.mode)
     return GameOut.from_game(game)
 
 
@@ -66,12 +63,7 @@ def get_game(
     owner: Annotated[str, Depends(get_owner_id)],
     games_service: Annotated[GamesService, Depends(get_games_service)],
 ) -> GameOut:
-    try:
-        game = games_service.get_game(game_id, owner)
-    except GameNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except GameOwnershipError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    game = games_service.get_game(game_id, owner)
     return GameOut.from_game(game)
 
 
@@ -83,15 +75,7 @@ def play_round(
     owner: Annotated[str, Depends(get_owner_id)],
     games_service: Annotated[GamesService, Depends(get_games_service)],
 ) -> PlayRoundOut:
-    try:
-        game = games_service.play_round(game_id, owner, round_id, body.guess)
-    except GameNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except GameOwnershipError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
-    except RoundNotPendingError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-
+    game = games_service.play_round(game_id, owner, round_id, body.guess)
     answered_round = next(r for r in game.rounds if r.id == round_id)
     return PlayRoundOut.from_answered(game, answered_round)
 
@@ -104,5 +88,12 @@ def get_person_thumbnail(
     try:
         content, content_type = immich_service.get_person_thumbnail(person_id)
     except httpx.HTTPStatusError as exc:
-        raise HTTPException(status_code=exc.response.status_code, detail="thumbnail not found") from exc
+        if exc.response.status_code in (401, 403):
+            # Immich rejected the request itself (bad/expired IMMICH_API_KEY) - a config problem,
+            # not "this particular person has no photo". Keep that distinct from a plain 404 so it
+            # doesn't get misread as normal missing-thumbnail data.
+            raise HTTPException(status_code=502, detail="Immich rejected the request - check IMMICH_API_KEY") from exc
+        raise HTTPException(status_code=404, detail="thumbnail not found") from exc
+    except httpx.RequestError as exc:
+        raise HTTPException(status_code=502, detail="could not reach Immich") from exc
     return Response(content=content, media_type=content_type)

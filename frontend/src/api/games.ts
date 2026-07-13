@@ -1,8 +1,9 @@
 import { apiClient } from "./client"
-import type { GameOut, Guess, PlayRoundOut } from "./types"
+import type { CreateGameIn, GameOut, Guess, PlayRoundIn, PlayRoundOut } from "./types"
 
 export async function createGame(type: string, mode: string): Promise<GameOut> {
-  const { data } = await apiClient.post<GameOut>("/games", { type, mode })
+  const body: CreateGameIn = { type, mode }
+  const { data } = await apiClient.post<GameOut>("/games", body)
   return data
 }
 
@@ -12,7 +13,8 @@ export async function getGame(id: string): Promise<GameOut> {
 }
 
 export async function playRound(gameId: string, roundId: string, guess: Guess): Promise<PlayRoundOut> {
-  const { data } = await apiClient.post<PlayRoundOut>(`/games/${gameId}/rounds/${roundId}`, { guess })
+  const body: PlayRoundIn = { guess }
+  const { data } = await apiClient.post<PlayRoundOut>(`/games/${gameId}/rounds/${roundId}`, body)
   return data
 }
 

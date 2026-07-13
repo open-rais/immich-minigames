@@ -5,6 +5,7 @@ de hablar con Immich" for why data queries and image serving use different paths
 """
 
 from datetime import date
+from functools import lru_cache
 from typing import Literal
 from uuid import UUID
 
@@ -18,6 +19,13 @@ from domain.person import Person
 from persistance.immich_tables import asset, asset_exif, asset_face, asset_file, get_engine, person
 
 MediaType = Literal["photo", "video", "any"]
+
+
+# Reused across requests (pooled connections, one client) instead of opening a new connection per
+# thumbnail. A bounded timeout means a slow/hung Immich never blocks a worker thread indefinitely.
+@lru_cache(maxsize=1)
+def _get_http_client() -> httpx.Client:
+    return httpx.Client(timeout=10.0)
 
 
 class ImmichService:
@@ -141,8 +149,12 @@ class ImmichService:
 
     def get_person_thumbnail(self, person_id: UUID) -> tuple[bytes, str]:
         """Fetches a person's face thumbnail via Immich's REST API (not the DB - see module
-        docstring). Returns (image bytes, content-type)."""
-        response = httpx.get(
+        docstring). Returns (image bytes, content-type).
+
+        Raises httpx.HTTPStatusError (e.g. 404 - no thumbnail, 401 - bad IMMICH_API_KEY) or
+        httpx.RequestError (Immich unreachable/timed out) - see api/api.py for how each maps to a
+        response."""
+        response = _get_http_client().get(
             f"{self._settings.immich_server_url}/api/people/{person_id}/thumbnail",
             headers={"x-api-key": self._settings.immich_api_key},
         )

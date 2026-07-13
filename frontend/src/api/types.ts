@@ -39,5 +39,7 @@ export interface PlayRoundOut {
   score_delta: number
   score: number
   finished: boolean
+  // The just-answered round, with candidate_asset_count now revealed.
+  answered_round: RoundOut
   next_round: RoundOut | null
 }

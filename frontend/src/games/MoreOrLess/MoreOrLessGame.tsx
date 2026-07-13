@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from "react"
 import type { TransitionEvent } from "react"
 import { useTranslation } from "react-i18next"
 
-import { createGame, getGame, personThumbnailUrl, playRound } from "../../api/games"
+import { createGame, personThumbnailUrl, playRound } from "../../api/games"
 import type { GameOut, Guess, RoundOut } from "../../api/types"
 import { BackButton } from "./BackButton"
+import { Button } from "./Button"
 import type { CandidatePhase } from "./CandidateCard"
 import { CandidateCard } from "./CandidateCard"
 import { PersonCard } from "./PersonCard"
@@ -23,27 +24,35 @@ const DESKTOP_GAP_PX = 40
 const MOBILE_GAP_PX = 16
 
 type Screen = "idle" | "playing" | "finished" | "error"
+type PersonRef = { id: string; name: string }
 
 export function MoreOrLessGame() {
   const { t } = useTranslation()
 
   const [screen, setScreen] = useState<Screen>("idle")
-  const [starting, setStarting] = useState(false)
-  const [errorMessage, setErrorMessage] = useState("")
+  const [busy, setBusy] = useState(false)
 
   const [game, setGame] = useState<GameOut | null>(null)
-  const [reference, setReference] = useState<{ id: string; name: string; assetCount: number } | null>(null)
-  const [candidateId, setCandidateId] = useState("")
-  const [candidateName, setCandidateName] = useState("")
-  const [currentRoundId, setCurrentRoundId] = useState("")
+  const [reference, setReference] = useState<(PersonRef & { assetCount: number }) | null>(null)
+  const [candidate, setCandidate] = useState<(PersonRef & { roundId: string }) | null>(null)
   const [candidatePhase, setCandidatePhase] = useState<CandidatePhase>("guessing")
   const [countTarget, setCountTarget] = useState<number | null>(null)
-  const [correct, setCorrect] = useState<boolean | null>(null)
-  const [nextRound, setNextRound] = useState<RoundOut | null>(null)
+  // Set together once a guess resolves, reset together once the next round starts - see
+  // handleGuess/handleSlideEnd.
+  const [revealResult, setRevealResult] = useState<{ correct: boolean; nextRound: RoundOut | null } | null>(null)
   const [sliding, setSliding] = useState(false)
   const [transitionEnabled, setTransitionEnabled] = useState(true)
   const [slideOffset, setSlideOffset] = useState({ x: 0, y: 0 })
   const slidingCardRef = useRef<HTMLDivElement>(null)
+
+  // Synchronous re-entrancy guards - a click handler can fire twice before React re-renders
+  // (e.g. a fast double-click), so state like `candidatePhase`/`busy` alone isn't enough to stop
+  // a second network call; these refs are checked and set immediately, no render involved.
+  const guessInFlightRef = useRef(false)
+  const startInFlightRef = useRef(false)
+  // Bumped on every new start/guess and on "Back" - a response for a request that's no longer
+  // current (e.g. the user hit Back while a guess was still in flight) is ignored when it arrives.
+  const requestTokenRef = useRef(0)
 
   const { value: displayCount, done: countDone } = useCountUp(countTarget, COUNT_DURATION_MS)
 
@@ -54,9 +63,9 @@ export function MoreOrLessGame() {
   }, [countDone, candidatePhase])
 
   useEffect(() => {
-    if (candidatePhase !== "revealed") return
+    if (candidatePhase !== "revealed" || !revealResult) return
     const timer = setTimeout(() => {
-      if (correct && nextRound) {
+      if (revealResult.correct && revealResult.nextRound) {
         const el = slidingCardRef.current
         const isDesktop = window.matchMedia(MOBILE_BREAKPOINT_QUERY).matches
         if (el) {
@@ -72,7 +81,7 @@ export function MoreOrLessGame() {
       }
     }, REVEAL_HOLD_MS)
     return () => clearTimeout(timer)
-  }, [candidatePhase, correct, nextRound])
+  }, [candidatePhase, revealResult])
 
   useEffect(() => {
     if (transitionEnabled) return
@@ -81,63 +90,64 @@ export function MoreOrLessGame() {
   }, [transitionEnabled])
 
   async function startGame() {
-    setStarting(true)
+    if (startInFlightRef.current) return
+    startInFlightRef.current = true
+    const token = ++requestTokenRef.current
+    setBusy(true)
     try {
       const g = await createGame(GAME_TYPE, MODE)
+      if (requestTokenRef.current !== token) return
       const round = g.rounds[g.rounds.length - 1]
       setGame(g)
       setReference({ id: round.reference_id, name: round.reference_name, assetCount: round.reference_asset_count })
-      setCandidateId(round.candidate_id)
-      setCandidateName(round.candidate_name)
-      setCurrentRoundId(round.id)
+      setCandidate({ id: round.candidate_id, name: round.candidate_name, roundId: round.id })
       setCandidatePhase("guessing")
       setCountTarget(null)
-      setCorrect(null)
-      setNextRound(null)
+      setRevealResult(null)
       setSliding(false)
       setScreen("playing")
     } catch {
-      setErrorMessage(t("moreOrLess.error.message"))
-      setScreen("error")
+      if (requestTokenRef.current === token) setScreen("error")
     } finally {
-      setStarting(false)
+      startInFlightRef.current = false
+      if (requestTokenRef.current === token) setBusy(false)
     }
   }
 
   async function handleGuess(guess: Guess) {
-    if (!game || candidatePhase !== "guessing") return
+    if (guessInFlightRef.current || !game || !candidate || candidatePhase !== "guessing") return
+    guessInFlightRef.current = true
+    const token = ++requestTokenRef.current
     setCandidatePhase("counting")
     try {
-      const result = await playRound(game.id, currentRoundId, guess)
-      const updatedGame = await getGame(game.id)
-      const answeredRound = updatedGame.rounds.find((r) => r.id === currentRoundId)
+      const result = await playRound(game.id, candidate.roundId, guess)
+      if (requestTokenRef.current !== token) return
       setGame((g) => (g ? { ...g, score: result.score, finished: result.finished } : g))
-      setCorrect(result.correct)
-      setNextRound(result.next_round)
-      setCountTarget(answeredRound?.candidate_asset_count ?? 0)
+      setRevealResult({ correct: result.correct, nextRound: result.next_round })
+      setCountTarget(result.answered_round.candidate_asset_count)
     } catch {
-      setErrorMessage(t("moreOrLess.error.message"))
-      setScreen("error")
+      if (requestTokenRef.current === token) setScreen("error")
+    } finally {
+      guessInFlightRef.current = false
     }
   }
 
   function handleSlideEnd(e: TransitionEvent<HTMLDivElement>) {
     if (e.target !== e.currentTarget || e.propertyName !== "transform") return
-    if (!nextRound || countTarget === null) return
+    if (!revealResult?.nextRound || countTarget === null || !candidate) return
+    const nextRound = revealResult.nextRound
 
     setTransitionEnabled(false)
     setSliding(false)
-    setReference({ id: candidateId, name: candidateName, assetCount: countTarget })
-    setCandidateId(nextRound.candidate_id)
-    setCandidateName(nextRound.candidate_name)
-    setCurrentRoundId(nextRound.id)
+    setReference({ id: candidate.id, name: candidate.name, assetCount: countTarget })
+    setCandidate({ id: nextRound.candidate_id, name: nextRound.candidate_name, roundId: nextRound.id })
     setCandidatePhase("guessing")
     setCountTarget(null)
-    setCorrect(null)
-    setNextRound(null)
+    setRevealResult(null)
   }
 
   function backToIdle() {
+    requestTokenRef.current++ // discard any in-flight guess/start response that arrives later
     setScreen("idle")
   }
 
@@ -146,13 +156,9 @@ export function MoreOrLessGame() {
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-app-bg px-6 text-center">
         <h1 className="text-3xl font-bold text-ink">{t("moreOrLess.title")}</h1>
         <p className="max-w-md text-muted">{t("moreOrLess.start.description")}</p>
-        <button
-          onClick={startGame}
-          disabled={starting}
-          className="rounded-full bg-primary px-8 py-3 text-[15px] font-bold text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
-        >
+        <Button variant="primary" className="px-8 py-3" onClick={startGame} disabled={busy}>
           {t("moreOrLess.start.cta")}
-        </button>
+        </Button>
       </div>
     )
   }
@@ -160,13 +166,10 @@ export function MoreOrLessGame() {
   if (screen === "error") {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-app-bg px-6 text-center">
-        <p className="text-body">{errorMessage}</p>
-        <button
-          onClick={startGame}
-          className="rounded-full bg-primary px-6 py-3 text-[15px] font-bold text-white transition-colors hover:bg-primary-hover"
-        >
+        <p className="text-body">{t("moreOrLess.error.message")}</p>
+        <Button variant="primary" className="px-6 py-3" onClick={startGame} disabled={busy}>
           {t("moreOrLess.error.retry")}
-        </button>
+        </Button>
       </div>
     )
   }
@@ -176,17 +179,14 @@ export function MoreOrLessGame() {
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-app-bg px-6 text-center">
         <h1 className="text-3xl font-bold text-ink">{t("moreOrLess.finished.title")}</h1>
         <p className="text-xl text-muted">{t("moreOrLess.finished.finalScore", { score: game?.score ?? 0 })}</p>
-        <button
-          onClick={startGame}
-          className="rounded-full bg-primary px-8 py-3 text-[15px] font-bold text-white transition-colors hover:bg-primary-hover"
-        >
+        <Button variant="primary" className="px-8 py-3" onClick={startGame} disabled={busy}>
           {t("moreOrLess.result.playAgain")}
-        </button>
+        </Button>
       </div>
     )
   }
 
-  if (!game || !reference) return null
+  if (!game || !reference || !candidate) return null
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-app-bg px-[18px] py-[22px] md:px-10 md:py-7">
@@ -198,6 +198,7 @@ export function MoreOrLessGame() {
       <div className="flex min-h-0 flex-1 flex-col gap-4 md:flex-row md:items-center md:justify-center md:gap-10">
         <div className="flex min-h-0 w-full flex-1 flex-col md:w-[300px] md:flex-none">
           <PersonCard
+            key={reference.id}
             name={reference.name}
             assetCount={reference.assetCount}
             thumbnailUrl={personThumbnailUrl(reference.id)}
@@ -205,11 +206,12 @@ export function MoreOrLessGame() {
         </div>
 
         <div className="relative flex min-h-0 w-full flex-1 flex-col md:w-[300px] md:flex-none">
-          {nextRound && (
+          {revealResult?.nextRound && (
             <div className="absolute inset-0 z-0">
               <CandidateCard
-                name={nextRound.candidate_name}
-                thumbnailUrl={personThumbnailUrl(nextRound.candidate_id)}
+                key={revealResult.nextRound.candidate_id}
+                name={revealResult.nextRound.candidate_name}
+                thumbnailUrl={personThumbnailUrl(revealResult.nextRound.candidate_id)}
                 phase="guessing"
                 displayCount={0}
                 correct={null}
@@ -227,11 +229,12 @@ export function MoreOrLessGame() {
             onTransitionEnd={handleSlideEnd}
           >
             <CandidateCard
-              name={candidateName}
-              thumbnailUrl={personThumbnailUrl(candidateId)}
+              key={candidate.id}
+              name={candidate.name}
+              thumbnailUrl={personThumbnailUrl(candidate.id)}
               phase={candidatePhase}
               displayCount={displayCount}
-              correct={correct}
+              correct={revealResult?.correct ?? null}
               onGuess={handleGuess}
             />
           </div>
