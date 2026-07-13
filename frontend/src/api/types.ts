@@ -1,5 +1,23 @@
 // Mirrors backend/src/api/schemas.py - keep field names in sync with that file.
 
+// Canonical game_type / mode identifiers, mirroring the keys of
+// backend/src/services/games_service.py's _GAME_CLASSES / _ROUND_CLASSES. Single source so the
+// catalog, the game components and the discriminated-union tags below don't each hardcode the same
+// strings.
+export const GameType = {
+  MoreOrLess: "more-or-less",
+  Geoguessr: "geoguessr",
+  Dateguessr: "dateguessr",
+} as const
+export type GameType = (typeof GameType)[keyof typeof GameType]
+
+export const Mode = {
+  PersonAssets: "personAssets",
+  DistanceBetweenGuess: "distanceBetweenGuess",
+  DaysToDate: "daysToDate",
+} as const
+export type Mode = (typeof Mode)[keyof typeof Mode]
+
 export type Guess = "more" | "less"
 
 export interface CreateGameIn {
@@ -8,7 +26,7 @@ export interface CreateGameIn {
 }
 
 export interface MoreOrLessRoundOut {
-  game_type: "more-or-less"
+  game_type: typeof GameType.MoreOrLess
   id: string
   round_index: number
   reference_id: string
@@ -23,7 +41,7 @@ export interface MoreOrLessRoundOut {
 }
 
 export interface GeoguessrRoundOut {
-  game_type: "geoguessr"
+  game_type: typeof GameType.Geoguessr
   id: string
   round_index: number
   asset_id: string
@@ -37,7 +55,7 @@ export interface GeoguessrRoundOut {
 }
 
 export interface DateguessrRoundOut {
-  game_type: "dateguessr"
+  game_type: typeof GameType.Dateguessr
   id: string
   round_index: number
   asset_id: string
@@ -73,6 +91,10 @@ export interface GeoguessrPlayRoundIn {
 export interface DateguessrPlayRoundIn {
   date: string
 }
+
+// The three guess bodies share one endpoint (POST /games/{id}/rounds/{roundId}) - see playRound in
+// api/games.ts. Which one is valid is fixed by the game's type/mode server-side, not restated here.
+export type PlayRoundIn = MoreOrLessPlayRoundIn | GeoguessrPlayRoundIn | DateguessrPlayRoundIn
 
 export interface PlayRoundOut {
   // Binary-guess concept (MoreOrLess) - null for games with a continuous score (Geoguessr).

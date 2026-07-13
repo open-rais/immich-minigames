@@ -51,7 +51,7 @@ export function GameSection({ game }: { game: CatalogGame }) {
               <ModeCard
                 key={mode.mode}
                 title={t(mode.modeTitleKey)}
-                onClick={() => navigate(`/${mode.gameType}/${mode.mode}`)}
+                onClick={() => navigate(`/${game.gameType}/${mode.mode}`)}
               />
             ))}
           </div>

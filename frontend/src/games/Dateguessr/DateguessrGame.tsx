@@ -2,7 +2,8 @@ import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 
-import { assetThumbnailUrl, playDateguessrRound } from "../../api/games"
+import { assetThumbnailUrl, playRound } from "../../api/games"
+import { GameType, Mode } from "../../api/types"
 import type { DateguessrRoundOut, RoundOut } from "../../api/types"
 import { AssetPhoto } from "../shared/AssetPhoto"
 import { BackButton } from "../shared/BackButton"
@@ -14,8 +15,8 @@ import { ScoreBadge } from "../shared/ScoreBadge"
 import { useRoundGame } from "../shared/useRoundGame"
 import { TimelineRuler } from "./TimelineRuler"
 
-const GAME_TYPE = "dateguessr"
-const MODE = "daysToDate"
+const GAME_TYPE = GameType.Dateguessr
+const MODE = Mode.DaysToDate
 const TOTAL_ROUNDS = 5 // mirrors backend/src/games/asset_rounds.py's TOTAL_ROUNDS - display only
 // Same reveal-hold duration as GeoguessrGame - the ruler's own reveal animation is a bit shorter
 // (TimelineRuler.tsx's REVEAL_ANIMATION_MS) but the player still needs a beat to read the
@@ -25,7 +26,7 @@ const REVEAL_HOLD_MS = 2400
 // This component only ever creates/plays "dateguessr" games (see GAME_TYPE/MODE above), so a
 // mismatched game_type means the backend returned something unexpected.
 function isDateguessrRound(round: RoundOut): round is DateguessrRoundOut {
-  return round.game_type === "dateguessr"
+  return round.game_type === GameType.Dateguessr
 }
 
 export function DateguessrGame() {
@@ -42,7 +43,7 @@ export function DateguessrGame() {
     mode: MODE,
     revealHoldMs: REVEAL_HOLD_MS,
     isRound: isDateguessrRound,
-    playRound: (gameId, roundId, guess) => playDateguessrRound(gameId, roundId, guess),
+    playRound: (gameId, roundId, guess) => playRound(gameId, roundId, { date: guess }),
     onNewRound: () => setSelectedDate(null),
   })
 

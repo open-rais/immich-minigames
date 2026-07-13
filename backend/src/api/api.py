@@ -4,7 +4,7 @@ Routes don't catch this app's own domain exceptions (GameNotFoundError etc.) - t
 the app-level handlers registered in main.py, which is the single place mapping them to HTTP
 status codes."""
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from functools import lru_cache
 from typing import Annotated, Any
 from uuid import UUID
@@ -89,23 +89,29 @@ def play_round(
     return PlayRoundOut.from_answered(game, answered_round)
 
 
-@router.get("/people/{person_id}/thumbnail")
-def get_person_thumbnail(
-    person_id: UUID,
-    immich_service: Annotated[ImmichService, Depends(get_immich_service)],
-) -> Response:
+def _proxy_thumbnail(fetch: Callable[[], tuple[bytes, str]]) -> Response:
+    """Runs an ImmichService thumbnail fetch and maps its httpx errors to HTTP responses - shared by
+    the person and asset thumbnail endpoints, which only differ in which fetch they call."""
     try:
-        content, content_type = immich_service.get_person_thumbnail(person_id)
+        content, content_type = fetch()
     except httpx.HTTPStatusError as exc:
         if exc.response.status_code in (401, 403):
-            # Immich rejected the request itself (bad/expired IMMICH_API_KEY) - a config problem,
-            # not "this particular person has no photo". Keep that distinct from a plain 404 so it
-            # doesn't get misread as normal missing-thumbnail data.
+            # Immich rejected the request itself (bad/expired IMMICH_API_KEY) - a config problem, not
+            # "this particular entity has no photo". Keep that distinct from a plain 404 so it doesn't
+            # get misread as normal missing-thumbnail data.
             raise HTTPException(status_code=502, detail="Immich rejected the request - check IMMICH_API_KEY") from exc
         raise HTTPException(status_code=404, detail="thumbnail not found") from exc
     except httpx.RequestError as exc:
         raise HTTPException(status_code=502, detail="could not reach Immich") from exc
     return Response(content=content, media_type=content_type)
+
+
+@router.get("/people/{person_id}/thumbnail")
+def get_person_thumbnail(
+    person_id: UUID,
+    immich_service: Annotated[ImmichService, Depends(get_immich_service)],
+) -> Response:
+    return _proxy_thumbnail(lambda: immich_service.get_person_thumbnail(person_id))
 
 
 @router.get("/assets/{asset_id}/thumbnail")
@@ -113,12 +119,4 @@ def get_asset_thumbnail(
     asset_id: UUID,
     immich_service: Annotated[ImmichService, Depends(get_immich_service)],
 ) -> Response:
-    try:
-        content, content_type = immich_service.get_asset_thumbnail(asset_id)
-    except httpx.HTTPStatusError as exc:
-        if exc.response.status_code in (401, 403):
-            raise HTTPException(status_code=502, detail="Immich rejected the request - check IMMICH_API_KEY") from exc
-        raise HTTPException(status_code=404, detail="thumbnail not found") from exc
-    except httpx.RequestError as exc:
-        raise HTTPException(status_code=502, detail="could not reach Immich") from exc
-    return Response(content=content, media_type=content_type)
+    return _proxy_thumbnail(lambda: immich_service.get_asset_thumbnail(asset_id))

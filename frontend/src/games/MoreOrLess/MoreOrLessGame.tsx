@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 
 import { createGame, personThumbnailUrl, playRound } from "../../api/games"
+import { GameType, Mode } from "../../api/types"
 import type { GameOut, Guess, MoreOrLessRoundOut, RoundOut } from "../../api/types"
 import { BackButton } from "../shared/BackButton"
 import { ErrorScreen, FinishedScreen, IdleScreen } from "../shared/GameScreens"
@@ -13,8 +14,8 @@ import { CandidateCard } from "./CandidateCard"
 import { PersonCard } from "./PersonCard"
 import { useCountUp } from "./useCountUp"
 
-const GAME_TYPE = "more-or-less"
-const MODE = "personAssets"
+const GAME_TYPE = GameType.MoreOrLess
+const MODE = Mode.PersonAssets
 
 const COUNT_DURATION_MS = 1600
 const REVEAL_HOLD_MS = 1400
@@ -31,7 +32,7 @@ type PersonRef = { id: string; name: string }
 // mismatched game_type here means the backend returned something unexpected - fail loudly instead
 // of accessing MoreOrLess-only fields on a round the union type says might not have them.
 function assertMoreOrLess(round: RoundOut): asserts round is MoreOrLessRoundOut {
-  if (round.game_type !== "more-or-less") throw new Error(`expected a more-or-less round, got ${round.game_type}`)
+  if (round.game_type !== GameType.MoreOrLess) throw new Error(`expected a more-or-less round, got ${round.game_type}`)
 }
 
 export function MoreOrLessGame() {
@@ -134,7 +135,7 @@ export function MoreOrLessGame() {
     const token = ++requestTokenRef.current
     setCandidatePhase("counting")
     try {
-      const result = await playRound(game.id, candidate.roundId, guess)
+      const result = await playRound(game.id, candidate.roundId, { guess })
       if (requestTokenRef.current !== token) return
       assertMoreOrLess(result.answered_round)
       if (result.next_round) assertMoreOrLess(result.next_round)

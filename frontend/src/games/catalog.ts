@@ -1,5 +1,6 @@
 import type { ComponentType } from "react"
 
+import { GameType, Mode } from "../api/types"
 import { DateguessrGame } from "./Dateguessr/DateguessrGame"
 import { GeoguessrGame } from "./Geoguessr/GeoguessrGame"
 import { MoreOrLessGame } from "./MoreOrLess/MoreOrLessGame"
@@ -9,7 +10,8 @@ import { MoreOrLessGame } from "./MoreOrLess/MoreOrLessGame"
 // new game/mode is wired up on the backend, so it shows up on the main menu.
 
 export interface CatalogMode {
-  gameType: string
+  // No `gameType` here - a mode is always reached through its parent CatalogGame (see
+  // findCatalogMode / GameSection), so the parent's gameType is used instead of repeating it.
   mode: string
   modeTitleKey: string
   component: ComponentType
@@ -23,36 +25,33 @@ export interface CatalogGame {
 
 export const GAME_CATALOG: CatalogGame[] = [
   {
-    gameType: "more-or-less",
+    gameType: GameType.MoreOrLess,
     gameTitleKey: "moreOrLess.title",
     modes: [
       {
-        gameType: "more-or-less",
-        mode: "personAssets",
+        mode: Mode.PersonAssets,
         modeTitleKey: "moreOrLess.modes.personAssets",
         component: MoreOrLessGame,
       },
     ],
   },
   {
-    gameType: "geoguessr",
+    gameType: GameType.Geoguessr,
     gameTitleKey: "geoguessr.title",
     modes: [
       {
-        gameType: "geoguessr",
-        mode: "distanceBetweenGuess",
+        mode: Mode.DistanceBetweenGuess,
         modeTitleKey: "geoguessr.modes.distanceBetweenGuess",
         component: GeoguessrGame,
       },
     ],
   },
   {
-    gameType: "dateguessr",
+    gameType: GameType.Dateguessr,
     gameTitleKey: "dateguessr.title",
     modes: [
       {
-        gameType: "dateguessr",
-        mode: "daysToDate",
+        mode: Mode.DaysToDate,
         modeTitleKey: "dateguessr.modes.daysToDate",
         component: DateguessrGame,
       },
