@@ -1,6 +1,16 @@
 {
+  "appHeader": {
+    "title": "immich-minigames"
+  },
+  "mainMenu": {
+    "modesCount_one": "{{count}} mode",
+    "modesCount_other": "{{count}} modes"
+  },
   "moreOrLess": {
     "title": "More or Less",
+    "modes": {
+      "personAssets": "Person assets"
+    },
     "start": {
       "description": "Guess whether the next person has more or fewer assets than the last. One wrong guess ends the run.",
       "cta": "Start game"
