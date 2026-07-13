@@ -8,7 +8,7 @@ from datetime import datetime
 from functools import lru_cache
 from uuid import UUID, uuid4
 
-from sqlalchemy import ForeignKey, MetaData, create_engine, func
+from sqlalchemy import ForeignKey, MetaData, UniqueConstraint, create_engine, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker
@@ -42,6 +42,11 @@ class GameModel(Base):
 
 class RoundModel(Base):
     __tablename__ = "rounds"
+    # Enforces one round per index within a game (the app assigns incremental indices in
+    # create_next_round, but nothing at the DB level guaranteed it). Postgres does not auto-index FK
+    # columns, so this composite unique also provides the index for "rounds of this game" lookups on
+    # game_id.
+    __table_args__ = (UniqueConstraint("game_id", "round_index"),)
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     game_id: Mapped[UUID] = mapped_column(ForeignKey(f"{SCHEMA}.games.id"))
