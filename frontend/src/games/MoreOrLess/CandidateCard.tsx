@@ -15,9 +15,9 @@ interface CandidateCardProps {
 }
 
 const primaryButtonClass =
-  "flex-1 rounded-full bg-primary py-3 text-[15px] font-bold text-white transition-colors hover:bg-primary-hover"
+  "flex-1 rounded-full bg-primary py-4 text-[15px] font-bold text-white transition-colors hover:bg-primary-hover md:py-3"
 const secondaryButtonClass =
-  "flex-1 rounded-full border border-line-soft bg-white py-3 text-[15px] font-bold text-body transition-colors hover:bg-hover-tint"
+  "flex-1 rounded-full border border-line-soft bg-white py-4 text-[15px] font-bold text-body transition-colors hover:bg-hover-tint md:py-3"
 
 export function CandidateCard({ name, thumbnailUrl, phase, displayCount, correct, onGuess }: CandidateCardProps) {
   const { t } = useTranslation()
@@ -26,7 +26,7 @@ export function CandidateCard({ name, thumbnailUrl, phase, displayCount, correct
   const countTextClass = phase === "revealed" ? (correct ? "text-emerald-600" : "text-rose-600") : "text-ink"
 
   return (
-    <div className="flex w-[300px] flex-col items-center gap-3.5 rounded-3xl border border-line bg-white p-5 shadow-card">
+    <div className="flex h-full min-h-0 w-full flex-col items-center gap-3.5 rounded-[22px] border border-line bg-white p-[18px] shadow-card md:h-auto md:w-[300px] md:rounded-3xl md:p-5">
       <PersonPhoto src={thumbnailUrl} alt={name} />
 
       <div className="flex min-h-[56px] w-full items-center justify-center">

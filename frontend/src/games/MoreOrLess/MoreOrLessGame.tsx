@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import type { TransitionEvent } from "react"
 import { useTranslation } from "react-i18next"
 
@@ -16,7 +16,11 @@ const MODE = "personAssets"
 
 const COUNT_DURATION_MS = 1600
 const REVEAL_HOLD_MS = 1400
-const SLIDE_DISTANCE_PX = 340 // card width (300) + gap (40)
+const MOBILE_BREAKPOINT_QUERY = "(min-width: 768px)" // matches Tailwind's `md:`
+// Cards are side-by-side on desktop (horizontal slide) but stacked on mobile (vertical slide) -
+// these must match the gap-10/gap-4 classes on the row/column wrapper below.
+const DESKTOP_GAP_PX = 40
+const MOBILE_GAP_PX = 16
 
 type Screen = "idle" | "playing" | "finished" | "error"
 
@@ -38,6 +42,8 @@ export function MoreOrLessGame() {
   const [nextRound, setNextRound] = useState<RoundOut | null>(null)
   const [sliding, setSliding] = useState(false)
   const [transitionEnabled, setTransitionEnabled] = useState(true)
+  const [slideOffset, setSlideOffset] = useState({ x: 0, y: 0 })
+  const slidingCardRef = useRef<HTMLDivElement>(null)
 
   const { value: displayCount, done: countDone } = useCountUp(countTarget, COUNT_DURATION_MS)
 
@@ -51,6 +57,15 @@ export function MoreOrLessGame() {
     if (candidatePhase !== "revealed") return
     const timer = setTimeout(() => {
       if (correct && nextRound) {
+        const el = slidingCardRef.current
+        const isDesktop = window.matchMedia(MOBILE_BREAKPOINT_QUERY).matches
+        if (el) {
+          setSlideOffset(
+            isDesktop
+              ? { x: -(el.offsetWidth + DESKTOP_GAP_PX), y: 0 }
+              : { x: 0, y: -(el.offsetHeight + MOBILE_GAP_PX) },
+          )
+        }
         setSliding(true)
       } else {
         setScreen("finished")
@@ -174,52 +189,51 @@ export function MoreOrLessGame() {
   if (!game || !reference) return null
 
   return (
-    <div className="flex min-h-screen flex-col bg-app-bg px-10 py-7">
-      <div className="flex items-center justify-between">
-        <BackButton label={t("moreOrLess.back")} onClick={backToIdle} />
-        <ScoreBadge score={game.score} />
-      </div>
+    <div className="flex h-dvh flex-col overflow-hidden bg-app-bg px-[18px] py-[22px] md:px-10 md:py-7">
+      {/* Fixed/floating, not in normal flow - on mobile they sit over the top card rather than
+          pushing it down, and free up that vertical space for the cards (no-scroll budget). */}
+      <BackButton label={t("moreOrLess.back")} onClick={backToIdle} />
+      <ScoreBadge score={game.score} />
 
-      <div className="flex flex-1 items-center justify-center">
-        <div className="flex items-start gap-10">
-          <div className="w-[300px]">
-            <PersonCard
-              name={reference.name}
-              assetCount={reference.assetCount}
-              thumbnailUrl={personThumbnailUrl(reference.id)}
-            />
-          </div>
+      <div className="flex min-h-0 flex-1 flex-col gap-4 md:flex-row md:items-center md:justify-center md:gap-10">
+        <div className="flex min-h-0 w-full flex-1 flex-col md:w-[300px] md:flex-none">
+          <PersonCard
+            name={reference.name}
+            assetCount={reference.assetCount}
+            thumbnailUrl={personThumbnailUrl(reference.id)}
+          />
+        </div>
 
-          <div className="relative w-[300px]">
-            {nextRound && (
-              <div className="absolute inset-0 z-0">
-                <CandidateCard
-                  name={nextRound.candidate_name}
-                  thumbnailUrl={personThumbnailUrl(nextRound.candidate_id)}
-                  phase="guessing"
-                  displayCount={0}
-                  correct={null}
-                  onGuess={() => {}}
-                />
-              </div>
-            )}
-            <div
-              className="relative z-10"
-              style={{
-                transform: sliding ? `translateX(-${SLIDE_DISTANCE_PX}px)` : "translateX(0)",
-                transition: transitionEnabled ? "transform 450ms ease-out" : "none",
-              }}
-              onTransitionEnd={handleSlideEnd}
-            >
+        <div className="relative flex min-h-0 w-full flex-1 flex-col md:w-[300px] md:flex-none">
+          {nextRound && (
+            <div className="absolute inset-0 z-0">
               <CandidateCard
-                name={candidateName}
-                thumbnailUrl={personThumbnailUrl(candidateId)}
-                phase={candidatePhase}
-                displayCount={displayCount}
-                correct={correct}
-                onGuess={handleGuess}
+                name={nextRound.candidate_name}
+                thumbnailUrl={personThumbnailUrl(nextRound.candidate_id)}
+                phase="guessing"
+                displayCount={0}
+                correct={null}
+                onGuess={() => {}}
               />
             </div>
+          )}
+          <div
+            ref={slidingCardRef}
+            className="relative z-10 flex h-full min-h-0 flex-col md:h-auto"
+            style={{
+              transform: sliding ? `translate(${slideOffset.x}px, ${slideOffset.y}px)` : "translate(0px, 0px)",
+              transition: transitionEnabled ? "transform 450ms ease-out" : "none",
+            }}
+            onTransitionEnd={handleSlideEnd}
+          >
+            <CandidateCard
+              name={candidateName}
+              thumbnailUrl={personThumbnailUrl(candidateId)}
+              phase={candidatePhase}
+              displayCount={displayCount}
+              correct={correct}
+              onGuess={handleGuess}
+            />
           </div>
         </div>
       </div>

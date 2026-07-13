@@ -12,7 +12,7 @@ export function PersonCard({ name, assetCount, thumbnailUrl }: PersonCardProps) 
   const { t } = useTranslation()
 
   return (
-    <div className="flex w-[300px] flex-col items-center gap-3.5 rounded-3xl border border-line bg-white p-5 shadow-card">
+    <div className="flex h-full min-h-0 w-full flex-col items-center gap-3.5 rounded-[22px] border border-line bg-white p-[18px] shadow-card md:h-auto md:w-[300px] md:rounded-3xl md:p-5">
       <PersonPhoto src={thumbnailUrl} alt={name} />
 
       {/* Fixed-height rows shared with CandidateCard's name/question/action rows (names and

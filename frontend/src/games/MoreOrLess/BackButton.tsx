@@ -2,7 +2,7 @@ export function BackButton({ label, onClick }: { label: string; onClick: () => v
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-2 rounded-full border border-line-strong bg-white py-2.5 pr-[18px] pl-3.5 text-[15px] font-semibold text-body transition-colors hover:bg-hover-tint"
+      className="fixed top-[18px] left-[18px] z-30 flex h-11 w-11 items-center justify-center rounded-full border border-line-strong bg-white text-[15px] font-semibold text-body shadow-card transition-colors hover:bg-hover-tint md:top-7 md:left-10 md:h-auto md:w-auto md:justify-start md:gap-2 md:py-2.5 md:pr-[18px] md:pl-3.5"
     >
       <svg
         width="18"
@@ -16,7 +16,7 @@ export function BackButton({ label, onClick }: { label: string; onClick: () => v
       >
         <path d="M15 18l-6-6 6-6" />
       </svg>
-      {label}
+      <span className="hidden md:inline">{label}</span>
     </button>
   )
 }
