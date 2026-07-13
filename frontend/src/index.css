@@ -41,6 +41,13 @@
   --color-placeholder-a: oklch(0.9 0.01 260);
   --color-placeholder-b: oklch(0.94 0.008 260);
 
+  /* Geoguessr's MapLibre style (games/Geoguessr/mapStyle.ts) - recolors OpenFreeMap's Positron
+     base to this same indigo family instead of its stock grey/blue. Not reused by any card/badge,
+     since a map needs a land/water distinction the rest of the UI doesn't. */
+  --color-map-bg: oklch(0.97 0.006 265);
+  --color-map-water: oklch(0.88 0.03 265);
+  --color-map-land: oklch(0.93 0.012 265);
+
   --shadow-card: 0 8px 24px oklch(0.3 0.03 260 / 0.08);
 }
 

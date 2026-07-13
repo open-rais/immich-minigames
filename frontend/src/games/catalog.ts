@@ -1,5 +1,6 @@
 import type { ComponentType } from "react"
 
+import { GeoguessrGame } from "./Geoguessr/GeoguessrGame"
 import { MoreOrLessGame } from "./MoreOrLess/MoreOrLessGame"
 
 // Mirrors backend/src/services/games_service.py's _GAME_CLASSES/_ROUND_CLASSES by hand - same
@@ -29,6 +30,18 @@ export const GAME_CATALOG: CatalogGame[] = [
         mode: "personAssets",
         modeTitleKey: "moreOrLess.modes.personAssets",
         component: MoreOrLessGame,
+      },
+    ],
+  },
+  {
+    gameType: "geoguessr",
+    gameTitleKey: "geoguessr.title",
+    modes: [
+      {
+        gameType: "geoguessr",
+        mode: "distanceBetweenGuess",
+        modeTitleKey: "geoguessr.modes.distanceBetweenGuess",
+        component: GeoguessrGame,
       },
     ],
   },

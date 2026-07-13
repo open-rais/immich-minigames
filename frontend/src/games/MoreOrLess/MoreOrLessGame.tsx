@@ -4,13 +4,13 @@ import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 
 import { createGame, personThumbnailUrl, playRound } from "../../api/games"
-import type { GameOut, Guess, RoundOut } from "../../api/types"
-import { BackButton } from "./BackButton"
-import { Button } from "./Button"
+import type { GameOut, Guess, MoreOrLessRoundOut, RoundOut } from "../../api/types"
+import { BackButton } from "../shared/BackButton"
+import { Button } from "../shared/Button"
+import { ScoreBadge } from "../shared/ScoreBadge"
 import type { CandidatePhase } from "./CandidateCard"
 import { CandidateCard } from "./CandidateCard"
 import { PersonCard } from "./PersonCard"
-import { ScoreBadge } from "./ScoreBadge"
 import { useCountUp } from "./useCountUp"
 
 const GAME_TYPE = "more-or-less"
@@ -27,6 +27,13 @@ const MOBILE_GAP_PX = 16
 type Screen = "idle" | "playing" | "finished" | "error"
 type PersonRef = { id: string; name: string }
 
+// This component only ever creates/plays "more-or-less" games (see GAME_TYPE/MODE above), so a
+// mismatched game_type here means the backend returned something unexpected - fail loudly instead
+// of accessing MoreOrLess-only fields on a round the union type says might not have them.
+function assertMoreOrLess(round: RoundOut): asserts round is MoreOrLessRoundOut {
+  if (round.game_type !== "more-or-less") throw new Error(`expected a more-or-less round, got ${round.game_type}`)
+}
+
 export function MoreOrLessGame() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -42,7 +49,10 @@ export function MoreOrLessGame() {
   const [countTarget, setCountTarget] = useState<number | null>(null)
   // Set together once a guess resolves, reset together once the next round starts - see
   // handleGuess/handleSlideEnd.
-  const [revealResult, setRevealResult] = useState<{ correct: boolean; nextRound: RoundOut | null } | null>(null)
+  const [revealResult, setRevealResult] = useState<{
+    correct: boolean | null
+    nextRound: MoreOrLessRoundOut | null
+  } | null>(null)
   const [sliding, setSliding] = useState(false)
   const [transitionEnabled, setTransitionEnabled] = useState(true)
   const [slideOffset, setSlideOffset] = useState({ x: 0, y: 0 })
@@ -101,6 +111,7 @@ export function MoreOrLessGame() {
       const g = await createGame(GAME_TYPE, MODE)
       if (requestTokenRef.current !== token) return
       const round = g.rounds[g.rounds.length - 1]
+      assertMoreOrLess(round)
       setGame(g)
       setReference({ id: round.reference_id, name: round.reference_name, assetCount: round.reference_asset_count })
       setCandidate({ id: round.candidate_id, name: round.candidate_name, roundId: round.id })
@@ -125,6 +136,8 @@ export function MoreOrLessGame() {
     try {
       const result = await playRound(game.id, candidate.roundId, guess)
       if (requestTokenRef.current !== token) return
+      assertMoreOrLess(result.answered_round)
+      if (result.next_round) assertMoreOrLess(result.next_round)
       setGame((g) => (g ? { ...g, score: result.score, finished: result.finished } : g))
       setRevealResult({ correct: result.correct, nextRound: result.next_round })
       setCountTarget(result.answered_round.candidate_asset_count)
@@ -199,7 +212,7 @@ export function MoreOrLessGame() {
       {/* Fixed/floating, not in normal flow - on mobile they sit over the top card rather than
           pushing it down, and free up that vertical space for the cards (no-scroll budget). */}
       <BackButton label={t("moreOrLess.back")} onClick={backToIdle} />
-      <ScoreBadge score={game.score} />
+      <ScoreBadge label={t("moreOrLess.score")} score={game.score} />
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 md:flex-row md:items-center md:justify-center md:gap-10">
         <div className="flex min-h-0 w-full flex-1 flex-col md:w-[300px] md:flex-none">

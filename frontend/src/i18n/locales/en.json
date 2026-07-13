@@ -37,5 +37,32 @@
       "message": "Something went wrong talking to the server.",
       "retry": "Retry"
     }
+  },
+  "geoguessr": {
+    "title": "Geoguessr",
+    "modes": {
+      "distanceBetweenGuess": "Classic"
+    },
+    "start": {
+      "description": "Guess where each photo was taken. 5 rounds, score decays with distance from the real spot.",
+      "cta": "Start game"
+    },
+    "back": "Back",
+    "score": "Score",
+    "roundOf": "Round {{current}} of {{total}}",
+    "confirmGuess": "Confirm guess",
+    "result": {
+      "points": "+{{score}} pts",
+      "distance": "{{distance}} km away",
+      "playAgain": "Play again"
+    },
+    "finished": {
+      "title": "Game over",
+      "finalScore": "Final score: {{score}}"
+    },
+    "error": {
+      "message": "Something went wrong talking to the server.",
+      "retry": "Retry"
+    }
   }
 }
