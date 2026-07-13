@@ -1,5 +1,6 @@
 import type { ComponentType } from "react"
 
+import { DateguessrGame } from "./Dateguessr/DateguessrGame"
 import { GeoguessrGame } from "./Geoguessr/GeoguessrGame"
 import { MoreOrLessGame } from "./MoreOrLess/MoreOrLessGame"
 
@@ -42,6 +43,18 @@ export const GAME_CATALOG: CatalogGame[] = [
         mode: "distanceBetweenGuess",
         modeTitleKey: "geoguessr.modes.distanceBetweenGuess",
         component: GeoguessrGame,
+      },
+    ],
+  },
+  {
+    gameType: "dateguessr",
+    gameTitleKey: "dateguessr.title",
+    modes: [
+      {
+        gameType: "dateguessr",
+        mode: "daysToDate",
+        modeTitleKey: "dateguessr.modes.daysToDate",
+        component: DateguessrGame,
       },
     ],
   },
