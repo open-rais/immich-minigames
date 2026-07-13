@@ -16,7 +16,7 @@ from sqlalchemy.engine import Engine, Row
 from config import Settings
 from domain.asset import Asset
 from domain.person import Person
-from persistance.immich_tables import asset, asset_exif, asset_face, asset_file, get_engine, person
+from persistence.immich_tables import asset, asset_exif, asset_face, asset_file, get_engine, person
 
 MediaType = Literal["photo", "video", "any"]
 

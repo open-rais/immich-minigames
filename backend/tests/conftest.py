@@ -12,9 +12,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from main import app
-from persistance.games import get_engine as get_own_engine
-from persistance.games import get_session_factory, reset_db
-from persistance.immich_tables import get_engine as get_immich_engine
+from persistence.games import get_engine as get_own_engine
+from persistence.games import get_session_factory, reset_db
+from persistence.immich_tables import get_engine as get_immich_engine
 from services.games_service import GamesService
 from services.immich_service import ImmichService
 

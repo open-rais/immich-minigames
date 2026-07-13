@@ -1,6 +1,6 @@
 """
 Games service - creates/loads/plays games. Bridges the game-logic layer (games/*.py, no
-persistence awareness) and this app's own DB (persistance/games.py).
+persistence awareness) and this app's own DB (persistence/games.py).
 """
 
 from typing import Any
@@ -15,7 +15,7 @@ from games.geoguessr import GAME_TYPE as GEOGUESSR_TYPE
 from games.geoguessr import MODE_DISTANCE_BETWEEN_GUESS, GeoguessrGame, GeoguessrRound
 from games.more_or_less import GAME_TYPE as MORE_OR_LESS_TYPE
 from games.more_or_less import MODE_PERSON_ASSETS, MoreOrLessGame, MoreOrLessRound
-from persistance.games import GameModel, RoundModel
+from persistence.games import GameModel, RoundModel
 from services.immich_service import ImmichService
 
 _GAME_CLASSES: dict[tuple[str, str], type[BaseGame]] = {

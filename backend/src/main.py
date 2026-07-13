@@ -9,7 +9,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from api.api import router
-from persistance.games import init_db
+from persistence.games import init_db
 from services.games_service import (
     GameNotFoundError,
     GameOwnershipError,

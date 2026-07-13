@@ -15,7 +15,7 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from api.schemas import CreateGameIn, GameOut, PlayRoundOut, parse_guess
-from persistance.games import get_session_factory
+from persistence.games import get_session_factory
 from services.games_service import GamesService
 from services.immich_service import ImmichService
 

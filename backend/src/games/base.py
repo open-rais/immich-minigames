@@ -2,7 +2,7 @@
 (ABC) Base classes every minigame implements to plug into the shared game loop - see
 docs/GAMES/OVERVIEW.md ("Base compartida: Game y Round"). Pure domain objects, not ORM models -
 GamesService (services/games_service.py) is responsible for loading/saving them via
-persistance/games.py.
+persistence/games.py.
 """
 
 from abc import ABC, abstractmethod
@@ -31,7 +31,7 @@ class BaseRound(ABC):
     @abstractmethod
     def to_payload(self) -> dict[str, Any]:
         """Serializes this round's game-specific data (shown entities, answer, guess) for the
-        `payload` JSONB column in persistance/games.py."""
+        `payload` JSONB column in persistence/games.py."""
 
     @classmethod
     @abstractmethod
