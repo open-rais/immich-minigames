@@ -20,6 +20,12 @@ class Settings(BaseSettings):
     db_host: str = "localhost"
     db_port: int = 5432
 
+    # Used to call Immich's own REST API (not Postgres) to serve image bytes - see
+    # docs/ARCHITECTURE/IMMICH.md's "Dos formas de hablar con Immich". Create the key from Immich
+    # at Account Settings > API Keys.
+    immich_api_key: str
+    immich_server_url: str = "http://localhost:2283"
+
     @property
     def db_url(self) -> str:
         return (

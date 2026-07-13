@@ -1,15 +1,18 @@
 """
-Immich service: read-only queries against Immich's own Postgres database (not its REST API - see
-docs/ARCHITECTURE/IMMICH.md for why). Games use this to fetch candidate assets/people.
+Immich service: read-only queries against Immich's own Postgres database for game data, plus
+thumbnail bytes via Immich's REST API for images - see docs/ARCHITECTURE/IMMICH.md's "Dos formas
+de hablar con Immich" for why data queries and image serving use different paths.
 """
 
 from datetime import date
 from typing import Literal
 from uuid import UUID
 
+import httpx
 from sqlalchemy import exists, func, select
 from sqlalchemy.engine import Engine, Row
 
+from config import Settings
 from domain.asset import Asset
 from domain.person import Person
 from persistance.immich_tables import asset, asset_exif, asset_face, asset_file, get_engine, person
@@ -18,8 +21,9 @@ MediaType = Literal["photo", "video", "any"]
 
 
 class ImmichService:
-    def __init__(self, engine: Engine | None = None) -> None:
+    def __init__(self, engine: Engine | None = None, settings: Settings | None = None) -> None:
         self._engine = engine or get_engine()
+        self._settings = settings or Settings()
 
     def get_assets(
         self,
@@ -134,6 +138,16 @@ class ImmichService:
             rows = conn.execute(stmt).all()
 
         return [self._row_to_person(row) for row in rows]
+
+    def get_person_thumbnail(self, person_id: UUID) -> tuple[bytes, str]:
+        """Fetches a person's face thumbnail via Immich's REST API (not the DB - see module
+        docstring). Returns (image bytes, content-type)."""
+        response = httpx.get(
+            f"{self._settings.immich_server_url}/api/people/{person_id}/thumbnail",
+            headers={"x-api-key": self._settings.immich_api_key},
+        )
+        response.raise_for_status()
+        return response.content, response.headers.get("content-type", "image/jpeg")
 
     @staticmethod
     def _row_to_asset(row: Row) -> Asset:

@@ -4,7 +4,8 @@ from collections.abc import Iterator
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+import httpx
+from fastapi import APIRouter, Depends, Header, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from api.schemas import CreateGameIn, GameOut, PlayRoundIn, PlayRoundOut
@@ -93,3 +94,15 @@ def play_round(
 
     answered_round = next(r for r in game.rounds if r.id == round_id)
     return PlayRoundOut.from_answered(game, answered_round)
+
+
+@router.get("/people/{person_id}/thumbnail")
+def get_person_thumbnail(
+    person_id: UUID,
+    immich_service: Annotated[ImmichService, Depends(get_immich_service)],
+) -> Response:
+    try:
+        content, content_type = immich_service.get_person_thumbnail(person_id)
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(status_code=exc.response.status_code, detail="thumbnail not found") from exc
+    return Response(content=content, media_type=content_type)
