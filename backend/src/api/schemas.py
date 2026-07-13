@@ -17,11 +17,9 @@ from pydantic import BaseModel, Field
 
 from games.base import BaseGame, BaseRound
 from games.dateguessr import GAME_TYPE as DATEGUESSR_TYPE
-from games.dateguessr import MODE_DAYS_TO_DATE
-from games.dateguessr import DateguessrRound
+from games.dateguessr import MODE_DAYS_TO_DATE, DateguessrRound
 from games.geoguessr import GAME_TYPE as GEOGUESSR_TYPE
-from games.geoguessr import MODE_DISTANCE_BETWEEN_GUESS
-from games.geoguessr import LatLng, GeoguessrRound
+from games.geoguessr import MODE_DISTANCE_BETWEEN_GUESS, LatLng, GeoguessrRound
 from games.more_or_less import GAME_TYPE as MORE_OR_LESS_TYPE
 from games.more_or_less import MODE_PERSON_ASSETS, MoreOrLessRound
 from services.games_service import UnsupportedGameError
