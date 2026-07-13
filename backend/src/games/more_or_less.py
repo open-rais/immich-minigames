@@ -81,6 +81,14 @@ class MoreOrLessRound(BaseRound):
         actual: Guess = "more" if self.candidate.asset_count > self.reference.asset_count else "less"
         return 1 if self.guess == actual else 0
 
+    @property
+    def correct(self) -> bool | None:
+        """Whether the guess was right - None until answered. A win scores 1 (a tie also counts as
+        a win, see calculate_score); this is the single definition of "correct" for the DTOs."""
+        if not self.answered:
+            return None
+        return self.score_delta == 1
+
     def to_payload(self) -> dict[str, Any]:
         return {
             "reference": self.reference.to_dict(),

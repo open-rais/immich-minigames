@@ -67,8 +67,13 @@ class GamesService:
         """Plays the given round and returns the game with its updated state (the answered round
         is still in game.rounds, and game.current_round is the new pending round, if any)."""
         game = self._load_game(game_id, owner)
+        return self.play_loaded_round(game, round_id, guess)
+
+    def play_loaded_round(self, game: BaseGame, round_id: UUID, guess: Any) -> BaseGame:
+        """Same as play_round but on an already-loaded game (e.g. one just returned by get_game),
+        avoiding a second DB read and rebuilding every round via from_payload a second time."""
         if game.finished or game.current_round.id != round_id:
-            raise RoundNotPendingError(f"round {round_id} is not the current pending round of game {game_id}")
+            raise RoundNotPendingError(f"round {round_id} is not the current pending round of game {game.id}")
 
         answered_round = game.current_round
         game.play_round(guess)

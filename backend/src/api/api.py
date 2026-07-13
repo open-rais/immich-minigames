@@ -84,7 +84,7 @@ def play_round(
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail=exc.errors()) from exc
 
-    game = games_service.play_round(game_id, owner, round_id, guess)
+    game = games_service.play_loaded_round(existing_game, round_id, guess)
     answered_round = next(r for r in game.rounds if r.id == round_id)
     return PlayRoundOut.from_answered(game, answered_round)
 

@@ -24,6 +24,7 @@ from games.geoguessr import MODE_DISTANCE_BETWEEN_GUESS
 from games.geoguessr import LatLng, GeoguessrRound
 from games.more_or_less import GAME_TYPE as MORE_OR_LESS_TYPE
 from games.more_or_less import MODE_PERSON_ASSETS, MoreOrLessRound
+from services.games_service import UnsupportedGameError
 
 
 class CreateGameIn(BaseModel):
@@ -59,7 +60,7 @@ class MoreOrLessRoundOut(BaseModel):
             candidate_name=round_.candidate.name,
             candidate_asset_count=round_.candidate.asset_count if answered else None,
             guess=round_.guess if answered else None,
-            correct=(round_.score_delta == 1) if answered else None,
+            correct=round_.correct,
         )
 
 
@@ -186,8 +187,12 @@ _PLAY_ROUND_SCHEMAS: dict[tuple[str, str], type[BaseModel]] = {
 def parse_guess(game_type: str, mode: str, body: dict[str, Any]) -> Any:
     """Picks the right guess schema for an already-known (game_type, mode) - the caller (see
     api/api.py's play_round) is expected to have looked the game up first, so this never needs the
-    client to state its own game_type. Raises pydantic.ValidationError on a malformed body."""
-    schema = _PLAY_ROUND_SCHEMAS[(game_type, mode)]
+    client to state its own game_type. Raises pydantic.ValidationError on a malformed body, and
+    UnsupportedGameError (mapped to 400) if the (game_type, mode) pair has no schema - consistent
+    with GamesService.create_game rather than surfacing a raw KeyError as a 500."""
+    schema = _PLAY_ROUND_SCHEMAS.get((game_type, mode))
+    if schema is None:
+        raise UnsupportedGameError(f"unsupported game/mode: {game_type}/{mode}")
     return schema.model_validate(body).to_domain()
 
 
@@ -205,7 +210,7 @@ class PlayRoundOut(BaseModel):
     @classmethod
     def from_answered(cls, game: BaseGame, answered_round: BaseRound) -> "PlayRoundOut":
         next_round = None if game.finished else round_out_from_round(game.current_round)
-        correct = (answered_round.score_delta == 1) if isinstance(answered_round, MoreOrLessRound) else None
+        correct = answered_round.correct if isinstance(answered_round, MoreOrLessRound) else None
         return cls(
             correct=correct,
             score_delta=answered_round.score_delta,
