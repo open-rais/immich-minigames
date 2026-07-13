@@ -10,7 +10,7 @@ from typing import Literal
 from uuid import UUID
 
 import httpx
-from sqlalchemy import exists, func, select
+from sqlalchemy import Date, cast, exists, func, select
 from sqlalchemy.engine import Engine, Row
 
 from config import Settings
@@ -56,6 +56,10 @@ class ImmichService:
                 asset.c.id,
                 asset.c.type,
                 asset.c.fileCreatedAt,
+                # True local calendar day of the shot, timezone-of-session-independent: localDateTime
+                # is a timestamptz whose UTC rendering is the local wall time, so casting to date at
+                # UTC recovers the local day (see immich_tables.py / domain/asset.py).
+                cast(func.timezone("UTC", asset.c.localDateTime), Date).label("localDate"),
                 asset.c.originalFileName,
                 asset.c.width,
                 asset.c.height,
@@ -184,6 +188,7 @@ class ImmichService:
             id=row.id,
             type=row.type,
             file_created_at=row.fileCreatedAt,
+            local_date=row.localDate,
             original_file_name=row.originalFileName,
             width=row.width,
             height=row.height,

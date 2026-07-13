@@ -26,7 +26,7 @@ MODE_DAYS_TO_DATE = "daysToDate"
 # exact match scores the max.
 FLAT_SCORE_DAYS = 0
 # Beyond an exact match: score = round(MAX_SCORE * exp(-days_off / DECAY_DAYS)). Calibrated against
-# the dev library's real spread (fileCreatedAt ranges ~2008-09-16 to ~2026-06-21, ~18 years) so a
+# the dev library's real spread (local dates range ~2008-09-16 to ~2026-06-21, ~18 years) so a
 # decent-but-not-exact guess still scores something: ~1839pts at 2 years off, ~410pts at 5 years
 # off, ~34pts at 10 years off, ~1pt at the full ~18-year spread. First-pass value, meant to be tuned
 # once playable - same treatment as geoguessr.py's DECAY_KM.
@@ -49,7 +49,10 @@ class AssetSnapshot:
 
     @classmethod
     def of(cls, asset: Asset) -> "AssetSnapshot":
-        return cls(id=asset.id, date=asset.file_created_at.date())
+        # Local calendar day, not the UTC day of file_created_at - the guess is compared day-exact,
+        # so a photo taken late in the local evening must not read as the next (UTC) day. See
+        # domain/asset.py's local_date.
+        return cls(id=asset.id, date=asset.local_date)
 
     def to_dict(self) -> dict[str, Any]:
         return {"id": str(self.id), "date": self.date.isoformat()}
@@ -103,7 +106,7 @@ class DateguessrGame(AssetRoundsGame):
         return DateguessrRound(id=uuid4(), game_id=self.id, round_index=round_index, asset=AssetSnapshot.of(asset))
 
     def _separation(self, candidate: Asset, answer: date) -> float:
-        return abs((candidate.file_created_at.date() - answer).days)
+        return abs((candidate.local_date - answer).days)
 
     def _previous_answers(self) -> list[date]:
         return [round_.asset.date for round_ in self.rounds]

@@ -1,9 +1,21 @@
+from datetime import date
+
+
 class TestGetAssets:
     def test_media_type_photo_returns_only_images(self, immich_service):
         assets = immich_service.get_assets(media_type="photo", limit=50)
 
         assert assets
         assert all(a.type == "IMAGE" for a in assets)
+
+    def test_local_date_is_populated_as_a_calendar_day(self, immich_service):
+        # localDateTime is NOT NULL in Immich, so every asset must carry a plain calendar day
+        # (Dateguessr's answer key) - and it's the local day, which can differ from file_created_at's
+        # UTC day for shots taken late in the local evening (see domain/asset.py's local_date).
+        assets = immich_service.get_assets(limit=100)
+
+        assert assets
+        assert all(isinstance(a.local_date, date) for a in assets)
 
     def test_media_type_video_returns_only_videos(self, immich_service):
         assets = immich_service.get_assets(media_type="video", limit=50)

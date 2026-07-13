@@ -41,6 +41,11 @@ asset = Table(
     Column("ownerId", Uuid),
     Column("type", String),
     Column("fileCreatedAt", DateTime(timezone=True)),
+    # Immich stores the device-local wall-clock time here as a timestamptz whose UTC rendering is
+    # the local time (e.g. a 21:55 local shot is stored as 21:55+00), so casting it to date at UTC
+    # recovers the true local calendar day - see immich_service.get_assets. Distinct from
+    # fileCreatedAt, whose UTC day can differ. Used by Dateguessr/Timeline.
+    Column("localDateTime", DateTime(timezone=True)),
     Column("originalFileName", String),
     Column("stackId", Uuid),
     Column("visibility", asset_visibility_enum),
