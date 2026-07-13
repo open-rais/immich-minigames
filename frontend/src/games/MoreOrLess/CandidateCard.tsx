@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next"
 
-import type { Guess } from "../../api/types"
+import type { MoreOrLessGuess } from "../../api/types"
 import { Button } from "../shared/Button"
 import { CountBadge } from "./CountBadge"
 import { StatCard } from "./StatCard"
@@ -13,7 +13,7 @@ interface CandidateCardProps {
   phase: CandidatePhase
   displayCount: number
   correct: boolean | null
-  onGuess: (guess: Guess) => void
+  onGuess: (guess: MoreOrLessGuess) => void
 }
 
 export function CandidateCard({ name, thumbnailUrl, phase, displayCount, correct, onGuess }: CandidateCardProps) {

@@ -18,7 +18,7 @@ export const Mode = {
 } as const
 export type Mode = (typeof Mode)[keyof typeof Mode]
 
-export type Guess = "more" | "less"
+export type MoreOrLessGuess = "more" | "less"
 
 export interface CreateGameIn {
   type: string
@@ -36,7 +36,7 @@ export interface MoreOrLessRoundOut {
   candidate_name: string
   // Redacted (null) until this round has been answered.
   candidate_asset_count: number | null
-  guess: Guess | null
+  guess: MoreOrLessGuess | null
   correct: boolean | null
 }
 
@@ -80,7 +80,7 @@ export interface GameOut {
 // No game_type here (unlike RoundOut) - game_id already fixes a round's game/mode server-side, so
 // the guess body only needs the guess itself; see backend/src/api/schemas.py's parse_guess.
 export interface MoreOrLessPlayRoundIn {
-  guess: Guess
+  guess: MoreOrLessGuess
 }
 
 export interface GeoguessrPlayRoundIn {

@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom"
 
 import { createGame, personThumbnailUrl, playRound } from "../../api/games"
 import { GameType, Mode } from "../../api/types"
-import type { GameOut, Guess, MoreOrLessRoundOut, RoundOut } from "../../api/types"
+import type { GameOut, MoreOrLessGuess, MoreOrLessRoundOut, RoundOut } from "../../api/types"
 import { BackButton } from "../shared/BackButton"
 import { ErrorScreen, FinishedScreen, IdleScreen } from "../shared/GameScreens"
 import { ScoreBadge } from "../shared/ScoreBadge"
@@ -129,7 +129,7 @@ export function MoreOrLessGame() {
     }
   }
 
-  async function handleGuess(guess: Guess) {
+  async function handleGuess(guess: MoreOrLessGuess) {
     if (guessInFlightRef.current || !game || !candidate || candidatePhase !== "guessing") return
     guessInFlightRef.current = true
     const token = ++requestTokenRef.current
