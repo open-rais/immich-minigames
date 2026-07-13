@@ -6,17 +6,31 @@
     "modesCount_one": "{{count}} mode",
     "modesCount_other": "{{count}} modes"
   },
+  "common": {
+    "back": "Back",
+    "score": "Score",
+    "startCta": "Start game",
+    "confirmGuess": "Confirm guess",
+    "roundOf": "Round {{current}} of {{total}}",
+    "points": "+{{score}} pts",
+    "playAgain": "Play again",
+    "finished": {
+      "title": "Game over",
+      "finalScore": "Final score: {{score}}"
+    },
+    "error": {
+      "message": "Something went wrong talking to the server.",
+      "retry": "Retry"
+    }
+  },
   "moreOrLess": {
     "title": "More or Less",
     "modes": {
       "personAssets": "Person assets"
     },
     "start": {
-      "description": "Guess whether the next person has more or fewer assets than the last. One wrong guess ends the run.",
-      "cta": "Start game"
+      "description": "Guess whether the next person has more or fewer assets than the last. One wrong guess ends the run."
     },
-    "back": "Back",
-    "score": "Score",
     "has": "has",
     "unit_one": "asset",
     "unit_other": "assets",
@@ -26,16 +40,7 @@
     "result": {
       "correct": "Correct!",
       "incorrect": "Not quite.",
-      "continue": "Continue",
-      "playAgain": "Play again"
-    },
-    "finished": {
-      "title": "Game over",
-      "finalScore": "Final score: {{score}}"
-    },
-    "error": {
-      "message": "Something went wrong talking to the server.",
-      "retry": "Retry"
+      "continue": "Continue"
     }
   },
   "geoguessr": {
@@ -44,25 +49,10 @@
       "distanceBetweenGuess": "Classic"
     },
     "start": {
-      "description": "Guess where each photo was taken. 5 rounds, score decays with distance from the real spot.",
-      "cta": "Start game"
+      "description": "Guess where each photo was taken. 5 rounds, score decays with distance from the real spot."
     },
-    "back": "Back",
-    "score": "Score",
-    "roundOf": "Round {{current}} of {{total}}",
-    "confirmGuess": "Confirm guess",
     "result": {
-      "points": "+{{score}} pts",
-      "distance": "{{distance}} km away",
-      "playAgain": "Play again"
-    },
-    "finished": {
-      "title": "Game over",
-      "finalScore": "Final score: {{score}}"
-    },
-    "error": {
-      "message": "Something went wrong talking to the server.",
-      "retry": "Retry"
+      "distance": "{{distance}} km away"
     }
   },
   "dateguessr": {
@@ -71,26 +61,11 @@
       "daysToDate": "Classic"
     },
     "start": {
-      "description": "Guess when each photo was taken. 5 rounds, score decays with distance from the real date.",
-      "cta": "Start game"
+      "description": "Guess when each photo was taken. 5 rounds, score decays with distance from the real date."
     },
-    "back": "Back",
-    "score": "Score",
-    "roundOf": "Round {{current}} of {{total}}",
-    "confirmGuess": "Confirm guess",
     "result": {
-      "points": "+{{score}} pts",
       "daysOff_one": "{{count}} day off",
-      "daysOff_other": "{{count}} days off",
-      "playAgain": "Play again"
-    },
-    "finished": {
-      "title": "Game over",
-      "finalScore": "Final score: {{score}}"
-    },
-    "error": {
-      "message": "Something went wrong talking to the server.",
-      "retry": "Retry"
+      "daysOff_other": "{{count}} days off"
     }
   }
 }

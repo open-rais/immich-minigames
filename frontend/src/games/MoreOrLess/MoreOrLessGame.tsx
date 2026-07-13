@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom"
 import { createGame, personThumbnailUrl, playRound } from "../../api/games"
 import type { GameOut, Guess, MoreOrLessRoundOut, RoundOut } from "../../api/types"
 import { BackButton } from "../shared/BackButton"
-import { Button } from "../shared/Button"
+import { ErrorScreen, FinishedScreen, IdleScreen } from "../shared/GameScreens"
 import { ScoreBadge } from "../shared/ScoreBadge"
 import type { CandidatePhase } from "./CandidateCard"
 import { CandidateCard } from "./CandidateCard"
@@ -169,40 +169,22 @@ export function MoreOrLessGame() {
 
   if (screen === "idle") {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-app-bg px-6 text-center">
-        <BackButton label={t("moreOrLess.back")} onClick={backToMenu} />
-        <h1 className="text-3xl font-bold text-ink">{t("moreOrLess.title")}</h1>
-        <p className="max-w-md text-muted">{t("moreOrLess.start.description")}</p>
-        <Button variant="primary" className="px-8 py-3" onClick={startGame} disabled={busy}>
-          {t("moreOrLess.start.cta")}
-        </Button>
-      </div>
+      <IdleScreen
+        title={t("moreOrLess.title")}
+        description={t("moreOrLess.start.description")}
+        onStart={startGame}
+        onBack={backToMenu}
+        busy={busy}
+      />
     )
   }
 
   if (screen === "error") {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-app-bg px-6 text-center">
-        <BackButton label={t("moreOrLess.back")} onClick={backToMenu} />
-        <p className="text-body">{t("moreOrLess.error.message")}</p>
-        <Button variant="primary" className="px-6 py-3" onClick={startGame} disabled={busy}>
-          {t("moreOrLess.error.retry")}
-        </Button>
-      </div>
-    )
+    return <ErrorScreen onRetry={startGame} onBack={backToMenu} busy={busy} />
   }
 
   if (screen === "finished") {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-app-bg px-6 text-center">
-        <BackButton label={t("moreOrLess.back")} onClick={backToMenu} />
-        <h1 className="text-3xl font-bold text-ink">{t("moreOrLess.finished.title")}</h1>
-        <p className="text-xl text-muted">{t("moreOrLess.finished.finalScore", { score: game?.score ?? 0 })}</p>
-        <Button variant="primary" className="px-8 py-3" onClick={startGame} disabled={busy}>
-          {t("moreOrLess.result.playAgain")}
-        </Button>
-      </div>
-    )
+    return <FinishedScreen score={game?.score ?? 0} onPlayAgain={startGame} onBack={backToMenu} busy={busy} />
   }
 
   if (!game || !reference || !candidate) return null
@@ -211,8 +193,8 @@ export function MoreOrLessGame() {
     <div className="flex h-dvh flex-col overflow-hidden bg-app-bg px-[18px] py-[22px] md:px-10 md:py-7">
       {/* Fixed/floating, not in normal flow - on mobile they sit over the top card rather than
           pushing it down, and free up that vertical space for the cards (no-scroll budget). */}
-      <BackButton label={t("moreOrLess.back")} onClick={backToIdle} />
-      <ScoreBadge label={t("moreOrLess.score")} score={game.score} />
+      <BackButton label={t("common.back")} onClick={backToIdle} />
+      <ScoreBadge label={t("common.score")} score={game.score} />
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 md:flex-row md:items-center md:justify-center md:gap-10">
         <div className="flex min-h-0 w-full flex-1 flex-col md:w-[300px] md:flex-none">

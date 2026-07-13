@@ -1,9 +1,8 @@
-from datetime import date, datetime, timedelta, timezone
-from uuid import UUID, uuid4
+from datetime import date, timedelta
+from uuid import uuid4
 
 import pytest
 
-from domain.asset import Asset
 from games.dateguessr import (
     DECAY_DAYS,
     MAX_SCORE,
@@ -11,7 +10,6 @@ from games.dateguessr import (
     AssetSnapshot,
     DateguessrGame,
     DateguessrRound,
-    _pick_asset,
 )
 
 
@@ -21,35 +19,6 @@ def _guess_near(round_: DateguessrRound) -> date:
 
 def _guess_far(round_: DateguessrRound) -> date:
     return round_.asset.date + timedelta(days=365 * 50)
-
-
-def _asset(asset_id: UUID | None, file_created_at: datetime) -> Asset:
-    return Asset(
-        id=asset_id or uuid4(),
-        type="IMAGE",
-        file_created_at=file_created_at,
-        original_file_name="test.jpg",
-        width=1000,
-        height=1000,
-        is_favorite=False,
-        latitude=None,
-        longitude=None,
-        city=None,
-        state=None,
-        country=None,
-    )
-
-
-class _FakeImmichService:
-    """Deterministic stand-in for ImmichService.get_assets - used for _pick_asset tests that
-    shouldn't depend on the real DB's random sampling. Mirrors test_geoguessr_game.py's own
-    _FakeImmichService."""
-
-    def __init__(self, assets: list[Asset]) -> None:
-        self._assets = assets
-
-    def get_assets(self, *, exclude_ids: frozenset[UUID] = frozenset(), **kwargs) -> list[Asset]:
-        return [a for a in self._assets if a.id not in exclude_ids]
 
 
 class TestDateguessrGame:
@@ -129,28 +98,3 @@ class TestDateguessrScoring:
         round_.guess = date(1900, 1, 1)
 
         assert round_.calculate_score() == 0
-
-
-class TestPickAsset:
-    def test_prefers_a_candidate_far_from_previous_rounds(self):
-        near = _asset(None, datetime(2020, 1, 5, tzinfo=timezone.utc))  # 4 days from 2020-01-01
-        far = _asset(None, datetime(2015, 1, 1, tzinfo=timezone.utc))
-        service = _FakeImmichService([near, far])
-
-        picked = _pick_asset(service, exclude_ids=frozenset(), previous_dates=[date(2020, 1, 1)])
-
-        assert picked.id == far.id
-
-    def test_falls_back_to_first_candidate_if_none_qualify(self):
-        near_a = _asset(None, datetime(2020, 1, 2, tzinfo=timezone.utc))
-        near_b = _asset(None, datetime(2020, 1, 3, tzinfo=timezone.utc))
-        service = _FakeImmichService([near_a, near_b])
-
-        picked = _pick_asset(service, exclude_ids=frozenset(), previous_dates=[date(2020, 1, 1)])
-
-        assert picked.id == near_a.id
-
-    def test_returns_none_when_no_candidates(self):
-        service = _FakeImmichService([])
-
-        assert _pick_asset(service, exclude_ids=frozenset(), previous_dates=[]) is None

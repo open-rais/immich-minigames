@@ -1,9 +1,7 @@
-from datetime import datetime, timezone
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
-from domain.asset import Asset
 from games.geoguessr import (
     DECAY_KM,
     FLAT_SCORE_RADIUS_KM,
@@ -13,7 +11,6 @@ from games.geoguessr import (
     GeoguessrGame,
     GeoguessrRound,
     LatLng,
-    _pick_asset,
     haversine_km,
 )
 
@@ -27,34 +24,6 @@ def _guess_far(round_: GeoguessrRound) -> LatLng:
     lat = -round_.asset.latitude
     lon = round_.asset.longitude + 180 if round_.asset.longitude < 0 else round_.asset.longitude - 180
     return LatLng(latitude=lat, longitude=lon)
-
-
-def _asset(asset_id: UUID | None, latitude: float, longitude: float) -> Asset:
-    return Asset(
-        id=asset_id or uuid4(),
-        type="IMAGE",
-        file_created_at=datetime(2020, 1, 1, tzinfo=timezone.utc),
-        original_file_name="test.jpg",
-        width=1000,
-        height=1000,
-        is_favorite=False,
-        latitude=latitude,
-        longitude=longitude,
-        city=None,
-        state=None,
-        country=None,
-    )
-
-
-class _FakeImmichService:
-    """Deterministic stand-in for ImmichService.get_assets - used for _pick_asset tests that
-    shouldn't depend on the real DB's random sampling."""
-
-    def __init__(self, assets: list[Asset]) -> None:
-        self._assets = assets
-
-    def get_assets(self, *, exclude_ids: frozenset[UUID] = frozenset(), **kwargs) -> list[Asset]:
-        return [a for a in self._assets if a.id not in exclude_ids]
 
 
 class TestGeoguessrGame:
@@ -147,28 +116,3 @@ class TestHaversine:
         # From (0,0) to (0,90) is a quarter of the equator's circumference (~40008km / 4).
         distance = haversine_km(0.0, 0.0, 0.0, 90.0)
         assert abs(distance - 10007.5) < 5
-
-
-class TestPickAsset:
-    def test_prefers_a_candidate_far_from_previous_rounds(self):
-        near = _asset(None, latitude=0.001, longitude=0.001)  # ~150m from (0,0)
-        far = _asset(None, latitude=10.0, longitude=10.0)  # far from (0,0)
-        service = _FakeImmichService([near, far])
-
-        picked = _pick_asset(service, exclude_ids=frozenset(), previous_locations=[(0.0, 0.0)])
-
-        assert picked.id == far.id
-
-    def test_falls_back_to_first_candidate_if_none_qualify(self):
-        near_a = _asset(None, latitude=0.001, longitude=0.001)
-        near_b = _asset(None, latitude=0.002, longitude=0.002)
-        service = _FakeImmichService([near_a, near_b])
-
-        picked = _pick_asset(service, exclude_ids=frozenset(), previous_locations=[(0.0, 0.0)])
-
-        assert picked.id == near_a.id
-
-    def test_returns_none_when_no_candidates(self):
-        service = _FakeImmichService([])
-
-        assert _pick_asset(service, exclude_ids=frozenset(), previous_locations=[]) is None

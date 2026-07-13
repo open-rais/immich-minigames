@@ -1,30 +1,31 @@
-import { useEffect, useRef, useState } from "react"
+import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 
-import { assetThumbnailUrl, createGame, playDateguessrRound } from "../../api/games"
-import type { DateguessrRoundOut, GameOut, RoundOut } from "../../api/types"
+import { assetThumbnailUrl, playDateguessrRound } from "../../api/games"
+import type { DateguessrRoundOut, RoundOut } from "../../api/types"
 import { AssetPhoto } from "../shared/AssetPhoto"
 import { BackButton } from "../shared/BackButton"
 import { Button } from "../shared/Button"
+import { ErrorScreen, FinishedScreen, IdleScreen } from "../shared/GameScreens"
+import { RevealResultCard } from "../shared/RevealResultCard"
+import { RoundBadge } from "../shared/RoundBadge"
 import { ScoreBadge } from "../shared/ScoreBadge"
+import { useRoundGame } from "../shared/useRoundGame"
 import { TimelineRuler } from "./TimelineRuler"
 
 const GAME_TYPE = "dateguessr"
 const MODE = "daysToDate"
-const TOTAL_ROUNDS = 5 // mirrors backend/src/games/dateguessr.py's TOTAL_ROUNDS - display only
-// Same reveal-hold duration as GeoguessrGame.tsx - the ruler's own reveal animation is a bit
-// shorter (TimelineRuler.tsx's REVEAL_ANIMATION_MS) but the player still needs a beat to read the
+const TOTAL_ROUNDS = 5 // mirrors backend/src/games/asset_rounds.py's TOTAL_ROUNDS - display only
+// Same reveal-hold duration as GeoguessrGame - the ruler's own reveal animation is a bit shorter
+// (TimelineRuler.tsx's REVEAL_ANIMATION_MS) but the player still needs a beat to read the
 // score/days-off after it settles.
 const REVEAL_HOLD_MS = 2400
 
-type Screen = "idle" | "playing" | "finished" | "error"
-type RoundPhase = "guessing" | "submitting" | "revealed"
-
 // This component only ever creates/plays "dateguessr" games (see GAME_TYPE/MODE above), so a
-// mismatched game_type here means the backend returned something unexpected.
-function assertDateguessr(round: RoundOut): asserts round is DateguessrRoundOut {
-  if (round.game_type !== "dateguessr") throw new Error(`expected a dateguessr round, got ${round.game_type}`)
+// mismatched game_type means the backend returned something unexpected.
+function isDateguessrRound(round: RoundOut): round is DateguessrRoundOut {
+  return round.game_type === "dateguessr"
 }
 
 export function DateguessrGame() {
@@ -32,142 +33,48 @@ export function DateguessrGame() {
   const navigate = useNavigate()
   const backToMenu = () => navigate("/")
 
-  const [screen, setScreen] = useState<Screen>("idle")
-  const [busy, setBusy] = useState(false)
-
-  const [game, setGame] = useState<GameOut | null>(null)
-  const [round, setRound] = useState<DateguessrRoundOut | null>(null)
-  const [pendingNextRound, setPendingNextRound] = useState<DateguessrRoundOut | null>(null)
-  const [phase, setPhase] = useState<RoundPhase>("guessing")
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
-
-  const guessInFlightRef = useRef(false)
-  const startInFlightRef = useRef(false)
-  const requestTokenRef = useRef(0)
-
-  async function startGame() {
-    if (startInFlightRef.current) return
-    startInFlightRef.current = true
-    const token = ++requestTokenRef.current
-    setBusy(true)
-    try {
-      const g = await createGame(GAME_TYPE, MODE)
-      if (requestTokenRef.current !== token) return
-      const firstRound = g.rounds[g.rounds.length - 1]
-      assertDateguessr(firstRound)
-      setGame(g)
-      setRound(firstRound)
-      setPendingNextRound(null)
-      setSelectedDate(null)
-      setPhase("guessing")
-      setScreen("playing")
-    } catch {
-      if (requestTokenRef.current === token) setScreen("error")
-    } finally {
-      startInFlightRef.current = false
-      if (requestTokenRef.current === token) setBusy(false)
-    }
-  }
-
-  async function handleConfirmGuess() {
-    if (guessInFlightRef.current || !game || !round || !selectedDate || phase !== "guessing") return
-    guessInFlightRef.current = true
-    const token = ++requestTokenRef.current
-    setBusy(true)
-    setPhase("submitting")
-    try {
-      const result = await playDateguessrRound(game.id, round.id, selectedDate)
-      if (requestTokenRef.current !== token) return
-      assertDateguessr(result.answered_round)
-      if (result.next_round) assertDateguessr(result.next_round)
-      setGame((g) => (g ? { ...g, score: result.score, finished: result.finished } : g))
-      setRound(result.answered_round)
-      setPendingNextRound(result.next_round)
-      setPhase("revealed")
-    } catch {
-      if (requestTokenRef.current === token) setScreen("error")
-    } finally {
-      guessInFlightRef.current = false
-      if (requestTokenRef.current === token) setBusy(false)
-    }
-  }
-
-  // Same pattern as GeoguessrGame.tsx's own reveal-hold effect: once a guess is revealed, wait a
-  // beat so the player can see the result, then move on automatically - no "next round" click.
-  useEffect(() => {
-    if (phase !== "revealed") return
-    const timer = setTimeout(() => {
-      if (!game || game.finished || !pendingNextRound) {
-        setScreen("finished")
-        return
-      }
-      setRound(pendingNextRound)
-      setPendingNextRound(null)
-      setSelectedDate(null)
-      setPhase("guessing")
-    }, REVEAL_HOLD_MS)
-    return () => clearTimeout(timer)
-  }, [phase, game, pendingNextRound])
-
-  function backToIdle() {
-    requestTokenRef.current++ // discard any in-flight guess/start response that arrives later
-    setScreen("idle")
-  }
+  const { screen, busy, game, round, phase, revealed, startGame, submitGuess, backToIdle } = useRoundGame<
+    DateguessrRoundOut,
+    string
+  >({
+    gameType: GAME_TYPE,
+    mode: MODE,
+    revealHoldMs: REVEAL_HOLD_MS,
+    isRound: isDateguessrRound,
+    playRound: (gameId, roundId, guess) => playDateguessrRound(gameId, roundId, guess),
+    onNewRound: () => setSelectedDate(null),
+  })
 
   if (screen === "idle") {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-app-bg px-6 text-center">
-        <BackButton label={t("dateguessr.back")} onClick={backToMenu} />
-        <h1 className="text-3xl font-bold text-ink">{t("dateguessr.title")}</h1>
-        <p className="max-w-md text-muted">{t("dateguessr.start.description")}</p>
-        <Button variant="primary" className="px-8 py-3" onClick={startGame} disabled={busy}>
-          {t("dateguessr.start.cta")}
-        </Button>
-      </div>
+      <IdleScreen
+        title={t("dateguessr.title")}
+        description={t("dateguessr.start.description")}
+        onStart={startGame}
+        onBack={backToMenu}
+        busy={busy}
+      />
     )
   }
 
   if (screen === "error") {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-app-bg px-6 text-center">
-        <BackButton label={t("dateguessr.back")} onClick={backToMenu} />
-        <p className="text-body">{t("dateguessr.error.message")}</p>
-        <Button variant="primary" className="px-6 py-3" onClick={startGame} disabled={busy}>
-          {t("dateguessr.error.retry")}
-        </Button>
-      </div>
-    )
+    return <ErrorScreen onRetry={startGame} onBack={backToMenu} busy={busy} />
   }
 
   if (screen === "finished") {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-app-bg px-6 text-center">
-        <BackButton label={t("dateguessr.back")} onClick={backToMenu} />
-        <h1 className="text-3xl font-bold text-ink">{t("dateguessr.finished.title")}</h1>
-        <p className="text-xl text-muted">{t("dateguessr.finished.finalScore", { score: game?.score ?? 0 })}</p>
-        <Button variant="primary" className="px-8 py-3" onClick={startGame} disabled={busy}>
-          {t("dateguessr.result.playAgain")}
-        </Button>
-      </div>
-    )
+    return <FinishedScreen score={game?.score ?? 0} onPlayAgain={startGame} onBack={backToMenu} busy={busy} />
   }
 
   if (!game || !round) return null
-
-  const revealed = phase === "revealed"
 
   return (
     <div className="h-dvh w-full overflow-hidden bg-app-bg">
       <AssetPhoto key={round.asset_id} src={assetThumbnailUrl(round.asset_id)} alt={t("dateguessr.title")} />
 
-      <BackButton label={t("dateguessr.back")} onClick={backToIdle} />
-      <ScoreBadge label={t("dateguessr.score")} score={game.score} />
-
-      <div className="fixed top-[18px] left-1/2 z-30 -translate-x-1/2 rounded-full bg-badge-bg px-4 py-2 shadow-card md:top-7">
-        <span className="text-[11px] font-bold tracking-wide text-badge-label uppercase md:text-[13px]">
-          {t("dateguessr.roundOf", { current: round.round_index, total: TOTAL_ROUNDS })}
-        </span>
-      </div>
+      <BackButton label={t("common.back")} onClick={backToIdle} />
+      <ScoreBadge label={t("common.score")} score={game.score} />
+      <RoundBadge current={round.round_index} total={TOTAL_ROUNDS} />
 
       <TimelineRuler
         selected={selectedDate}
@@ -181,21 +88,20 @@ export function DateguessrGame() {
           <Button
             variant="primary"
             className="px-6 py-3 shadow-card"
-            onClick={handleConfirmGuess}
+            onClick={() => selectedDate && submitGuess(selectedDate)}
             disabled={selectedDate === null || busy}
           >
-            {t("dateguessr.confirmGuess")}
+            {t("common.confirmGuess")}
           </Button>
         </div>
       )}
 
       {revealed && round.days_off !== null && round.score_delta !== null && (
-        <div className="fixed bottom-[124px] left-[18px] z-30 md:bottom-[156px] md:left-10">
-          <div className="rounded-2xl border border-line bg-white px-5 py-3 text-left shadow-card">
-            <p className="font-mono text-lg font-bold text-ink">{t("dateguessr.result.points", { score: round.score_delta })}</p>
-            <p className="text-sm font-semibold text-muted">{t("dateguessr.result.daysOff", { count: round.days_off })}</p>
-          </div>
-        </div>
+        <RevealResultCard
+          positionClassName="bottom-[124px] left-[18px] md:bottom-[156px] md:left-10"
+          scoreDelta={round.score_delta}
+          subtitle={t("dateguessr.result.daysOff", { count: round.days_off })}
+        />
       )}
     </div>
   )
