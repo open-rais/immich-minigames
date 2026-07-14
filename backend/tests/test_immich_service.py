@@ -1,4 +1,5 @@
 from datetime import date
+from uuid import uuid4
 
 
 class TestGetAssets:
@@ -88,3 +89,41 @@ class TestGetPersons:
         rest = immich_service.get_persons(named_only=True, limit=100, exclude_ids=frozenset({first.id}))
 
         assert first.id not in {p.id for p in rest}
+
+    def test_ids_filters_to_only_the_given_people(self, immich_service):
+        everyone = immich_service.get_persons(named_only=True, limit=100)
+        wanted = {everyone[0].id, everyone[1].id}
+
+        matches = immich_service.get_persons(named_only=True, ids=frozenset(wanted), limit=100)
+
+        assert {p.id for p in matches} == wanted
+
+    def test_ids_with_unknown_id_returns_empty(self, immich_service):
+        matches = immich_service.get_persons(named_only=True, ids=frozenset({uuid4()}), limit=100)
+
+        assert matches == []
+
+
+class TestGetPersonFirstAssetDate:
+    def test_returns_a_date_for_a_person_with_assets(self, immich_service):
+        persons = immich_service.get_persons(named_only=True, limit=100)
+        person_with_assets = next(p for p in persons if p.asset_count > 0)
+
+        first_date = immich_service.get_person_first_asset_date(person_with_assets.id)
+
+        assert isinstance(first_date, date)
+
+    def test_returns_none_for_unknown_person(self, immich_service):
+        assert immich_service.get_person_first_asset_date(uuid4()) is None
+
+
+class TestGetAssetsTogetherCount:
+    def test_returns_zero_for_unrelated_people(self, immich_service):
+        assert immich_service.get_assets_together_count(uuid4(), uuid4()) == 0
+
+    def test_returns_a_non_negative_count_for_real_people(self, immich_service):
+        [a, b] = immich_service.get_persons(named_only=True, limit=2)
+
+        count = immich_service.get_assets_together_count(a.id, b.id)
+
+        assert count >= 0
