@@ -3,6 +3,7 @@ import type { ComponentType } from "react"
 import { GameType, Mode } from "../api/types"
 import { DateguessrGame } from "./Dateguessr/DateguessrGame"
 import { GeoguessrGame } from "./Geoguessr/GeoguessrGame"
+import { ImmichdleGame } from "./Immichdle/ImmichdleGame"
 import { MoreOrLessGame } from "./MoreOrLess/MoreOrLessGame"
 
 // Mirrors backend/src/services/games_service.py's _GAME_CLASSES/_ROUND_CLASSES by hand - same
@@ -54,6 +55,17 @@ export const GAME_CATALOG: CatalogGame[] = [
         mode: Mode.DaysToDate,
         modeTitleKey: "dateguessr.modes.daysToDate",
         component: DateguessrGame,
+      },
+    ],
+  },
+  {
+    gameType: GameType.Immichdle,
+    gameTitleKey: "immichdle.title",
+    modes: [
+      {
+        mode: Mode.Person,
+        modeTitleKey: "immichdle.modes.person",
+        component: ImmichdleGame,
       },
     ],
   },

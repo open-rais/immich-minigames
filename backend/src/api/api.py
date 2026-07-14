@@ -10,13 +10,13 @@ from typing import Annotated, Any
 from uuid import UUID
 
 import httpx
-from fastapi import APIRouter, Body, Depends, Header, HTTPException, Response
+from fastapi import APIRouter, Body, Depends, Header, HTTPException, Query, Response
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from api.auth_api import router as auth_router
 from api.deps import get_db_session
-from api.schemas import CreateGameIn, GameOut, PlayRoundOut, parse_guess
+from api.schemas import CreateGameIn, GameOut, PersonSearchOut, PlayRoundOut, parse_guess
 from services.games_service import GamesService
 from services.immich_service import ImmichService
 
@@ -96,6 +96,20 @@ def _proxy_thumbnail(fetch: Callable[[], tuple[bytes, str]]) -> Response:
     except httpx.RequestError as exc:
         raise HTTPException(status_code=502, detail="could not reach Immich") from exc
     return Response(content=content, media_type=content_type)
+
+
+@router.get("/persons/search", response_model=PersonSearchOut)
+def search_persons(
+    query: Annotated[str, Query(min_length=1)],
+    immich_service: Annotated[ImmichService, Depends(get_immich_service)],
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=50)] = 3,
+) -> PersonSearchOut:
+    # Reusable across features (not just Immichdle's guess input, see games/immichdle.py) - a
+    # single-letter query is enough, matching is word-prefix (not substring), and results page in
+    # small batches (default 3) for infinite-scroll UIs. See ImmichService.search_persons.
+    persons = immich_service.search_persons(query, offset=offset, limit=limit)
+    return PersonSearchOut.from_persons(persons)
 
 
 @router.get("/people/{person_id}/thumbnail")

@@ -18,6 +18,7 @@ from persistence.immich_tables import get_engine as get_immich_engine
 from services.auth_service import AuthService
 from services.games_service import GamesService
 from services.immich_service import ImmichService
+from services.ml_service import MLService
 
 
 @pytest.fixture(scope="session")
@@ -28,6 +29,11 @@ def engine():
 @pytest.fixture
 def immich_service(engine):
     return ImmichService(engine)
+
+
+@pytest.fixture
+def ml_service(engine):
+    return MLService(engine)
 
 
 @pytest.fixture(scope="session", autouse=True)

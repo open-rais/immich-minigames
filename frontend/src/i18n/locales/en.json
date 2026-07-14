@@ -84,6 +84,31 @@
       "daysOff_other": "{{count}} days off"
     }
   },
+  "immichdle": {
+    "title": "Immichdle",
+    "modes": {
+      "person": "Persondle"
+    },
+    "start": {
+      "description": "Guess the mystery person. Every guess reveals comparative clues - green means a match, amber means close, red means far off."
+    },
+    "searchPlaceholder": "Search a person by name...",
+    "searching": "Searching...",
+    "noResults": "No matches found.",
+    "unknown": "?",
+    "clues": {
+      "age": "Age",
+      "assetCount": "Assets",
+      "firstAppearance": "First seen",
+      "commonNames": "Common names",
+      "mlSimilarity": "Face match",
+      "assetsTogether": "Together"
+    },
+    "finished": {
+      "won": "You got it!",
+      "lost": "Game over"
+    }
+  },
   "auth": {
     "fields": {
       "email": "Email",

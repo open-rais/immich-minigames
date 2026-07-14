@@ -1,5 +1,5 @@
 import { apiClient } from "./client"
-import type { CreateGameIn, GameOut, PlayRoundIn, PlayRoundOut } from "./types"
+import type { CreateGameIn, GameOut, PersonSearchOut, PlayRoundIn, PlayRoundOut } from "./types"
 
 export async function createGame(type: string, mode: string): Promise<GameOut> {
   const body: CreateGameIn = { type, mode }
@@ -17,6 +17,15 @@ export async function getGame(id: string): Promise<GameOut> {
 // their game. Replaces the former per-game playRound/playGeoguessrRound/playDateguessrRound trio.
 export async function playRound(gameId: string, roundId: string, body: PlayRoundIn): Promise<PlayRoundOut> {
   const { data } = await apiClient.post<PlayRoundOut>(`/games/${gameId}/rounds/${roundId}`, body)
+  return data
+}
+
+// Word-prefix match on named people's full name - see backend/src/services/immich_service.py's
+// search_persons. Small pages by default (matches the backend's own default limit=3).
+export async function searchPersons(query: string, opts?: { offset?: number; limit?: number }): Promise<PersonSearchOut> {
+  const { data } = await apiClient.get<PersonSearchOut>("/persons/search", {
+    params: { query, offset: opts?.offset, limit: opts?.limit },
+  })
   return data
 }
 
