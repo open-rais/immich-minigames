@@ -12,8 +12,8 @@ const DEFAULT_PX_PER_DAY = 2.2 // starting zoom - months visible, matches the "m
 
 // LOD thresholds (pixels-per-day) - first pass, meant to be tuned once this is actually on screen.
 // Below YEAR_TIER_MAX: only year ticks. Below MONTH_TIER_MAX: years + months. Above that: also days.
-const YEAR_TIER_MAX_PX_PER_DAY = 0.5
-const MONTH_TIER_MAX_PX_PER_DAY = 8
+const YEAR_TIER_MAX_PX_PER_DAY = 0.3
+const MONTH_TIER_MAX_PX_PER_DAY = 2.8
 
 const WHEEL_ZOOM_SENSITIVITY = 0.0015
 const CLICK_MOVEMENT_THRESHOLD_PX = 6
@@ -180,9 +180,32 @@ export function TimelineRuler({ selected, onSelectedChange, actual = null, disab
 
     const result: Tick[] = []
 
+    // Dynamic label frequency based on zoom level to avoid overlap
+    let yearLabelInterval = 5 // default: every 5 years
+    if (pxPerDay >= 0.1) yearLabelInterval = 1 // show every year
+    else if (pxPerDay >= 0.05) yearLabelInterval = 2 // every 2 years
+    else if (pxPerDay >= 0.02) yearLabelInterval = 5 // every 5 years
+
+    let monthLabelInterval = 12 // default: no months (only years)
+    if (pxPerDay >= 3) monthLabelInterval = 1 // show every month
+    else if (pxPerDay >= 2) monthLabelInterval = 2 // every 2 months
+    else if (pxPerDay >= 1) monthLabelInterval = 3 // every 3 months
+    else if (pxPerDay >= 0.3) monthLabelInterval = 6 // every 6 months
+
+    let dayLabelInterval = 14 // default: every 2 weeks
+    if (pxPerDay >= 30) dayLabelInterval = 1 // show every day
+    else if (pxPerDay >= 15) dayLabelInterval = 3 // every 3 days
+    else if (pxPerDay >= 10) dayLabelInterval = 7 // every week
+    else if (pxPerDay >= 5) dayLabelInterval = 14 // every 2 weeks
+
     for (let year = minYear; year <= maxYear; year++) {
       const yearDayIndex = dayIndexOf(year, 0, 1)
-      result.push({ dayIndex: yearDayIndex, x: dayIndexToX(yearDayIndex), kind: "year", label: String(year) })
+      result.push({
+        dayIndex: yearDayIndex,
+        x: dayIndexToX(yearDayIndex),
+        kind: "year",
+        label: year % yearLabelInterval === 0 ? String(year) : null,
+      })
 
       if (tier === "year") continue
 
@@ -194,7 +217,7 @@ export function TimelineRuler({ selected, onSelectedChange, actual = null, disab
           dayIndex: monthDayIndex,
           x: dayIndexToX(monthDayIndex),
           kind: "month",
-          label: monthFormatter.format(dateFromDayIndex(monthDayIndex)),
+          label: month % monthLabelInterval === 0 ? monthFormatter.format(dateFromDayIndex(monthDayIndex)) : null,
         })
       }
 
@@ -210,7 +233,7 @@ export function TimelineRuler({ selected, onSelectedChange, actual = null, disab
           dayIndex,
           x: dayIndexToX(dayIndex),
           kind: "day",
-          label: dayOfMonth % 7 === 1 ? String(dayOfMonth) : null,
+          label: dayLabelInterval === 1 || dayOfMonth % dayLabelInterval === 1 ? String(dayOfMonth) : null,
         })
       }
     }
@@ -308,9 +331,10 @@ export function TimelineRuler({ selected, onSelectedChange, actual = null, disab
           >
             {tick.label && (
               <span
-                className={`mb-1 -translate-x-1/2 whitespace-nowrap font-mono text-faint ${
+                className={`absolute mb-1 -translate-x-1/2 whitespace-nowrap font-mono text-faint pointer-events-none ${
                   tick.kind === "year" ? "text-xs font-bold text-body" : tick.kind === "month" ? "text-[11px]" : "text-[9px]"
                 }`}
+                style={{ bottom: "100%" }}
               >
                 {tick.label}
               </span>
