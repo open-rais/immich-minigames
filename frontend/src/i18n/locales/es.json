@@ -84,6 +84,31 @@
       "daysOff_other": "{{count}} días de diferencia"
     }
   },
+  "immichdle": {
+    "title": "Immichdle",
+    "modes": {
+      "person": "Persondle"
+    },
+    "start": {
+      "description": "Adivina a la persona misteriosa. Cada intento revela pistas comparativas - verde es coincidencia, amarillo es cerca, rojo es lejos."
+    },
+    "searchPlaceholder": "Busca una persona por nombre...",
+    "searching": "Buscando...",
+    "noResults": "No se encontraron resultados.",
+    "unknown": "?",
+    "clues": {
+      "age": "Edad",
+      "assetCount": "Fotos",
+      "firstAppearance": "Primera foto",
+      "commonNames": "Nombres en común",
+      "mlSimilarity": "Parecido facial",
+      "assetsTogether": "Juntos"
+    },
+    "finished": {
+      "won": "¡La adivinaste!",
+      "lost": "Juego terminado"
+    }
+  },
   "auth": {
     "fields": {
       "email": "Correo electrónico",

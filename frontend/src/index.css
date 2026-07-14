@@ -27,6 +27,13 @@
   --color-danger: oklch(0.55 0.22 25);
   --color-danger-hover: oklch(0.48 0.22 25);
 
+  /* Immichdle's clue tiles (games/Immichdle/ClueCell.tsx) - solid fills paired with white text,
+     unlike --color-primary/--color-danger which are foreground colors on a light surface. Generic
+     names (not Immichdle-specific) so any future game's own match/close/miss clues can reuse them. */
+  --color-clue-match: oklch(0.62 0.15 145);
+  --color-clue-close: oklch(0.72 0.16 80);
+  --color-clue-miss: oklch(0.58 0.21 25);
+
   --color-badge-bg: oklch(0.93 0.045 265);
   --color-badge-label: oklch(0.4 0.13 265);
   --color-badge-value: oklch(0.35 0.15 265);
@@ -92,6 +99,10 @@ body {
 
   --color-danger: oklch(0.72 0.17 25);
   --color-danger-hover: oklch(0.66 0.18 25);
+
+  --color-clue-match: oklch(0.55 0.14 145);
+  --color-clue-close: oklch(0.68 0.15 80);
+  --color-clue-miss: oklch(0.5 0.19 25);
 
   --color-badge-bg: oklch(0.28 0.05 265);
   --color-badge-label: oklch(0.82 0.05 265);
