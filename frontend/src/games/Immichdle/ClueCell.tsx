@@ -56,7 +56,7 @@ export function ClueCell({ clue }: { clue: ClueResult }) {
             // time component) - `new Date(...)` parses that as UTC midnight, so formatting must
             // stay in UTC too, or it silently shifts a day backward in any timezone behind UTC.
             // Same pitfall Dateguessr's timeMath.ts already guards against.
-            new Intl.DateTimeFormat(i18n.language, { year: "2-digit", month: "short", day: "numeric", timeZone: "UTC" }).format(
+            new Intl.DateTimeFormat(i18n.language, { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" }).format(
               new Date(clue.value!),
             )
           : String(clue.value)
