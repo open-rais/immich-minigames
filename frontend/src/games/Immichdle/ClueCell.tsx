@@ -58,7 +58,7 @@ export function ClueCell({ clue }: { clue: ClueResult }) {
   return (
     <div className={`relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl ${variantClass[clue.variant]}`}>
       <BackgroundGlyph background={clue.background} />
-      <span className="relative z-10 px-1 text-center font-mono text-sm leading-tight font-bold text-white md:text-base">{text}</span>
+      <span className="relative z-10 px-1 text-center font-mono text-sm leading-tight font-bold text-white md:px-2 md:text-lg">{text}</span>
     </div>
   )
 }

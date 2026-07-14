@@ -10,7 +10,7 @@ const placeholderStyle = {
 
 export function PersonAvatar({ src, alt }: { src: string; alt: string }) {
   const [failed, setFailed] = useState(false)
-  const sizingClass = "h-10 w-10 flex-none rounded-full md:h-12 md:w-12"
+  const sizingClass = "h-10 w-10 flex-none rounded-full md:h-14 md:w-14"
 
   if (failed) {
     return <div className={sizingClass} style={placeholderStyle} />

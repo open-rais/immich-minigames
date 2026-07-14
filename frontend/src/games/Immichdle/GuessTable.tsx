@@ -16,8 +16,8 @@ const CLUE_COLUMNS = [
   { key: "assetsTogether", labelKey: "immichdle.clues.assetsTogether", compute: assetsTogetherClue },
 ] as const
 
-const PERSON_COL = "w-28 flex-none md:w-36"
-const CLUE_COL = "w-20 flex-none md:w-24"
+const PERSON_COL = "w-28 flex-none md:w-56"
+const CLUE_COL = "w-20 flex-none md:w-28"
 
 // Every past guess as a table: person column on the left (face over name), then one square tile per
 // clue - column labels appear once, in the header row, rather than being repeated on every tile.
@@ -37,7 +37,7 @@ export function GuessTable({ history }: { history: ImmichdleRoundOut[] }) {
           {CLUE_COLUMNS.map((column) => (
             <div
               key={column.key}
-              className={`${CLUE_COL} flex items-center justify-center p-1 text-center text-[10px] font-bold tracking-wide text-muted uppercase md:text-[11px]`}
+              className={`${CLUE_COL} flex items-center justify-center p-1 text-center text-[10px] font-bold tracking-wide text-muted uppercase md:p-2 md:text-xs`}
             >
               {t(column.labelKey)}
             </div>
@@ -50,7 +50,7 @@ export function GuessTable({ history }: { history: ImmichdleRoundOut[] }) {
               <PersonCell round={round} />
             </div>
             {CLUE_COLUMNS.map((column) => (
-              <div key={column.key} className={`${CLUE_COL} p-1`}>
+              <div key={column.key} className={`${CLUE_COL} p-1 md:p-1.5`}>
                 <ClueCell clue={column.compute(round)} />
               </div>
             ))}
