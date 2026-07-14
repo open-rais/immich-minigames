@@ -20,7 +20,7 @@ export function AssetCarousel({ assetIds, alt }: { assetIds: string[]; alt: stri
 
   return (
     <>
-      <AssetPhoto src={assetThumbnailUrl(assetIds[index])} alt={alt} />
+      <AssetPhoto key={assetIds[index]} src={assetThumbnailUrl(assetIds[index])} alt={alt} />
       {showArrows && (
         <>
           <button
