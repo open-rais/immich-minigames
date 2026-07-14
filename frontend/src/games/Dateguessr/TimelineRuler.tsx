@@ -22,8 +22,12 @@ const REVEAL_ANIMATION_MS = 500
 // fitted - mirrors MapPicker.tsx's fitBounds(..., { padding: 48 }).
 const REVEAL_FIT_FRACTION = 0.7
 
-const GUESS_MARKER_COLOR = "#3055b6" // --color-primary, matches MapPicker's GUESS_MARKER_COLOR
-const ACTUAL_MARKER_COLOR = "#e11d48" // matches MapPicker's ACTUAL_MARKER_COLOR
+// Plain DOM (unlike MapPicker.tsx's canvas-rendered MapLibre markers), so these can reference the
+// shared CSS custom properties directly instead of computing per-theme hex in JS - `.dark` on
+// <html> resolves the guess marker's color automatically. Matches MapPicker's
+// GUESS_MARKER_COLOR/ACTUAL_MARKER_COLOR.
+const GUESS_MARKER_COLOR = "var(--color-primary)"
+const ACTUAL_MARKER_COLOR = "#e11d48"
 
 // The ruler is a full-width bar pinned to the bottom of the screen. Its height and the matching
 // bottom offset for controls that sit just above it (DateguessrGame's confirm button / result card)
@@ -320,7 +324,7 @@ export function TimelineRuler({ selected, onSelectedChange, actual = null, disab
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
-      className={`fixed bottom-0 left-0 right-0 z-20 ${RULER_HEIGHT_CLASS} touch-none overflow-hidden border-t border-line bg-white shadow-card select-none`}
+      className={`fixed bottom-0 left-0 right-0 z-20 ${RULER_HEIGHT_CLASS} touch-none overflow-hidden border-t border-line bg-surface shadow-card select-none`}
     >
       <div className="relative h-full w-full">
         {ticks.map((tick) => (

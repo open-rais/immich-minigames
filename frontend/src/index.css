@@ -63,8 +63,10 @@ body {
  * indigo - a dark indigo has poor contrast against a near-black background). Un-layered so it
  * wins over Tailwind's own `@layer theme` output regardless of selector specificity - no `dark:`
  * variants needed anywhere else in the app, every utility already resolves through these
- * variables. `--color-map-*` is deliberately not overridden - Geoguessr's map and Dateguessr's
- * ruler stay light-only for now, see docs/TODO/ROADMAP.md's "Limitaciones conocidas".
+ * variables. `--color-map-*` is also overridden here for Geoguessr's map (see
+ * games/Geoguessr/mapStyle.ts, whose MapLibre style JSON needs literal hex, not var(), so its own
+ * dark constants are kept in sync with these by hand) - Dateguessr's ruler consumes these same
+ * tokens directly via var() in its inline styles, no separate sync needed there.
  */
 .dark {
   --color-app-bg: oklch(0.16 0.006 260);
@@ -90,6 +92,10 @@ body {
   --color-count-bg: oklch(0.26 0.01 260);
   --color-placeholder-a: oklch(0.22 0.008 260);
   --color-placeholder-b: oklch(0.26 0.008 260);
+
+  --color-map-bg: oklch(0.16 0.008 265);
+  --color-map-water: oklch(0.3 0.035 255);
+  --color-map-land: oklch(0.24 0.014 262);
 
   --shadow-card: 0 8px 24px oklch(0 0 0 / 0.45);
 }

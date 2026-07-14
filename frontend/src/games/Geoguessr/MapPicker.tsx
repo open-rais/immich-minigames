@@ -4,14 +4,19 @@ import type { MapMouseEvent } from "maplibre-gl"
 import { GeoJSONSource, LngLatBounds, MapLibreMap, Marker } from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css"
 
-import { geoguessrMapStyle } from "./mapStyle"
+import { useTheme } from "../../theme/useTheme"
+import { buildGeoguessrMapStyle } from "./mapStyle"
 
 // Matches Tailwind's `md:` breakpoint - same convention MoreOrLessGame.tsx uses to distinguish
 // desktop/mobile behavior at interaction time rather than via separate components.
 const MOBILE_BREAKPOINT_QUERY = "(min-width: 768px)"
 
-const GUESS_MARKER_COLOR = "#3055b6" // --color-primary
-const ACTUAL_MARKER_COLOR = "#e11d48" // tailwind rose-600 - matches CandidateCard's existing "incorrect/highlight" accent
+// MapLibre's Marker needs a literal color string (no CSS var()), so the guess marker tracks
+// --color-primary's light/dark values by hand - see mapStyle.ts's LIGHT/DARK palettes.
+const GUESS_MARKER_COLOR = { light: "#3055b6", dark: "#a5c9ff" }
+// tailwind rose-600, matches CandidateCard's existing "incorrect/highlight" accent - kept
+// identical in both themes (already proven legible on a dark surface there), no dark variant.
+const ACTUAL_MARKER_COLOR = "#e11d48"
 const REVEAL_LINE_SOURCE_ID = "geoguessr-reveal-line"
 
 type LatLng = { lat: number; lng: number }
@@ -60,6 +65,7 @@ function removeRevealLine(map: MapLibreMap) {
 }
 
 export function MapPicker({ pin, onPinChange, actual = null, disabled = false, forceExpanded = false }: MapPickerProps) {
+  const { resolved } = useTheme()
   const containerRef = useRef<HTMLDivElement>(null)
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
@@ -83,7 +89,7 @@ export function MapPicker({ pin, onPinChange, actual = null, disabled = false, f
 
     const map = new MapLibreMap({
       container: mapContainerRef.current,
-      style: geoguessrMapStyle,
+      style: buildGeoguessrMapStyle(resolved),
       center: [0, 20],
       zoom: 1.2,
       // Hidden per product decision - the OpenStreetMap attribution link made it hard to tap the
@@ -108,10 +114,19 @@ export function MapPicker({ pin, onPinChange, actual = null, disabled = false, f
     return () => {
       map.remove()
       mapRef.current = null
+      // Markers belong to the removed map's DOM, not just its style - drop the refs too so the
+      // effects below recreate them (with the right theme's color) against the next map instead
+      // of reusing a stale, already-colored instance.
+      guessMarkerRef.current = null
+      actualMarkerRef.current = null
     }
-  }, [])
+    // `resolved` triggers a full remount on theme change (camera/zoom reset is accepted) since
+    // MapLibre's style JSON needs literal colors, not CSS var() - see mapStyle.ts.
+  }, [resolved])
 
   // The collapsed corner map shouldn't trap page scroll/pinch - only interactive once expanded.
+  // Also re-applied on `resolved` - a freshly remounted map defaults to MapLibre's normal
+  // interactivity regardless of the current collapsed/expanded state.
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
@@ -126,7 +141,7 @@ export function MapPicker({ pin, onPinChange, actual = null, disabled = false, f
       map.touchZoomRotate.disable()
       map.doubleClickZoom.disable()
     }
-  }, [expanded])
+  }, [expanded, resolved])
 
   useEffect(() => {
     const map = mapRef.current
@@ -137,10 +152,10 @@ export function MapPicker({ pin, onPinChange, actual = null, disabled = false, f
       return
     }
     if (!guessMarkerRef.current) {
-      guessMarkerRef.current = new Marker({ color: GUESS_MARKER_COLOR })
+      guessMarkerRef.current = new Marker({ color: GUESS_MARKER_COLOR[resolved] })
     }
     guessMarkerRef.current.setLngLat([pin.lng, pin.lat]).addTo(map)
-  }, [pin])
+  }, [pin, resolved])
 
   useEffect(() => {
     const map = mapRef.current
@@ -172,7 +187,7 @@ export function MapPicker({ pin, onPinChange, actual = null, disabled = false, f
 
     if (map.isStyleLoaded()) apply()
     else map.once("load", apply)
-  }, [actual, pin])
+  }, [actual, pin, resolved])
 
   function handleMouseEnter() {
     if (isDesktop()) setInternalExpanded(true)
