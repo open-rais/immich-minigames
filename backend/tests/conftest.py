@@ -12,9 +12,10 @@ import pytest
 from fastapi.testclient import TestClient
 
 from main import app
-from persistence.games import get_engine as get_own_engine
-from persistence.games import get_session_factory, reset_db
+from persistence.base import get_engine as get_own_engine
+from persistence.base import get_session_factory, reset_db
 from persistence.immich_tables import get_engine as get_immich_engine
+from services.auth_service import AuthService
 from services.games_service import GamesService
 from services.immich_service import ImmichService
 
@@ -47,6 +48,11 @@ def db_session():
 @pytest.fixture
 def games_service(db_session, immich_service):
     return GamesService(db_session, immich_service)
+
+
+@pytest.fixture
+def auth_service(db_session):
+    return AuthService(db_session)
 
 
 @pytest.fixture

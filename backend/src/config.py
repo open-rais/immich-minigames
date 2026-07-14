@@ -26,6 +26,12 @@ class Settings(BaseSettings):
     immich_api_key: str
     immich_server_url: str = "http://localhost:2283"
 
+    # Signs/verifies this app's own login JWT (services/auth_service.py) - unrelated to Immich.
+    # Generate with `openssl rand -hex 32`. Rotating it invalidates every existing session (no
+    # server-side session table to selectively revoke, see docs/ARCHITECTURE/BACKEND.md).
+    jwt_secret: str
+    jwt_expire_days: int = 30
+
     @property
     def db_url(self) -> str:
         return (
