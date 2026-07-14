@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom"
 import { createGame, getGame, playRound } from "../../api/games"
 import { GameType, Mode } from "../../api/types"
 import type { ImmichdleRoundOut, RoundOut } from "../../api/types"
+import type { GameComponentProps } from "../catalog"
 import { Button } from "../shared/Button"
 import { ErrorScreen, IdleScreen } from "../shared/GameScreens"
 import { GuardedBackButton } from "../shared/GuardedBackButton"
@@ -47,7 +48,7 @@ function FinishedScreen({ game, onPlayAgain, onBack, busy }: { game: GameState; 
   )
 }
 
-export function ImmichdleGame() {
+export function ImmichdleGame({ coverUrl }: GameComponentProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const backToMenu = () => navigate("/")
@@ -127,6 +128,7 @@ export function ImmichdleGame() {
         title={t("immichdle.title")}
         modeTitle={t("immichdle.modes.person")}
         description={t("immichdle.start.description")}
+        coverUrl={coverUrl}
         onStart={startGame}
         onBack={backToMenu}
         busy={busy}

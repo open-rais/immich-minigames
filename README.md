@@ -1,3 +1,5 @@
+<p align="center"><img src="frontend/public/logo.svg" alt="" width="140" height="140" /></p>
+
 # Immich Minigames
 
 Memory minigames powered by the metadata already in your [Immich](https://immich.app) library.

@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom"
 import { playRound } from "../../api/games"
 import { GameType, Mode } from "../../api/types"
 import type { GeoguessrRoundOut, RoundOut } from "../../api/types"
+import type { GameComponentProps } from "../catalog"
 import { AssetCarousel } from "../shared/AssetCarousel"
 import { Button } from "../shared/Button"
 import { ErrorScreen, FinishedScreen, IdleScreen } from "../shared/GameScreens"
@@ -30,7 +31,7 @@ function isGeoguessrRound(round: RoundOut): round is GeoguessrRoundOut {
 
 type Pin = { lat: number; lng: number }
 
-export function GeoguessrGame() {
+export function GeoguessrGame({ coverUrl }: GameComponentProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const backToMenu = () => navigate("/")
@@ -54,6 +55,7 @@ export function GeoguessrGame() {
         title={t("geoguessr.title")}
         modeTitle={t("geoguessr.modes.distanceBetweenGuess")}
         description={t("geoguessr.start.description")}
+        coverUrl={coverUrl}
         onStart={startGame}
         onBack={backToMenu}
         busy={busy}
