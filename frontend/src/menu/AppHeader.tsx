@@ -19,7 +19,10 @@ export function AppHeader() {
   return (
     <header className="sticky top-0 z-10 border-b border-line bg-surface pt-[env(safe-area-inset-top)]">
       <div className="flex h-16 items-center justify-between px-6 md:px-10">
-        <span className="text-xl font-bold text-ink">{t("appHeader.title")}</span>
+        <div className="flex items-center gap-2">
+          <img src="/logo.svg" alt="" className="h-12 w-12" />
+          <span className="text-xl font-bold text-ink">{t("appHeader.title")}</span>
+        </div>
         <UserMenu />
       </div>
     </header>
