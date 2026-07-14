@@ -24,6 +24,8 @@
     "roundOf": "Round {{current}} of {{total}}",
     "points": "+{{score}} pts",
     "playAgain": "Play again",
+    "previousPhoto": "Previous photo",
+    "nextPhoto": "Next photo",
     "finished": {
       "title": "Game over",
       "finalScore": "Final score: {{score}}"

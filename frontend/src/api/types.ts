@@ -46,7 +46,8 @@ export interface GeoguessrRoundOut {
   game_type: typeof GameType.Geoguessr
   id: string
   round_index: number
-  asset_id: string
+  // Main ("answer") asset first, then up to 4 decorative extras.
+  asset_ids: string[]
   guess_latitude: number | null
   guess_longitude: number | null
   // Redacted (null) until this round has been answered.
@@ -60,7 +61,8 @@ export interface DateguessrRoundOut {
   game_type: typeof GameType.Dateguessr
   id: string
   round_index: number
-  asset_id: string
+  // Main ("answer") asset first, then up to 4 decorative extras.
+  asset_ids: string[]
   guess_date: string | null
   // Redacted (null) until this round has been answered.
   actual_date: string | null
