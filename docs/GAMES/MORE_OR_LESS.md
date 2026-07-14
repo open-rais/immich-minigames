@@ -1,43 +1,43 @@
 # MoreOrLess
 
-## Inspiración
+**Status:** ✓ Fully playable
 
-El clásico [More Or Less](https://moreorless.io/): comparar si un valor desconocido es mayor o menor
-que uno ya conocido. Es el mismo mecanismo detrás de segmentos como "adivina el precio" en programas
-de TV.
+## Inspiration
 
-## Cómo se juega
+The classic [More Or Less](https://moreorless.io/): compare whether an unknown value is greater or
+lesser than a known one. It's the same mechanic behind "guess the price" segments on TV game shows.
 
-Se muestra un candidato A junto con su número real (ej: "la persona A tiene 107 fotos"). Se muestra
-un candidato B, sin su número. El jugador debe decir si B tiene **más** o **menos** que A.
+## How to Play
 
-- Si acierta: B pasa a ser la nueva referencia (con su número ahora visible), se elige un candidato
-  C al azar y se repite la pregunta.
-- Si falla: la partida termina.
-- **Empate** (A y B tienen exactamente el mismo número): no cuenta como fallo sin importar qué haya
-  respondido el jugador - siempre se trata como acierto. Se intenta evitar el empate al elegir
-  candidato (ver `_pick_non_tied_candidate` en `more_or_less.py`), pero si igual ocurre (ej. muchas
-  personas con el mismo conteo), no debe terminar la partida injustamente.
-- La partida es **infinita**: los candidatos sí se pueden repetir (no hay una cantidad fija de
-  personas en la biblioteca, así que el juego no puede depender de "no repetir nunca"). Lo que se
-  evita es repetir a alguien mostrado muy recientemente - se recuerdan las últimas
-  `_RECENT_EXCLUDE_WINDOW` personas (10 al momento de escribir esto) y esas no se vuelven a elegir
-  hasta que "se les pierda el rastro" (salgan de esa ventana).
+Person A is shown along with their real count (e.g., "Person A has 107 photos"). Then person B is shown
+without their count. The player must guess whether B has **more** or **fewer** than A.
 
-## Puntaje y fin de partida
+- **Correct guess:** B becomes the new reference (with their count now visible), a random candidate C
+  is chosen, and the question repeats.
+- **Wrong guess:** the game ends.
+- **Tie** (A and B have exactly the same count): regardless of what the player answered, it's treated
+  as a correct guess and doesn't end the game. Ties are avoided when possible when picking candidates
+  (see `_pick_non_tied_candidate` in `more_or_less.py`), but if one does occur (e.g., many people with
+  the same asset count), it shouldn't unfairly end the game.
+- **Infinite game:** candidates can repeat. There's no fixed pool of people, so the game can't rely on
+  "never repeat." What's avoided is repeating someone shown very recently—the last `_RECENT_EXCLUDE_WINDOW`
+  people (10 at the time of writing) are tracked and won't be picked again until they "fall off the radar"
+  (exit that window).
 
-- Cada ronda acertada (o empatada) vale 1 punto; el puntaje total de la partida es la cantidad de
-  aciertos seguidos (la racha).
-- `has_next_round()`: si acertó (o empató), hay ronda nueva; si falló, la partida termina. No
-  termina por quedarse sin candidatos nuevos - ver la nota de "partida infinita" arriba.
+## Scoring & Game End
 
-## Modos
+- Each correct (or tied) round is worth 1 point; the game's total score is the count of consecutive
+  correct guesses (the streak).
+- `has_next_round()`: if the guess was correct (or tied), a new round is created; if it was wrong,
+  the game ends. The game doesn't end by running out of new candidates—see "infinite game" note above.
 
-| Modo | Qué se compara | Prioridad |
+## Modes
+
+| Mode | What's compared | Priority |
 |---|---|---|
-| `personAssets` | Cantidad de fotos/videos de una persona | Inicial |
-| `albumAssets` | Cantidad de fotos/videos de un álbum | Futuro |
-| `assetDate` | Fecha en que se tomó una foto | Futuro |
-| `personBirthDate` | Fecha de cumpleaños de una persona | Futuro |
+| `personAssets` | Photo/video count for a person | Implemented |
+| `albumAssets` | Photo/video count for an album | Future |
+| `assetDate` | Date a photo was taken | Future |
+| `personBirthDate` | Person's birthday | Future |
 
-Ver [docs/TODO/ROADMAP.md](../TODO/ROADMAP.md) para cuándo se implementa cada modo futuro.
+See [docs/TODO/ROADMAP.md](../TODO/ROADMAP.md) for when future modes are planned.

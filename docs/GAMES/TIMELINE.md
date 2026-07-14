@@ -1,34 +1,34 @@
 # Timeline
 
-## Inspiración
+**Status:** ✗ Design stub (not yet implemented)
 
-El juego de mesa [Timeline](https://www.zygomatic-games.com/en/game/timeline-classic/): se van
-insertando cartas de eventos en el orden cronológico correcto respecto a las cartas ya puestas en la
-mesa.
+## Inspiration
 
-## Cómo se juega
+The board game [Timeline](https://www.zygomatic-games.com/en/game/timeline-classic/): event cards are
+inserted in the correct chronological order relative to cards already on the table.
 
-A diferencia de Dateguessr (que ubica una foto en un punto absoluto de una línea de tiempo), acá lo
-que importa es el orden **relativo** entre fotos. Se entrega una foto inicial ya ubicada, luego se
-entrega otra foto y el jugador debe insertarla en la posición correcta respecto a las fotos que ya
-están en la línea de tiempo.
+## How to Play
 
-- **arcade** (modo inicial): se parte con una foto, se pasa otra; si se ubica bien, se pasa otra más
-  (y así sucesivamente); al fallar, termina la partida.
-- **Level** (modo futuro): se entregan N fotos de una vez y hay que ordenarlas todas correctamente.
+Unlike Dateguessr (which places a photo at an absolute point on a timeline), here what matters is the
+**relative** order of photos. A starting photo is given already placed, then another photo is given and
+the player must insert it in the correct position relative to photos already on the timeline.
 
-## Puntaje y fin de partida
+- **arcade** (initial mode): start with one photo, get another; if placed correctly, get another (and
+  so on); if wrong, the game ends.
+- **Level** (future mode): N photos are given all at once and must all be ordered correctly.
 
-Pendiente de definir con precisión - todavía no hay docstring de `TimelineGame`/`TimelineRound` en
-`games/timeline.py`. Lo que sí está claro del modo arcade: acertar continúa la racha, fallar termina
-la partida (mismo patrón que MoreOrLess). La fórmula exacta de puntaje (¿puntos fijos por acierto?
-¿depende de cuántas fotos ya había en la línea?) queda por decidir antes de implementar este juego.
+## Scoring & Game End
 
-## Modos
+To be defined precisely—the `TimelineGame`/`TimelineRound` docstring in `games/timeline.py` is not yet
+written. What's clear about arcade mode: correct placement continues the streak, wrong placement ends
+the game (same pattern as MoreOrLess). The exact scoring formula (fixed points per correct placement?
+varies with how many photos are already placed?) will be decided before implementation.
 
-| Modo | Prioridad |
+## Modes
+
+| Mode | Priority |
 |---|---|
-| `arcade` | Inicial |
-| `Level` | Futuro, ver roadmap |
+| `arcade` | Planned |
+| `Level` | Future (see roadmap) |
 
-Ver [docs/TODO/ROADMAP.md](../TODO/ROADMAP.md) para cuándo se implementa el modo `Level`.
+See [docs/TODO/ROADMAP.md](../TODO/ROADMAP.md) for when modes are planned.

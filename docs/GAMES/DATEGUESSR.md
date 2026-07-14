@@ -1,33 +1,32 @@
 # Dateguessr
 
-## Inspiración
+**Status:** ✓ Fully playable
 
-La misma mecánica de Geoguessr, pero cambiando "dónde" por "cuándo": en vez de un mapa, se usa una
-línea de tiempo.
+## Inspiration
 
-## Cómo se juega
+The same mechanic as Geoguessr, but swapping "where" for "when": instead of a map, a timeline is used.
 
-Se muestra una foto y el jugador debe ubicarla en una línea de tiempo con forma de cinta métrica:
-líneas grandes marcan años, medianas marcan meses, chicas marcan días. Haciendo scroll se acerca o
-aleja (zoom) para poder ubicar el punto con precisión.
+## How to Play
 
-Se repite 5 veces, con fotos de fechas distintas cada vez, y se suma el puntaje de las 5 rondas.
+A photo is shown and the player must place it on a timeline that looks like a measuring tape: large
+lines mark years, medium lines mark months, small lines mark days. Scrolling zooms in or out so the
+exact point can be located precisely.
 
-## Puntaje y fin de partida
+This repeats 5 times with photos from different dates each time, and scores from all 5 rounds are summed.
 
-- Al marcar, se mide la distancia entre la fecha real y la marcada.
-- Acertar la fecha exacta da el máximo: 5000 puntos. Más allá de eso, el puntaje va bajando a
-  medida que la fecha marcada se aleja de la real (misma lógica de decaimiento que Geoguessr, sin
-  ecuación exacta definida todavía).
-- `has_next_round()`: hay ronda nueva mientras no se haya llegado a la 5ta ronda; en la 5ta, la
-  partida termina.
+## Scoring & Game End
 
-## Modos
+- When the player marks a date, the distance between the true date and their guess is measured.
+- Guessing the exact date gives the maximum: 5000 points. Beyond that, the score decreases as the
+  guessed date moves away from the true date (same decay logic as Geoguessr; exact equation not yet finalized).
+- `has_next_round()`: a new round is created until round 5 is reached; on the 5th round, the game ends.
 
-| Modo | Qué se pide adivinar | Prioridad |
+## Modes
+
+| Mode | What to guess | Priority |
 |---|---|---|
-| `daysToDate` | Fecha exacta (día) en la línea de tiempo | Inicial |
-| `years` | Solo el año | Futuro, última prioridad |
-| `months` | Solo el mes | Futuro, última prioridad |
+| `daysToDate` | Exact date (day) on the timeline | Implemented |
+| `years` | Year only | Future (lowest priority) |
+| `months` | Month only | Future (lowest priority) |
 
-Ver [docs/TODO/ROADMAP.md](../TODO/ROADMAP.md) para cuándo se implementa cada modo futuro.
+See [docs/TODO/ROADMAP.md](../TODO/ROADMAP.md) for when future modes are planned.

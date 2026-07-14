@@ -1,33 +1,31 @@
 # Geoguessr
 
-## Inspiración
+**Status:** ✓ Fully playable
 
-El juego online [GeoGuessr](https://www.geoguessr.com/): a partir de una imagen, adivinar en un
-mapa dónde fue tomada.
+## Inspiration
 
-## Cómo se juega
+The online game [GeoGuessr](https://www.geoguessr.com/): given a photo, guess where on a map it was taken.
 
-Se muestran entre 1 y 5 fotos que comparten ubicación (puede haber una diferencia menor de
-distancia entre ellas). El jugador marca en un mapa dónde cree que fueron tomadas.
+## How to Play
 
-Se repite 5 veces, con fotos de ubicaciones distintas cada vez, y se suma el puntaje de las 5
-rondas.
+Between 1 and 5 photos that share a location (with minor distance variations between them) are shown.
+The player marks on a map where they think the photos were taken.
 
-## Puntaje y fin de partida
+This repeats 5 times with different locations each time, and scores from all 5 rounds are summed.
 
-- Al marcar, se mide la distancia entre el lugar real y el marcado.
-- Acertar dentro de 1 km da el máximo: 5000 puntos. Más allá de eso, el puntaje va bajando a medida
-  que la distancia marcada se aleja del lugar real (fórmula de decaimiento, sin ecuación exacta
-  definida todavía).
-- `has_next_round()`: hay ronda nueva mientras no se haya llegado a la 5ta ronda; en la 5ta, la
-  partida termina.
+## Scoring & Game End
 
-## Modos
+- When the player marks a location, the distance between the true location and their guess is measured.
+- Guessing within 1 km gives the maximum: 5000 points. Beyond that, the score decreases as the guessed
+  distance moves away from the true location (decay formula; exact equation not yet finalized).
+- `has_next_round()`: a new round is created until round 5 is reached; on the 5th round, the game ends.
 
-| Modo | Qué se pide adivinar | Prioridad |
+## Modes
+
+| Mode | What to guess | Priority |
 |---|---|---|
-| `distanceBetweenGuess` | Punto exacto en el mapa (puntaje por distancia) | Inicial |
-| `country` | Solo el país | Futuro, última prioridad |
-| `city` | Solo la ciudad | Futuro, última prioridad |
+| `distanceBetweenGuess` | Exact point on the map (score by distance) | Implemented |
+| `country` | Country only | Future (lowest priority) |
+| `city` | City only | Future (lowest priority) |
 
-Ver [docs/TODO/ROADMAP.md](../TODO/ROADMAP.md) para cuándo se implementa cada modo futuro.
+See [docs/TODO/ROADMAP.md](../TODO/ROADMAP.md) for when future modes are planned.

@@ -1,49 +1,45 @@
 # Immichdle
 
-## Inspiración
+**Status:** ✗ Design stub (not yet implemented)
 
-Los juegos estilo [Wordle](https://www.nytimes.com/games/wordle/) ("*dle"), en particular su
-variante "adivina al personaje/persona" (persondle): hay un objetivo oculto y cada intento revela
-pistas comparativas que van acotando la respuesta.
+## Inspiration
 
-## Cómo se juega
+Wordle-style games ([Wordle](https://www.nytimes.com/games/wordle/)), particularly the "guess the person"
+variant (persondle): there's a hidden target and each attempt reveals comparative clues that narrow down the answer.
 
-Se elige al azar una persona incógnita. El jugador va probando nombres de otras personas como
-intento. Cada intento entrega pistas comparativas contra el incógnito:
+## How to Play
 
-- **Age**: mayor, menor, igual o desconocido.
-- **AssetCount**: mayor, menor o igual cantidad de fotos.
-- **FirstApparicion**: si el primer asset de la persona es antes, después o el mismo que el del
-  incógnito.
-- **CommonNames**: separando el nombre por espacios (`split(" ")`), cuántos nombres/apellidos tiene
-  en común con el incógnito.
-- **MLSimilarity**: similitud de caras según Immich-ML.
-- **AssetTogether**: cantidad de fotos donde salen juntos el incógnito y el candidato probado.
+A random person is secretly chosen. The player tries names of other people as guesses. Each guess reveals
+comparative clues about the mystery person:
 
-Cada 5 intentos se revela además una pista extra (en este orden): cantidad de nombres del
-incógnito, cantidad de letras de cada nombre, iniciales de cada nombre, y finalmente su thumbnail.
-**La versión inicial sale sin este sistema de pistas reveladas por intentos** - todas las pistas
-comparativas de arriba están desde el principio, y las reveladas por intentos quedan para después.
+- **Age**: older, younger, same age, or unknown.
+- **AssetCount**: more, fewer, or equal number of photos.
+- **FirstAppearance**: whether this person's first asset is before, after, or the same as the mystery person's.
+- **CommonNames**: splitting the name by spaces, how many first/last names they share with the mystery person.
+- **MLSimilarity**: face similarity according to Immich-ML.
+- **AssetsTogether**: how many photos include both the mystery person and this guess.
 
-## Puntaje y fin de partida
+Every 5 guesses reveals an extra clue (in order): the number of names, the letter count of each name,
+initials of each name, and finally their thumbnail.
+**The initial version launches without the progressive clue reveal system**—all comparative clues above
+are shown from the start; progressive reveals are a future feature.
 
-- El puntaje inicial es 100. Este valor es el correcto **mientras no exista el sistema de pistas
-  reveladas por intentos** (ver sección Modos - ese sistema es futuro, roadmap ítem 11). Cuando se
-  implemente ese sistema de pistas, el puntaje inicial debe subir a ~200, para que el costo por
-  intento fallido/pista revelada se mantenga proporcional sin cambiar el resto de las reglas. Hasta
-  entonces, 100 es la fuente de verdad.
-- Cada intento fallido resta 5 puntos; cada pista extra revelada (de las que se agregan después)
-  resta 10 puntos.
-- El puntaje nunca baja de 0: si un descuento lo dejaría negativo, se floorea en 0.
-- `has_next_round()`: si el intento fue correcto, la partida termina (ganada); si el puntaje
-  (ya floreado en 0) llega a 0, la partida termina (perdida); en cualquier otro caso, hay una ronda
-  nueva.
+## Scoring & Game End
 
-## Modos
+- Starting score is 100. This is correct **while the progressive clue system doesn't exist** (see Modes
+  section—that's future work, roadmap item 11). When implemented, starting score should increase to ~200
+  so the cost per wrong guess/revealed clue stays proportional without changing other rules. Until then,
+  100 is the source of truth.
+- Each wrong guess subtracts 5 points; each progressively revealed clue (future additions) subtracts 10 points.
+- Score never goes below 0: if a deduction would make it negative, it's floored at 0.
+- `has_next_round()`: if the guess was correct, the game ends (won); if the score (floored at 0) reaches 0,
+  the game ends (lost); otherwise, a new round is created.
 
-| Modo | Sobre qué se juega | Prioridad |
+## Modes
+
+| Mode | What to guess | Priority |
 |---|---|---|
-| `person` | Personas (pistas de arriba) | Inicial |
-| `album` (albumdle) | Álbumes - pistas: FirstAssetDate, AssetCount, ThumbMLSimilarity, CommonAssets, CommonNames, Duration (diferencia entre primera y última fecha) | Futuro |
+| `person` | People (comparative clues above) | Planned |
+| `album` (albumdle) | Albums—clues: FirstAssetDate, AssetCount, ThumbMLSimilarity, CommonAssets, CommonNames, Duration (span between first and last asset) | Future |
 
-Ver [docs/TODO/ROADMAP.md](../TODO/ROADMAP.md) para cuándo se implementa el modo `album`.
+See [docs/TODO/ROADMAP.md](../TODO/ROADMAP.md) for when modes are planned.

@@ -1,60 +1,54 @@
-# Minijuegos: visión general
+# Games Overview
 
-Immich Minigames toma la metadata que ya vive en tu instancia de Immich (personas, álbumes, fechas,
-ubicaciones, similitud de caras via Immich-ML) y la convierte en minijuegos de memoria/trivia sobre
-tu propia biblioteca de fotos. La gracia es doble: entretiene, y de paso motiva a mantener la
-metadata de Immich bien puesta (nombres, cumpleaños, ubicaciones) porque de eso salen los juegos.
+Immich Minigames transforms metadata already in your Immich instance (people, albums, dates, locations,
+face similarity via Immich-ML) into memory/trivia minigames about your own photo library. Double benefit:
+it's entertaining, and it rewards keeping your Immich metadata organized (names, birthdays, locations)
+because that's what powers the games.
 
-Todos los juegos comparten la misma base técnica (ver más abajo) y solo difieren en dos cosas: qué
-dato de Immich usan como pregunta, y cómo calculan el puntaje. Esto hace que agregar un juego nuevo
-sea, en teoría, agregar solo esas dos reglas - el resto (persistencia, loop de rondas, API genérica)
-ya está resuelto por la base compartida.
+All games share the same technical foundation (see below) and differ only in two ways: which Immich
+metadata they use as the question, and how they calculate the score. This means adding a new game is
+theoretically just adding those two rules—everything else (persistence, round loop, generic API) is
+already handled by the shared base.
 
-## Base compartida: `Game` y `Round`
+## Shared Foundation: `Game` and `Round`
 
-Cada partida jugada es un **`Game`**: tiene un id, un owner (quién juega), un puntaje acumulado, la
-lista de `Round`s jugados hasta ahora, y una bandera de si ya terminó (`finished`).
+Each played game is a **`Game`**: it has an id, an owner (who's playing), an accumulated score, a list
+of `Round`s played so far, and a flag for whether it's finished (`finished`).
 
-Cada pregunta individual dentro de una partida es un **`Round`**: tiene un id, referencia a su
-`Game`, un índice (qué ronda es), la respuesta correcta contra la que se compara el guess del
-jugador, el guess que efectivamente ingresó, y las entidades mostradas (assets y/o personas según
-el juego) - estas últimas dos se guardan para poder reconstruir la ronda después (vista futura "Ver
-rounds", y la futura feature de reportar metadata incorrecta).
+Each individual question within a game is a **`Round`**: it has an id, a reference to its `Game`, an
+index (which round number), the correct answer to compare against the player's guess, the actual guess
+the player entered, and the entities shown (assets and/or people depending on the game)—the latter two
+are saved so the round can be reconstructed later (for the future "View rounds" feature and the future
+ability to report incorrect metadata).
 
-El loop de juego es siempre el mismo, sin importar cuál minijuego sea:
+The game loop is always the same, regardless of which minigame it is:
 
-1. Se le muestra al jugador la pregunta del round actual (definida por la respuesta correcta que
-   guarda el `Round`).
-2. El jugador envía su guess.
-3. El `Round` calcula el *delta* de puntaje de esa jugada (`calculate_score()`) - puede ser positivo
-   o negativo, y esta regla es específica de cada juego (ver el doc de cada uno).
-4. El `Game` aplica ese delta sobre su puntaje acumulado.
-5. El `Game` decide si corresponde crear un nuevo round (`has_next_round()`) - esta regla también es
-   específica de cada juego (por ejemplo: "hasta la 5ta ronda", "hasta que se falle una vez", "hasta
-   adivinar o quedarse sin puntaje"). Si se crea un nuevo round, este conoce las rondas anteriores
-   para no repetir candidatos dentro de la misma partida.
-6. Si no hay nuevo round, el `Game` queda `finished`.
+1. The player is shown the current round's question (defined by the correct answer the `Round` stores).
+2. The player sends their guess.
+3. The `Round` calculates the score delta for that play (`calculate_score()`)—can be positive or negative,
+   and this rule is specific to each game (see each game's doc).
+4. The `Game` applies that delta to its accumulated score.
+5. The `Game` decides whether to create a new round (`has_next_round()`)—this rule is also game-specific
+   (e.g., "until round 5", "until one wrong guess", "until you guess correctly or run out of points").
+   If a new round is created, it knows about previous rounds to avoid repeating candidates within the
+   same game. If not, the `Game` is marked `finished`.
+6. If there's no new round, the `Game` is `finished`.
 
-Gracias a este diseño (patrón Template Method), cada juego nuevo solo necesita responder dos
-preguntas - "¿cuándo termina esta partida?" y "¿cuántos puntos vale este guess?" - todo lo demás
-(API, persistencia, orquestación) es compartido.
+Thanks to this design (Template Method pattern), each new game only needs to answer two questions—
+"when does this game end?" and "how many points is this guess worth?"—everything else (API, persistence,
+orchestration) is shared.
 
-> Nota de idioma: los nombres de clases/métodos/atributos del código son en inglés (`finished`,
-> `has_next_round()`, `calculate_score()`, etc., ver `games/base.py`) - las descripciones en
-> español de este doc y de cada juego son a propósito (diseño/brainstorming en el idioma natal del
-> dueño del proyecto), no una traducción pendiente.
+## Game Catalog
 
-## Catálogo de juegos
+| Game | Inspiration | Core mechanic | Status | Doc |
+|---|---|---|---|---|
+| MoreOrLess | Classic [More Or Less](https://moreorless.io/) | Compare if candidate B has more/fewer of a stat than A; wrong guess ends game | ✓ Playable | [MORE_OR_LESS.md](./MORE_OR_LESS.md) |
+| Geoguessr | [GeoGuessr](https://www.geoguessr.com/) | Mark location on map where photo was taken; score decays with distance | ✓ Playable | [GEOGUESSR.md](./GEOGUESSR.md) |
+| Dateguessr | Geoguessr, but with dates | Mark date on timeline when photo was taken; score decays with time difference | ✓ Playable | [DATEGUESSR.md](./DATEGUESSR.md) |
+| Immichdle | Wordle-style games ([Wordle](https://www.nytimes.com/games/wordle/)) | Guess mystery person from comparative clues; fewer points per wrong guess | ✗ Design stub | [IMMICHDLE.md](./IMMICHDLE.md) |
+| Timeline | Board game [Timeline](https://www.zygomatic-games.com/en/game/timeline-classic/) | Insert photos in correct chronological order relative to already-placed ones | ✗ Design stub | [TIMELINE.md](./TIMELINE.md) |
+| Who'sThatPerson | ["Who's That Pokémon?"](https://pokemon.fandom.com/wiki/Who's_That_Pok%C3%A9mon%3F) | Guess person's name when their face is hidden in a photo | ✗ Design stub | [WHOS_THAT_PERSON.md](./WHOS_THAT_PERSON.md) |
 
-| Juego | Inspiración | Mecánica central | Doc |
-|---|---|---|---|
-| MoreOrLess | El clásico "más o menos" (comparar si algo es mayor o menor, al estilo de los segmentos de "adivina el precio") | Comparar un dato de un candidato B contra un candidato A ya revelado; fallar termina el juego | [MORE_OR_LESS.md](./MORE_OR_LESS.md) |
-| Geoguessr | El juego online [GeoGuessr](https://www.geoguessr.com/) | Ubicar en un mapa dónde se tomó una foto; el puntaje decae con la distancia al lugar real | [GEOGUESSR.md](./GEOGUESSR.md) |
-| Dateguessr | Geoguessr, pero adivinando fecha en vez de lugar | Ubicar en una línea de tiempo cuándo se tomó una foto; el puntaje decae con la distancia a la fecha real | [DATEGUESSR.md](./DATEGUESSR.md) |
-| Immichdle | Los juegos estilo Wordle ("*dle"), en su variante "adivina a la persona/personaje" (persondle) | Adivinar una persona incógnita a partir de pistas comparativas con cada intento | [IMMICHDLE.md](./IMMICHDLE.md) |
-| Timeline | El juego de mesa ["Timeline"](https://en.wikipedia.org/wiki/Timeline_(card_game)) | Insertar una foto en el orden cronológico correcto respecto a las fotos ya puestas | [TIMELINE.md](./TIMELINE.md) |
-| Who'sThatPerson | El segmento "Who's That Pokémon?" del anime de Pokémon | Adivinar el nombre de una persona cuya cara aparece tapada en una foto | [WHOS_THAT_PERSON.md](./WHOS_THAT_PERSON.md) |
-
-Cada juego tiene además "modos" adicionales (variantes de qué dato se usa como pregunta) que son de
-menor prioridad y llegarán más adelante - ver [docs/TODO/ROADMAP.md](../TODO/ROADMAP.md) para el
-orden real de implementación. El detalle de cada modo está en el doc de su propio juego.
+Each game also has additional "modes" (variants of which data is used as the question) that are lower
+priority and will come later. See [`docs/TODO/ROADMAP.md`](../TODO/ROADMAP.md) for the actual implementation
+order. Details about each mode are in its game's doc.
