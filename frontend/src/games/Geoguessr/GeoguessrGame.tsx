@@ -2,10 +2,10 @@ import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 
-import { assetThumbnailUrl, playRound } from "../../api/games"
+import { playRound } from "../../api/games"
 import { GameType, Mode } from "../../api/types"
 import type { GeoguessrRoundOut, RoundOut } from "../../api/types"
-import { AssetPhoto } from "../shared/AssetPhoto"
+import { AssetCarousel } from "../shared/AssetCarousel"
 import { Button } from "../shared/Button"
 import { ErrorScreen, FinishedScreen, IdleScreen } from "../shared/GameScreens"
 import { GuardedBackButton } from "../shared/GuardedBackButton"
@@ -78,7 +78,7 @@ export function GeoguessrGame() {
 
   return (
     <div className="h-dvh w-full overflow-hidden bg-app-bg">
-      <AssetPhoto key={round.asset_id} src={assetThumbnailUrl(round.asset_id)} alt={t("geoguessr.title")} />
+      <AssetCarousel key={round.id} assetIds={round.asset_ids} alt={t("geoguessr.title")} />
 
       <GuardedBackButton onExit={backToIdle} />
       <ScoreBadge label={t("common.score")} score={game.score} />

@@ -69,7 +69,9 @@ class GeoguessrRoundOut(BaseModel):
     game_type: Literal["geoguessr"] = GEOGUESSR_TYPE
     id: UUID
     round_index: int
-    asset_id: UUID
+    # Main ("answer") asset first, then up to 4 decorative extras - see games/asset_rounds.py's
+    # MAX_EXTRA_ASSETS. The guess/actual/score fields below are always about the main asset only.
+    asset_ids: list[UUID]
     guess_latitude: float | None
     guess_longitude: float | None
     # Redacted (null) until this round has been answered - same rationale as
@@ -85,7 +87,7 @@ class GeoguessrRoundOut(BaseModel):
         return cls(
             id=round_.id,
             round_index=round_.round_index,
-            asset_id=round_.asset.id,
+            asset_ids=[round_.asset.id] + [extra.id for extra in round_.extras],
             guess_latitude=round_.guess.latitude if round_.guess else None,
             guess_longitude=round_.guess.longitude if round_.guess else None,
             actual_latitude=round_.asset.latitude if answered else None,
@@ -99,7 +101,9 @@ class DateguessrRoundOut(BaseModel):
     game_type: Literal["dateguessr"] = DATEGUESSR_TYPE
     id: UUID
     round_index: int
-    asset_id: UUID
+    # Main ("answer") asset first, then up to 4 decorative extras - see
+    # GeoguessrRoundOut.asset_ids.
+    asset_ids: list[UUID]
     guess_date: date | None
     # Redacted (null) until this round has been answered - same rationale as
     # GeoguessrRoundOut.actual_latitude.
@@ -113,7 +117,7 @@ class DateguessrRoundOut(BaseModel):
         return cls(
             id=round_.id,
             round_index=round_.round_index,
-            asset_id=round_.asset.id,
+            asset_ids=[round_.asset.id] + [extra.id for extra in round_.extras],
             guess_date=round_.guess,
             actual_date=round_.asset.date if answered else None,
             days_off=round_.days_off if answered else None,

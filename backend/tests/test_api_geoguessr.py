@@ -26,7 +26,8 @@ class TestCreateGame:
         assert round_["actual_longitude"] is None
         assert round_["distance_km"] is None
         assert round_["score_delta"] is None
-        assert round_["asset_id"] is not None
+        assert round_["asset_ids"]  # main asset + up to 4 decorative extras, at least 1
+        assert len(round_["asset_ids"]) <= 5
 
 
 class TestPlayRound:
