@@ -33,8 +33,16 @@ jobs:
       - run: uv sync --frozen
       # Import-only smoke check: FastAPI's lifespan (the only thing that touches the DB) only
       # runs on real app startup, not at import time, so this catches import/dependency errors
-      # without needing the real dev Immich Postgres that backend/tests/ requires.
+      # without needing the real dev Immich Postgres that backend/tests/ requires. Settings()
+      # still validates eagerly at import though, so it needs dummy values for its required
+      # fields (no .env file exists in CI).
       - run: uv run python -c "import sys; sys.path.insert(0, 'src'); import main"
+        env:
+          DB_APP_USERNAME: smoke
+          DB_APP_PASSWORD: smoke
+          DB_DATABASE_NAME: smoke
+          IMMICH_API_KEY: smoke
+          JWT_SECRET: smoke
 
   build-and-push:
     needs: [test-frontend, smoke-backend]
