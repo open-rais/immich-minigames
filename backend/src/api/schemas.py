@@ -20,6 +20,8 @@ from games.dateguessr import GAME_TYPE as DATEGUESSR_TYPE
 from games.dateguessr import MODE_DAYS_TO_DATE, DateguessrRound
 from games.geoguessr import GAME_TYPE as GEOGUESSR_TYPE
 from games.geoguessr import MODE_DISTANCE_BETWEEN_GUESS, LatLng, GeoguessrRound
+from games.immichdle import GAME_TYPE as IMMICHDLE_TYPE
+from games.immichdle import MODE_PERSON, ImmichdleGame, ImmichdleRound
 from games.more_or_less import GAME_TYPE as MORE_OR_LESS_TYPE
 from games.more_or_less import MODE_PERSON_ASSETS, MoreOrLessRound
 from services.games_service import UnsupportedGameError
@@ -118,18 +120,58 @@ class DateguessrRoundOut(BaseModel):
         )
 
 
+class ImmichdleCluesOut(BaseModel):
+    age: Literal["older", "younger", "same", "unknown"]
+    asset_count: Literal["more", "less", "equal"]
+    first_appearance: Literal["before", "after", "same", "unknown"]
+    common_names: int
+    ml_similarity: float | None
+    assets_together: int
+
+
+class ImmichdleRoundOut(BaseModel):
+    game_type: Literal["immichdle"] = IMMICHDLE_TYPE
+    id: UUID
+    round_index: int
+    # Redacted (null) until this round has been answered - same rationale as
+    # MoreOrLessRoundOut.candidate_asset_count. The target itself is never in a round's output at
+    # all - see GameOut.target_person_id/name.
+    guess_person_id: UUID | None
+    guess_person_name: str | None
+    correct: bool | None
+    clues: ImmichdleCluesOut | None
+
+    @classmethod
+    def from_round(cls, round_: ImmichdleRound) -> "ImmichdleRoundOut":
+        answered = round_.answered
+        guessed = round_.guessed_person if answered else None
+        return cls(
+            id=round_.id,
+            round_index=round_.round_index,
+            guess_person_id=guessed.id if guessed else None,
+            guess_person_name=guessed.name if guessed else None,
+            correct=round_.correct,
+            clues=ImmichdleCluesOut(**round_.clues.to_dict()) if round_.clues else None,
+        )
+
+
 RoundOut = Annotated[
-    Union[MoreOrLessRoundOut, GeoguessrRoundOut, DateguessrRoundOut], Field(discriminator="game_type")
+    Union[MoreOrLessRoundOut, GeoguessrRoundOut, DateguessrRoundOut, ImmichdleRoundOut],
+    Field(discriminator="game_type"),
 ]
 
 
-def round_out_from_round(round_: BaseRound) -> MoreOrLessRoundOut | GeoguessrRoundOut | DateguessrRoundOut:
+def round_out_from_round(
+    round_: BaseRound,
+) -> MoreOrLessRoundOut | GeoguessrRoundOut | DateguessrRoundOut | ImmichdleRoundOut:
     if isinstance(round_, MoreOrLessRound):
         return MoreOrLessRoundOut.from_round(round_)
     if isinstance(round_, GeoguessrRound):
         return GeoguessrRoundOut.from_round(round_)
     if isinstance(round_, DateguessrRound):
         return DateguessrRoundOut.from_round(round_)
+    if isinstance(round_, ImmichdleRound):
+        return ImmichdleRoundOut.from_round(round_)
     raise TypeError(f"unsupported round type: {type(round_)}")
 
 
@@ -140,9 +182,19 @@ class GameOut(BaseModel):
     score: int
     finished: bool
     rounds: list[RoundOut]
+    # Only ever populated for a finished Immichdle game (see ImmichdleGame.target) - the mystery
+    # person is revealed once the game is over, win or lose. Null for every other game/mode and for
+    # an Immichdle game still in progress, where revealing it would be a straight cheat.
+    target_person_id: UUID | None = None
+    target_person_name: str | None = None
 
     @classmethod
     def from_game(cls, game: BaseGame) -> "GameOut":
+        target_id = None
+        target_name = None
+        if isinstance(game, ImmichdleGame) and game.finished:
+            target_id = game.target.id
+            target_name = game.target.name
         return cls(
             id=game.id,
             type=game.game_type,
@@ -150,6 +202,8 @@ class GameOut(BaseModel):
             score=game.score,
             finished=game.finished,
             rounds=[round_out_from_round(r) for r in game.rounds],
+            target_person_id=target_id,
+            target_person_name=target_name,
         )
 
 
@@ -175,10 +229,18 @@ class DateguessrPlayRoundIn(BaseModel):
         return self.date
 
 
+class ImmichdlePlayRoundIn(BaseModel):
+    person_id: UUID
+
+    def to_domain(self) -> UUID:
+        return self.person_id
+
+
 _PLAY_ROUND_SCHEMAS: dict[tuple[str, str], type[BaseModel]] = {
     (MORE_OR_LESS_TYPE, MODE_PERSON_ASSETS): MoreOrLessPlayRoundIn,
     (GEOGUESSR_TYPE, MODE_DISTANCE_BETWEEN_GUESS): GeoguessrPlayRoundIn,
     (DATEGUESSR_TYPE, MODE_DAYS_TO_DATE): DateguessrPlayRoundIn,
+    (IMMICHDLE_TYPE, MODE_PERSON): ImmichdlePlayRoundIn,
 }
 
 
@@ -208,7 +270,9 @@ class PlayRoundOut(BaseModel):
     @classmethod
     def from_answered(cls, game: BaseGame, answered_round: BaseRound) -> "PlayRoundOut":
         next_round = None if game.finished else round_out_from_round(game.current_round)
-        correct = answered_round.correct if isinstance(answered_round, MoreOrLessRound) else None
+        correct = (
+            answered_round.correct if isinstance(answered_round, (MoreOrLessRound, ImmichdleRound)) else None
+        )
         return cls(
             correct=correct,
             score_delta=answered_round.score_delta,
