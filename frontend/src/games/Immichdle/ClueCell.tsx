@@ -52,7 +52,13 @@ export function ClueCell({ clue }: { clue: ClueResult }) {
       : clue.kind === "percent"
         ? `${clue.value}%`
         : clue.kind === "date"
-          ? new Intl.DateTimeFormat(i18n.language, { year: "2-digit", month: "short", day: "numeric" }).format(new Date(clue.value!))
+          ? // clue.value is a plain "YYYY-MM-DD" calendar date (birth_date/first_asset_date have no
+            // time component) - `new Date(...)` parses that as UTC midnight, so formatting must
+            // stay in UTC too, or it silently shifts a day backward in any timezone behind UTC.
+            // Same pitfall Dateguessr's timeMath.ts already guards against.
+            new Intl.DateTimeFormat(i18n.language, { year: "2-digit", month: "short", day: "numeric", timeZone: "UTC" }).format(
+              new Date(clue.value!),
+            )
           : String(clue.value)
 
   return (
