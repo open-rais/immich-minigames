@@ -19,7 +19,7 @@ export function ModeCard({ title, onClick }: ModeCardProps) {
     <button
       type="button"
       onClick={onClick}
-      className="group flex w-full items-center gap-4 rounded-2xl p-2 text-left transition-colors hover:bg-hover-tint md:flex-col md:items-stretch md:gap-3 md:p-3 md:hover:shadow-card"
+      className="group flex w-full items-center gap-4 rounded-2xl p-2 text-left transition-colors hover:bg-hover-tint md:flex-col md:items-stretch md:gap-3 md:p-3 md:border md:border-transparent md:hover:border-line md:hover:shadow-card"
     >
       <div className="h-16 w-16 flex-none rounded-lg bg-primary md:h-auto md:w-full md:aspect-square md:rounded-xl" />
       <div className="min-w-0 flex-1 md:w-full md:flex-none">

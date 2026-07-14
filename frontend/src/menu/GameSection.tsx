@@ -34,7 +34,7 @@ export function GameSection({ game }: { game: CatalogGame }) {
           <path d="M6 9l6 6 6-6" />
         </svg>
         <h2 className="text-3xl font-bold text-ink md:text-4xl">{t(game.gameTitleKey)}</h2>
-        <span className="text-lg text-muted md:text-xl">
+        <span className="text-lg text-muted md:text-base">
           ({t("mainMenu.modesCount", { count: game.modes.length })})
         </span>
       </button>
@@ -46,7 +46,7 @@ export function GameSection({ game }: { game: CatalogGame }) {
         className={`grid transition-[grid-template-rows] duration-300 ease-out ${expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
       >
         <div className="overflow-hidden">
-          <div className="grid grid-cols-1 gap-2 pb-1 md:grid-cols-3 md:gap-4 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="grid grid-cols-1 gap-2 pb-1 md:grid-cols-4 md:gap-4 lg:grid-cols-5 xl:grid-cols-6">
             {game.modes.map((mode) => (
               <ModeCard
                 key={mode.mode}
