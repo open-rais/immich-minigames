@@ -71,7 +71,9 @@ export function DateguessrGame() {
 
   return (
     <div className="h-dvh w-full overflow-hidden bg-app-bg">
-      <AssetPhoto key={round.asset_id} src={assetThumbnailUrl(round.asset_id)} alt={t("dateguessr.title")} />
+      <div className="fixed inset-0 bottom-[124px] md:bottom-[156px] overflow-hidden">
+        <AssetPhoto key={round.asset_id} src={assetThumbnailUrl(round.asset_id)} alt={t("dateguessr.title")} />
+      </div>
 
       <BackButton label={t("common.back")} onClick={backToIdle} />
       <ScoreBadge label={t("common.score")} score={game.score} />
@@ -88,10 +90,13 @@ export function DateguessrGame() {
         <div className={`fixed ${ABOVE_RULER_BOTTOM_CLASS} left-[18px] z-30 md:left-10`}>
           <Button
             variant="primary"
-            className="px-6 py-3 shadow-card"
+            className="px-6 py-3 shadow-card flex items-center justify-center gap-2"
             onClick={() => selectedDate && submitGuess(selectedDate)}
             disabled={selectedDate === null || busy}
           >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" strokeWidth="0">
+              <path d="M12 1C8.13 1 5 4.13 5 8c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+            </svg>
             {t("common.confirmGuess")}
           </Button>
         </div>

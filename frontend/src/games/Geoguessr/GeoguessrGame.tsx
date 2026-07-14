@@ -89,10 +89,13 @@ export function GeoguessrGame() {
         <div className="fixed bottom-[18px] left-[18px] z-30 md:bottom-7 md:left-10">
           <Button
             variant="primary"
-            className="px-6 py-3 shadow-card"
+            className="px-6 py-3 shadow-card flex items-center justify-center gap-2"
             onClick={() => pin && submitGuess(pin)}
             disabled={pin === null || busy}
           >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" strokeWidth="0">
+              <path d="M12 1C8.13 1 5 4.13 5 8c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+            </svg>
             {t("common.confirmGuess")}
           </Button>
         </div>
