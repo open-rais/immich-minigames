@@ -1,0 +1,32 @@
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Reverse-proxies to the backend container so the browser only ever talks to this origin -
+    # mirrors the Vite dev server's own proxy (frontend/vite.config.ts) and matches apiClient's
+    # relative baseURL (frontend/src/api/client.ts), avoiding the need for backend CORS.
+    #
+    # proxy_pass's target is a variable (not a bare hostname) on purpose: nginx resolves a bare
+    # hostname once at config load/start time and refuses to start if it's not resolvable yet,
+    # which crash-loops the container in a race against the backend container coming up. Docker's
+    # embedded DNS (127.0.0.11) plus a variable defers resolution to request time instead.
+    resolver 127.0.0.11 valid=10s;
+
+    location /api/ {
+        # No URI suffix on proxy_pass here on purpose: with a variable target, nginx's usual
+        # location-prefix-for-proxy_pass-URI rewriting doesn't apply (it silently truncates the
+        # request to just the configured suffix instead). Omitting the suffix forwards the
+        # original request URI - /api/v1/... - unchanged, which is what we want anyway.
+        set $backend_upstream http://${BACKEND_HOST}:${BACKEND_PORT};
+        proxy_pass $backend_upstream;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    # Client-routed React app: fall back to index.html for any unknown path.
+    location / {
+        try_files $uri /index.html;
+    }
+}

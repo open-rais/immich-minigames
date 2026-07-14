@@ -1,0 +1,113 @@
+{
+  "appHeader": {
+    "title": "immich-minigames"
+  },
+  "userMenu": {
+    "trigger": "Account menu",
+    "language": "Language",
+    "theme": "Theme",
+    "themeOptions": {
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    }
+  },
+  "mainMenu": {
+    "modesCount_one": "{{count}} mode",
+    "modesCount_other": "{{count}} modes"
+  },
+  "common": {
+    "back": "Back",
+    "score": "Score",
+    "startCta": "Start game",
+    "confirmGuess": "Confirm guess",
+    "roundOf": "Round {{current}} of {{total}}",
+    "points": "+{{score}} pts",
+    "playAgain": "Play again",
+    "finished": {
+      "title": "Game over",
+      "finalScore": "Final score: {{score}}"
+    },
+    "error": {
+      "message": "Something went wrong talking to the server.",
+      "retry": "Retry"
+    },
+    "exitConfirm": {
+      "title": "Are you sure you want to exit?",
+      "message": "You won't be able to continue this game.",
+      "confirm": "Exit",
+      "cancel": "Cancel"
+    }
+  },
+  "moreOrLess": {
+    "title": "More or Less",
+    "modes": {
+      "personAssets": "Person assets"
+    },
+    "start": {
+      "description": "Guess whether the next person has more or fewer assets than the last. One wrong guess ends the run."
+    },
+    "has": "has",
+    "unit_one": "asset",
+    "unit_other": "assets",
+    "question": "Does {{name}} have more or fewer assets?",
+    "guessMore": "More",
+    "guessLess": "Fewer",
+    "result": {
+      "correct": "Correct!",
+      "incorrect": "Not quite.",
+      "continue": "Continue"
+    }
+  },
+  "geoguessr": {
+    "title": "Geoguessr",
+    "modes": {
+      "distanceBetweenGuess": "Classic"
+    },
+    "start": {
+      "description": "Guess where each photo was taken. 5 rounds, score decays with distance from the real spot."
+    },
+    "result": {
+      "distance": "{{distance}} km away"
+    }
+  },
+  "dateguessr": {
+    "title": "Dateguessr",
+    "modes": {
+      "daysToDate": "Classic"
+    },
+    "start": {
+      "description": "Guess when each photo was taken. 5 rounds, score decays with distance from the real date."
+    },
+    "result": {
+      "daysOff_one": "{{count}} day off",
+      "daysOff_other": "{{count}} days off"
+    }
+  },
+  "auth": {
+    "fields": {
+      "email": "Email",
+      "username": "Username",
+      "fullName": "Full name",
+      "password": "Password"
+    },
+    "login": {
+      "title": "Log in",
+      "cta": "Log in",
+      "noAccount": "Don't have an account?"
+    },
+    "signup": {
+      "title": "Sign up",
+      "cta": "Sign up",
+      "hasAccount": "Already have an account?"
+    },
+    "profile": {
+      "title": "Profile",
+      "memberSince": "Member since {{date}}",
+      "logout": "Log out"
+    },
+    "error": {
+      "generic": "Something went wrong. Please try again."
+    }
+  }
+}

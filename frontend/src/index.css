@@ -1,0 +1,119 @@
+@import "tailwindcss";
+@import "@fontsource/overpass/400.css";
+@import "@fontsource/overpass/500.css";
+@import "@fontsource/overpass/600.css";
+@import "@fontsource/overpass/700.css";
+@import "@fontsource/overpass/800.css";
+@import "@fontsource/overpass-mono/500.css";
+@import "@fontsource/overpass-mono/700.css";
+
+/*
+ * Design tokens lifted from the approved MoreOrLess mockup (see
+ * "Diseño MoreOrLess minijuego.zip" / MoreOrLess.dc.html), whose oklch primary
+ * (0.48 0.16 265) matches Immich's own brand indigo (#4250af, verified against the
+ * running Immich instance's login button/title) - this is Immich's actual palette,
+ * not an arbitrary Tailwind default.
+ */
+@theme {
+  --font-sans: "Overpass", system-ui, sans-serif;
+  --font-mono: "Overpass Mono", ui-monospace, monospace;
+
+  --color-app-bg: oklch(0.985 0.003 255);
+  --color-surface: oklch(1 0 0);
+
+  --color-primary: oklch(0.48 0.16 265);
+  --color-primary-hover: oklch(0.42 0.16 265);
+
+  --color-danger: oklch(0.55 0.22 25);
+  --color-danger-hover: oklch(0.48 0.22 25);
+
+  --color-badge-bg: oklch(0.93 0.045 265);
+  --color-badge-label: oklch(0.4 0.13 265);
+  --color-badge-value: oklch(0.35 0.15 265);
+
+  --color-line-strong: oklch(0.88 0.012 260);
+  --color-line: oklch(0.9 0.01 260);
+  --color-line-soft: oklch(0.85 0.012 260);
+
+  --color-ink: oklch(0.2 0.02 260);
+  --color-body: oklch(0.32 0.02 260);
+  --color-muted: oklch(0.5 0.02 260);
+  --color-faint: oklch(0.55 0.015 260);
+
+  --color-hover-tint: oklch(0.96 0.01 260);
+  --color-count-bg: oklch(0.94 0.01 260);
+  --color-placeholder-a: oklch(0.9 0.01 260);
+  --color-placeholder-b: oklch(0.94 0.008 260);
+
+  /* Geoguessr's MapLibre style (games/Geoguessr/mapStyle.ts) - recolors OpenFreeMap's Positron
+     base to this same indigo family instead of its stock grey/blue. Not reused by any card/badge,
+     since a map needs a land/water distinction the rest of the UI doesn't. */
+  --color-map-bg: oklch(0.97 0.006 265);
+  --color-map-water: oklch(0.88 0.03 265);
+  --color-map-land: oklch(0.93 0.012 265);
+
+  --shadow-card: 0 8px 24px oklch(0.3 0.03 260 / 0.08);
+}
+
+/*
+ * Overscroll (iOS rubber-band, desktop touchpad bounce) reveals the root canvas beyond the
+ * document's edges, and the canvas is painted from <html>'s background - the header's own
+ * safe-area padding can't reach there because the whole page slides during the bounce. Painting
+ * the gradient's first stop with the header's surface color makes the area revealed above the
+ * page match the header, and the last stop keeps the area below the page matching the app bg.
+ * (Only the extended first/last stops are ever visible; <body> covers the middle.)
+ */
+html {
+  background: linear-gradient(var(--color-surface) 50%, var(--color-app-bg) 50%);
+}
+
+body {
+  background: var(--color-app-bg);
+}
+
+/*
+ * Dark-mode palette, consistent with Immich's own (sampled from the running Immich dev
+ * instance's compiled CSS: near-black bg, light-cool-gray text, an elevated dark-gray card
+ * surface, and a lightened/desaturated primary rather than a plain lightness-flip of the light
+ * indigo - a dark indigo has poor contrast against a near-black background). Un-layered so it
+ * wins over Tailwind's own `@layer theme` output regardless of selector specificity - no `dark:`
+ * variants needed anywhere else in the app, every utility already resolves through these
+ * variables. `--color-map-*` is also overridden here for Geoguessr's map (see
+ * games/Geoguessr/mapStyle.ts, whose MapLibre style JSON needs literal hex, not var(), so its own
+ * dark constants are kept in sync with these by hand) - Dateguessr's ruler consumes these same
+ * tokens directly via var() in its inline styles, no separate sync needed there.
+ */
+.dark {
+  --color-app-bg: oklch(0.16 0.006 260);
+  --color-surface: oklch(0.24 0.008 260);
+
+  --color-primary: oklch(0.83 0.09 260);
+  --color-primary-hover: oklch(0.78 0.1 260);
+
+  --color-danger: oklch(0.72 0.17 25);
+  --color-danger-hover: oklch(0.66 0.18 25);
+
+  --color-badge-bg: oklch(0.28 0.05 265);
+  --color-badge-label: oklch(0.82 0.05 265);
+  --color-badge-value: oklch(0.88 0.06 265);
+
+  --color-line-strong: oklch(0.36 0.012 260);
+  --color-line: oklch(0.3 0.01 260);
+  --color-line-soft: oklch(0.4 0.014 260);
+
+  --color-ink: oklch(0.93 0.012 260);
+  --color-body: oklch(0.85 0.012 260);
+  --color-muted: oklch(0.68 0.015 260);
+  --color-faint: oklch(0.6 0.014 260);
+
+  --color-hover-tint: oklch(0.32 0.012 260);
+  --color-count-bg: oklch(0.26 0.01 260);
+  --color-placeholder-a: oklch(0.22 0.008 260);
+  --color-placeholder-b: oklch(0.26 0.008 260);
+
+  --color-map-bg: oklch(0.16 0.008 265);
+  --color-map-water: oklch(0.3 0.035 255);
+  --color-map-land: oklch(0.24 0.014 262);
+
+  --shadow-card: 0 8px 24px oklch(0 0 0 / 0.45);
+}

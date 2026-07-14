@@ -1,0 +1,38 @@
+#
+# Packaged app stack: pulls the immich-minigames backend/frontend images from GHCR and runs them.
+# This does NOT stand up Immich itself - it expects an already-running Immich instance (either
+# this repo's own dev docker-compose.yml, or your own separate Immich deployment) and just needs
+# DB_HOST/IMMICH_SERVER_URL below pointed at wherever that instance's Postgres/API actually live.
+#
+# Usage: docker compose -f docker-compose.app.yml up -d
+# Then open http://localhost:${FRONTEND_PORT:-3000}.
+#
+
+name: immich-minigames-app
+
+services:
+  backend:
+    image: ghcr.io/open-rais/immich-minigames-backend:${MINIGAMES_VERSION:-edge}
+    env_file:
+      - .env
+    environment:
+      # Overrides the .env file's host-oriented defaults: "localhost" from inside this container
+      # means the container itself, not your machine. If Immich is running on this same machine
+      # (e.g. via this repo's own docker-compose.yml), host.docker.internal reaches it through the
+      # extra_hosts entry below and its already-published ports (5432, 2283).
+      DB_HOST: ${DB_HOST:-host.docker.internal}
+      IMMICH_SERVER_URL: ${IMMICH_SERVER_URL:-http://host.docker.internal:2283}
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    restart: unless-stopped
+
+  frontend:
+    image: ghcr.io/open-rais/immich-minigames-frontend:${MINIGAMES_VERSION:-edge}
+    environment:
+      BACKEND_HOST: backend
+      BACKEND_PORT: '8000'
+    depends_on:
+      - backend
+    ports:
+      - '${FRONTEND_PORT:-3000}:80'
+    restart: unless-stopped
