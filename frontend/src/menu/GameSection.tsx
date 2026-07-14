@@ -51,6 +51,7 @@ export function GameSection({ game }: { game: CatalogGame }) {
               <ModeCard
                 key={mode.mode}
                 title={t(mode.modeTitleKey)}
+                coverUrl={mode.coverUrl}
                 onClick={() => navigate(`/${game.gameType}/${mode.mode}`)}
               />
             ))}

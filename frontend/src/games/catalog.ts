@@ -16,6 +16,9 @@ export interface CatalogMode {
   mode: string
   modeTitleKey: string
   component: ComponentType
+  // Cover shown on the mode's card in the main menu. Omitted for games without art yet - ModeCard
+  // falls back to the plain bg-primary block in that case (e.g. Immichdle, still a placeholder).
+  coverUrl?: string
 }
 
 export interface CatalogGame {
@@ -33,6 +36,7 @@ export const GAME_CATALOG: CatalogGame[] = [
         mode: Mode.PersonAssets,
         modeTitleKey: "moreOrLess.modes.personAssets",
         component: MoreOrLessGame,
+        coverUrl: "/covers/more-or-less.webp",
       },
     ],
   },
@@ -44,6 +48,7 @@ export const GAME_CATALOG: CatalogGame[] = [
         mode: Mode.DistanceBetweenGuess,
         modeTitleKey: "geoguessr.modes.distanceBetweenGuess",
         component: GeoguessrGame,
+        coverUrl: "/covers/geoguessr.webp",
       },
     ],
   },
@@ -55,6 +60,7 @@ export const GAME_CATALOG: CatalogGame[] = [
         mode: Mode.DaysToDate,
         modeTitleKey: "dateguessr.modes.daysToDate",
         component: DateguessrGame,
+        coverUrl: "/covers/dateguessr.webp",
       },
     ],
   },
