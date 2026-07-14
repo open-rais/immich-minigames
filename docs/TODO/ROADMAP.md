@@ -13,24 +13,41 @@ Cuando se complete un item, marcar su checkbox.
   - [X] 2.2. Obtener personas con condiciones (thumbnail, solo-con-nombre, solo-con-fecha, por-cantidad-de-assets, por-nombre, etc.)
 <!-- v0.0.1 -->
 - [X] 3. API mínima para jugar MoreOrLess (solo modo `personAssets`)
-- [ ] 4. Frontend mínimo para jugar MoreOrLess
+- [X] 4. Frontend mínimo para jugar MoreOrLess
   - [X] 4.0. Configuración inicial de i18n permitiendo hacer traducciones
   - [X] 4.1. Frontend para PC en inglés
   - [X] 4.2. Frontend para móvil en inglés
-  - [ ] 4.3. Frontend traducido al español (Esto quedará para después)
+  - [X] 4.3. Frontend traducido al español (Esto quedará para después)
   \*(Este patrón se repite para todos los frontends)
 <!-- v0.1.0 -->
-- [ ] 5. Estructura base de frontend (menú que lista minijuegos + botón para comenzar un juego)
+- [X] 5. Estructura base de frontend (menú que lista minijuegos + botón para comenzar un juego)
 <!-- v0.1.1 -->
-- [ ] 6. API y frontend para Geoguessr (MapLibre GL JS con estilo similar a immich)
+- [X] 6. API y frontend para Geoguessr (MapLibre GL JS con estilo similar a immich)
 <!-- v0.2.0 -->
-- [ ] 7. API y frontend para Dateguessr
+- [X] 7. API y frontend para Dateguessr
 <!-- v0.3.0 -->
+<!-- Antes de pasar a #A-#b se hará un code review completo con Fable y code correction con Opus -->
+- [X] A. GHCR para poder levantarlo con docker-compose fácilmente. Usar github workflows
+- [X] B. User login (Correo, username, nombre completo, password)
+  - Diseño también debe ser consistente con immich.
+  - Por ahora sólo lo básico: registrarse, iniciar sesión, cerrar sesión, página de perfil
+- [X] C. Traducir a español
+- [X] D. Agregar modo nocturno (consistente con immich, con su paleta de colores)
+- [X] a. usar Claude Haiku para traducir la documentación a Inglés
+- [X] b. Actualizar documentación a estado actual, además agregando cómo instalar/usar (env, docker-compose), que juegos están implementados, features que hay/no hay
+<!-- Publicar -->
 - [ ] 8. API y frontend para Immichdle (persondle)
 <!-- v0.4.0 -->
-- [ ] 9. API y frontend para Timeline
-<!-- v0.5.0 -->
 - [ ] 10. API y frontend para Who'sThatPerson
+<!-- v0.5.0 -->
+<!-- Aquí irá {Daily game} y {logged user features} -->
+- [ ] E. Daily games (misma seed para cada usuario, solo se juega 1 vez al día)
+- [ ] F. Aquí van las features de usuarios loggeados:
+  - Leaderboard por juego
+  - Leaderboard de daily
+  - Mostrar records personales por juego
+  - Mostrar resumen de juegos jugados
+- [ ] 9. API y frontend para Timeline
 <!-- v0.6.0 -->
 - [ ] 11. Agregar sistema de pistas a Immichdle
 <!-- v0.7.0 -->
@@ -64,7 +81,7 @@ avanzando el proyecto. Sí tienen restricciones de orden ya decididas:
 | **User login** | 7 | 15 | - | <!-- v0.+1.0 -->
 | **Daily game** | 15 | - | Depende de tener login. Momento exacto sin definir, se decidirá según avance el proyecto. | <!-- v0.+1.0 -->
 | **Report incorrect** | 11 | - | Agrega una tabla de reportes: no corrige metadata directamente, pero saca esos assets de los juegos y permite verlos en Immich para corregirlos ahí. Probablemente vaya después del 19 también, ya que no es el foco principal del proyecto. | <!-- v0.+1.0 -->
-| **GHCR** | 5 | - | Distinto para tags vX.Y.Z y para último commit en main.
+| **GHCR** | 5 | - | Hacer que se pueda especificar versión a pullear para tags vX.Y.Z y para último commit en main.
 | **Modo oscuro** | 5 | - | Usar paleta de colores de Immich.
 
 ## Limitaciones conocidas (menores, no bloquean nada)
