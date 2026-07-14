@@ -106,3 +106,25 @@ export interface PlayRoundOut {
   answered_round: RoundOut
   next_round: RoundOut | null
 }
+
+// Mirrors backend/src/api/auth_schemas.py - own accounts (roadmap point B), unrelated to Immich's
+// own users and, for now, to the anonymous X-Owner-Id used by games (see api/ownerId.ts).
+export interface User {
+  id: string
+  email: string
+  username: string
+  full_name: string
+  created_at: string
+}
+
+export interface RegisterIn {
+  email: string
+  username: string
+  full_name: string
+  password: string
+}
+
+export interface LoginIn {
+  email: string
+  password: string
+}

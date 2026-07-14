@@ -67,5 +67,31 @@
       "daysOff_one": "{{count}} day off",
       "daysOff_other": "{{count}} days off"
     }
+  },
+  "auth": {
+    "fields": {
+      "email": "Email",
+      "username": "Username",
+      "fullName": "Full name",
+      "password": "Password"
+    },
+    "login": {
+      "title": "Log in",
+      "cta": "Log in",
+      "noAccount": "Don't have an account?"
+    },
+    "signup": {
+      "title": "Sign up",
+      "cta": "Sign up",
+      "hasAccount": "Already have an account?"
+    },
+    "profile": {
+      "title": "Profile",
+      "memberSince": "Member since {{date}}",
+      "logout": "Log out"
+    },
+    "error": {
+      "generic": "Something went wrong. Please try again."
+    }
   }
 }

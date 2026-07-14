@@ -4,7 +4,7 @@ Routes don't catch this app's own domain exceptions (GameNotFoundError etc.) - t
 the app-level handlers registered in main.py, which is the single place mapping them to HTTP
 status codes."""
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from functools import lru_cache
 from typing import Annotated, Any
 from uuid import UUID
@@ -14,22 +14,14 @@ from fastapi import APIRouter, Body, Depends, Header, HTTPException, Response
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
+from api.auth_api import router as auth_router
+from api.deps import get_db_session
 from api.schemas import CreateGameIn, GameOut, PlayRoundOut, parse_guess
-from persistence.games import get_session_factory
 from services.games_service import GamesService
 from services.immich_service import ImmichService
 
 router = APIRouter(prefix="/api/v1")
-
-_session_factory = get_session_factory()
-
-
-def get_db_session() -> Iterator[Session]:
-    session = _session_factory()
-    try:
-        yield session
-    finally:
-        session.close()
+router.include_router(auth_router)
 
 
 @lru_cache(maxsize=1)

@@ -1,0 +1,116 @@
+import uuid
+
+
+def _unique(prefix: str) -> str:
+    return f"{prefix}-{uuid.uuid4().hex[:8]}"
+
+
+def _register(client, **overrides) -> dict:
+    body = {
+        "email": f"{_unique('user')}@example.com",
+        "username": _unique("user"),
+        "full_name": "Test User",
+        "password": "correct-horse-battery-staple",
+    }
+    body.update(overrides)
+    response = client.post("/api/v1/auth/register", json=body)
+    assert response.status_code == 201
+    return body
+
+
+class TestRegister:
+    def test_sets_a_session_cookie_and_returns_the_user(self, client):
+        body = _register(client)
+
+        assert "access_token" in client.cookies
+        me = client.get("/api/v1/auth/me")
+        assert me.status_code == 200
+        assert me.json()["email"] == body["email"]
+        assert me.json()["username"] == body["username"]
+        assert "password" not in me.json()
+
+    def test_duplicate_email_returns_409(self, client):
+        body = _register(client)
+
+        response = client.post(
+            "/api/v1/auth/register",
+            json={**body, "username": _unique("other")},
+        )
+
+        assert response.status_code == 409
+
+    def test_duplicate_username_returns_409(self, client):
+        body = _register(client)
+
+        response = client.post(
+            "/api/v1/auth/register",
+            json={**body, "email": f"{_unique('other')}@example.com"},
+        )
+
+        assert response.status_code == 409
+
+    def test_short_password_returns_422(self, client):
+        response = client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": f"{_unique('user')}@example.com",
+                "username": _unique("user"),
+                "full_name": "Test User",
+                "password": "short",
+            },
+        )
+
+        assert response.status_code == 422
+
+
+class TestLogin:
+    def test_correct_credentials_sets_cookie(self, client):
+        body = _register(client)
+        client.cookies.clear()
+
+        response = client.post(
+            "/api/v1/auth/login",
+            json={"email": body["email"], "password": body["password"]},
+        )
+
+        assert response.status_code == 200
+        assert "access_token" in client.cookies
+
+    def test_wrong_password_returns_401(self, client):
+        body = _register(client)
+        client.cookies.clear()
+
+        response = client.post(
+            "/api/v1/auth/login",
+            json={"email": body["email"], "password": "wrong-password"},
+        )
+
+        assert response.status_code == 401
+
+    def test_unknown_email_returns_401(self, client):
+        response = client.post(
+            "/api/v1/auth/login",
+            json={"email": "nobody@example.com", "password": "whatever123"},
+        )
+
+        assert response.status_code == 401
+
+
+class TestLogout:
+    def test_clears_the_cookie(self, client):
+        _register(client)
+
+        response = client.post("/api/v1/auth/logout")
+
+        assert response.status_code == 204
+        me = client.get("/api/v1/auth/me")
+        assert me.status_code == 401
+
+
+class TestMe:
+    def test_without_cookie_returns_401(self, client):
+        client.cookies.clear()
+
+        response = client.get("/api/v1/auth/me")
+
+        assert response.status_code == 401

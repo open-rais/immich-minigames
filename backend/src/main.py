@@ -9,7 +9,13 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from api.api import router
-from persistence.games import init_db
+from persistence.base import init_db
+from services.auth_service import (
+    EmailAlreadyExistsError,
+    InvalidCredentialsError,
+    UnauthorizedError,
+    UsernameAlreadyExistsError,
+)
 from services.games_service import (
     GameNotFoundError,
     GameOwnershipError,
@@ -38,5 +44,9 @@ app.add_exception_handler(UnsupportedGameError, _error_handler(400))
 app.add_exception_handler(GameOwnershipError, _error_handler(403))
 app.add_exception_handler(GameNotFoundError, _error_handler(404))
 app.add_exception_handler(RoundNotPendingError, _error_handler(409))
+app.add_exception_handler(InvalidCredentialsError, _error_handler(401))
+app.add_exception_handler(UnauthorizedError, _error_handler(401))
+app.add_exception_handler(EmailAlreadyExistsError, _error_handler(409))
+app.add_exception_handler(UsernameAlreadyExistsError, _error_handler(409))
 
 app.include_router(router)

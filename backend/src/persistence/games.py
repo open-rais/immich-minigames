@@ -1,25 +1,18 @@
 """
 Own persistence layer for this app's games - separate from Immich's schema (see
 immich_tables.py). Lives in its own Postgres schema (`minigames`) so this app's own migrations
-never collide with Immich's (see docs/ARCHITECTURE/BACKEND.md).
+never collide with Immich's (see docs/ARCHITECTURE/BACKEND.md). Shared Base/engine/session
+plumbing lives in persistence/base.py so other own-schema modules (e.g. users.py) can share it.
 """
 
 from datetime import datetime
-from functools import lru_cache
 from uuid import UUID, uuid4
 
-from sqlalchemy import ForeignKey, MetaData, UniqueConstraint, create_engine, func
+from sqlalchemy import ForeignKey, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from config import Settings
-
-SCHEMA = "minigames"
-
-
-class Base(DeclarativeBase):
-    metadata = MetaData(schema=SCHEMA)
+from persistence.base import SCHEMA, Base
 
 
 class GameModel(Base):
@@ -57,26 +50,3 @@ class RoundModel(Base):
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
     game: Mapped[GameModel] = relationship(back_populates="rounds")
-
-
-@lru_cache(maxsize=1)
-def get_engine() -> Engine:
-    return create_engine(Settings().db_url)
-
-
-def get_session_factory(engine: Engine | None = None) -> sessionmaker:
-    return sessionmaker(bind=engine or get_engine())
-
-
-def init_db(engine: Engine | None = None) -> None:
-    """Creates this app's tables (idempotent). The `minigames` schema itself is provisioned once
-    by docker/init-scripts/create_minigames_app_role.sh, not here - the app's own DB role
-    deliberately has no CREATE privilege at the database level, only within that schema."""
-    Base.metadata.create_all(engine or get_engine())
-
-
-def reset_db(engine: Engine | None = None) -> None:
-    """Drops and recreates this app's tables. Dev/test convenience only."""
-    engine = engine or get_engine()
-    Base.metadata.drop_all(engine)
-    init_db(engine)
