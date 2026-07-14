@@ -27,6 +27,15 @@ MAX_SCORE = 5000
 # none qualifies) - just keeps rounds spread out instead of clustering on near-duplicate answers.
 _CANDIDATE_SAMPLE_SIZE = 10
 
+# Up to this many additional photos are shown alongside a round's main asset (purely decorative -
+# the round's answer/score always stay tied to the main asset only). Fewer are shown if fewer
+# qualify - a round is never forced to have exactly 5.
+MAX_EXTRA_ASSETS = 4
+# How many random candidates to sample when looking for extras - mirrors _CANDIDATE_SAMPLE_SIZE's
+# rationale, just sized a bit larger since up to MAX_EXTRA_ASSETS of them are kept at once instead
+# of just one.
+_EXTRA_CANDIDATE_SAMPLE_SIZE = 10
+
 _Answer = TypeVar("_Answer")
 
 
@@ -90,8 +99,15 @@ class AssetRoundsGame(BaseGame):
         """The assets eligible for this game (e.g. Geoguessr additionally requires a location)."""
 
     @abstractmethod
-    def _make_round(self, round_index: int, asset: Asset) -> BaseRound:
-        """Build a concrete round from a freshly-picked asset (snapshotting it in the process)."""
+    def _query_extra_assets(self, main: Asset, exclude_ids: frozenset[UUID], *, limit: int) -> list[Asset]:
+        """Candidate photos to show alongside `main` this round (e.g. Geoguessr: within 500m and
+        the same calendar month; Dateguessr: the exact same local day) - random order, so the base
+        class can just take the first `limit` of them."""
+
+    @abstractmethod
+    def _make_round(self, round_index: int, asset: Asset, extras: list[Asset]) -> BaseRound:
+        """Build a concrete round from a freshly-picked main asset and its extra photos (snapshotting
+        both in the process)."""
 
     @abstractmethod
     def _separation(self, candidate: Asset, answer: Any) -> float:
@@ -106,13 +122,17 @@ class AssetRoundsGame(BaseGame):
 
     @property
     def _shown_asset_ids(self) -> frozenset[UUID]:
-        # Every round shows exactly one asset (its first/only shown entity), so this works without
-        # reaching into each game's round-specific `.asset` attribute.
-        return frozenset(round_.shown_entities[0] for round_ in self.rounds)
+        # Flattens every round's shown_entities (main asset + its extras), so an asset already shown
+        # this game - whether as a main asset or just as an extra - is never picked again as either.
+        return frozenset(id_ for round_ in self.rounds for id_ in round_.shown_entities)
 
     def _pick_asset(self, exclude_ids: frozenset[UUID]) -> Asset | None:
         candidates = self._query_assets(exclude_ids, limit=_CANDIDATE_SAMPLE_SIZE, random=True)
         return pick_spread_asset(candidates, self._previous_answers(), self._separation, self._min_separation)
+
+    def _pick_extras(self, main: Asset, exclude_ids: frozenset[UUID]) -> list[Asset]:
+        candidates = self._query_extra_assets(main, exclude_ids, limit=_EXTRA_CANDIDATE_SAMPLE_SIZE)
+        return candidates[:MAX_EXTRA_ASSETS]
 
     @classmethod
     def start(cls, id: UUID, owner: str, immich_service: ImmichService) -> "AssetRoundsGame":
@@ -120,7 +140,8 @@ class AssetRoundsGame(BaseGame):
         asset = game._pick_asset(exclude_ids=frozenset())
         if asset is None:
             raise ValueError(cls._not_enough_assets_message)
-        game.rounds.append(game._make_round(round_index=1, asset=asset))
+        extras = game._pick_extras(asset, exclude_ids=frozenset({asset.id}))
+        game.rounds.append(game._make_round(round_index=1, asset=asset, extras=extras))
         return game
 
     def has_next_round(self) -> bool:
@@ -136,4 +157,5 @@ class AssetRoundsGame(BaseGame):
         asset = self._pick_asset(self._shown_asset_ids)
         if asset is None:
             raise ValueError("no more eligible assets left - has_next_round() should have returned False")
-        return self._make_round(round_index=self.current_round.round_index + 1, asset=asset)
+        extras = self._pick_extras(asset, exclude_ids=self._shown_asset_ids | {asset.id})
+        return self._make_round(round_index=self.current_round.round_index + 1, asset=asset, extras=extras)

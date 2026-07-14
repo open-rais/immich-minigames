@@ -4,13 +4,14 @@ thumbnail bytes via Immich's REST API for images - see docs/ARCHITECTURE/IMMICH.
 de hablar con Immich" for why data queries and image serving use different paths.
 """
 
+import math
 from datetime import date
 from functools import lru_cache
 from typing import Literal
 from uuid import UUID
 
 import httpx
-from sqlalchemy import Date, cast, exists, func, select
+from sqlalchemy import Date, cast, exists, extract, func, select
 from sqlalchemy.engine import Engine, Row
 
 from config import Settings
@@ -47,6 +48,9 @@ class ImmichService:
         with_location: bool | None = None,
         date_from: date | None = None,
         date_to: date | None = None,
+        local_date: date | None = None,
+        local_month: int | None = None,
+        near_km: tuple[float, float, float] | None = None,
         random: bool = False,
         limit: int = 1,
         exclude_ids: frozenset[UUID] = frozenset(),
@@ -58,15 +62,17 @@ class ImmichService:
             )
         )
 
+        # True local calendar day of the shot, timezone-of-session-independent: localDateTime
+        # is a timestamptz whose UTC rendering is the local wall time, so casting to date at
+        # UTC recovers the local day (see immich_tables.py / domain/asset.py).
+        local_date_expr = cast(func.timezone("UTC", asset.c.localDateTime), Date)
+
         stmt = (
             select(
                 asset.c.id,
                 asset.c.type,
                 asset.c.fileCreatedAt,
-                # True local calendar day of the shot, timezone-of-session-independent: localDateTime
-                # is a timestamptz whose UTC rendering is the local wall time, so casting to date at
-                # UTC recovers the local day (see immich_tables.py / domain/asset.py).
-                cast(func.timezone("UTC", asset.c.localDateTime), Date).label("localDate"),
+                local_date_expr.label("localDate"),
                 asset.c.originalFileName,
                 asset.c.width,
                 asset.c.height,
@@ -100,6 +106,24 @@ class ImmichService:
             stmt = stmt.where(asset.c.fileCreatedAt >= date_from)
         if date_to is not None:
             stmt = stmt.where(asset.c.fileCreatedAt <= date_to)
+
+        if local_date is not None:
+            stmt = stmt.where(local_date_expr == local_date)
+        if local_month is not None:
+            stmt = stmt.where(extract("month", local_date_expr) == local_month)
+
+        if near_km is not None:
+            # Coarse lat/lon bounding-box prefilter (box, not circle) - callers that need the exact
+            # circle (e.g. games/geoguessr.py's 500m rule) do a precise haversine post-filter
+            # themselves. Degrees-per-km approximation: 111.0 km/degree of latitude everywhere,
+            # scaled by cos(latitude) for longitude.
+            lat, lon, radius_km = near_km
+            lat_delta = radius_km / 111.0
+            lon_delta = radius_km / (111.0 * max(math.cos(math.radians(lat)), 1e-6))
+            stmt = stmt.where(
+                asset_exif.c.latitude.between(lat - lat_delta, lat + lat_delta),
+                asset_exif.c.longitude.between(lon - lon_delta, lon + lon_delta),
+            )
 
         if exclude_ids:
             stmt = stmt.where(asset.c.id.notin_(exclude_ids))

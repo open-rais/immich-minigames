@@ -34,6 +34,10 @@ EARTH_RADIUS_KM = 6371.0
 # at a single location). Best-effort - see games/asset_rounds.py's pick_spread_asset.
 _MIN_CANDIDATE_SEPARATION_KM = 50.0
 
+# How close (great-circle) an extra photo must be to the round's main asset to be shown alongside
+# it - see games/asset_rounds.py's MAX_EXTRA_ASSETS.
+_EXTRA_RADIUS_KM = 0.5
+
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
@@ -81,9 +85,18 @@ class AssetSnapshot:
 
 
 class GeoguessrRound(BaseRound):
-    def __init__(self, id: UUID, game_id: UUID, round_index: int, asset: AssetSnapshot) -> None:
-        super().__init__(id, game_id, round_index, shown_entities=[asset.id])
+    def __init__(
+        self,
+        id: UUID,
+        game_id: UUID,
+        round_index: int,
+        asset: AssetSnapshot,
+        extras: list[AssetSnapshot] | None = None,
+    ) -> None:
+        extras = extras or []
+        super().__init__(id, game_id, round_index, shown_entities=[asset.id] + [extra.id for extra in extras])
         self.asset = asset
+        self.extras = extras
         self.guess: LatLng | None = None
 
     @property
@@ -97,13 +110,23 @@ class GeoguessrRound(BaseRound):
         return exp_decay_score(self.distance_km, FLAT_SCORE_RADIUS_KM, DECAY_KM)
 
     def to_payload(self) -> dict[str, Any]:
-        return {"asset": self.asset.to_dict(), "guess": self.guess.to_dict() if self.guess else None}
+        return {
+            "asset": self.asset.to_dict(),
+            "extras": [extra.to_dict() for extra in self.extras],
+            "guess": self.guess.to_dict() if self.guess else None,
+        }
 
     @classmethod
     def from_payload(
         cls, id: UUID, game_id: UUID, round_index: int, payload: dict[str, Any], score_delta: int | None
     ) -> "GeoguessrRound":
-        round_ = cls(id=id, game_id=game_id, round_index=round_index, asset=AssetSnapshot.from_dict(payload["asset"]))
+        round_ = cls(
+            id=id,
+            game_id=game_id,
+            round_index=round_index,
+            asset=AssetSnapshot.from_dict(payload["asset"]),
+            extras=[AssetSnapshot.from_dict(extra) for extra in payload.get("extras", [])],
+        )
         round_.guess = LatLng.from_dict(payload["guess"]) if payload["guess"] else None
         round_.score_delta = score_delta
         return round_
@@ -120,8 +143,34 @@ class GeoguessrGame(AssetRoundsGame):
             media_type="photo", with_location=True, random=random, limit=limit, exclude_ids=exclude_ids
         )
 
-    def _make_round(self, round_index: int, asset: Asset) -> GeoguessrRound:
-        return GeoguessrRound(id=uuid4(), game_id=self.id, round_index=round_index, asset=AssetSnapshot.of(asset))
+    def _query_extra_assets(self, main: Asset, exclude_ids: frozenset[UUID], *, limit: int) -> list[Asset]:
+        assert main.latitude is not None and main.longitude is not None
+        candidates = self._immich_service.get_assets(
+            media_type="photo",
+            with_location=True,
+            near_km=(main.latitude, main.longitude, _EXTRA_RADIUS_KM),
+            local_month=main.local_date.month,
+            random=True,
+            limit=limit,
+            exclude_ids=exclude_ids,
+        )
+        # near_km is a coarse bounding-box prefilter (box, not circle) - keep only the ones that are
+        # truly within the radius.
+        kept = []
+        for candidate in candidates:
+            assert candidate.latitude is not None and candidate.longitude is not None  # with_location=True
+            if haversine_km(main.latitude, main.longitude, candidate.latitude, candidate.longitude) <= _EXTRA_RADIUS_KM:
+                kept.append(candidate)
+        return kept
+
+    def _make_round(self, round_index: int, asset: Asset, extras: list[Asset]) -> GeoguessrRound:
+        return GeoguessrRound(
+            id=uuid4(),
+            game_id=self.id,
+            round_index=round_index,
+            asset=AssetSnapshot.of(asset),
+            extras=[AssetSnapshot.of(extra) for extra in extras],
+        )
 
     def _separation(self, candidate: Asset, answer: tuple[float, float]) -> float:
         assert candidate.latitude is not None and candidate.longitude is not None

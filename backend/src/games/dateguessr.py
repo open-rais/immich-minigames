@@ -63,9 +63,18 @@ class AssetSnapshot:
 
 
 class DateguessrRound(BaseRound):
-    def __init__(self, id: UUID, game_id: UUID, round_index: int, asset: AssetSnapshot) -> None:
-        super().__init__(id, game_id, round_index, shown_entities=[asset.id])
+    def __init__(
+        self,
+        id: UUID,
+        game_id: UUID,
+        round_index: int,
+        asset: AssetSnapshot,
+        extras: list[AssetSnapshot] | None = None,
+    ) -> None:
+        extras = extras or []
+        super().__init__(id, game_id, round_index, shown_entities=[asset.id] + [extra.id for extra in extras])
         self.asset = asset
+        self.extras = extras
         self.guess: date | None = None
 
     @property
@@ -79,13 +88,23 @@ class DateguessrRound(BaseRound):
         return exp_decay_score(self.days_off, FLAT_SCORE_DAYS, DECAY_DAYS)
 
     def to_payload(self) -> dict[str, Any]:
-        return {"asset": self.asset.to_dict(), "guess": self.guess.isoformat() if self.guess else None}
+        return {
+            "asset": self.asset.to_dict(),
+            "extras": [extra.to_dict() for extra in self.extras],
+            "guess": self.guess.isoformat() if self.guess else None,
+        }
 
     @classmethod
     def from_payload(
         cls, id: UUID, game_id: UUID, round_index: int, payload: dict[str, Any], score_delta: int | None
     ) -> "DateguessrRound":
-        round_ = cls(id=id, game_id=game_id, round_index=round_index, asset=AssetSnapshot.from_dict(payload["asset"]))
+        round_ = cls(
+            id=id,
+            game_id=game_id,
+            round_index=round_index,
+            asset=AssetSnapshot.from_dict(payload["asset"]),
+            extras=[AssetSnapshot.from_dict(extra) for extra in payload.get("extras", [])],
+        )
         round_.guess = date.fromisoformat(payload["guess"]) if payload["guess"] else None
         round_.score_delta = score_delta
         return round_
@@ -102,8 +121,23 @@ class DateguessrGame(AssetRoundsGame):
             media_type="photo", random=random, limit=limit, exclude_ids=exclude_ids
         )
 
-    def _make_round(self, round_index: int, asset: Asset) -> DateguessrRound:
-        return DateguessrRound(id=uuid4(), game_id=self.id, round_index=round_index, asset=AssetSnapshot.of(asset))
+    def _query_extra_assets(self, main: Asset, exclude_ids: frozenset[UUID], *, limit: int) -> list[Asset]:
+        return self._immich_service.get_assets(
+            media_type="photo",
+            local_date=main.local_date,
+            random=True,
+            limit=limit,
+            exclude_ids=exclude_ids,
+        )
+
+    def _make_round(self, round_index: int, asset: Asset, extras: list[Asset]) -> DateguessrRound:
+        return DateguessrRound(
+            id=uuid4(),
+            game_id=self.id,
+            round_index=round_index,
+            asset=AssetSnapshot.of(asset),
+            extras=[AssetSnapshot.of(extra) for extra in extras],
+        )
 
     def _separation(self, candidate: Asset, answer: date) -> float:
         return abs((candidate.local_date - answer).days)
