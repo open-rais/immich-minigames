@@ -21,6 +21,13 @@ from persistence.immich_tables import asset, asset_exif, asset_face, asset_file,
 MediaType = Literal["photo", "video", "any"]
 
 
+def _escape_like(value: str) -> str:
+    """Escapes LIKE/ILIKE wildcard characters in free-typed user input before interpolating it
+    into a pattern - otherwise a literal % or _ in someone's search text would act as a wildcard
+    instead of a literal character."""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 # Reused across requests (pooled connections, one client) instead of opening a new connection per
 # thumbnail. A bounded timeout means a slow/hung Immich never blocks a worker thread indefinitely.
 @lru_cache(maxsize=1)
@@ -148,6 +155,47 @@ class ImmichService:
             stmt = stmt.having(asset_count >= min_asset_count)
 
         stmt = stmt.order_by(func.random() if random else person.c.name).limit(limit)
+
+        with self._engine.connect() as conn:
+            rows = conn.execute(stmt).all()
+
+        return [self._row_to_person(row) for row in rows]
+
+    def search_persons(self, query: str, *, offset: int = 0, limit: int = 3) -> list[Person]:
+        """Named people with a *word* in their full name starting with `query` (case-insensitive) -
+        e.g. "ar" matches "Argimiro Rodriguez" and "Juan Arturo" but not "Martin Perez" (no
+        mid-word match). Two ILIKE conditions cover this for any number of name tokens: the query
+        prefixing the first word, or prefixing any later word (the leading `%` in the second
+        pattern absorbs everything before that word, including other whole words). Kept separate
+        from get_persons - its existing name_query is a plain substring filter, and nothing else
+        needs this word-prefix mode. Paginated via offset/limit (small pages, e.g. for infinite
+        scroll UIs), ordered by name for a stable scroll order."""
+        escaped = _escape_like(query)
+        starts_with = person.c.name.ilike(f"{escaped}%", escape="\\")
+        contains_word_starting_with = person.c.name.ilike(f"% {escaped}%", escape="\\")
+        asset_count = func.count(func.distinct(asset_face.c.assetId)).label("asset_count")
+
+        stmt = (
+            select(person.c.id, person.c.name, person.c.birthDate, asset_count)
+            .select_from(
+                person.outerjoin(
+                    asset_face,
+                    (asset_face.c.personId == person.c.id)
+                    & asset_face.c.deletedAt.is_(None)
+                    & asset_face.c.isVisible.is_(True),
+                )
+            )
+            .where(
+                person.c.isHidden.is_(False),
+                person.c.thumbnailPath != "",
+                person.c.name != "",
+                starts_with | contains_word_starting_with,
+            )
+            .group_by(person.c.id, person.c.name, person.c.birthDate)
+            .order_by(person.c.name)
+            .offset(offset)
+            .limit(limit)
+        )
 
         with self._engine.connect() as conn:
             rows = conn.execute(stmt).all()

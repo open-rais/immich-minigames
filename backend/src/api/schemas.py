@@ -15,6 +15,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from domain.person import Person
 from games.base import BaseGame, BaseRound
 from games.dateguessr import GAME_TYPE as DATEGUESSR_TYPE
 from games.dateguessr import MODE_DAYS_TO_DATE, DateguessrRound
@@ -281,3 +282,23 @@ class PlayRoundOut(BaseModel):
             answered_round=round_out_from_round(answered_round),
             next_round=next_round,
         )
+
+
+# -- person search (reusable across features - not game-specific, see api.py's /persons/search) ---
+
+
+class PersonSearchResultOut(BaseModel):
+    id: UUID
+    name: str
+
+    @classmethod
+    def from_person(cls, person: Person) -> "PersonSearchResultOut":
+        return cls(id=person.id, name=person.name)
+
+
+class PersonSearchOut(BaseModel):
+    results: list[PersonSearchResultOut]
+
+    @classmethod
+    def from_persons(cls, persons: list[Person]) -> "PersonSearchOut":
+        return cls(results=[PersonSearchResultOut.from_person(p) for p in persons])
