@@ -2,6 +2,7 @@ from uuid import uuid4
 
 import pytest
 
+from games.asset_rounds import MAX_EXTRA_ASSETS
 from games.geoguessr import (
     DECAY_KM,
     FLAT_SCORE_RADIUS_KM,
@@ -66,6 +67,33 @@ class TestGeoguessrGame:
 
         with pytest.raises(ValueError):
             game.play_round(LatLng(latitude=0, longitude=0))
+
+
+class TestGeoguessrExtras:
+    """Extras are purely decorative (see games/asset_rounds.py's MAX_EXTRA_ASSETS) - never forced to
+    5, but whatever is picked must stay within 500m of the round's main asset and never repeat.
+    (The same-month rule is enforced in SQL by _query_extra_assets and isn't observable from
+    AssetSnapshot, which only keeps id/lat/lon - so it isn't asserted here.)"""
+
+    def test_extras_are_capped_and_within_500m(self, immich_service):
+        game = GeoguessrGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+
+        for round_ in game.rounds:
+            assert len(round_.extras) <= MAX_EXTRA_ASSETS
+            for extra in round_.extras:
+                assert haversine_km(round_.asset.latitude, round_.asset.longitude, extra.latitude, extra.longitude) <= 0.5
+
+    def test_no_asset_is_ever_shown_twice_within_the_same_game(self, immich_service):
+        game = GeoguessrGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        shown = list(game.current_round.shown_entities)
+
+        while not game.finished:
+            game.play_round(_guess_near(game.current_round))
+            if game.finished:
+                break
+            new_shown = game.current_round.shown_entities
+            assert not (set(new_shown) & set(shown))
+            shown.extend(new_shown)
 
 
 class TestGeoguessrScoring:
