@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom"
 import { createGame, personThumbnailUrl, playRound } from "../../api/games"
 import { GameType, Mode } from "../../api/types"
 import type { GameOut, MoreOrLessGuess, MoreOrLessRoundOut, RoundOut } from "../../api/types"
+import type { GameComponentProps } from "../catalog"
 import { ErrorScreen, FinishedScreen, IdleScreen } from "../shared/GameScreens"
 import { GuardedBackButton } from "../shared/GuardedBackButton"
 import { ScoreBadge } from "../shared/ScoreBadge"
@@ -35,7 +36,7 @@ function assertMoreOrLess(round: RoundOut): asserts round is MoreOrLessRoundOut 
   if (round.game_type !== GameType.MoreOrLess) throw new Error(`expected a more-or-less round, got ${round.game_type}`)
 }
 
-export function MoreOrLessGame() {
+export function MoreOrLessGame({ coverUrl }: GameComponentProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const backToMenu = () => navigate("/")
@@ -174,6 +175,7 @@ export function MoreOrLessGame() {
         title={t("moreOrLess.title")}
         modeTitle={t("moreOrLess.modes.personAssets")}
         description={t("moreOrLess.start.description")}
+        coverUrl={coverUrl}
         onStart={startGame}
         onBack={backToMenu}
         busy={busy}

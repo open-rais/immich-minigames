@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom"
 import { playRound } from "../../api/games"
 import { GameType, Mode } from "../../api/types"
 import type { DateguessrRoundOut, RoundOut } from "../../api/types"
+import type { GameComponentProps } from "../catalog"
 import { AssetCarousel } from "../shared/AssetCarousel"
 import { Button } from "../shared/Button"
 import { ErrorScreen, FinishedScreen, IdleScreen } from "../shared/GameScreens"
@@ -29,7 +30,7 @@ function isDateguessrRound(round: RoundOut): round is DateguessrRoundOut {
   return round.game_type === GameType.Dateguessr
 }
 
-export function DateguessrGame() {
+export function DateguessrGame({ coverUrl }: GameComponentProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const backToMenu = () => navigate("/")
@@ -53,6 +54,7 @@ export function DateguessrGame() {
         title={t("dateguessr.title")}
         modeTitle={t("dateguessr.modes.daysToDate")}
         description={t("dateguessr.start.description")}
+        coverUrl={coverUrl}
         onStart={startGame}
         onBack={backToMenu}
         busy={busy}
