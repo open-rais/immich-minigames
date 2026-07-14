@@ -22,11 +22,7 @@ GAME_TYPE = "geoguessr"
 MODE_DISTANCE_BETWEEN_GUESS = "distanceBetweenGuess"
 
 FLAT_SCORE_RADIUS_KM = 1.0
-# Beyond the flat-score radius: score = round(MAX_SCORE * exp(-distance_km / DECAY_KM)). Calibrated
-# against the dev library's real spread (genuinely worldwide - Chile, Thailand, Italy, etc., several
-# thousand km apart) so a decent-but-not-exact guess still scores something: ~1839pts at 2000km,
-# ~410pts at 5000km, ~34pts at 10000km.
-DECAY_KM = 2000.0
+DECAY_KM = 1500.0
 EARTH_RADIUS_KM = 6371.0
 
 # Minimum great-circle distance a new round's asset should keep from every previous round's true

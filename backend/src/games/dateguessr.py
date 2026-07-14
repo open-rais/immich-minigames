@@ -21,21 +21,13 @@ from games.base import BaseRound
 GAME_TYPE = "dateguessr"
 MODE_DAYS_TO_DATE = "daysToDate"
 
-# Unlike Geoguessr's 1km flat-score radius, there's no slack here - the guess is always day-exact by
-# construction (see docs/GAMES/DATEGUESSR.md: "acertar la fecha exacta da el máximo"), so only an
-# exact match scores the max.
 FLAT_SCORE_DAYS = 0
-# Beyond an exact match: score = round(MAX_SCORE * exp(-days_off / DECAY_DAYS)). Calibrated against
-# the dev library's real spread (local dates range ~2008-09-16 to ~2026-06-21, ~18 years) so a
-# decent-but-not-exact guess still scores something: ~1839pts at 2 years off, ~410pts at 5 years
-# off, ~34pts at 10 years off, ~1pt at the full ~18-year spread. First-pass value, meant to be tuned
-# once playable - same treatment as geoguessr.py's DECAY_KM.
-DECAY_DAYS = 730.0
+DECAY_DAYS = 500.0
 
 # Minimum number of days a new round's asset should keep from every previous round's true date, so
 # rounds don't end up testing near-duplicate dates. Best-effort - see games/asset_rounds.py's
 # pick_spread_asset. Mirrors geoguessr.py's _MIN_CANDIDATE_SEPARATION_KM.
-_MIN_CANDIDATE_SEPARATION_DAYS = 60
+_MIN_CANDIDATE_SEPARATION_DAYS = 100
 
 
 @dataclass(frozen=True)
