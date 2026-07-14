@@ -1,0 +1,107 @@
+{
+  "appHeader": {
+    "title": "immich-minigames"
+  },
+  "userMenu": {
+    "trigger": "Menú de cuenta",
+    "language": "Idioma",
+    "theme": "Tema",
+    "themeOptions": {
+      "light": "Claro",
+      "dark": "Oscuro",
+      "system": "Sistema"
+    }
+  },
+  "mainMenu": {
+    "modesCount_one": "{{count}} modo",
+    "modesCount_other": "{{count}} modos"
+  },
+  "common": {
+    "back": "Volver",
+    "score": "Puntaje",
+    "startCta": "Comenzar juego",
+    "confirmGuess": "Confirmar respuesta",
+    "roundOf": "Ronda {{current}} de {{total}}",
+    "points": "+{{score}} pts",
+    "playAgain": "Jugar de nuevo",
+    "finished": {
+      "title": "Juego terminado",
+      "finalScore": "Puntaje final: {{score}}"
+    },
+    "error": {
+      "message": "Algo salió mal al hablar con el servidor.",
+      "retry": "Reintentar"
+    }
+  },
+  "moreOrLess": {
+    "title": "More or Less",
+    "modes": {
+      "personAssets": "Fotos de personas"
+    },
+    "start": {
+      "description": "Adivina si la siguiente persona tiene más o menos fotos que la anterior. Una respuesta incorrecta termina la partida."
+    },
+    "has": "tiene",
+    "unit_one": "foto",
+    "unit_other": "fotos",
+    "question": "¿{{name}} tiene más o menos fotos?",
+    "guessMore": "Más",
+    "guessLess": "Menos",
+    "result": {
+      "correct": "¡Correcto!",
+      "incorrect": "No es así.",
+      "continue": "Continuar"
+    }
+  },
+  "geoguessr": {
+    "title": "Geoguessr",
+    "modes": {
+      "distanceBetweenGuess": "Clásico"
+    },
+    "start": {
+      "description": "Adivina dónde se tomó cada foto. 5 rondas, el puntaje baja según la distancia al lugar real."
+    },
+    "result": {
+      "distance": "A {{distance}} km"
+    }
+  },
+  "dateguessr": {
+    "title": "Dateguessr",
+    "modes": {
+      "daysToDate": "Clásico"
+    },
+    "start": {
+      "description": "Adivina cuándo se tomó cada foto. 5 rondas, el puntaje baja según la distancia a la fecha real."
+    },
+    "result": {
+      "daysOff_one": "{{count}} día de diferencia",
+      "daysOff_other": "{{count}} días de diferencia"
+    }
+  },
+  "auth": {
+    "fields": {
+      "email": "Correo electrónico",
+      "username": "Nombre de usuario",
+      "fullName": "Nombre completo",
+      "password": "Contraseña"
+    },
+    "login": {
+      "title": "Iniciar sesión",
+      "cta": "Iniciar sesión",
+      "noAccount": "¿No tienes una cuenta?"
+    },
+    "signup": {
+      "title": "Registrarse",
+      "cta": "Registrarse",
+      "hasAccount": "¿Ya tienes una cuenta?"
+    },
+    "profile": {
+      "title": "Perfil",
+      "memberSince": "Miembro desde {{date}}",
+      "logout": "Cerrar sesión"
+    },
+    "error": {
+      "generic": "Algo salió mal. Intenta de nuevo."
+    }
+  }
+}

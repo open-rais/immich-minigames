@@ -14,7 +14,7 @@ export function AuthField({ label, id, ...props }: AuthFieldProps) {
       <input
         id={id}
         name={id}
-        className="rounded-xl border border-line-soft bg-white px-3.5 py-2.5 text-[15px] text-ink outline-none transition-colors focus:border-primary"
+        className="rounded-xl border border-line-soft bg-surface px-3.5 py-2.5 text-[15px] text-ink outline-none transition-colors focus:border-primary"
         {...props}
       />
     </div>

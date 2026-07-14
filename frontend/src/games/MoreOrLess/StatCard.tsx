@@ -17,7 +17,7 @@ interface StatCardProps {
  */
 export function StatCard({ thumbnailUrl, name, subtitle, children }: StatCardProps) {
   return (
-    <div className="flex h-full min-h-0 w-full flex-col items-center gap-3.5 rounded-[22px] border border-line bg-white p-[18px] shadow-card md:h-auto md:w-[300px] md:rounded-3xl md:p-5">
+    <div className="flex h-full min-h-0 w-full flex-col items-center gap-3.5 rounded-[22px] border border-line bg-surface p-[18px] shadow-card md:h-auto md:w-[300px] md:rounded-3xl md:p-5">
       <PersonPhoto src={thumbnailUrl} alt={name} />
 
       <div className="flex min-h-[56px] w-full items-center justify-center">

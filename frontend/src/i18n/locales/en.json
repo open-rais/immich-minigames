@@ -2,6 +2,16 @@
   "appHeader": {
     "title": "immich-minigames"
   },
+  "userMenu": {
+    "trigger": "Account menu",
+    "language": "Language",
+    "theme": "Theme",
+    "themeOptions": {
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    }
+  },
   "mainMenu": {
     "modesCount_one": "{{count}} mode",
     "modesCount_other": "{{count}} modes"

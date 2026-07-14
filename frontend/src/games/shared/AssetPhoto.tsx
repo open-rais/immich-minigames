@@ -8,9 +8,8 @@ const placeholderStyle = {
 }
 
 // object-contain (not object-cover) so the whole photo is always visible, letterboxed against the
-// app's own light background token - matches how Immich's own fullscreen viewer shows a photo
-// (not cropping it to fill the viewport), while staying in the app's current light theme (a dark
-// backdrop can come back once a real dark mode exists - see docs/TODO/ROADMAP.md's "Modo oscuro").
+// app's own bg token - matches how Immich's own fullscreen viewer shows a photo (not cropping it
+// to fill the viewport).
 export function AssetPhoto({ src, alt }: { src: string; alt: string }) {
   const [failed, setFailed] = useState(false)
 

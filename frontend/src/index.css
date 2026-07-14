@@ -19,6 +19,7 @@
   --font-mono: "Overpass Mono", ui-monospace, monospace;
 
   --color-app-bg: oklch(0.985 0.003 255);
+  --color-surface: oklch(1 0 0);
 
   --color-primary: oklch(0.48 0.16 265);
   --color-primary-hover: oklch(0.42 0.16 265);
@@ -53,4 +54,42 @@
 
 body {
   background: var(--color-app-bg);
+}
+
+/*
+ * Dark-mode palette, consistent with Immich's own (sampled from the running Immich dev
+ * instance's compiled CSS: near-black bg, light-cool-gray text, an elevated dark-gray card
+ * surface, and a lightened/desaturated primary rather than a plain lightness-flip of the light
+ * indigo - a dark indigo has poor contrast against a near-black background). Un-layered so it
+ * wins over Tailwind's own `@layer theme` output regardless of selector specificity - no `dark:`
+ * variants needed anywhere else in the app, every utility already resolves through these
+ * variables. `--color-map-*` is deliberately not overridden - Geoguessr's map and Dateguessr's
+ * ruler stay light-only for now, see docs/TODO/ROADMAP.md's "Limitaciones conocidas".
+ */
+.dark {
+  --color-app-bg: oklch(0.16 0.006 260);
+  --color-surface: oklch(0.24 0.008 260);
+
+  --color-primary: oklch(0.83 0.09 260);
+  --color-primary-hover: oklch(0.78 0.1 260);
+
+  --color-badge-bg: oklch(0.28 0.05 265);
+  --color-badge-label: oklch(0.82 0.05 265);
+  --color-badge-value: oklch(0.88 0.06 265);
+
+  --color-line-strong: oklch(0.36 0.012 260);
+  --color-line: oklch(0.3 0.01 260);
+  --color-line-soft: oklch(0.4 0.014 260);
+
+  --color-ink: oklch(0.93 0.012 260);
+  --color-body: oklch(0.85 0.012 260);
+  --color-muted: oklch(0.68 0.015 260);
+  --color-faint: oklch(0.6 0.014 260);
+
+  --color-hover-tint: oklch(0.32 0.012 260);
+  --color-count-bg: oklch(0.26 0.01 260);
+  --color-placeholder-a: oklch(0.22 0.008 260);
+  --color-placeholder-b: oklch(0.26 0.008 260);
+
+  --shadow-card: 0 8px 24px oklch(0 0 0 / 0.45);
 }

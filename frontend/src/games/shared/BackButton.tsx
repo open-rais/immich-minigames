@@ -2,7 +2,7 @@ export function BackButton({ label, onClick }: { label: string; onClick: () => v
   return (
     <button
       onClick={onClick}
-      className="fixed top-[18px] left-[18px] z-30 flex h-11 w-11 items-center justify-center rounded-full border border-line-strong bg-white text-[15px] font-semibold text-body shadow-card transition-colors hover:bg-hover-tint md:top-7 md:left-10 md:h-auto md:w-auto md:justify-start md:gap-2 md:py-2.5 md:pr-[18px] md:pl-3.5"
+      className="fixed top-[18px] left-[18px] z-30 flex h-11 w-11 items-center justify-center rounded-full border border-line-strong bg-surface text-[15px] font-semibold text-body shadow-card transition-colors hover:bg-hover-tint md:top-7 md:left-10 md:h-auto md:w-auto md:justify-start md:gap-2 md:py-2.5 md:pr-[18px] md:pl-3.5"
     >
       <svg
         width="18"

@@ -4,7 +4,7 @@ type Variant = "primary" | "secondary"
 
 const variantClass: Record<Variant, string> = {
   primary: "bg-primary text-white hover:bg-primary-hover",
-  secondary: "border border-line-soft bg-white text-body hover:bg-hover-tint",
+  secondary: "border border-line-soft bg-surface text-body hover:bg-hover-tint",
 }
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
