@@ -8,9 +8,9 @@ The same mechanic as Geoguessr, but swapping "where" for "when": instead of a ma
 
 ## How to Play
 
-A photo is shown and the player must place it on a timeline that looks like a measuring tape: large
-lines mark years, medium lines mark months, small lines mark days. Scrolling zooms in or out so the
-exact point can be located precisely.
+Between 1 and 5 photos from the exact same day are shown, and the player must place them on a
+timeline that looks like a measuring tape: large lines mark years, medium lines mark months, small
+lines mark days. Scrolling zooms in or out so the exact point can be located precisely.
 
 This repeats 5 times with photos from different dates each time, and scores from all 5 rounds are summed.
 
