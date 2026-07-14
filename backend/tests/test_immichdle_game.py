@@ -44,6 +44,15 @@ class TestImmichdleGame:
         assert game.rounds[0].guessed_person is not None
         assert game.rounds[0].clues is not None
 
+    def test_correct_guess_gives_a_sane_assets_together_count(self, immich_service):
+        """Guarding against a self-join bug in get_assets_together_count(id, id): guessing the
+        target itself should count photos where the target's own face is tagged, not 0/blow up."""
+        game = ImmichdleGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+
+        game.play_round(game.target.id)
+
+        assert game.rounds[-1].clues.assets_together > 0
+
     def test_score_floors_at_zero_and_ends_the_game(self, immich_service):
         game = ImmichdleGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
         wrong_candidates = immich_service.get_persons(
@@ -102,6 +111,29 @@ class TestComputeClues:
         assert _compute_clues(target, same, None, 0).age == "same"
         assert _compute_clues(target, unknown, None, 0).age == "unknown"
 
+    def test_age_close_bucket(self):
+        target = self._snapshot(name="Target", asset_count=1, birth_date=date(1990, 6, 1), first_asset_date=None)
+        close = self._snapshot(name="Close", asset_count=1, birth_date=date(1990, 1, 1), first_asset_date=None)
+        far = self._snapshot(name="Far", asset_count=1, birth_date=date(1980, 1, 1), first_asset_date=None)
+        same = self._snapshot(name="Same", asset_count=1, birth_date=date(1990, 6, 1), first_asset_date=None)
+        unknown = self._snapshot(name="Unknown", asset_count=1, birth_date=None, first_asset_date=None)
+
+        assert _compute_clues(target, close, None, 0).age_close is True
+        assert _compute_clues(target, far, None, 0).age_close is False
+        assert _compute_clues(target, same, None, 0).age_close is None
+        assert _compute_clues(target, unknown, None, 0).age_close is None
+
+    def test_age_both_unknown_distinguishes_from_one_unknown(self):
+        known_target = self._snapshot(name="Target", asset_count=1, birth_date=date(1990, 1, 1), first_asset_date=None)
+        unknown_target = self._snapshot(name="Target", asset_count=1, birth_date=None, first_asset_date=None)
+        known_guess = self._snapshot(name="Guess", asset_count=1, birth_date=date(1990, 1, 1), first_asset_date=None)
+        unknown_guess = self._snapshot(name="Guess", asset_count=1, birth_date=None, first_asset_date=None)
+
+        assert _compute_clues(unknown_target, unknown_guess, None, 0).age_both_unknown is True
+        assert _compute_clues(known_target, unknown_guess, None, 0).age_both_unknown is False
+        assert _compute_clues(unknown_target, known_guess, None, 0).age_both_unknown is False
+        assert _compute_clues(known_target, known_guess, None, 0).age_both_unknown is False
+
     def test_asset_count_more_less_equal(self):
         target = self._snapshot(name="Target", asset_count=10, birth_date=None, first_asset_date=None)
         more = self._snapshot(name="More", asset_count=20, birth_date=None, first_asset_date=None)
@@ -111,6 +143,16 @@ class TestComputeClues:
         assert _compute_clues(target, more, None, 0).asset_count == "more"
         assert _compute_clues(target, less, None, 0).asset_count == "less"
         assert _compute_clues(target, equal, None, 0).asset_count == "equal"
+
+    def test_asset_count_close_bucket(self):
+        target = self._snapshot(name="Target", asset_count=100, birth_date=None, first_asset_date=None)
+        close = self._snapshot(name="Close", asset_count=150, birth_date=None, first_asset_date=None)
+        far = self._snapshot(name="Far", asset_count=300, birth_date=None, first_asset_date=None)
+        equal = self._snapshot(name="Equal", asset_count=100, birth_date=None, first_asset_date=None)
+
+        assert _compute_clues(target, close, None, 0).asset_count_close is True
+        assert _compute_clues(target, far, None, 0).asset_count_close is False
+        assert _compute_clues(target, equal, None, 0).asset_count_close is None
 
     def test_first_appearance_before_after_same_unknown(self):
         target = self._snapshot(name="Target", asset_count=1, birth_date=None, first_asset_date=date(2015, 6, 1))
@@ -123,6 +165,29 @@ class TestComputeClues:
         assert _compute_clues(target, after, None, 0).first_appearance == "after"
         assert _compute_clues(target, same, None, 0).first_appearance == "same"
         assert _compute_clues(target, unknown, None, 0).first_appearance == "unknown"
+
+    def test_first_appearance_close_bucket(self):
+        target = self._snapshot(name="Target", asset_count=1, birth_date=None, first_asset_date=date(2015, 6, 1))
+        close = self._snapshot(name="Close", asset_count=1, birth_date=None, first_asset_date=date(2015, 1, 1))
+        far = self._snapshot(name="Far", asset_count=1, birth_date=None, first_asset_date=date(2010, 1, 1))
+        same = self._snapshot(name="Same", asset_count=1, birth_date=None, first_asset_date=date(2015, 6, 1))
+        unknown = self._snapshot(name="Unknown", asset_count=1, birth_date=None, first_asset_date=None)
+
+        assert _compute_clues(target, close, None, 0).first_appearance_close is True
+        assert _compute_clues(target, far, None, 0).first_appearance_close is False
+        assert _compute_clues(target, same, None, 0).first_appearance_close is None
+        assert _compute_clues(target, unknown, None, 0).first_appearance_close is None
+
+    def test_first_appearance_both_unknown_distinguishes_from_one_unknown(self):
+        known_target = self._snapshot(name="Target", asset_count=1, birth_date=None, first_asset_date=date(2015, 6, 1))
+        unknown_target = self._snapshot(name="Target", asset_count=1, birth_date=None, first_asset_date=None)
+        known_guess = self._snapshot(name="Guess", asset_count=1, birth_date=None, first_asset_date=date(2015, 6, 1))
+        unknown_guess = self._snapshot(name="Guess", asset_count=1, birth_date=None, first_asset_date=None)
+
+        assert _compute_clues(unknown_target, unknown_guess, None, 0).first_appearance_both_unknown is True
+        assert _compute_clues(known_target, unknown_guess, None, 0).first_appearance_both_unknown is False
+        assert _compute_clues(unknown_target, known_guess, None, 0).first_appearance_both_unknown is False
+        assert _compute_clues(known_target, known_guess, None, 0).first_appearance_both_unknown is False
 
     def test_common_names_counts_shared_tokens_case_insensitively(self):
         target = self._snapshot(name="Ana Maria Perez", asset_count=1, birth_date=None, first_asset_date=None)

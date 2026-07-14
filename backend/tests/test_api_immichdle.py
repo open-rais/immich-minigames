@@ -97,7 +97,12 @@ class TestPlayRound:
         result = response.json()
         answered = result["answered_round"]
         assert answered["guess_person_id"] == str(candidate.id)
+        assert answered["guess_asset_count"] == candidate.asset_count
         assert answered["clues"] is not None
+        pending_round = game["rounds"][0]
+        assert pending_round["guess_asset_count"] is None
+        assert pending_round["guess_birth_date"] is None
+        assert pending_round["guess_first_asset_date"] is None
         if result["correct"]:
             assert result["score_delta"] == 0
             assert result["score"] == 100
