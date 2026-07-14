@@ -55,6 +55,18 @@
   --shadow-card: 0 8px 24px oklch(0.3 0.03 260 / 0.08);
 }
 
+/*
+ * Overscroll (iOS rubber-band, desktop touchpad bounce) reveals the root canvas beyond the
+ * document's edges, and the canvas is painted from <html>'s background - the header's own
+ * safe-area padding can't reach there because the whole page slides during the bounce. Painting
+ * the gradient's first stop with the header's surface color makes the area revealed above the
+ * page match the header, and the last stop keeps the area below the page matching the app bg.
+ * (Only the extended first/last stops are ever visible; <body> covers the middle.)
+ */
+html {
+  background: linear-gradient(var(--color-surface) 50%, var(--color-app-bg) 50%);
+}
+
 body {
   background: var(--color-app-bg);
 }
