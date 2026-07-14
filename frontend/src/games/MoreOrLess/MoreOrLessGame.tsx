@@ -6,8 +6,8 @@ import { useNavigate } from "react-router-dom"
 import { createGame, personThumbnailUrl, playRound } from "../../api/games"
 import { GameType, Mode } from "../../api/types"
 import type { GameOut, MoreOrLessGuess, MoreOrLessRoundOut, RoundOut } from "../../api/types"
-import { BackButton } from "../shared/BackButton"
 import { ErrorScreen, FinishedScreen, IdleScreen } from "../shared/GameScreens"
+import { GuardedBackButton } from "../shared/GuardedBackButton"
 import { ScoreBadge } from "../shared/ScoreBadge"
 import type { CandidatePhase } from "./CandidateCard"
 import { CandidateCard } from "./CandidateCard"
@@ -172,6 +172,7 @@ export function MoreOrLessGame() {
     return (
       <IdleScreen
         title={t("moreOrLess.title")}
+        modeTitle={t("moreOrLess.modes.personAssets")}
         description={t("moreOrLess.start.description")}
         onStart={startGame}
         onBack={backToMenu}
@@ -194,7 +195,7 @@ export function MoreOrLessGame() {
     <div className="flex h-dvh flex-col overflow-hidden bg-app-bg px-[18px] py-[22px] md:px-10 md:py-7">
       {/* Fixed/floating, not in normal flow - on mobile they sit over the top card rather than
           pushing it down, and free up that vertical space for the cards (no-scroll budget). */}
-      <BackButton label={t("common.back")} onClick={backToIdle} />
+      <GuardedBackButton onExit={backToIdle} />
       <ScoreBadge label={t("common.score")} score={game.score} />
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 md:flex-row md:items-center md:justify-center md:gap-10">

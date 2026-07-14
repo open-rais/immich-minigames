@@ -10,18 +10,22 @@ import { Button } from "./Button"
 
 interface IdleScreenProps {
   title: string
+  modeTitle: string
   description: string
   onStart: () => void
   onBack: () => void
   busy: boolean
 }
 
-export function IdleScreen({ title, description, onStart, onBack, busy }: IdleScreenProps) {
+export function IdleScreen({ title, modeTitle, description, onStart, onBack, busy }: IdleScreenProps) {
   const { t } = useTranslation()
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-app-bg px-6 text-center">
       <BackButton label={t("common.back")} onClick={onBack} />
-      <h1 className="text-3xl font-bold text-ink">{title}</h1>
+      <div>
+        <h1 className="text-3xl font-bold text-ink">{title}</h1>
+        <h2 className="mt-1 text-lg font-semibold text-muted">{modeTitle}</h2>
+      </div>
       <p className="max-w-md text-muted">{description}</p>
       <Button variant="primary" className="px-8 py-3" onClick={onStart} disabled={busy}>
         {t("common.startCta")}

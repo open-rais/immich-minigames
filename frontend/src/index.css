@@ -24,6 +24,9 @@
   --color-primary: oklch(0.48 0.16 265);
   --color-primary-hover: oklch(0.42 0.16 265);
 
+  --color-danger: oklch(0.55 0.22 25);
+  --color-danger-hover: oklch(0.48 0.22 25);
+
   --color-badge-bg: oklch(0.93 0.045 265);
   --color-badge-label: oklch(0.4 0.13 265);
   --color-badge-value: oklch(0.35 0.15 265);
@@ -74,6 +77,9 @@ body {
 
   --color-primary: oklch(0.83 0.09 260);
   --color-primary-hover: oklch(0.78 0.1 260);
+
+  --color-danger: oklch(0.72 0.17 25);
+  --color-danger-hover: oklch(0.66 0.18 25);
 
   --color-badge-bg: oklch(0.28 0.05 265);
   --color-badge-label: oklch(0.82 0.05 265);

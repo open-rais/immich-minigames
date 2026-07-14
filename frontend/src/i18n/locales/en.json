@@ -31,6 +31,12 @@
     "error": {
       "message": "Something went wrong talking to the server.",
       "retry": "Retry"
+    },
+    "exitConfirm": {
+      "title": "Are you sure you want to exit?",
+      "message": "You won't be able to continue this game.",
+      "confirm": "Exit",
+      "cancel": "Cancel"
     }
   },
   "moreOrLess": {

@@ -6,9 +6,9 @@ import { assetThumbnailUrl, playRound } from "../../api/games"
 import { GameType, Mode } from "../../api/types"
 import type { GeoguessrRoundOut, RoundOut } from "../../api/types"
 import { AssetPhoto } from "../shared/AssetPhoto"
-import { BackButton } from "../shared/BackButton"
 import { Button } from "../shared/Button"
 import { ErrorScreen, FinishedScreen, IdleScreen } from "../shared/GameScreens"
+import { GuardedBackButton } from "../shared/GuardedBackButton"
 import { RevealResultCard } from "../shared/RevealResultCard"
 import { RoundBadge } from "../shared/RoundBadge"
 import { ScoreBadge } from "../shared/ScoreBadge"
@@ -52,6 +52,7 @@ export function GeoguessrGame() {
     return (
       <IdleScreen
         title={t("geoguessr.title")}
+        modeTitle={t("geoguessr.modes.distanceBetweenGuess")}
         description={t("geoguessr.start.description")}
         onStart={startGame}
         onBack={backToMenu}
@@ -79,7 +80,7 @@ export function GeoguessrGame() {
     <div className="h-dvh w-full overflow-hidden bg-app-bg">
       <AssetPhoto key={round.asset_id} src={assetThumbnailUrl(round.asset_id)} alt={t("geoguessr.title")} />
 
-      <BackButton label={t("common.back")} onClick={backToIdle} />
+      <GuardedBackButton onExit={backToIdle} />
       <ScoreBadge label={t("common.score")} score={game.score} />
       <RoundBadge current={round.round_index} total={TOTAL_ROUNDS} />
 

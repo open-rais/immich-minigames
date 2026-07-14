@@ -6,9 +6,9 @@ import { assetThumbnailUrl, playRound } from "../../api/games"
 import { GameType, Mode } from "../../api/types"
 import type { DateguessrRoundOut, RoundOut } from "../../api/types"
 import { AssetPhoto } from "../shared/AssetPhoto"
-import { BackButton } from "../shared/BackButton"
 import { Button } from "../shared/Button"
 import { ErrorScreen, FinishedScreen, IdleScreen } from "../shared/GameScreens"
+import { GuardedBackButton } from "../shared/GuardedBackButton"
 import { RevealResultCard } from "../shared/RevealResultCard"
 import { RoundBadge } from "../shared/RoundBadge"
 import { ScoreBadge } from "../shared/ScoreBadge"
@@ -51,6 +51,7 @@ export function DateguessrGame() {
     return (
       <IdleScreen
         title={t("dateguessr.title")}
+        modeTitle={t("dateguessr.modes.daysToDate")}
         description={t("dateguessr.start.description")}
         onStart={startGame}
         onBack={backToMenu}
@@ -75,7 +76,7 @@ export function DateguessrGame() {
         <AssetPhoto key={round.asset_id} src={assetThumbnailUrl(round.asset_id)} alt={t("dateguessr.title")} />
       </div>
 
-      <BackButton label={t("common.back")} onClick={backToIdle} />
+      <GuardedBackButton onExit={backToIdle} />
       <ScoreBadge label={t("common.score")} score={game.score} />
       <RoundBadge current={round.round_index} total={TOTAL_ROUNDS} />
 

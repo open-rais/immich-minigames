@@ -31,6 +31,12 @@
     "error": {
       "message": "Algo salió mal al hablar con el servidor.",
       "retry": "Reintentar"
+    },
+    "exitConfirm": {
+      "title": "¿Seguro que quieres salir?",
+      "message": "No podrás continuar el juego.",
+      "confirm": "Salir",
+      "cancel": "Cancelar"
     }
   },
   "moreOrLess": {
