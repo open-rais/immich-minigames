@@ -31,9 +31,9 @@ def get_session_factory(engine: Engine | None = None) -> sessionmaker:
 
 
 def init_db(engine: Engine | None = None) -> None:
-    """Creates this app's tables (idempotent). The `minigames` schema itself is provisioned once
-    by docker/init-scripts/create_minigames_app_role.sh, not here - the app's own DB role
-    deliberately has no CREATE privilege at the database level, only within that schema."""
+    """Creates this app's tables (idempotent). The `minigames` schema itself is provisioned by
+    scripts/bootstrap_db_role.py, not here - the app's own DB role deliberately has no CREATE
+    privilege at the database level, only within that schema."""
     Base.metadata.create_all(engine or get_engine())
 
 

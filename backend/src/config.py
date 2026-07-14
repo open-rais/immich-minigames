@@ -10,8 +10,8 @@ _REPO_ROOT_ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=_REPO_ROOT_ENV_FILE, extra="ignore")
 
-    # The backend's single DB role (see docker/init-scripts/create_minigames_app_role.sh):
-    # read-only on Immich's own schema, full control on this app's own `minigames` schema. Never
+    # The backend's single DB role (see scripts/bootstrap_db_role.py, which provisions it): read-only
+    # on Immich's own schema, full control on this app's own `minigames` schema. Never
     # DB_USERNAME/DB_PASSWORD - those are Immich's own admin connection, not used by this backend.
     db_app_username: str
     db_app_password: str

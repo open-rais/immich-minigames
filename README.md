@@ -53,42 +53,76 @@ Full implementation roadmap is in [`docs/TODO/ROADMAP.md`](./docs/TODO/ROADMAP.m
 
 ### Prerequisites
 
-- An existing [Immich](https://immich.app) instance (v1.90.0+) running with Postgres and Immich-ML
-- Docker and Docker Compose (recommended)
+- An existing [Immich](https://immich.app) instance running Postgres (this project targets the
+  Postgres 14 image Immich itself ships) and Immich-ML
+- Docker and Docker Compose
 
-### Quick Start with Docker Compose
+There are two separate Compose files - use one or both depending on your situation:
 
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/open-rais/immich-minigames
-   cd immich-minigames
-   ```
+| File | What it starts | When you need it |
+|---|---|---|
+| `docker-compose.yml` | Immich itself (server + ML + Postgres + Redis) | Only if you don't already have an Immich instance running |
+| `docker-compose.app.yml` | This app's backend + frontend (pulled from GHCR) | Always |
 
-2. Create a `.env` file with your Immich database credentials:
-   ```env
-   # Immich database
-   DB_HOST=your-immich-db-host
-   DB_PORT=5432
-   DB_NAME=immich
-   DB_APP_USERNAME=immich_app
-   DB_APP_PASSWORD=your_immich_app_password
-   
-   # Immich API
-   IMMICH_API_URL=http://your-immich-server/api
-   IMMICH_ML_URL=http://your-immich-ml-service:3003
-   
-   # Backend
-   BACKEND_PORT=8000
-   ```
+If you already run Immich elsewhere, skip straight to step 3 and point `DB_HOST`/`IMMICH_SERVER_URL`
+at your existing instance instead.
 
-3. Run with Docker Compose:
-   ```bash
-   docker-compose up -d
-   ```
+### 1. Clone this repository
 
-   The frontend will be available at `http://localhost:5173` (dev) or the configured port in production.
+```bash
+git clone https://github.com/open-rais/immich-minigames
+cd immich-minigames
+```
+
+### 2. (Optional) Start Immich itself
+
+Skip this if you already have an Immich instance running.
+
+```bash
+cp .env.example .env
+# edit .env: at minimum set UPLOAD_LOCATION and DB_DATA_LOCATION to real paths on your machine
+docker compose up -d
+```
+
+Open `http://localhost:2283` to finish Immich's setup wizard, then create an API key at
+**Account Settings > API Keys** - you'll need it in the next step.
+
+### 3. Configure and start the minigames app
+
+Finish filling in your `.env` (create it from `.env.example` if you skipped step 2):
+
+- `DB_APP_USERNAME` / `DB_APP_PASSWORD` - pick any credentials; this app provisions the role itself
+  (see below), it doesn't need to already exist
+- `IMMICH_API_KEY` - the key you created in step 2 (or from your existing Immich instance)
+- `JWT_SECRET` - generate with `openssl rand -hex 32`
+- If pointing at an Immich instance *not* started by this repo's own `docker-compose.yml`, also set
+  `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE_NAME`, and `IMMICH_SERVER_URL` to
+  match it
+
+Then:
+
+```bash
+docker compose -f docker-compose.app.yml up -d
+```
+
+This does two things in order: first a one-shot `db-init` step provisions the Postgres role this
+app runs as (see **Database Access & Security** below), then it starts the backend and frontend.
+No manual database setup step is needed.
+
+Open `http://localhost:${FRONTEND_PORT:-3000}` (3000 by default).
+
+If you later rotate `DB_APP_PASSWORD` in `.env`, re-run just the role step:
+
+```bash
+docker compose -f docker-compose.app.yml run --rm db-init
+```
 
 ### Development Setup
+
+For working on this app's own code (not just running it), run each service from source instead of
+its container image. This still needs Immich's Postgres role provisioned - either run `docker
+compose -f docker-compose.app.yml run --rm db-init` once, or apply the same grants manually if
+you're not using Docker for that step at all.
 
 **Backend:**
 ```bash
@@ -120,12 +154,25 @@ shared components and design tokens in `index.css`.
 
 ## Database Access & Security
 
-This app accesses the Immich Postgres database directly (read-only for Immich's `public` schema) to
-fetch game data efficiently. It uses a dedicated `DB_APP_USERNAME` role and never modifies Immich's
-own tables. Images are always fetched through Immich's REST API, never directly from disk.
+This app accesses the Immich Postgres database directly (read-only on Immich's own `public` schema)
+to fetch game data efficiently, alongside its own separate `minigames` schema for game state.
+Images are always fetched through Immich's REST API, never directly from disk or the database.
 
-**Use this at your own risk.** While access is read-only and images are never touched, you run this
-code alongside your personal photo database. Review the source code if you have concerns.
+The long-running backend never holds Immich's admin database credentials
+(`DB_USERNAME`/`DB_PASSWORD`). It only ever connects as a dedicated, scoped role
+(`DB_APP_USERNAME`) that is:
+- **read-only** on Immich's own `public` schema - a bug in a query can't write to your Immich data
+- **full control**, but only on this app's own `minigames` schema - nothing outside it
+
+That role doesn't need to exist beforehand: `docker compose -f docker-compose.app.yml up` first runs
+a one-shot `db-init` step (`backend/src/scripts/bootstrap_db_role.py`) that creates or refreshes it,
+then starts the backend with only its scoped credentials. `db-init` is the *only* container that
+ever sees the admin credentials, and it exits immediately once the role is provisioned - see the
+comments in `docker-compose.app.yml` for the exact scoping.
+
+**Use this at your own risk.** While access to Immich's own data is read-only and images are never
+touched, you run this code alongside your personal photo database. Review the source code if you
+have concerns.
 
 ## FAQs
 

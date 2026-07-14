@@ -7,21 +7,53 @@
 # Usage: docker compose -f docker-compose.app.yml up -d
 # Then open http://localhost:${FRONTEND_PORT:-3000}.
 #
+# `db-init` runs once before `backend` and provisions the scoped Postgres role the backend
+# actually runs as (see backend/src/scripts/bootstrap_db_role.py) - it's the only thing in this
+# stack that ever sees Immich's admin DB credentials (DB_USERNAME/DB_PASSWORD), and it exits
+# immediately after. `backend` never receives those - only its own scoped DB_APP_USERNAME role.
+# Re-run it standalone any time DB_APP_PASSWORD changes:
+#   docker compose -f docker-compose.app.yml run --rm db-init
+#
 
 name: immich-minigames-app
 
 services:
+  db-init:
+    image: ghcr.io/open-rais/immich-minigames-backend:${MINIGAMES_VERSION:-edge}
+    command: ['uv', 'run', 'python', 'src/scripts/bootstrap_db_role.py']
+    environment:
+      DB_HOST: ${DB_HOST:-host.docker.internal}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_DATABASE_NAME: ${DB_DATABASE_NAME}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_APP_USERNAME: ${DB_APP_USERNAME}
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD}
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    restart: 'no'
+
   backend:
     image: ghcr.io/open-rais/immich-minigames-backend:${MINIGAMES_VERSION:-edge}
-    env_file:
-      - .env
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
     environment:
-      # Overrides the .env file's host-oriented defaults: "localhost" from inside this container
-      # means the container itself, not your machine. If Immich is running on this same machine
-      # (e.g. via this repo's own docker-compose.yml), host.docker.internal reaches it through the
-      # extra_hosts entry below and its already-published ports (5432, 2283).
+      # Explicit allow-list, not `env_file: .env` - this container must never receive Immich's
+      # admin DB credentials (DB_USERNAME/DB_PASSWORD), only db-init above does.
+      # DB_HOST/IMMICH_SERVER_URL override the .env file's host-oriented defaults: "localhost"
+      # from inside this container means the container itself, not your machine. If Immich is
+      # running on this same machine (e.g. via this repo's own docker-compose.yml),
+      # host.docker.internal reaches it through the extra_hosts entry below and its
+      # already-published ports (5432, 2283).
       DB_HOST: ${DB_HOST:-host.docker.internal}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_DATABASE_NAME: ${DB_DATABASE_NAME}
+      DB_APP_USERNAME: ${DB_APP_USERNAME}
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD}
       IMMICH_SERVER_URL: ${IMMICH_SERVER_URL:-http://host.docker.internal:2283}
+      IMMICH_API_KEY: ${IMMICH_API_KEY}
+      JWT_SECRET: ${JWT_SECRET}
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     restart: unless-stopped
