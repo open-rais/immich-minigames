@@ -8,8 +8,14 @@ RUN uv sync --frozen --no-dev --no-install-project
 COPY src ./src
 RUN uv sync --frozen --no-dev
 
+COPY alembic.ini ./
+COPY alembic ./alembic
+COPY docker-entrypoint.sh ./
+RUN chmod +x docker-entrypoint.sh
+
 EXPOSE 8000
 
-# --host 0.0.0.0 is required here (unlike the documented host dev command) so the port published
-# by Docker actually reaches uvicorn, which otherwise defaults to binding 127.0.0.1.
-CMD ["uv", "run", "uvicorn", "main:app", "--app-dir", "src", "--host", "0.0.0.0", "--port", "8000"]
+# Runs pending Alembic migrations before starting uvicorn (--host 0.0.0.0 is required there, unlike
+# the documented host dev command, so the port published by Docker actually reaches it instead of
+# uvicorn's default 127.0.0.1 bind) - see docker-entrypoint.sh.
+ENTRYPOINT ["./docker-entrypoint.sh"]
