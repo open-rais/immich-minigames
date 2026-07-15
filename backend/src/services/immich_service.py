@@ -271,11 +271,14 @@ class ImmichService:
         self, *, max_faces: int, exclude_asset_ids: frozenset[UUID] = frozenset()
     ) -> list[Face]:
         """Picks one random asset that has at least one visible, non-deleted face already assigned
-        to a named person, then returns up to `max_faces` of that asset's named faces (randomly
-        chosen if it has more than `max_faces`) - these are the faces Who'sThatPerson blacks out
-        for a round. Faces without a name are never returned - there'd be nothing to grade against,
-        so they're left unblacked in the photo, purely decorative. Empty list if no eligible asset
-        exists (e.g. exclude_asset_ids/the game's data pool is exhausted)."""
+        to a named, non-hidden person, then returns up to `max_faces` of that asset's named,
+        non-hidden faces (randomly chosen if it has more than `max_faces`) - these are the faces
+        Who'sThatPerson blacks out for a round. Faces without a name are never returned - there'd
+        be nothing to grade against, so they're left unblacked in the photo, purely decorative.
+        Hidden people (Immich's own `isHidden` flag) are excluded the same way get_persons/
+        search_persons already exclude them from the guess search box - otherwise a round could
+        black out a face the player has no way to search for and guess. Empty list if no eligible
+        asset exists (e.g. exclude_asset_ids/the game's data pool is exhausted)."""
         visible_face = asset_face.c.isVisible.is_(True) & asset_face.c.deletedAt.is_(None)
         named_face = asset_face.join(person, person.c.id == asset_face.c.personId)
 
@@ -288,6 +291,7 @@ class ImmichService:
                 asset.c.deletedAt.is_(None),
                 visible_face,
                 person.c.name != "",
+                person.c.isHidden.is_(False),
             )
         )
         if exclude_asset_ids:
@@ -316,7 +320,12 @@ class ImmichService:
                     asset_face.c.boundingBoxY2,
                 )
                 .select_from(named_face)
-                .where(asset_face.c.assetId == asset_row.id, visible_face, person.c.name != "")
+                .where(
+                    asset_face.c.assetId == asset_row.id,
+                    visible_face,
+                    person.c.name != "",
+                    person.c.isHidden.is_(False),
+                )
                 .order_by(func.random())
                 .limit(max_faces)
             )
