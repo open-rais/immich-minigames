@@ -148,6 +148,7 @@
       "title": "Perfil",
       "memberSince": "Miembro desde {{date}}",
       "logout": "Cerrar sesión",
+      "edit": "Editar perfil",
       "save": "Guardar cambios",
       "saved": "Perfil actualizado",
       "skin": {

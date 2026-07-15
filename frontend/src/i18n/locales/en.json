@@ -148,6 +148,7 @@
       "title": "Profile",
       "memberSince": "Member since {{date}}",
       "logout": "Log out",
+      "edit": "Edit profile",
       "save": "Save changes",
       "saved": "Profile updated",
       "skin": {

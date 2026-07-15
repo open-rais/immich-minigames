@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 
 import { AuthProvider } from './auth/AuthProvider'
+import { EditProfilePage } from './auth/EditProfilePage'
 import { LoginPage } from './auth/LoginPage'
 import { ProfilePage } from './auth/ProfilePage'
 import { SignupPage } from './auth/SignupPage'
@@ -18,6 +19,7 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/profile/edit" element={<EditProfilePage />} />
             <Route path="/:gameType/:mode" element={<GameRoute />} />
           </Routes>
         </AuthProvider>

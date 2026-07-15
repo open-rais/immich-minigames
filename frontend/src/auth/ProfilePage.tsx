@@ -1,54 +1,44 @@
-import { useEffect, useState } from "react"
-import type { FormEvent } from "react"
-import { useTranslation } from "react-i18next"
+import { useState } from "react"
 import { Navigate, useNavigate } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 
-import { apiErrorMessage } from "../api/errors"
+import { personThumbnailUrl } from "../api/games"
 import { Button } from "../games/shared/Button"
 import { AuthCard } from "./AuthCard"
-import { AuthField } from "./AuthField"
-import { SkinPicker } from "./SkinPicker"
 import { useAuth } from "./useAuth"
 
-// Edit form (roadmap point E - was read-only "lo básico" per point B) - username/full name
-// editable, email and member-since stay read-only, plus the cosmetic skin picker (SkinPicker.tsx).
+// Same img+onError fallback convention as menu/UserMenu.tsx's SkinAvatar / games/shared/
+// PersonAvatar.tsx, just sized as a page hero avatar instead of a small circle. Rendered with
+// `key={personId}` by the caller so switching skins resets `failed` instead of keeping a stale
+// placeholder around.
+function ProfileAvatar({ personId }: { personId: string }) {
+  const [failed, setFailed] = useState(false)
+  if (failed) return <ProfileAvatarPlaceholder />
+  return (
+    <img
+      src={personThumbnailUrl(personId)}
+      alt=""
+      onError={() => setFailed(true)}
+      className="h-24 w-24 rounded-full object-cover shadow-card"
+    />
+  )
+}
+
+function ProfileAvatarPlaceholder() {
+  return <div className="h-24 w-24 rounded-full border border-dashed border-line-strong" />
+}
+
+// Read-only account view (roadmap point B's "lo básico", plus the skin avatar from roadmap point
+// E) - actual editing (username/full name/skin) lives on its own page, reached via "Edit profile"
+// (see EditProfilePage.tsx), so this one stays a plain "here's your account" display.
 export function ProfilePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { user, loading, logout, updateProfile } = useAuth()
-  const [username, setUsername] = useState("")
-  const [fullName, setFullName] = useState("")
+  const { user, loading, logout } = useAuth()
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
-
-  // Synced from `user` rather than a plain useState(user?.username) initializer - user arrives
-  // asynchronously (AuthProvider's getMe() on mount), so the very first render (before loading
-  // finishes) would otherwise permanently lock these fields to "".
-  useEffect(() => {
-    if (user) {
-      setUsername(user.username)
-      setFullName(user.full_name)
-    }
-  }, [user])
 
   if (!loading && !user) return <Navigate to="/login" replace />
   if (!user) return null
-
-  async function handleSave(e: FormEvent) {
-    e.preventDefault()
-    setBusy(true)
-    setError(null)
-    setSaved(false)
-    try {
-      await updateProfile({ username, full_name: fullName })
-      setSaved(true)
-    } catch (err) {
-      setError(apiErrorMessage(err) ?? t("auth.error.generic"))
-    } finally {
-      setBusy(false)
-    }
-  }
 
   async function handleLogout() {
     setBusy(true)
@@ -62,53 +52,37 @@ export function ProfilePage() {
 
   return (
     <AuthCard title={t("auth.profile.title")} backLabel={t("common.back")} onBack={() => navigate("/")}>
-      <form onSubmit={handleSave} className="flex flex-col gap-4">
-        <AuthField
-          id="fullName"
-          type="text"
-          label={t("auth.fields.fullName")}
-          autoComplete="name"
-          required
-          value={fullName}
-          onChange={(e) => {
-            setFullName(e.target.value)
-            setSaved(false)
-          }}
-        />
-        <AuthField
-          id="username"
-          type="text"
-          label={t("auth.fields.username")}
-          autoComplete="username"
-          minLength={3}
-          maxLength={32}
-          pattern="^[a-zA-Z0-9_-]+$"
-          required
-          value={username}
-          onChange={(e) => {
-            setUsername(e.target.value)
-            setSaved(false)
-          }}
-        />
-        <div>
-          <p className="text-sm font-semibold text-muted">{t("auth.fields.email")}</p>
-          <p className="text-[15px] text-ink">{user.email}</p>
-        </div>
-        {error && <p className="text-sm font-semibold text-rose-600">{error}</p>}
-        {saved && !error && <p className="text-sm font-semibold text-emerald-600">{t("auth.profile.saved")}</p>}
-        <Button type="submit" variant="primary" className="w-full py-2.5" disabled={busy}>
-          {t("auth.profile.save")}
-        </Button>
-      </form>
+      <div className="mb-6 flex justify-center">
+        {user.skin_person_id ? (
+          <ProfileAvatar key={user.skin_person_id} personId={user.skin_person_id} />
+        ) : (
+          <ProfileAvatarPlaceholder />
+        )}
+      </div>
 
-      <div className="my-6 border-t border-line" />
-      <SkinPicker />
+      <dl className="flex flex-col gap-4">
+        <div>
+          <dt className="text-sm font-semibold text-muted">{t("auth.fields.fullName")}</dt>
+          <dd className="text-[15px] text-ink">{user.full_name}</dd>
+        </div>
+        <div>
+          <dt className="text-sm font-semibold text-muted">{t("auth.fields.username")}</dt>
+          <dd className="text-[15px] text-ink">{user.username}</dd>
+        </div>
+        <div>
+          <dt className="text-sm font-semibold text-muted">{t("auth.fields.email")}</dt>
+          <dd className="text-[15px] text-ink">{user.email}</dd>
+        </div>
+      </dl>
 
       <p className="mt-6 text-center text-sm text-faint">
         {t("auth.profile.memberSince", { date: new Date(user.created_at).toLocaleDateString() })}
       </p>
 
-      <Button variant="secondary" className="mt-6 w-full py-2.5" onClick={handleLogout} disabled={busy}>
+      <Button variant="primary" className="mt-6 w-full py-2.5" onClick={() => navigate("/profile/edit")}>
+        {t("auth.profile.edit")}
+      </Button>
+      <Button variant="secondary" className="mt-3 w-full py-2.5" onClick={handleLogout} disabled={busy}>
         {t("auth.profile.logout")}
       </Button>
     </AuthCard>
