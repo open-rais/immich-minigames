@@ -20,7 +20,7 @@ from argon2.exceptions import VerifyMismatchError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from config import Settings
+from config import Settings, get_settings
 from persistence.users import UserModel
 
 _JWT_ALGORITHM = "HS256"
@@ -47,7 +47,7 @@ class UnauthorizedError(Exception):
 class AuthService:
     def __init__(self, session: Session, settings: Settings | None = None) -> None:
         self._session = session
-        self._settings = settings or Settings()
+        self._settings = settings or get_settings()
 
     def register(self, email: str, username: str, full_name: str, password: str) -> UserModel:
         if self._session.scalar(select(UserModel).where(UserModel.email == email)) is not None:
