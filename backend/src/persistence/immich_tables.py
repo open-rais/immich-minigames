@@ -4,8 +4,6 @@ games need to read. These mirror tables Immich owns and migrates (not this app's
 games.py) - only the columns actually used are declared, not the full schema.
 """
 
-from functools import lru_cache
-
 from sqlalchemy import (
     Boolean,
     Column,
@@ -17,12 +15,8 @@ from sqlalchemy import (
     String,
     Table,
     Uuid,
-    create_engine,
 )
 from sqlalchemy.dialects.postgresql import ENUM
-from sqlalchemy.engine import Engine
-
-from config import Settings
 
 metadata = MetaData()
 
@@ -105,8 +99,3 @@ asset_face = Table(
     Column("boundingBoxX2", Integer),
     Column("boundingBoxY2", Integer),
 )
-
-
-@lru_cache(maxsize=1)
-def get_engine() -> Engine:
-    return create_engine(Settings().db_url)
