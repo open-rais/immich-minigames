@@ -74,6 +74,11 @@ export function PersonSearchInput({ excludeIds, onGuess, disabled }: PersonSearc
         type="text"
         value={query}
         disabled={disabled}
+        // eslint-disable-next-line jsx-a11y/no-autofocus -- deliberate: this input is the sole
+        // purpose of both Immichdle's guess bar and Who'sThatPerson's per-face popover (which
+        // mounts fresh every time a face box is clicked), so a ready-to-type cursor on open is the
+        // expected behavior, not a startle-the-user autofocus anti-pattern.
+        autoFocus
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}

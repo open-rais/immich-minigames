@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import { useEffect, useRef, useState } from "react"
 
 // Mirrors games/MoreOrLess/PersonPhoto.tsx's failed-image placeholder pattern, fullscreen instead
@@ -26,12 +27,23 @@ function clamp(value: number, min: number, max: number): number {
 // object-contain (not object-cover) so the whole photo is always visible, letterboxed against the
 // app's own bg token - matches how Immich's own fullscreen viewer shows a photo (not cropping it
 // to fill the viewport).
-export function AssetPhoto({ src, alt }: { src: string; alt: string }) {
+//
+// `overlay` (optional) renders inside a layer sized and positioned to exactly match the photo's
+// rendered content box (the object-contain "fit box", not the full letterboxed container) - see
+// fitBox below - and inherits the same pan/zoom transform as the image, so interactive content
+// placed on top of the photo (e.g. Who'sThatPerson's face boxes) stays pixel-aligned to it at any
+// zoom/pan state.
+export function AssetPhoto({ src, alt, overlay }: { src: string; alt: string; overlay?: ReactNode }) {
   const [failed, setFailed] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   const [scale, setScale] = useState(1)
   const [translate, setTranslate] = useState<Point>({ x: 0, y: 0 })
+
+  // Natural (source) image size and the container's own rendered size - both needed to compute
+  // fitBox below. Only relevant when `overlay` is used; harmless to always track otherwise.
+  const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null)
+  const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null)
   // Mirrors TimelineRuler.tsx's centerDayIndexRef - lets the native wheel listener (only attached
   // once, on mount) read the latest values without being in its dependency array.
   const scaleRef = useRef(scale)
@@ -47,6 +59,29 @@ export function AssetPhoto({ src, alt }: { src: string; alt: string }) {
   const pinchRef = useRef<{ startDistance: number; startScale: number; startTranslate: Point; anchor: Point } | null>(
     null,
   )
+
+  // Same ResizeObserver convention as Dateguessr/TimelineRuler.tsx's containerWidth tracking.
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const observer = new ResizeObserver((entries) => {
+      const { width, height } = entries[0].contentRect
+      setContainerSize({ width, height })
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  // The object-contain "fit box": where the image's actual pixels render within the container,
+  // excluding letterbox padding - standard object-contain-fit math (see
+  // games/WhosThatPerson/IncognitoPhoto.tsx for the original derivation of this formula).
+  const fitBox = (() => {
+    if (!naturalSize || !containerSize) return null
+    const fitScale = Math.min(containerSize.width / naturalSize.width, containerSize.height / naturalSize.height)
+    const width = naturalSize.width * fitScale
+    const height = naturalSize.height * fitScale
+    return { left: (containerSize.width - width) / 2, top: (containerSize.height - height) / 2, width, height }
+  })()
 
   function clampTranslate(nextScale: number, next: Point): Point {
     const rect = containerRef.current?.getBoundingClientRect()
@@ -87,6 +122,11 @@ export function AssetPhoto({ src, alt }: { src: string; alt: string }) {
   }, [])
 
   function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    // Don't hijack interactive `overlay` content (e.g. Who'sThatPerson's face-box buttons) into a
+    // pan gesture - once an element calls setPointerCapture, every subsequent event for that
+    // pointer (including the synthesized `click`) is redirected to it instead of whatever was
+    // actually pointed at, so a button nested inside this container would never see its own click.
+    if ((e.target as HTMLElement).closest("button, input, a")) return
     e.currentTarget.setPointerCapture(e.pointerId)
     activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
 
@@ -167,14 +207,27 @@ export function AssetPhoto({ src, alt }: { src: string; alt: string }) {
       onPointerCancel={handlePointerUp}
       className="fixed inset-0 touch-none overflow-hidden bg-app-bg select-none"
     >
-      <img
-        src={src}
-        alt={alt}
-        onError={() => setFailed(true)}
-        draggable={false}
+      <div
         style={{ transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})` }}
-        className="h-full w-full object-contain"
-      />
+        className="relative h-full w-full"
+      >
+        <img
+          src={src}
+          alt={alt}
+          onError={() => setFailed(true)}
+          onLoad={(e) => setNaturalSize({ width: e.currentTarget.naturalWidth, height: e.currentTarget.naturalHeight })}
+          draggable={false}
+          className="h-full w-full object-contain"
+        />
+        {overlay && fitBox && (
+          <div
+            className="absolute"
+            style={{ left: fitBox.left, top: fitBox.top, width: fitBox.width, height: fitBox.height }}
+          >
+            {overlay}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

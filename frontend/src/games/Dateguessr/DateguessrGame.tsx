@@ -80,7 +80,7 @@ export function DateguessrGame({ coverUrl }: GameComponentProps) {
 
       <GuardedBackButton onExit={backToIdle} />
       <ScoreBadge label={t("common.score")} score={game.score} />
-      <RoundBadge current={round.round_index} total={TOTAL_ROUNDS} />
+      <RoundBadge label={t("common.roundOf", { current: round.round_index, total: TOTAL_ROUNDS })} />
 
       <TimelineRuler
         selected={selectedDate}

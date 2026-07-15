@@ -9,6 +9,7 @@ export const GameType = {
   Geoguessr: "geoguessr",
   Dateguessr: "dateguessr",
   Immichdle: "immichdle",
+  WhosThatPerson: "whos-that-person",
 } as const
 export type GameType = (typeof GameType)[keyof typeof GameType]
 
@@ -17,6 +18,7 @@ export const Mode = {
   DistanceBetweenGuess: "distanceBetweenGuess",
   DaysToDate: "daysToDate",
   Person: "person",
+  NamedFaces: "namedFaces",
 } as const
 export type Mode = (typeof Mode)[keyof typeof Mode]
 
@@ -109,7 +111,40 @@ export interface ImmichdleRoundOut {
   clues: ImmichdleCluesOut | null
 }
 
-export type RoundOut = MoreOrLessRoundOut | GeoguessrRoundOut | DateguessrRoundOut | ImmichdleRoundOut
+// Bounding box + image size are in the resolution the face detection ran on, never redacted (needed
+// to draw the box regardless of whether the round's been answered) - see backend/src/domain/face.py.
+// person_id/person_name/correct are redacted (null) until this round has been answered.
+export interface HiddenFaceOut {
+  face_id: string
+  image_width: number
+  image_height: number
+  bounding_box_x1: number
+  bounding_box_y1: number
+  bounding_box_x2: number
+  bounding_box_y2: number
+  person_id: string | null
+  person_name: string | null
+  correct: boolean | null
+}
+
+export interface WhosThatPersonRoundOut {
+  game_type: typeof GameType.WhosThatPerson
+  id: string
+  round_index: number
+  asset_id: string
+  faces: HiddenFaceOut[]
+  // Whether every hidden face in the round was guessed correctly - null until answered.
+  correct: boolean | null
+  // Redacted (null) until this round has been answered.
+  score_delta: number | null
+}
+
+export type RoundOut =
+  | MoreOrLessRoundOut
+  | GeoguessrRoundOut
+  | DateguessrRoundOut
+  | ImmichdleRoundOut
+  | WhosThatPersonRoundOut
 
 export interface GameOut {
   id: string
@@ -143,9 +178,20 @@ export interface ImmichdlePlayRoundIn {
   person_id: string
 }
 
-// The four guess bodies share one endpoint (POST /games/{id}/rounds/{roundId}) - see playRound in
+// face_id -> guessed person_id, one entry per hidden face in the round - see
+// backend/src/api/schemas.py's WhosThatPersonPlayRoundIn.
+export interface WhosThatPersonPlayRoundIn {
+  guesses: Record<string, string>
+}
+
+// The five guess bodies share one endpoint (POST /games/{id}/rounds/{roundId}) - see playRound in
 // api/games.ts. Which one is valid is fixed by the game's type/mode server-side, not restated here.
-export type PlayRoundIn = MoreOrLessPlayRoundIn | GeoguessrPlayRoundIn | DateguessrPlayRoundIn | ImmichdlePlayRoundIn
+export type PlayRoundIn =
+  | MoreOrLessPlayRoundIn
+  | GeoguessrPlayRoundIn
+  | DateguessrPlayRoundIn
+  | ImmichdlePlayRoundIn
+  | WhosThatPersonPlayRoundIn
 
 export interface PlayRoundOut {
   // Binary-guess concept (MoreOrLess) - null for games with a continuous score (Geoguessr).
