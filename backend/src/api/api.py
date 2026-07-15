@@ -13,7 +13,7 @@ from fastapi import APIRouter, Body, Depends, Header, HTTPException, Query, Resp
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
-from api.auth_api import get_current_user, get_current_user_optional
+from api.auth_api import get_current_user_optional
 from api.auth_api import router as auth_router
 from api.deps import get_db_session, get_immich_service, get_ml_service
 from api.dto.common import (
@@ -77,13 +77,12 @@ def get_game_records(
 def get_leaderboard(
     game_type: str,
     mode: str,
-    user: Annotated[UserModel, Depends(get_current_user)],
     games_service: Annotated[GamesService, Depends(get_games_service)],
     window: LeaderboardWindow = "all",
 ) -> LeaderboardOut:
-    # Unlike personal records, leaderboards require login (confirmed with the project owner) -
-    # get_current_user (not the _optional variant) 401s an anonymous request the same way /auth/me
-    # already does, no extra error handling needed here.
+    # Viewable without an account (confirmed with the project owner) - only the *entries* are
+    # restricted to logged-in players, via GamesService.get_leaderboard's inner join to UserModel
+    # (an anonymous game has no user_id to join on), not this route requiring auth.
     entries = games_service.get_leaderboard(game_type, mode, window)
     return LeaderboardOut.from_entries(window, entries)
 
