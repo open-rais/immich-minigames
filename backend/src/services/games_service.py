@@ -17,6 +17,8 @@ from games.immichdle import GAME_TYPE as IMMICHDLE_TYPE
 from games.immichdle import MODE_PERSON, ImmichdleGame, ImmichdleRound
 from games.more_or_less import GAME_TYPE as MORE_OR_LESS_TYPE
 from games.more_or_less import MODE_PERSON_ASSETS, MoreOrLessGame, MoreOrLessRound
+from games.whos_that_person import GAME_TYPE as WHOS_THAT_PERSON_TYPE
+from games.whos_that_person import MODE_NAMED_FACES, WhosThatPersonGame, WhosThatPersonRound
 from persistence.games import GameModel, RoundModel
 from services.immich_service import ImmichService
 
@@ -25,12 +27,14 @@ _GAME_CLASSES: dict[tuple[str, str], type[BaseGame]] = {
     (GEOGUESSR_TYPE, MODE_DISTANCE_BETWEEN_GUESS): GeoguessrGame,
     (DATEGUESSR_TYPE, MODE_DAYS_TO_DATE): DateguessrGame,
     (IMMICHDLE_TYPE, MODE_PERSON): ImmichdleGame,
+    (WHOS_THAT_PERSON_TYPE, MODE_NAMED_FACES): WhosThatPersonGame,
 }
 _ROUND_CLASSES: dict[tuple[str, str], type[BaseRound]] = {
     (MORE_OR_LESS_TYPE, MODE_PERSON_ASSETS): MoreOrLessRound,
     (GEOGUESSR_TYPE, MODE_DISTANCE_BETWEEN_GUESS): GeoguessrRound,
     (DATEGUESSR_TYPE, MODE_DAYS_TO_DATE): DateguessrRound,
     (IMMICHDLE_TYPE, MODE_PERSON): ImmichdleRound,
+    (WHOS_THAT_PERSON_TYPE, MODE_NAMED_FACES): WhosThatPersonRound,
 }
 
 

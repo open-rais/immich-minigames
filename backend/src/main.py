@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 
 from api.api import router
 from games.immichdle import DuplicateGuessError, InvalidGuessError
+from games.whos_that_person import IncompleteGuessError
 from persistence.base import init_db
 from services.auth_service import (
     EmailAlreadyExistsError,
@@ -44,6 +45,7 @@ def _error_handler(status_code: int):
 app.add_exception_handler(UnsupportedGameError, _error_handler(400))
 app.add_exception_handler(DuplicateGuessError, _error_handler(400))
 app.add_exception_handler(InvalidGuessError, _error_handler(400))
+app.add_exception_handler(IncompleteGuessError, _error_handler(422))
 app.add_exception_handler(GameOwnershipError, _error_handler(403))
 app.add_exception_handler(GameNotFoundError, _error_handler(404))
 app.add_exception_handler(RoundNotPendingError, _error_handler(409))

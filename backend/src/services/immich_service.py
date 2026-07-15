@@ -16,6 +16,7 @@ from sqlalchemy.engine import Engine, Row
 
 from config import Settings
 from domain.asset import Asset
+from domain.face import Face
 from domain.person import Person
 from persistence.immich_tables import asset, asset_exif, asset_face, asset_file, get_engine, person
 
@@ -266,6 +267,63 @@ class ImmichService:
         with self._engine.connect() as conn:
             return conn.execute(stmt).scalar() or 0
 
+    def get_random_asset_with_named_faces(
+        self, *, max_faces: int, exclude_asset_ids: frozenset[UUID] = frozenset()
+    ) -> list[Face]:
+        """Picks one random asset that has at least one visible, non-deleted face already assigned
+        to a named person, then returns up to `max_faces` of that asset's named faces (randomly
+        chosen if it has more than `max_faces`) - these are the faces Who'sThatPerson blacks out
+        for a round. Faces without a name are never returned - there'd be nothing to grade against,
+        so they're left unblacked in the photo, purely decorative. Empty list if no eligible asset
+        exists (e.g. exclude_asset_ids/the game's data pool is exhausted)."""
+        visible_face = asset_face.c.isVisible.is_(True) & asset_face.c.deletedAt.is_(None)
+        named_face = asset_face.join(person, person.c.id == asset_face.c.personId)
+
+        asset_id_stmt = (
+            select(asset.c.id)
+            .select_from(asset.join(named_face, asset_face.c.assetId == asset.c.id))
+            .where(
+                asset.c.status == "active",
+                asset.c.visibility == "timeline",
+                asset.c.deletedAt.is_(None),
+                visible_face,
+                person.c.name != "",
+            )
+        )
+        if exclude_asset_ids:
+            asset_id_stmt = asset_id_stmt.where(asset.c.id.notin_(exclude_asset_ids))
+        # GROUP BY (not DISTINCT) - Postgres rejects `SELECT DISTINCT ... ORDER BY random()`
+        # (ORDER BY expressions must appear in the select list for DISTINCT), same reason
+        # get_persons uses GROUP BY + ORDER BY random() instead of DISTINCT.
+        asset_id_stmt = asset_id_stmt.group_by(asset.c.id).order_by(func.random()).limit(1)
+
+        with self._engine.connect() as conn:
+            asset_row = conn.execute(asset_id_stmt).first()
+            if asset_row is None:
+                return []
+
+            faces_stmt = (
+                select(
+                    asset_face.c.id,
+                    asset_face.c.assetId,
+                    asset_face.c.personId,
+                    person.c.name,
+                    asset_face.c.imageWidth,
+                    asset_face.c.imageHeight,
+                    asset_face.c.boundingBoxX1,
+                    asset_face.c.boundingBoxY1,
+                    asset_face.c.boundingBoxX2,
+                    asset_face.c.boundingBoxY2,
+                )
+                .select_from(named_face)
+                .where(asset_face.c.assetId == asset_row.id, visible_face, person.c.name != "")
+                .order_by(func.random())
+                .limit(max_faces)
+            )
+            face_rows = conn.execute(faces_stmt).all()
+
+        return [self._row_to_face(row) for row in face_rows]
+
     def get_asset_thumbnail(self, asset_id: UUID, size: str = "preview") -> tuple[bytes, str]:
         """Fetches an asset's image bytes via Immich's REST API (not the DB - see module
         docstring). `size="preview"` (~1440px JPEG derivative) rather than the default `thumbnail`
@@ -322,4 +380,19 @@ class ImmichService:
             name=row.name,
             birth_date=row.birthDate,
             asset_count=row.asset_count,
+        )
+
+    @staticmethod
+    def _row_to_face(row: Row) -> Face:
+        return Face(
+            id=row.id,
+            asset_id=row.assetId,
+            person_id=row.personId,
+            person_name=row.name,
+            image_width=row.imageWidth,
+            image_height=row.imageHeight,
+            bounding_box_x1=row.boundingBoxX1,
+            bounding_box_y1=row.boundingBoxY1,
+            bounding_box_x2=row.boundingBoxX2,
+            bounding_box_y2=row.boundingBoxY2,
         )
