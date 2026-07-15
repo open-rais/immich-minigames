@@ -2,6 +2,9 @@ from datetime import date
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import select
+
+from persistence.immich_tables import person
 
 
 class TestGetAssets:
@@ -129,6 +132,68 @@ class TestGetAssetsTogetherCount:
         count = immich_service.get_assets_together_count(a.id, b.id)
 
         assert count >= 0
+
+
+class TestGetRandomAssetWithNamedFaces:
+    def test_returns_faces_for_a_named_person(self, immich_service):
+        faces = immich_service.get_random_asset_with_named_faces(max_faces=5)
+
+        assert faces
+        assert all(face.person_name != "" for face in faces)
+        assert len({face.asset_id for face in faces}) == 1, "every returned face must belong to the same asset"
+
+    def test_respects_max_faces(self, immich_service):
+        faces = immich_service.get_random_asset_with_named_faces(max_faces=1)
+
+        assert len(faces) == 1
+
+    def test_bounding_box_and_image_size_are_populated(self, immich_service):
+        [face] = immich_service.get_random_asset_with_named_faces(max_faces=1)
+
+        assert face.image_width > 0
+        assert face.image_height > 0
+        assert face.bounding_box_x2 > face.bounding_box_x1
+        assert face.bounding_box_y2 > face.bounding_box_y1
+
+    def test_excludes_given_asset_ids(self, immich_service):
+        [face] = immich_service.get_random_asset_with_named_faces(max_faces=1)
+
+        rest = immich_service.get_random_asset_with_named_faces(
+            max_faces=1, exclude_asset_ids=frozenset({face.asset_id})
+        )
+
+        assert rest == [] or rest[0].asset_id != face.asset_id
+
+    def test_returns_empty_when_no_eligible_asset_exists(self, immich_service):
+        # Excluding a huge batch of already-eligible assets should eventually exhaust the pool -
+        # the dev data has far fewer than 100000 assets with a named face.
+        excluded = set()
+        for _ in range(1000):
+            faces = immich_service.get_random_asset_with_named_faces(max_faces=1, exclude_asset_ids=frozenset(excluded))
+            if not faces:
+                return
+            excluded.add(faces[0].asset_id)
+        pytest.fail("never ran out of eligible assets after excluding 1000 distinct ones")
+
+    def test_never_returns_faces_of_hidden_people(self, immich_service, engine):
+        # A hidden person (Immich's own isHidden flag) never shows up in search_persons/get_persons,
+        # so a round that blacked out their face would be unguessable - see the dev data's
+        # "Enrique Waugh"/"Emi Sandoval"/"Vivi Blanlot" and the two assets whose only named face is
+        # one of them. Walk the whole eligible-asset pool (same exhaustion pattern as
+        # test_returns_empty_when_no_eligible_asset_exists) so this exercises those assets, not just
+        # whichever one random() happens to land on.
+        with engine.connect() as conn:
+            hidden_ids = {row.id for row in conn.execute(select(person.c.id).where(person.c.isHidden.is_(True)))}
+        assert hidden_ids, "dev data must include at least one hidden named person to exercise this"
+
+        excluded = set()
+        for _ in range(1000):
+            faces = immich_service.get_random_asset_with_named_faces(max_faces=5, exclude_asset_ids=frozenset(excluded))
+            if not faces:
+                return
+            assert all(face.person_id not in hidden_ids for face in faces)
+            excluded.add(faces[0].asset_id)
+        pytest.fail("never ran out of eligible assets after excluding 1000 distinct ones")
 
 
 class TestSearchPersons:

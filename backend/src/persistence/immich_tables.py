@@ -94,6 +94,16 @@ asset_face = Table(
     Column("personId", Uuid),
     Column("isVisible", Boolean),
     Column("deletedAt", DateTime(timezone=True)),
+    # Resolution the face detection was computed on (not necessarily the asset's own resolution -
+    # the bounding box below must be scaled proportionally against whichever resolution it's drawn
+    # on) and the box itself. Used by Who'sThatPerson to black out faces - see
+    # docs/ARCHITECTURE/IMMICH.md's asset_face section.
+    Column("imageWidth", Integer),
+    Column("imageHeight", Integer),
+    Column("boundingBoxX1", Integer),
+    Column("boundingBoxY1", Integer),
+    Column("boundingBoxX2", Integer),
+    Column("boundingBoxY2", Integer),
 )
 
 

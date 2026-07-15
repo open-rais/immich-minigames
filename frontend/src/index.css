@@ -52,6 +52,12 @@
   --color-placeholder-a: oklch(0.9 0.01 260);
   --color-placeholder-b: oklch(0.94 0.008 260);
 
+  /* Fixed (not overridden in .dark below) - the same near-black dark mode's own --color-app-bg
+     uses, reused by Who'sThatPerson's face boxes (games/WhosThatPerson/IncognitoPhoto.tsx) so a
+     hidden face reads as "part of the app's own dark void" rather than a stark pure #000 square,
+     in both themes. */
+  --color-blackout: oklch(0.16 0.006 260);
+
   /* Geoguessr's MapLibre style (games/Geoguessr/mapStyle.ts) - recolors OpenFreeMap's Positron
      base to this same indigo family instead of its stock grey/blue. Not reused by any card/badge,
      since a map needs a land/water distinction the rest of the UI doesn't. */

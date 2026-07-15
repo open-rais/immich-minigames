@@ -111,6 +111,20 @@
       "lost": "Juego terminado"
     }
   },
+  "whosThatPerson": {
+    "title": "¿Quién es?",
+    "modes": {
+      "namedFaces": "Clásico"
+    },
+    "start": {
+      "description": "Algunas caras ya nombradas de cada foto se tapan con un cuadro negro - toca una y busca quién es. Se pregunta por 15 personas en total."
+    },
+    "progress": "{{current}} de {{total}} personas",
+    "submit": "Enviar respuestas",
+    "result": {
+      "correctCount": "{{correct}}/{{total}} correctas"
+    }
+  },
   "auth": {
     "fields": {
       "email": "Correo electrónico",

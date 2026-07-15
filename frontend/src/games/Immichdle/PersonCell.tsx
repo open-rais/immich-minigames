@@ -1,6 +1,6 @@
 import { personThumbnailUrl } from "../../api/games"
 import type { ImmichdleRoundOut } from "../../api/types"
-import { PersonAvatar } from "./PersonAvatar"
+import { PersonAvatar } from "../shared/PersonAvatar"
 
 // Identifies one guessed person within a GuessTable row - face above name on mobile (a compact
 // vertical header), face beside name on desktop (where there's width to spare and stacking wastes

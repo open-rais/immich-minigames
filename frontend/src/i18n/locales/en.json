@@ -111,6 +111,20 @@
       "lost": "Game over"
     }
   },
+  "whosThatPerson": {
+    "title": "Who's That Person",
+    "modes": {
+      "namedFaces": "Classic"
+    },
+    "start": {
+      "description": "Some already-named faces in each photo are blacked out - tap one and search for who it is. Asks about 15 people total."
+    },
+    "progress": "{{current}} of {{total}} people",
+    "submit": "Submit guesses",
+    "result": {
+      "correctCount": "{{correct}}/{{total}} correct"
+    }
+  },
   "auth": {
     "fields": {
       "email": "Email",

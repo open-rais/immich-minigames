@@ -11,8 +11,8 @@ import { ErrorScreen, IdleScreen } from "../shared/GameScreens"
 import { GuardedBackButton } from "../shared/GuardedBackButton"
 import { ScoreBadge } from "../shared/ScoreBadge"
 import { BackButton } from "../shared/BackButton"
+import { PersonSearchInput } from "../shared/PersonSearchInput"
 import { GuessTable } from "./GuessTable"
-import { PersonSearchInput } from "./PersonSearchInput"
 
 const GAME_TYPE = GameType.Immichdle
 const MODE = Mode.Person

@@ -5,6 +5,7 @@ import { DateguessrGame } from "./Dateguessr/DateguessrGame"
 import { GeoguessrGame } from "./Geoguessr/GeoguessrGame"
 import { ImmichdleGame } from "./Immichdle/ImmichdleGame"
 import { MoreOrLessGame } from "./MoreOrLess/MoreOrLessGame"
+import { WhosThatPersonGame } from "./WhosThatPerson/WhosThatPersonGame"
 
 // Mirrors backend/src/services/games_service.py's _GAME_CLASSES/_ROUND_CLASSES by hand - same
 // manual-sync convention already used for api/types.ts vs schemas.py. Add an entry here whenever a
@@ -80,6 +81,17 @@ export const GAME_CATALOG: CatalogGame[] = [
         mode: Mode.Person,
         modeTitleKey: "immichdle.modes.person",
         component: ImmichdleGame,
+      },
+    ],
+  },
+  {
+    gameType: GameType.WhosThatPerson,
+    gameTitleKey: "whosThatPerson.title",
+    modes: [
+      {
+        mode: Mode.NamedFaces,
+        modeTitleKey: "whosThatPerson.modes.namedFaces",
+        component: WhosThatPersonGame,
       },
     ],
   },
