@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Link, useLocation } from "react-router-dom"
 
+import { personThumbnailUrl } from "../api/games"
 import { useAuth } from "../auth/useAuth"
 import i18n from "../i18n"
 import type { ThemePreference } from "../theme/themeContext"
@@ -18,6 +19,23 @@ function UserIcon() {
       <circle cx="12" cy="8" r="4" />
       <path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8" />
     </svg>
+  )
+}
+
+// Cosmetic skin (roadmap point E) - same img+onError fallback convention as
+// games/shared/PersonAvatar.tsx, just sized to fill this button's existing 40px circle instead of
+// that component's own fixed h-10/md:h-14 sizing. Rendered with `key={personId}` by the caller so
+// switching skins resets `failed` instead of keeping a stale placeholder around.
+function SkinAvatar({ personId }: { personId: string }) {
+  const [failed, setFailed] = useState(false)
+  if (failed) return <UserIcon />
+  return (
+    <img
+      src={personThumbnailUrl(personId)}
+      alt=""
+      onError={() => setFailed(true)}
+      className="h-full w-full rounded-full object-cover"
+    />
   )
 }
 
@@ -114,9 +132,9 @@ export function UserMenu() {
         onClick={() => setOpen((o) => !o)}
         aria-label={t("userMenu.trigger")}
         aria-expanded={open}
-        className="flex h-10 w-10 items-center justify-center rounded-full border border-line-strong bg-surface text-body shadow-card transition-colors hover:bg-hover-tint"
+        className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-line-strong bg-surface text-body shadow-card transition-colors hover:bg-hover-tint"
       >
-        <UserIcon />
+        {user?.skin_person_id ? <SkinAvatar key={user.skin_person_id} personId={user.skin_person_id} /> : <UserIcon />}
       </button>
 
       {open && (

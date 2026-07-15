@@ -14,7 +14,9 @@
   },
   "mainMenu": {
     "modesCount_one": "{{count}} modo",
-    "modesCount_other": "{{count}} modos"
+    "modesCount_other": "{{count}} modos",
+    "bestScore": "Mejor: {{score}}",
+    "notPlayed": "Sin jugar"
   },
   "common": {
     "back": "Volver",
@@ -145,7 +147,14 @@
     "profile": {
       "title": "Perfil",
       "memberSince": "Miembro desde {{date}}",
-      "logout": "Cerrar sesión"
+      "logout": "Cerrar sesión",
+      "save": "Guardar cambios",
+      "saved": "Perfil actualizado",
+      "skin": {
+        "label": "Piel",
+        "none": "Ninguna",
+        "clear": "Quitar"
+      }
     },
     "error": {
       "generic": "Algo salió mal. Intenta de nuevo."

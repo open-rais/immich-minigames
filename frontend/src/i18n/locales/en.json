@@ -14,7 +14,9 @@
   },
   "mainMenu": {
     "modesCount_one": "{{count}} mode",
-    "modesCount_other": "{{count}} modes"
+    "modesCount_other": "{{count}} modes",
+    "bestScore": "Best: {{score}}",
+    "notPlayed": "Not played yet"
   },
   "common": {
     "back": "Back",
@@ -145,7 +147,14 @@
     "profile": {
       "title": "Profile",
       "memberSince": "Member since {{date}}",
-      "logout": "Log out"
+      "logout": "Log out",
+      "save": "Save changes",
+      "saved": "Profile updated",
+      "skin": {
+        "label": "Skin",
+        "none": "None",
+        "clear": "Clear"
+      }
     },
     "error": {
       "generic": "Something went wrong. Please try again."
