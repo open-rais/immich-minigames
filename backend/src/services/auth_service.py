@@ -1,9 +1,9 @@
 """
 Auth service - registers/authenticates this app's own user accounts (roadmap point B) and
 issues/verifies their login JWT. Entirely separate from Immich's own users (never touches
-Immich's Postgres schema) and, for now, separate from the anonymous X-Owner-Id scheme that games
-still use (see games_service.py/ownerId.ts) - accounts and anonymous play coexist; connecting
-Game.owner to a real account is a later roadmap point (F).
+Immich's Postgres schema). Games created while authenticated get GameModel.user_id set (roadmap
+point E, see games_service.py) alongside the anonymous X-Owner-Id, which anonymous play still uses
+on its own - full leaderboards are a later roadmap point (F).
 
 Session model: stateless JWT in an httpOnly cookie, no server-side session table - "logout" just
 clears the cookie client-side, a token copied before logout stays valid until it expires
@@ -62,6 +62,29 @@ class AuthService:
             password_hash=_hasher.hash(password),
         )
         self._session.add(user)
+        self._session.commit()
+        return user
+
+    def update_profile(
+        self, user: UserModel, username: str | None = None, full_name: str | None = None
+    ) -> UserModel:
+        """Roadmap point E - profile edit page. Both args are None-means-"leave unchanged" (PATCH
+        semantics), mirroring UpdateProfileIn."""
+        if username is not None and username != user.username:
+            existing = self._session.scalar(select(UserModel).where(UserModel.username == username))
+            if existing is not None:
+                raise UsernameAlreadyExistsError(f"username {username} is already taken")
+            user.username = username
+        if full_name is not None:
+            user.full_name = full_name
+        self._session.commit()
+        return user
+
+    def set_skin(self, user: UserModel, person_id: UUID | None) -> UserModel:
+        """Roadmap point E - cosmetic avatar. Person existence against Immich is validated by the
+        route handler (api/auth_api.py), not here - AuthService has no ImmichService dependency by
+        design, same separation as the rest of this module."""
+        user.skin_person_id = person_id
         self._session.commit()
         return user
 

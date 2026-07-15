@@ -8,7 +8,7 @@ plumbing lives in persistence/base.py so other own-schema modules (e.g. users.py
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import ForeignKey, UniqueConstraint, func
+from sqlalchemy import ForeignKey, Index, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -17,9 +17,20 @@ from persistence.base import SCHEMA, Base
 
 class GameModel(Base):
     __tablename__ = "games"
+    # Both indexes back GamesService.get_personal_records's per-(owner-or-user, game_type, mode)
+    # MAX(score) lookup - one per filter branch (anonymous X-Owner-Id vs logged-in user_id).
+    __table_args__ = (
+        Index("ix_games_owner_type_mode", "owner", "game_type", "mode"),
+        Index("ix_games_user_type_mode", "user_id", "game_type", "mode"),
+    )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     owner: Mapped[str]
+    # Set only when the game-creation request was authenticated (see api/api.py's create_game) -
+    # anonymous play leaves this null and keeps working off `owner` alone, exactly as before this
+    # column existed. A real FK (unlike skin_person_id on UserModel) since UserModel lives in this
+    # same app schema, not Immich's.
+    user_id: Mapped[UUID | None] = mapped_column(ForeignKey(f"{SCHEMA}.users.id"), default=None)
     game_type: Mapped[str]
     mode: Mapped[str]
     score: Mapped[int] = mapped_column(default=0)

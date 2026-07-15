@@ -100,3 +100,55 @@ class TestAccessToken:
 
         with pytest.raises(UnauthorizedError):
             auth_service.get_user_from_token(token)
+
+
+class TestUpdateProfile:
+    def test_updates_username_and_full_name(self, auth_service):
+        user = _register(auth_service)
+        new_username = _unique("newname")
+
+        updated = auth_service.update_profile(user, username=new_username, full_name="New Name")
+
+        assert updated.username == new_username
+        assert updated.full_name == "New Name"
+
+    def test_omitted_fields_are_left_unchanged(self, auth_service):
+        user = _register(auth_service, full_name="Original Name")
+        original_username = user.username
+
+        updated = auth_service.update_profile(user, username=None, full_name=None)
+
+        assert updated.username == original_username
+        assert updated.full_name == "Original Name"
+
+    def test_taking_someone_elses_username_raises(self, auth_service):
+        other = _register(auth_service)
+        user = _register(auth_service)
+
+        with pytest.raises(UsernameAlreadyExistsError):
+            auth_service.update_profile(user, username=other.username)
+
+    def test_keeping_own_current_username_does_not_raise(self, auth_service):
+        user = _register(auth_service)
+
+        updated = auth_service.update_profile(user, username=user.username, full_name="Same Name")
+
+        assert updated.username == user.username
+
+
+class TestSetSkin:
+    def test_sets_the_skin_person_id(self, auth_service):
+        user = _register(auth_service)
+        person_id = uuid.uuid4()
+
+        updated = auth_service.set_skin(user, person_id)
+
+        assert updated.skin_person_id == person_id
+
+    def test_none_clears_the_skin(self, auth_service):
+        user = _register(auth_service)
+        auth_service.set_skin(user, uuid.uuid4())
+
+        updated = auth_service.set_skin(user, None)
+
+        assert updated.skin_person_id is None

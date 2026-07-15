@@ -46,7 +46,7 @@ export function FaceGuessPopover({ style, onGuess, onClose }: FaceGuessPopoverPr
       style={style}
       className="z-40 rounded-2xl border border-line bg-surface p-2 shadow-card"
     >
-      <PersonSearchInput excludeIds={EMPTY_EXCLUDE_IDS} onGuess={pick} disabled={false} />
+      <PersonSearchInput excludeIds={EMPTY_EXCLUDE_IDS} onSelect={pick} disabled={false} />
     </div>
   )
 }

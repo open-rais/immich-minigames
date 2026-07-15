@@ -211,6 +211,9 @@ export interface User {
   email: string
   username: string
   full_name: string
+  // Cosmetic avatar (roadmap point E) - an Immich Person id, or null if none picked yet. Shown in
+  // the header's user circle (see menu/UserMenu.tsx) via personThumbnailUrl.
+  skin_person_id: string | null
   created_at: string
 }
 
@@ -226,6 +229,13 @@ export interface LoginIn {
   password: string
 }
 
+// PATCH semantics - omit a field (or send undefined) to leave it unchanged, mirrors
+// backend/src/api/auth_schemas.py's UpdateProfileIn.
+export interface UpdateProfileIn {
+  username?: string
+  full_name?: string
+}
+
 // Reusable across features (not just Immichdle's guess input) - see backend/src/api/api.py's
 // /persons/search.
 export interface PersonSearchResultOut {
@@ -235,4 +245,32 @@ export interface PersonSearchResultOut {
 
 export interface PersonSearchOut {
   results: PersonSearchResultOut[]
+}
+
+// Roadmap point E - main menu personal-best badge (see menu/ModeCard.tsx) - mirrors backend/src/
+// api/dto/common.py's GameRecordOut/GameRecordsOut.
+export interface GameRecordOut {
+  game_type: string
+  mode: string
+  best_score: number
+}
+
+export interface GameRecordsOut {
+  records: GameRecordOut[]
+}
+
+// Roadmap point F - leaderboards (requires login, unlike the personal records above) - mirrors
+// backend/src/api/dto/common.py's LeaderboardWindow/LeaderboardEntryOut/LeaderboardOut.
+export type LeaderboardWindow = "all" | "weekly" | "daily"
+
+export interface LeaderboardEntryOut {
+  rank: number
+  username: string
+  skin_person_id: string | null
+  best_score: number
+}
+
+export interface LeaderboardOut {
+  window: LeaderboardWindow
+  entries: LeaderboardEntryOut[]
 }

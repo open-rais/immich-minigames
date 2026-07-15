@@ -10,15 +10,17 @@ const RESULT_LIMIT = 8
 
 interface PersonSearchInputProps {
   excludeIds: Set<string>
-  onGuess: (personId: string) => void
+  // Generic "a person was picked" callback - used both for guessing (Immichdle/WhosThatPerson)
+  // and for non-guess selection (the profile page's skin picker, see auth/SkinPicker.tsx).
+  onSelect: (personId: string) => void
   disabled: boolean
 }
 
-// Debounced search-as-you-type input for picking the next guess - word-prefix match against named
-// people (see api/games.ts's searchPersons / backend's search_persons), already-guessed people
-// filtered out of the results rather than shown disabled (they're not valid guesses anymore, no
-// point cluttering the list).
-export function PersonSearchInput({ excludeIds, onGuess, disabled }: PersonSearchInputProps) {
+// Debounced search-as-you-type input for picking a person - word-prefix match against named
+// people (see api/games.ts's searchPersons / backend's search_persons), already-picked people
+// filtered out of the results rather than shown disabled (excludeIds's callers use it for
+// already-guessed people, but it's just as valid for "don't show the current skin again").
+export function PersonSearchInput({ excludeIds, onSelect, disabled }: PersonSearchInputProps) {
   const { t } = useTranslation()
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<PersonSearchResultOut[]>([])
@@ -50,7 +52,7 @@ export function PersonSearchInput({ excludeIds, onGuess, disabled }: PersonSearc
   }, [query, excludeIds])
 
   function pick(personId: string) {
-    onGuess(personId)
+    onSelect(personId)
     setQuery("")
     setResults([])
     setOpen(false)

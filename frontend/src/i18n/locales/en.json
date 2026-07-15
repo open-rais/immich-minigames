@@ -14,7 +14,18 @@
   },
   "mainMenu": {
     "modesCount_one": "{{count}} mode",
-    "modesCount_other": "{{count}} modes"
+    "modesCount_other": "{{count}} modes",
+    "bestScore": "Best: {{score}}",
+    "notPlayed": "Not played yet"
+  },
+  "leaderboard": {
+    "title": "Leaderboard",
+    "empty": "No one has played this mode in this window yet.",
+    "window": {
+      "all": "Historic",
+      "weekly": "Weekly",
+      "daily": "Daily"
+    }
   },
   "common": {
     "back": "Back",
@@ -24,6 +35,7 @@
     "roundOf": "Round {{current}} of {{total}}",
     "points": "+{{score}} pts",
     "playAgain": "Play again",
+    "leaderboards": "Leaderboards",
     "previousPhoto": "Previous photo",
     "nextPhoto": "Next photo",
     "finished": {
@@ -145,7 +157,15 @@
     "profile": {
       "title": "Profile",
       "memberSince": "Member since {{date}}",
-      "logout": "Log out"
+      "logout": "Log out",
+      "edit": "Edit profile",
+      "save": "Save changes",
+      "saved": "Profile updated",
+      "skin": {
+        "label": "Skin",
+        "none": "None",
+        "clear": "Clear"
+      }
     },
     "error": {
       "generic": "Something went wrong. Please try again."

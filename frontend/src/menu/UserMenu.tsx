@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Link, useLocation } from "react-router-dom"
 
+import { personThumbnailUrl } from "../api/games"
 import { useAuth } from "../auth/useAuth"
+import { SegmentedControl } from "../games/shared/SegmentedControl"
 import i18n from "../i18n"
 import type { ThemePreference } from "../theme/themeContext"
 import { useTheme } from "../theme/useTheme"
@@ -21,30 +23,20 @@ function UserIcon() {
   )
 }
 
-function SegmentedControl<T extends string>({
-  options,
-  value,
-  onChange,
-}: {
-  options: { value: T; label: string }[]
-  value: T
-  onChange: (value: T) => void
-}) {
+// Cosmetic skin (roadmap point E) - same img+onError fallback convention as
+// games/shared/PersonAvatar.tsx, just sized to fill this button's existing 40px circle instead of
+// that component's own fixed h-10/md:h-14 sizing. Rendered with `key={personId}` by the caller so
+// switching skins resets `failed` instead of keeping a stale placeholder around.
+function SkinAvatar({ personId }: { personId: string }) {
+  const [failed, setFailed] = useState(false)
+  if (failed) return <UserIcon />
   return (
-    <div className="flex rounded-full bg-count-bg p-1">
-      {options.map((opt) => (
-        <button
-          key={opt.value}
-          type="button"
-          onClick={() => onChange(opt.value)}
-          className={`flex-1 rounded-full px-2 py-1 text-xs font-semibold transition-colors ${
-            value === opt.value ? "bg-primary text-white" : "text-body hover:bg-hover-tint"
-          }`}
-        >
-          {opt.label}
-        </button>
-      ))}
-    </div>
+    <img
+      src={personThumbnailUrl(personId)}
+      alt=""
+      onError={() => setFailed(true)}
+      className="h-full w-full rounded-full object-cover"
+    />
   )
 }
 
@@ -114,9 +106,9 @@ export function UserMenu() {
         onClick={() => setOpen((o) => !o)}
         aria-label={t("userMenu.trigger")}
         aria-expanded={open}
-        className="flex h-10 w-10 items-center justify-center rounded-full border border-line-strong bg-surface text-body shadow-card transition-colors hover:bg-hover-tint"
+        className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-line-strong bg-surface text-body shadow-card transition-colors hover:bg-hover-tint"
       >
-        <UserIcon />
+        {user?.skin_person_id ? <SkinAvatar key={user.skin_person_id} personId={user.skin_person_id} /> : <UserIcon />}
       </button>
 
       {open && (

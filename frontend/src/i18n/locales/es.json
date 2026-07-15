@@ -14,7 +14,18 @@
   },
   "mainMenu": {
     "modesCount_one": "{{count}} modo",
-    "modesCount_other": "{{count}} modos"
+    "modesCount_other": "{{count}} modos",
+    "bestScore": "Mejor: {{score}}",
+    "notPlayed": "Sin jugar"
+  },
+  "leaderboard": {
+    "title": "Clasificación",
+    "empty": "Todavía nadie ha jugado este modo en este período.",
+    "window": {
+      "all": "Histórico",
+      "weekly": "Semanal",
+      "daily": "Diario"
+    }
   },
   "common": {
     "back": "Volver",
@@ -24,6 +35,7 @@
     "roundOf": "Ronda {{current}} de {{total}}",
     "points": "+{{score}} pts",
     "playAgain": "Jugar de nuevo",
+    "leaderboards": "Clasificación",
     "previousPhoto": "Foto anterior",
     "nextPhoto": "Foto siguiente",
     "finished": {
@@ -145,7 +157,15 @@
     "profile": {
       "title": "Perfil",
       "memberSince": "Miembro desde {{date}}",
-      "logout": "Cerrar sesión"
+      "logout": "Cerrar sesión",
+      "edit": "Editar perfil",
+      "save": "Guardar cambios",
+      "saved": "Perfil actualizado",
+      "skin": {
+        "label": "Piel",
+        "none": "Ninguna",
+        "clear": "Quitar"
+      }
     },
     "error": {
       "generic": "Algo salió mal. Intenta de nuevo."

@@ -1,5 +1,14 @@
 import { apiClient } from "./client"
-import type { CreateGameIn, GameOut, PersonSearchOut, PlayRoundIn, PlayRoundOut } from "./types"
+import type {
+  CreateGameIn,
+  GameOut,
+  GameRecordsOut,
+  LeaderboardOut,
+  LeaderboardWindow,
+  PersonSearchOut,
+  PlayRoundIn,
+  PlayRoundOut,
+} from "./types"
 
 export async function createGame(type: string, mode: string): Promise<GameOut> {
   const body: CreateGameIn = { type, mode }
@@ -9,6 +18,28 @@ export async function createGame(type: string, mode: string): Promise<GameOut> {
 
 export async function getGame(id: string): Promise<GameOut> {
   const { data } = await apiClient.get<GameOut>(`/games/${id}`)
+  return data
+}
+
+// Personal-best score per (game_type, mode) - shown in the main menu (roadmap point E). Works
+// for anonymous visitors too (scoped to their browser's X-Owner-Id, see api/client.ts) as well as
+// logged-in accounts - see backend/src/api/api.py's get_game_records.
+export async function getGameRecords(): Promise<GameRecordsOut> {
+  const { data } = await apiClient.get<GameRecordsOut>("/games/records")
+  return data
+}
+
+// Top-15 leaderboard for a (game_type, mode) (roadmap point F) - unlike getGameRecords, this
+// requires login (the backend 401s an anonymous request) - see backend/src/api/api.py's
+// get_leaderboard.
+export async function getLeaderboard(
+  gameType: string,
+  mode: string,
+  window: LeaderboardWindow,
+): Promise<LeaderboardOut> {
+  const { data } = await apiClient.get<LeaderboardOut>(`/games/${gameType}/${mode}/leaderboard`, {
+    params: { window },
+  })
   return data
 }
 

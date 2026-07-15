@@ -5,15 +5,16 @@ in main.py, same pattern as api/api.py's own routes."""
 
 from typing import Annotated
 
-from fastapi import APIRouter, Cookie, Depends, Request, Response
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
 
-from api.auth_schemas import LoginIn, RegisterIn, UserOut
-from api.deps import get_db_session
+from api.auth_schemas import LoginIn, RegisterIn, UpdateProfileIn, UpdateSkinIn, UserOut
+from api.deps import get_db_session, get_immich_service
 from api.rate_limit import limiter
 from config import get_settings
 from persistence.users import UserModel
 from services.auth_service import AuthService, UnauthorizedError
+from services.immich_service import ImmichService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -31,6 +32,22 @@ def get_current_user(
     if access_token is None:
         raise UnauthorizedError("not authenticated")
     return auth_service.get_user_from_token(access_token)
+
+
+def get_current_user_optional(
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
+    access_token: Annotated[str | None, Cookie()] = None,
+) -> UserModel | None:
+    """Same cookie read as get_current_user, but never raises - used where a route serves both
+    anonymous and logged-in requests (see api/api.py's create_game/get_game_records) and just
+    wants "the account if there is one", not to require auth. An invalid/expired token is treated
+    the same as no cookie at all rather than surfacing as an error."""
+    if access_token is None:
+        return None
+    try:
+        return auth_service.get_user_from_token(access_token)
+    except UnauthorizedError:
+        return None
 
 
 def _set_session_cookie(response: Response, token: str) -> None:
@@ -87,3 +104,28 @@ def logout(response: Response) -> None:
 @router.get("/me", response_model=UserOut)
 def get_me(user: Annotated[UserModel, Depends(get_current_user)]) -> UserOut:
     return UserOut.from_user(user)
+
+
+@router.patch("/me", response_model=UserOut)
+def update_me(
+    body: UpdateProfileIn,
+    user: Annotated[UserModel, Depends(get_current_user)],
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
+) -> UserOut:
+    updated = auth_service.update_profile(user, username=body.username, full_name=body.full_name)
+    return UserOut.from_user(updated)
+
+
+@router.put("/me/skin", response_model=UserOut)
+def update_skin(
+    body: UpdateSkinIn,
+    user: Annotated[UserModel, Depends(get_current_user)],
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
+    immich_service: Annotated[ImmichService, Depends(get_immich_service)],
+) -> UserOut:
+    if body.person_id is not None:
+        found = immich_service.get_persons(ids=frozenset({body.person_id}), limit=1)
+        if not found:
+            raise HTTPException(status_code=404, detail=f"person {body.person_id} not found")
+    updated = auth_service.set_skin(user, body.person_id)
+    return UserOut.from_user(updated)

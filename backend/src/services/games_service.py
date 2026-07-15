@@ -4,9 +4,10 @@ persistence awareness) and this app's own DB (persistence/games.py).
 """
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID, uuid4
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from games.base import BaseGame, BaseRound
@@ -21,6 +22,7 @@ from games.more_or_less import MODE_PERSON_ASSETS, MoreOrLessGame, MoreOrLessRou
 from games.whos_that_person import GAME_TYPE as WHOS_THAT_PERSON_TYPE
 from games.whos_that_person import MODE_NAMED_FACES, WhosThatPersonGame, WhosThatPersonRound
 from persistence.games import GameModel, RoundModel
+from persistence.users import UserModel
 from services.immich_service import ImmichService
 from services.ml_service import MLService
 
@@ -42,6 +44,28 @@ _GAMES: dict[tuple[str, str], _GameSpec] = {
     (IMMICHDLE_TYPE, MODE_PERSON): _GameSpec(ImmichdleGame, ImmichdleRound),
     (WHOS_THAT_PERSON_TYPE, MODE_NAMED_FACES): _GameSpec(WhosThatPersonGame, WhosThatPersonRound),
 }
+
+
+@dataclass(frozen=True)
+class GameRecord:
+    """One personal-best entry (roadmap point E) - a mode the owner/user has at least one finished
+    game for, with their highest score in it."""
+
+    game_type: str
+    mode: str
+    best_score: int
+
+
+@dataclass(frozen=True)
+class LeaderboardEntry:
+    """One leaderboard row (roadmap point F) - a distinct account's best score for a (game_type,
+    mode) within a time window, 1-indexed by rank. Anonymous games never produce a row (see
+    get_leaderboard's join) - there's no account to show a name/photo for."""
+
+    rank: int
+    username: str
+    skin_person_id: UUID | None
+    best_score: int
 
 
 class UnsupportedGameError(Exception):
@@ -84,17 +108,66 @@ class GamesService:
             kwargs["ml_service"] = self._ml_service
         return kwargs
 
-    def create_game(self, owner: str, game_type: str, mode: str) -> BaseGame:
+    def create_game(
+        self, owner: str, game_type: str, mode: str, user_id: UUID | None = None
+    ) -> BaseGame:
         spec = _GAMES.get((game_type, mode))
         if spec is None:
             raise UnsupportedGameError(f"unsupported game/mode: {game_type}/{mode}")
 
         game = spec.game_class.start(id=uuid4(), owner=owner, **self._game_kwargs(spec.game_class))
-        self._save_new_game(game)
+        self._save_new_game(game, user_id=user_id)
         return game
 
     def get_game(self, game_id: UUID, owner: str) -> BaseGame:
         return self._load_game(game_id, owner)
+
+    def get_personal_records(self, owner: str, user_id: UUID | None) -> list[GameRecord]:
+        """Roadmap point E - personal-best score per (game_type, mode), shown in the main menu.
+        Filters by the account's user_id when logged in, otherwise by the anonymous browser's
+        owner id - every game's score is higher-is-better (see games/asset_rounds.py's
+        exp_decay_score and each game's win/streak-based deltas), so MAX(score) among finished
+        games is a valid "best" for every existing game/mode."""
+        filter_clause = GameModel.user_id == user_id if user_id is not None else GameModel.owner == owner
+        rows = self._session.execute(
+            select(GameModel.game_type, GameModel.mode, func.max(GameModel.score))
+            .where(GameModel.finished.is_(True), filter_clause)
+            .group_by(GameModel.game_type, GameModel.mode)
+        ).all()
+        return [GameRecord(game_type=gt, mode=m, best_score=best) for gt, m, best in rows]
+
+    def get_leaderboard(
+        self, game_type: str, mode: str, window: Literal["all", "weekly", "daily"]
+    ) -> list[LeaderboardEntry]:
+        """Roadmap point F - top 15 distinct accounts by their best score for this (game_type,
+        mode), optionally restricted to games created since this week's/today's midnight (server
+        time - see date_trunc below, computed in Postgres rather than Python so the cutoff is
+        never skewed by a client/server clock or timezone mismatch, and lines up with how
+        GameModel.created_at itself was written via server_default=func.now()). The inner join to
+        UserModel is what excludes anonymous games (user_id is null there, so they never match)."""
+        if (game_type, mode) not in _GAMES:
+            raise UnsupportedGameError(f"unsupported game/mode: {game_type}/{mode}")
+
+        best_score = func.max(GameModel.score).label("best_score")
+        stmt = (
+            select(UserModel.username, UserModel.skin_person_id, best_score)
+            .join(UserModel, UserModel.id == GameModel.user_id)
+            .where(GameModel.game_type == game_type, GameModel.mode == mode, GameModel.finished.is_(True))
+            .group_by(UserModel.id, UserModel.username, UserModel.skin_person_id)
+            .order_by(best_score.desc())
+            .limit(15)
+        )
+        if window != "all":
+            # Postgres's date_trunc('week', ...) is Monday-based (ISO 8601), matching "semanal
+            # desde el lunes" as confirmed with the project owner.
+            trunc_unit = "day" if window == "daily" else "week"
+            stmt = stmt.where(GameModel.created_at >= func.date_trunc(trunc_unit, func.now()))
+
+        rows = self._session.execute(stmt).all()
+        return [
+            LeaderboardEntry(rank=rank, username=username, skin_person_id=skin_person_id, best_score=score)
+            for rank, (username, skin_person_id, score) in enumerate(rows, start=1)
+        ]
 
     def play_round(self, game_id: UUID, owner: str, round_id: UUID, guess: Any) -> BaseGame:
         """Plays the given round and returns the game with its updated state (the answered round
@@ -143,10 +216,11 @@ class GamesService:
             **self._game_kwargs(spec.game_class),
         )
 
-    def _save_new_game(self, game: BaseGame) -> None:
+    def _save_new_game(self, game: BaseGame, user_id: UUID | None = None) -> None:
         game_row = GameModel(
             id=game.id,
             owner=game.owner,
+            user_id=user_id,
             game_type=game.game_type,
             mode=game.mode,
             score=game.score,
