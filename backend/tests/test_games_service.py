@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timedelta
 
 import pytest
 
@@ -163,3 +164,140 @@ class TestPersonalRecords:
 
         assert len(records) == 1
         assert records[0].best_score == 9
+
+
+class TestLeaderboard:
+    """Same persistence-layer-query testing philosophy as TestPersonalRecords - games are seeded
+    directly at whatever score/finished/created_at state a test needs, not played out for real.
+    Tests that need an exact row count use a game_type/mode no other test in this file seeds a
+    finished+user_id game for (see the per-test game_type/mode below), so unrelated tests' data
+    can't pollute an exact-count assertion; tests that only check relative order/membership among
+    their own named users reuse the default "more-or-less"/"personAssets" and filter by username."""
+
+    def _seed_game(
+        self,
+        games_service,
+        db_session,
+        *,
+        user_id=None,
+        score,
+        finished=True,
+        game_type="more-or-less",
+        mode="personAssets",
+        created_at=None,
+    ):
+        game = games_service.create_game(
+            owner=f"owner-{uuid.uuid4().hex[:8]}", game_type=game_type, mode=mode, user_id=user_id
+        )
+        row = db_session.get(GameModel, game.id)
+        row.score = score
+        row.finished = finished
+        if created_at is not None:
+            row.created_at = created_at
+        db_session.commit()
+        return game
+
+    def test_ranks_by_best_score_descending(self, games_service, db_session, auth_service):
+        alice = _register_user(auth_service)
+        bob = _register_user(auth_service)
+        carol = _register_user(auth_service)
+        self._seed_game(games_service, db_session, user_id=alice.id, score=50)
+        self._seed_game(games_service, db_session, user_id=bob.id, score=90)
+        self._seed_game(games_service, db_session, user_id=carol.id, score=70)
+
+        entries = games_service.get_leaderboard("more-or-less", "personAssets", "all")
+
+        ours = [e for e in entries if e.username in {alice.username, bob.username, carol.username}]
+        assert [e.username for e in ours] == [bob.username, carol.username, alice.username]
+        assert [e.best_score for e in ours] == [90, 70, 50]
+
+    def test_one_row_per_user_not_per_game(self, games_service, db_session, auth_service):
+        user = _register_user(auth_service)
+        self._seed_game(games_service, db_session, user_id=user.id, score=30)
+        self._seed_game(games_service, db_session, user_id=user.id, score=80)
+        self._seed_game(games_service, db_session, user_id=user.id, score=55)
+
+        entries = games_service.get_leaderboard("more-or-less", "personAssets", "all")
+
+        ours = [e for e in entries if e.username == user.username]
+        assert len(ours) == 1
+        assert ours[0].best_score == 80
+
+    def test_anonymous_games_are_excluded(self, games_service, db_session):
+        self._seed_game(
+            games_service, db_session, user_id=None, score=9999, game_type="dateguessr", mode="daysToDate"
+        )
+
+        entries = games_service.get_leaderboard("dateguessr", "daysToDate", "all")
+
+        assert entries == []
+
+    def test_unfinished_games_are_excluded(self, games_service, db_session, auth_service):
+        user = _register_user(auth_service)
+        self._seed_game(
+            games_service,
+            db_session,
+            user_id=user.id,
+            score=100,
+            finished=False,
+            game_type="dateguessr",
+            mode="daysToDate",
+        )
+
+        entries = games_service.get_leaderboard("dateguessr", "daysToDate", "all")
+
+        assert entries == []
+
+    def test_window_cutoffs_exclude_older_games(self, games_service, db_session, auth_service):
+        recent_user = _register_user(auth_service)
+        old_user = _register_user(auth_service)
+        self._seed_game(
+            games_service, db_session, user_id=recent_user.id, score=10, game_type="immichdle", mode="person"
+        )
+        # A high score, well outside both the daily and weekly cutoffs - a good canary: if the
+        # window filtering were broken, this would wrongly win daily/weekly instead of just "all".
+        self._seed_game(
+            games_service,
+            db_session,
+            user_id=old_user.id,
+            score=999,
+            game_type="immichdle",
+            mode="person",
+            created_at=datetime.now() - timedelta(days=10),
+        )
+
+        all_time = games_service.get_leaderboard("immichdle", "person", "all")
+        weekly = games_service.get_leaderboard("immichdle", "person", "weekly")
+        daily = games_service.get_leaderboard("immichdle", "person", "daily")
+
+        assert {e.username for e in all_time} == {recent_user.username, old_user.username}
+        assert {e.username for e in weekly} == {recent_user.username}
+        assert {e.username for e in daily} == {recent_user.username}
+
+    def test_limit_is_15(self, games_service, db_session, auth_service):
+        for score in range(16):
+            user = _register_user(auth_service)
+            self._seed_game(
+                games_service,
+                db_session,
+                user_id=user.id,
+                score=score,
+                game_type="geoguessr",
+                mode="distanceBetweenGuess",
+            )
+
+        entries = games_service.get_leaderboard("geoguessr", "distanceBetweenGuess", "all")
+
+        assert len(entries) == 15
+        # The lowest of the 16 seeded scores (0) must be the one squeezed out.
+        assert [e.best_score for e in entries] == list(range(15, 0, -1))
+        assert [e.rank for e in entries] == list(range(1, 16))
+
+    def test_unsupported_game_type_raises(self, games_service):
+        with pytest.raises(UnsupportedGameError):
+            games_service.get_leaderboard("geoguessr", "not-a-real-mode", "all")
+
+    def test_no_games_returns_an_empty_list(self, games_service):
+        entries = games_service.get_leaderboard("whos-that-person", "namedFaces", "all")
+
+        assert entries == []
