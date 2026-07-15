@@ -18,6 +18,15 @@
     "bestScore": "Mejor: {{score}}",
     "notPlayed": "Sin jugar"
   },
+  "leaderboard": {
+    "title": "Clasificación",
+    "empty": "Todavía nadie ha jugado este modo en este período.",
+    "window": {
+      "all": "Histórico",
+      "weekly": "Semanal",
+      "daily": "Diario"
+    }
+  },
   "common": {
     "back": "Volver",
     "score": "Puntaje",
@@ -26,6 +35,7 @@
     "roundOf": "Ronda {{current}} de {{total}}",
     "points": "+{{score}} pts",
     "playAgain": "Jugar de nuevo",
+    "leaderboards": "Clasificación",
     "previousPhoto": "Foto anterior",
     "nextPhoto": "Foto siguiente",
     "finished": {

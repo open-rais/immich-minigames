@@ -8,11 +8,13 @@ const placeholderStyle = {
     "repeating-linear-gradient(135deg, var(--color-placeholder-a), var(--color-placeholder-a) 6px, var(--color-placeholder-b) 6px, var(--color-placeholder-b) 12px)",
 }
 
-export function PersonAvatar({ src, alt }: { src: string; alt: string }) {
+// `src: null` (e.g. a leaderboard entry with no skin picked, see menu/LeaderboardPage.tsx) renders
+// the same placeholder as a failed image load - both mean "no photo to show".
+export function PersonAvatar({ src, alt }: { src: string | null; alt: string }) {
   const [failed, setFailed] = useState(false)
   const sizingClass = "h-10 w-10 flex-none rounded-full md:h-14 md:w-14"
 
-  if (failed) {
+  if (!src || failed) {
     return <div className={sizingClass} style={placeholderStyle} />
   }
 

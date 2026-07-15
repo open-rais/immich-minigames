@@ -258,3 +258,19 @@ export interface GameRecordOut {
 export interface GameRecordsOut {
   records: GameRecordOut[]
 }
+
+// Roadmap point F - leaderboards (requires login, unlike the personal records above) - mirrors
+// backend/src/api/dto/common.py's LeaderboardWindow/LeaderboardEntryOut/LeaderboardOut.
+export type LeaderboardWindow = "all" | "weekly" | "daily"
+
+export interface LeaderboardEntryOut {
+  rank: number
+  username: string
+  skin_person_id: string | null
+  best_score: number
+}
+
+export interface LeaderboardOut {
+  window: LeaderboardWindow
+  entries: LeaderboardEntryOut[]
+}
