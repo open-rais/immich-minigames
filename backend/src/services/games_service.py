@@ -4,7 +4,7 @@ persistence awareness) and this app's own DB (persistence/games.py).
 """
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID, uuid4
 
 from sqlalchemy import func, select
@@ -22,6 +22,7 @@ from games.more_or_less import MODE_PERSON_ASSETS, MoreOrLessGame, MoreOrLessRou
 from games.whos_that_person import GAME_TYPE as WHOS_THAT_PERSON_TYPE
 from games.whos_that_person import MODE_NAMED_FACES, WhosThatPersonGame, WhosThatPersonRound
 from persistence.games import GameModel, RoundModel
+from persistence.users import UserModel
 from services.immich_service import ImmichService
 from services.ml_service import MLService
 
@@ -52,6 +53,18 @@ class GameRecord:
 
     game_type: str
     mode: str
+    best_score: int
+
+
+@dataclass(frozen=True)
+class LeaderboardEntry:
+    """One leaderboard row (roadmap point F) - a distinct account's best score for a (game_type,
+    mode) within a time window, 1-indexed by rank. Anonymous games never produce a row (see
+    get_leaderboard's join) - there's no account to show a name/photo for."""
+
+    rank: int
+    username: str
+    skin_person_id: UUID | None
     best_score: int
 
 
@@ -122,6 +135,39 @@ class GamesService:
             .group_by(GameModel.game_type, GameModel.mode)
         ).all()
         return [GameRecord(game_type=gt, mode=m, best_score=best) for gt, m, best in rows]
+
+    def get_leaderboard(
+        self, game_type: str, mode: str, window: Literal["all", "weekly", "daily"]
+    ) -> list[LeaderboardEntry]:
+        """Roadmap point F - top 15 distinct accounts by their best score for this (game_type,
+        mode), optionally restricted to games created since this week's/today's midnight (server
+        time - see date_trunc below, computed in Postgres rather than Python so the cutoff is
+        never skewed by a client/server clock or timezone mismatch, and lines up with how
+        GameModel.created_at itself was written via server_default=func.now()). The inner join to
+        UserModel is what excludes anonymous games (user_id is null there, so they never match)."""
+        if (game_type, mode) not in _GAMES:
+            raise UnsupportedGameError(f"unsupported game/mode: {game_type}/{mode}")
+
+        best_score = func.max(GameModel.score).label("best_score")
+        stmt = (
+            select(UserModel.username, UserModel.skin_person_id, best_score)
+            .join(UserModel, UserModel.id == GameModel.user_id)
+            .where(GameModel.game_type == game_type, GameModel.mode == mode, GameModel.finished.is_(True))
+            .group_by(UserModel.id, UserModel.username, UserModel.skin_person_id)
+            .order_by(best_score.desc())
+            .limit(15)
+        )
+        if window != "all":
+            # Postgres's date_trunc('week', ...) is Monday-based (ISO 8601), matching "semanal
+            # desde el lunes" as confirmed with the project owner.
+            trunc_unit = "day" if window == "daily" else "week"
+            stmt = stmt.where(GameModel.created_at >= func.date_trunc(trunc_unit, func.now()))
+
+        rows = self._session.execute(stmt).all()
+        return [
+            LeaderboardEntry(rank=rank, username=username, skin_person_id=skin_person_id, best_score=score)
+            for rank, (username, skin_person_id, score) in enumerate(rows, start=1)
+        ]
 
     def play_round(self, game_id: UUID, owner: str, round_id: UUID, guess: Any) -> BaseGame:
         """Plays the given round and returns the game with its updated state (the answered round

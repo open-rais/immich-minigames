@@ -9,7 +9,7 @@ wrongly-shaped guess.
 """
 
 from dataclasses import dataclass
-from typing import Annotated, Any, Union
+from typing import Annotated, Any, Literal, Union
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -26,7 +26,7 @@ from games.geoguessr import GeoguessrRound
 from games.immichdle import ImmichdleGame, ImmichdleRound
 from games.more_or_less import MoreOrLessRound
 from games.whos_that_person import WhosThatPersonRound
-from services.games_service import GameRecord, UnsupportedGameError
+from services.games_service import GameRecord, LeaderboardEntry, UnsupportedGameError
 
 
 class CreateGameIn(BaseModel):
@@ -183,3 +183,33 @@ class GameRecordsOut(BaseModel):
     @classmethod
     def from_records(cls, records: list[GameRecord]) -> "GameRecordsOut":
         return cls(records=[GameRecordOut.from_record(r) for r in records])
+
+
+# -- leaderboard (roadmap point F, see GamesService.get_leaderboard) ---
+
+LeaderboardWindow = Literal["all", "weekly", "daily"]
+
+
+class LeaderboardEntryOut(BaseModel):
+    rank: int
+    username: str
+    skin_person_id: UUID | None
+    best_score: int
+
+    @classmethod
+    def from_entry(cls, entry: LeaderboardEntry) -> "LeaderboardEntryOut":
+        return cls(
+            rank=entry.rank,
+            username=entry.username,
+            skin_person_id=entry.skin_person_id,
+            best_score=entry.best_score,
+        )
+
+
+class LeaderboardOut(BaseModel):
+    window: LeaderboardWindow
+    entries: list[LeaderboardEntryOut]
+
+    @classmethod
+    def from_entries(cls, window: LeaderboardWindow, entries: list[LeaderboardEntry]) -> "LeaderboardOut":
+        return cls(window=window, entries=[LeaderboardEntryOut.from_entry(e) for e in entries])
