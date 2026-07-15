@@ -24,9 +24,9 @@ export interface CatalogMode {
   mode: string
   modeTitleKey: string
   component: ComponentType<GameComponentProps>
-  // Cover shown on the mode's card in the main menu and on its idle screen. Omitted for games
-  // without art yet - ModeCard falls back to the plain bg-primary block and IdleScreen just skips
-  // the image in that case (e.g. Immichdle, still a placeholder).
+  // Cover shown on the mode's card in the main menu and on its idle screen. Optional - ModeCard
+  // falls back to the plain bg-primary block and IdleScreen just skips the image if omitted, for
+  // any future game/mode added before its art is ready.
   coverUrl?: string
 }
 
@@ -81,6 +81,7 @@ export const GAME_CATALOG: CatalogGame[] = [
         mode: Mode.Person,
         modeTitleKey: "immichdle.modes.person",
         component: ImmichdleGame,
+        coverUrl: "/covers/persondle.webp",
       },
     ],
   },
@@ -92,6 +93,7 @@ export const GAME_CATALOG: CatalogGame[] = [
         mode: Mode.NamedFaces,
         modeTitleKey: "whosThatPerson.modes.namedFaces",
         component: WhosThatPersonGame,
+        coverUrl: "/covers/whos-that-person.webp",
       },
     ],
   },
