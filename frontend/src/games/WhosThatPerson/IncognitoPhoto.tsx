@@ -20,8 +20,9 @@ interface IncognitoPhotoProps {
 
 // Each side grows by this fraction of the box's own width/height, hiding a bit more of the
 // surrounding context (hair, clothes, posture) than the raw detection box alone would - makes
-// guessing a bit harder than a tight crop that outlines the exact face shape.
-const BOX_EXPAND_RATIO = 0.3
+// guessing a bit harder than a tight crop that outlines the exact face shape. Tweak this value
+// directly to change how much extra padding every box gets.
+const BOX_EXPAND_RATIO = 0.15
 
 // A detection box that's a tiny fraction of the photo (a face far in the background of a group
 // shot) renders as a near-invisible, barely-tappable rectangle - and the "grow toward bottom-right
@@ -74,27 +75,73 @@ function boxStyle(face: HiddenFaceOut): CSSProperties {
 const POPOVER_MAX_WIDTH_PX = 280
 const POPOVER_GAP_PX = 8 // mirrors the old mt-2/mb-2 (0.5rem)
 const POPOVER_VIEWPORT_MARGIN_PX = 12
+// The search input's own height - the minimum slice of the popover that must stay on-screen for it
+// to still be usable, even when the tapped box leaves near-zero room on both sides (see
+// popoverFixedStyle below). Only this much is guaranteed; the results dropdown below the input
+// scrolls internally if it runs out of room (see PersonSearchInput.tsx's own max-h/overflow-y-auto)
+// rather than this popover being capped/scrolled as a whole - the input itself must never be part
+// of a scrolled region, or it reads as "the search bar is broken" rather than "there's a list below
+// it".
+const POPOVER_MIN_VISIBLE_PX = 56
 
 // Anchors the popover to the face box's real on-screen position (from getBoundingClientRect(),
 // measured once when the box is tapped - see FaceBox's useLayoutEffect) rather than the box's own
 // percentage position within the photo: the popover is portaled out to <body> specifically so it
 // escapes the photo's zoom/pan transform (see FaceGuessPopover.tsx), so it needs plain viewport
-// pixels, not a position relative to the (transformed) box. Same "flip above once low, hug whichever
-// side is closest" logic as before, just computed from real screen coordinates so it still can't be
-// pushed off-screen for a face near a photo edge.
+// pixels, not a position relative to the (transformed) box.
 function popoverFixedStyle(anchor: DOMRect): CSSProperties {
   const width = Math.min(window.innerWidth * 0.8, POPOVER_MAX_WIDTH_PX)
+
+  // A heavily zoomed-in box can have a real rect that extends well beyond the viewport (the
+  // photo's own container only clips it visually via overflow-hidden - getBoundingClientRect()
+  // still reports the untruncated rect), so anchoring off its raw edges can place the popover
+  // off-screen. Clamp to the visible slice - the part of the box the player could actually see and
+  // tap - before using it for placement.
+  const visibleLeft = Math.max(anchor.left, 0)
+  const visibleRight = Math.min(anchor.right, window.innerWidth)
+  const visibleTop = Math.max(anchor.top, 0)
+  const visibleBottom = Math.min(anchor.bottom, window.innerHeight)
+
+  // Whichever side of the visible box has more room wins, rather than a fixed "is the box past
+  // 60% down the screen" cutoff - a heavily zoomed-in box can fill most of the viewport, at which
+  // point a fixed ratio on its top edge alone no longer reflects which side actually has space
+  // (e.g. a box whose visible top sits at 36% down the screen but whose visible bottom already
+  // touches the viewport's edge has zero room below despite failing that ratio check).
+  //
+  // Clamped so at least POPOVER_MIN_VISIBLE_PX stays on-screen on the chosen side - previously this
+  // only capped at POPOVER_VIEWPORT_MARGIN_PX past the box's own edge, so a box that left almost no
+  // room on either side (any face box once zoomed in enough) could pin the popover's top edge just
+  // shy of the opposite edge of the screen, pushing its whole body - search input included - off
+  // the visible viewport.
+  const spaceAbove = visibleTop
+  const spaceBelow = window.innerHeight - visibleBottom
   const vertical =
-    anchor.top / window.innerHeight > 0.6
-      ? { bottom: window.innerHeight - anchor.top + POPOVER_GAP_PX }
-      : { top: anchor.bottom + POPOVER_GAP_PX }
-  const centerXRatio = (anchor.left + anchor.width / 2) / window.innerWidth
+    spaceBelow >= spaceAbove
+      ? {
+          top: Math.min(
+            Math.max(visibleBottom + POPOVER_GAP_PX, POPOVER_VIEWPORT_MARGIN_PX),
+            window.innerHeight - POPOVER_MIN_VISIBLE_PX - POPOVER_VIEWPORT_MARGIN_PX,
+          ),
+        }
+      : {
+          bottom: Math.min(
+            Math.max(window.innerHeight - visibleTop + POPOVER_GAP_PX, POPOVER_VIEWPORT_MARGIN_PX),
+            window.innerHeight - POPOVER_MIN_VISIBLE_PX - POPOVER_VIEWPORT_MARGIN_PX,
+          ),
+        }
+
+  const centerXRatio = (visibleLeft + visibleRight) / 2 / window.innerWidth
   const idealLeft =
-    centerXRatio < 0.33 ? anchor.left : centerXRatio > 0.66 ? anchor.right - width : anchor.left + anchor.width / 2 - width / 2
+    centerXRatio < 0.33
+      ? visibleLeft
+      : centerXRatio > 0.66
+        ? visibleRight - width
+        : (visibleLeft + visibleRight) / 2 - width / 2
   const left = Math.min(
     Math.max(idealLeft, POPOVER_VIEWPORT_MARGIN_PX),
     window.innerWidth - width - POPOVER_VIEWPORT_MARGIN_PX,
   )
+
   return { position: "fixed", left, width, ...vertical }
 }
 

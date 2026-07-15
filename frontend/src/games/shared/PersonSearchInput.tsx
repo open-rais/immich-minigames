@@ -87,7 +87,10 @@ export function PersonSearchInput({ excludeIds, onGuess, disabled }: PersonSearc
       />
 
       {open && query.trim() && (
-        <div className="absolute top-full z-40 mt-2 w-full overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
+        // max-h + overflow-y-auto (not overflow-hidden) - the input above always stays put and
+        // fully visible; only this results list itself scrolls once there are more matches than
+        // fit, same as any standard autocomplete dropdown.
+        <div className="absolute top-full z-40 mt-2 max-h-64 w-full overflow-y-auto overscroll-contain rounded-2xl border border-line bg-surface shadow-card">
           {loading ? (
             <p className="px-4 py-3 text-sm text-muted">{t("immichdle.searching")}</p>
           ) : results.length === 0 ? (
