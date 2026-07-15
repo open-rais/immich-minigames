@@ -1,4 +1,6 @@
 import type { CSSProperties } from "react"
+import { useLayoutEffect, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 
 import { assetThumbnailUrl, personThumbnailUrl } from "../../api/games"
 import type { HiddenFaceOut } from "../../api/types"
@@ -21,6 +23,14 @@ interface IncognitoPhotoProps {
 // guessing a bit harder than a tight crop that outlines the exact face shape.
 const BOX_EXPAND_RATIO = 0.3
 
+// A detection box that's a tiny fraction of the photo (a face far in the background of a group
+// shot) renders as a near-invisible, barely-tappable rectangle - and the "grow toward bottom-right
+// only" percentage sizing model makes it drift visibly off the actual face at small sizes too.
+// Enforcing this floor (via CSS `max()`, so it never shrinks below it regardless of the photo's
+// rendered size) and re-centering around it keeps every box tappable and visually anchored on the
+// face it hides, matching the >=44px touch-target guideline.
+const MIN_BOX_PX = 44
+
 function expandedBox(face: HiddenFaceOut) {
   const boxWidth = face.bounding_box_x2 - face.bounding_box_x1
   const boxHeight = face.bounding_box_y2 - face.bounding_box_y1
@@ -37,28 +47,55 @@ function expandedBox(face: HiddenFaceOut) {
 // Percentage box (expanded, see above) relative to the face's own detection resolution - the layer
 // this is placed in (AssetPhoto's `overlay`) is sized/positioned to exactly match the photo's
 // rendered content box, so plain percentages line up with no further offset/letterbox math needed,
-// at any zoom/pan state.
+// at any zoom/pan state. Width/height are floored at MIN_BOX_PX via CSS `max()` (mixing % and px is
+// valid - the browser resolves both to lengths at layout and picks the larger), and left/top are
+// pulled back by half of whatever that floor added so the box grows symmetrically around its
+// original center instead of only toward the bottom-right. `--box-w`/`--box-h` custom properties
+// let the left/top `calc()`s below reuse the exact same `max()` result the width/height use, rather
+// than duplicating (and potentially drifting from) that expression.
 function boxStyle(face: HiddenFaceOut): CSSProperties {
   const box = expandedBox(face)
+  const leftPct = (box.x1 / face.image_width) * 100
+  const topPct = (box.y1 / face.image_height) * 100
+  const widthPct = ((box.x2 - box.x1) / face.image_width) * 100
+  const heightPct = ((box.y2 - box.y1) / face.image_height) * 100
   return {
-    left: `${(box.x1 / face.image_width) * 100}%`,
-    top: `${(box.y1 / face.image_height) * 100}%`,
-    width: `${((box.x2 - box.x1) / face.image_width) * 100}%`,
-    height: `${((box.y2 - box.y1) / face.image_height) * 100}%`,
-  }
+    "--box-w": `max(${widthPct}%, ${MIN_BOX_PX}px)`,
+    "--box-h": `max(${heightPct}%, ${MIN_BOX_PX}px)`,
+    width: "var(--box-w)",
+    height: "var(--box-h)",
+    left: `calc(${leftPct}% - (var(--box-w) - ${widthPct}%) / 2)`,
+    top: `calc(${topPct}% - (var(--box-h) - ${heightPct}%) / 2)`,
+  } as CSSProperties
 }
 
-// Cheap anchoring heuristic computed straight from the (expanded) box's own position (no DOM
-// measurement): flip above the box once it's in the lower part of the photo, and hug whichever side
-// it's closest to horizontally, so the popover doesn't get pushed off the visible photo for faces
-// near an edge.
-function popoverAnchorClass(face: HiddenFaceOut): string {
-  const box = expandedBox(face)
-  const centerY = (box.y1 + box.y2) / 2 / face.image_height
-  const centerX = (box.x1 + box.x2) / 2 / face.image_width
-  const vertical = centerY > 0.6 ? "bottom-full mb-2" : "top-full mt-2"
-  const horizontal = centerX < 0.33 ? "left-0" : centerX > 0.66 ? "right-0" : "left-1/2 -translate-x-1/2"
-  return `${vertical} ${horizontal}`
+// The popover's own footprint, mirroring its old `w-[min(80vw,280px)]` Tailwind class now that
+// width is computed in JS instead.
+const POPOVER_MAX_WIDTH_PX = 280
+const POPOVER_GAP_PX = 8 // mirrors the old mt-2/mb-2 (0.5rem)
+const POPOVER_VIEWPORT_MARGIN_PX = 12
+
+// Anchors the popover to the face box's real on-screen position (from getBoundingClientRect(),
+// measured once when the box is tapped - see FaceBox's useLayoutEffect) rather than the box's own
+// percentage position within the photo: the popover is portaled out to <body> specifically so it
+// escapes the photo's zoom/pan transform (see FaceGuessPopover.tsx), so it needs plain viewport
+// pixels, not a position relative to the (transformed) box. Same "flip above once low, hug whichever
+// side is closest" logic as before, just computed from real screen coordinates so it still can't be
+// pushed off-screen for a face near a photo edge.
+function popoverFixedStyle(anchor: DOMRect): CSSProperties {
+  const width = Math.min(window.innerWidth * 0.8, POPOVER_MAX_WIDTH_PX)
+  const vertical =
+    anchor.top / window.innerHeight > 0.6
+      ? { bottom: window.innerHeight - anchor.top + POPOVER_GAP_PX }
+      : { top: anchor.bottom + POPOVER_GAP_PX }
+  const centerXRatio = (anchor.left + anchor.width / 2) / window.innerWidth
+  const idealLeft =
+    centerXRatio < 0.33 ? anchor.left : centerXRatio > 0.66 ? anchor.right - width : anchor.left + anchor.width / 2 - width / 2
+  const left = Math.min(
+    Math.max(idealLeft, POPOVER_VIEWPORT_MARGIN_PX),
+    window.innerWidth - width - POPOVER_VIEWPORT_MARGIN_PX,
+  )
+  return { position: "fixed", left, width, ...vertical }
 }
 
 // One hidden face's overlay: a solid black box while unguessed (always black regardless of theme -
@@ -83,10 +120,21 @@ function FaceBox({
   const revealed = phase === "revealed"
   const borderClass = !revealed ? "border-white/80" : face.correct ? "border-clue-match" : "border-clue-miss"
 
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null)
+
+  // Measured once when the popover opens (not tracked continuously) - a pointerdown anywhere else
+  // on the photo both pans it (AssetPhoto) and closes the popover (FaceGuessPopover's own outside-
+  // pointerdown listener), so the anchor can't go stale while the popover stays open.
+  useLayoutEffect(() => {
+    setAnchorRect(active && phase === "guessing" && buttonRef.current ? buttonRef.current.getBoundingClientRect() : null)
+  }, [active, phase])
+
   return (
     <div className="absolute" style={boxStyle(face)}>
       <div className="relative h-full w-full">
         <button
+          ref={buttonRef}
           type="button"
           disabled={phase !== "guessing"}
           onClick={() => onSelectFace(active ? null : face.face_id)}
@@ -107,13 +155,17 @@ function FaceBox({
           </span>
         )}
 
-        {active && phase === "guessing" && (
-          <FaceGuessPopover
-            className={`absolute z-40 ${popoverAnchorClass(face)}`}
-            onGuess={onGuess}
-            onClose={() => onSelectFace(null)}
-          />
-        )}
+        {active &&
+          phase === "guessing" &&
+          anchorRect &&
+          createPortal(
+            <FaceGuessPopover
+              style={popoverFixedStyle(anchorRect)}
+              onGuess={onGuess}
+              onClose={() => onSelectFace(null)}
+            />,
+            document.body,
+          )}
       </div>
     </div>
   )

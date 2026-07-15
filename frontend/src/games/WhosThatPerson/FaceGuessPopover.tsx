@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react"
 import { useEffect, useRef } from "react"
 
 import { PersonSearchInput } from "../shared/PersonSearchInput"
@@ -8,17 +9,21 @@ import { PersonSearchInput } from "../shared/PersonSearchInput"
 const EMPTY_EXCLUDE_IDS = new Set<string>()
 
 interface FaceGuessPopoverProps {
-  className: string
+  style: CSSProperties
   onGuess: (personId: string) => void
   onClose: () => void
 }
 
-// Floating panel anchored to a clicked face box (see IncognitoPhoto.tsx's popoverAnchorClass) -
-// wraps the shared PersonSearchInput. Deliberately not excluding already-guessed people the way
-// Immichdle's guess bar does: the same person can legitimately be the correct answer for two
-// different faces in one photo (mirrors, collages - see backend/src/games/whos_that_person.py's
-// module docstring), so every search always shows every match.
-export function FaceGuessPopover({ className, onGuess, onClose }: FaceGuessPopoverProps) {
+// Floating panel anchored to a clicked face box (see IncognitoPhoto.tsx's popoverFixedStyle) -
+// wraps the shared PersonSearchInput. Portaled to <body> and positioned with `style` (fixed,
+// viewport-space coordinates measured from the box's real position) rather than being laid out
+// inside the photo's own zoom/pan transform - nested there, the popover's fixed CSS size would get
+// scaled up right along with the photo whenever the player zoomed in. Deliberately not excluding
+// already-guessed people the way Immichdle's guess bar does: the same person can legitimately be
+// the correct answer for two different faces in one photo (mirrors, collages - see
+// backend/src/games/whos_that_person.py's module docstring), so every search always shows every
+// match.
+export function FaceGuessPopover({ style, onGuess, onClose }: FaceGuessPopoverProps) {
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -38,7 +43,8 @@ export function FaceGuessPopover({ className, onGuess, onClose }: FaceGuessPopov
     <div
       ref={containerRef}
       onClick={(e) => e.stopPropagation()}
-      className={`w-[min(80vw,280px)] rounded-2xl border border-line bg-surface p-2 shadow-card ${className}`}
+      style={style}
+      className="z-40 rounded-2xl border border-line bg-surface p-2 shadow-card"
     >
       <PersonSearchInput excludeIds={EMPTY_EXCLUDE_IDS} onGuess={pick} disabled={false} />
     </div>

@@ -198,6 +198,12 @@ export function AssetPhoto({ src, alt, overlay }: { src: string; alt: string; ov
     return <div className="fixed inset-0" style={placeholderStyle} />
   }
 
+  // When there's an overlay to keep pixel-aligned to the photo (e.g. Who'sThatPerson's face
+  // boxes), don't paint the photo until fitBox is ready to paint the overlay in the same frame -
+  // otherwise the photo (which the <img> tag renders as soon as it has a src, independent of the
+  // state updates fitBox depends on) is visible for a beat with no overlay on top of it.
+  const photoReady = !overlay || fitBox !== null
+
   return (
     <div
       ref={containerRef}
@@ -217,7 +223,7 @@ export function AssetPhoto({ src, alt, overlay }: { src: string; alt: string; ov
           onError={() => setFailed(true)}
           onLoad={(e) => setNaturalSize({ width: e.currentTarget.naturalWidth, height: e.currentTarget.naturalHeight })}
           draggable={false}
-          className="h-full w-full object-contain"
+          className={`h-full w-full object-contain ${photoReady ? "" : "invisible"}`}
         />
         {overlay && fitBox && (
           <div
