@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from api.auth_api import router as auth_router
 from api.deps import get_db_session
-from api.schemas import CreateGameIn, GameOut, PersonSearchOut, PlayRoundOut, parse_guess
+from api.dto.common import CreateGameIn, GameOut, PersonSearchOut, PlayRoundOut, parse_guess
 from services.games_service import GamesService
 from services.immich_service import ImmichService
 from services.ml_service import MLService
