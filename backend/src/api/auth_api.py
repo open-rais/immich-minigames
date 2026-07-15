@@ -5,11 +5,12 @@ in main.py, same pattern as api/api.py's own routes."""
 
 from typing import Annotated
 
-from fastapi import APIRouter, Cookie, Depends, Response
+from fastapi import APIRouter, Cookie, Depends, Request, Response
 from sqlalchemy.orm import Session
 
 from api.auth_schemas import LoginIn, RegisterIn, UserOut
 from api.deps import get_db_session
+from api.rate_limit import limiter
 from config import Settings
 from persistence.users import UserModel
 from services.auth_service import AuthService, UnauthorizedError
@@ -48,7 +49,9 @@ def _set_session_cookie(response: Response, token: str) -> None:
 
 
 @router.post("/register", response_model=UserOut, status_code=201)
+@limiter.limit("3/minute")
 def register(
+    request: Request,
     body: RegisterIn,
     response: Response,
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
@@ -64,7 +67,9 @@ def register(
 
 
 @router.post("/login", response_model=UserOut)
+@limiter.limit("5/minute")
 def login(
+    request: Request,
     body: LoginIn,
     response: Response,
     auth_service: Annotated[AuthService, Depends(get_auth_service)],

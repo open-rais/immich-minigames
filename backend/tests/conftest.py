@@ -11,6 +11,7 @@ the separate `minigames` schema - that schema is dropped and recreated once per 
 import pytest
 from fastapi.testclient import TestClient
 
+from api.rate_limit import limiter
 from main import app
 from persistence.base import get_engine as get_own_engine
 from persistence.base import get_session_factory, reset_db
@@ -59,6 +60,14 @@ def games_service(db_session, immich_service):
 @pytest.fixture
 def auth_service(db_session):
     return AuthService(db_session)
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter():
+    # The TestClient always calls in as the same client IP, and the limiter's in-memory counters
+    # live on the shared `limiter` singleton (not per-TestClient) - reset before each test so one
+    # test's auth calls don't eat into another test's rate limit budget.
+    limiter.reset()
 
 
 @pytest.fixture

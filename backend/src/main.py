@@ -7,8 +7,11 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from api.api import router
+from api.rate_limit import limiter
 from games.immichdle import DuplicateGuessError, InvalidGuessError
 from games.whos_that_person import IncompleteGuessError
 from persistence.base import init_db
@@ -33,6 +36,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="Immich Minigames", lifespan=lifespan)
+app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
 
 
 def _error_handler(status_code: int):
@@ -42,6 +47,12 @@ def _error_handler(status_code: int):
     return handler
 
 
+async def _rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+    response = JSONResponse(status_code=429, content={"detail": f"rate limit exceeded: {exc.detail}"})
+    return limiter._inject_headers(response, request.state.view_rate_limit)
+
+
+app.add_exception_handler(RateLimitExceeded, _rate_limit_handler)
 app.add_exception_handler(UnsupportedGameError, _error_handler(400))
 app.add_exception_handler(DuplicateGuessError, _error_handler(400))
 app.add_exception_handler(InvalidGuessError, _error_handler(400))
