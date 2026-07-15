@@ -10,7 +10,7 @@ from uuid import UUID
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
-from persistence.immich_tables import get_engine
+from persistence.base import get_engine
 
 # MAX(similarity) over every face-pair between the two people, not a single representative-face
 # comparison - a single arbitrary/off-angle photo per person could undersell real resemblance,

@@ -114,3 +114,37 @@ class TestMe:
         response = client.get("/api/v1/auth/me")
 
         assert response.status_code == 401
+
+
+class TestRateLimit:
+    def test_register_returns_429_after_the_limit(self, client):
+        responses = [
+            client.post(
+                "/api/v1/auth/register",
+                json={
+                    "email": f"{_unique('user')}@example.com",
+                    "username": _unique("user"),
+                    "full_name": "Test User",
+                    "password": "correct-horse-battery-staple",
+                },
+            )
+            for _ in range(4)
+        ]
+
+        assert [r.status_code for r in responses[:3]] == [201, 201, 201]
+        assert responses[3].status_code == 429
+
+    def test_login_returns_429_after_the_limit(self, client):
+        body = _register(client)
+        client.cookies.clear()
+
+        responses = [
+            client.post(
+                "/api/v1/auth/login",
+                json={"email": body["email"], "password": "wrong-password"},
+            )
+            for _ in range(6)
+        ]
+
+        assert [r.status_code for r in responses[:5]] == [401] * 5
+        assert responses[5].status_code == 429

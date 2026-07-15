@@ -25,6 +25,7 @@ from uuid import UUID, uuid4
 
 from domain.face import Face
 from games.base import BaseGame, BaseRound, PlayRoundResult
+from games.serialization import DictCodec
 from services.immich_service import ImmichService
 
 GAME_TYPE = "whos-that-person"
@@ -39,7 +40,7 @@ class IncompleteGuessError(Exception):
 
 
 @dataclass(frozen=True)
-class HiddenFace:
+class HiddenFace(DictCodec):
     """A blacked-out face's bounding box (never secret - needed to draw the box) plus the person it
     actually belongs to (secret until answered - redaction happens in the API DTO layer, not here) -
     frozen at round-creation time, same rationale as every other game's *Snapshot types."""
@@ -66,33 +67,6 @@ class HiddenFace:
             bounding_box_y1=face.bounding_box_y1,
             bounding_box_x2=face.bounding_box_x2,
             bounding_box_y2=face.bounding_box_y2,
-        )
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "face_id": str(self.face_id),
-            "person_id": str(self.person_id),
-            "person_name": self.person_name,
-            "image_width": self.image_width,
-            "image_height": self.image_height,
-            "bounding_box_x1": self.bounding_box_x1,
-            "bounding_box_y1": self.bounding_box_y1,
-            "bounding_box_x2": self.bounding_box_x2,
-            "bounding_box_y2": self.bounding_box_y2,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "HiddenFace":
-        return cls(
-            face_id=UUID(data["face_id"]),
-            person_id=UUID(data["person_id"]),
-            person_name=data["person_name"],
-            image_width=data["image_width"],
-            image_height=data["image_height"],
-            bounding_box_x1=data["bounding_box_x1"],
-            bounding_box_y1=data["bounding_box_y1"],
-            bounding_box_x2=data["bounding_box_x2"],
-            bounding_box_y2=data["bounding_box_y2"],
         )
 
 

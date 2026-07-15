@@ -3,6 +3,7 @@ Games service - creates/loads/plays games. Bridges the game-logic layer (games/*
 persistence awareness) and this app's own DB (persistence/games.py).
 """
 
+from dataclasses import dataclass
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -21,20 +22,25 @@ from games.whos_that_person import GAME_TYPE as WHOS_THAT_PERSON_TYPE
 from games.whos_that_person import MODE_NAMED_FACES, WhosThatPersonGame, WhosThatPersonRound
 from persistence.games import GameModel, RoundModel
 from services.immich_service import ImmichService
+from services.ml_service import MLService
 
-_GAME_CLASSES: dict[tuple[str, str], type[BaseGame]] = {
-    (MORE_OR_LESS_TYPE, MODE_PERSON_ASSETS): MoreOrLessGame,
-    (GEOGUESSR_TYPE, MODE_DISTANCE_BETWEEN_GUESS): GeoguessrGame,
-    (DATEGUESSR_TYPE, MODE_DAYS_TO_DATE): DateguessrGame,
-    (IMMICHDLE_TYPE, MODE_PERSON): ImmichdleGame,
-    (WHOS_THAT_PERSON_TYPE, MODE_NAMED_FACES): WhosThatPersonGame,
-}
-_ROUND_CLASSES: dict[tuple[str, str], type[BaseRound]] = {
-    (MORE_OR_LESS_TYPE, MODE_PERSON_ASSETS): MoreOrLessRound,
-    (GEOGUESSR_TYPE, MODE_DISTANCE_BETWEEN_GUESS): GeoguessrRound,
-    (DATEGUESSR_TYPE, MODE_DAYS_TO_DATE): DateguessrRound,
-    (IMMICHDLE_TYPE, MODE_PERSON): ImmichdleRound,
-    (WHOS_THAT_PERSON_TYPE, MODE_NAMED_FACES): WhosThatPersonRound,
+
+@dataclass(frozen=True)
+class _GameSpec:
+    """One registry entry per (game_type, mode) - single source of truth for which game/round
+    classes a combination maps to, so adding a game only ever means adding one entry here (used to
+    be two separate dicts that had to stay in lockstep)."""
+
+    game_class: type[BaseGame]
+    round_class: type[BaseRound]
+
+
+_GAMES: dict[tuple[str, str], _GameSpec] = {
+    (MORE_OR_LESS_TYPE, MODE_PERSON_ASSETS): _GameSpec(MoreOrLessGame, MoreOrLessRound),
+    (GEOGUESSR_TYPE, MODE_DISTANCE_BETWEEN_GUESS): _GameSpec(GeoguessrGame, GeoguessrRound),
+    (DATEGUESSR_TYPE, MODE_DAYS_TO_DATE): _GameSpec(DateguessrGame, DateguessrRound),
+    (IMMICHDLE_TYPE, MODE_PERSON): _GameSpec(ImmichdleGame, ImmichdleRound),
+    (WHOS_THAT_PERSON_TYPE, MODE_NAMED_FACES): _GameSpec(WhosThatPersonGame, WhosThatPersonRound),
 }
 
 
@@ -55,16 +61,35 @@ class RoundNotPendingError(Exception):
 
 
 class GamesService:
-    def __init__(self, session: Session, immich_service: ImmichService) -> None:
+    def __init__(
+        self, session: Session, immich_service: ImmichService, ml_service: MLService | None = None
+    ) -> None:
         self._session = session
         self._immich_service = immich_service
+        # Optional/self-constructing like immich_service is elsewhere (see api/api.py's
+        # get_immich_service) - only ImmichdleGame actually uses it (see _game_kwargs), but
+        # GamesService owning it means it (and its DB engine) is created once per service instance
+        # rather than hidden inside ImmichdleGame's own constructor, and can be swapped for a fake
+        # in tests.
+        self._ml_service = ml_service or MLService()
+
+    def _game_kwargs(self, game_class: type[BaseGame]) -> dict[str, Any]:
+        """Constructor/`start()` kwargs every game needs, plus whichever extra ones a specific game
+        class needs beyond that - today only ImmichdleGame's MLService (see games/immichdle.py).
+        Centralizing the "which game needs what" knowledge here means a new game with its own extra
+        dependency only ever needs one line added in this one method, not a change spread across
+        every call site that builds a game."""
+        kwargs: dict[str, Any] = {"immich_service": self._immich_service}
+        if game_class is ImmichdleGame:
+            kwargs["ml_service"] = self._ml_service
+        return kwargs
 
     def create_game(self, owner: str, game_type: str, mode: str) -> BaseGame:
-        game_class = _GAME_CLASSES.get((game_type, mode))
-        if game_class is None:
+        spec = _GAMES.get((game_type, mode))
+        if spec is None:
             raise UnsupportedGameError(f"unsupported game/mode: {game_type}/{mode}")
 
-        game = game_class.start(id=uuid4(), owner=owner, immich_service=self._immich_service)
+        game = spec.game_class.start(id=uuid4(), owner=owner, **self._game_kwargs(spec.game_class))
         self._save_new_game(game)
         return game
 
@@ -97,9 +122,9 @@ class GamesService:
         if game_row.owner != owner:
             raise GameOwnershipError(f"game {game_id} does not belong to this owner")
 
-        round_class = _ROUND_CLASSES[(game_row.game_type, game_row.mode)]
+        spec = _GAMES[(game_row.game_type, game_row.mode)]
         rounds = [
-            round_class.from_payload(
+            spec.round_class.from_payload(
                 id=row.id,
                 game_id=row.game_id,
                 round_index=row.round_index,
@@ -109,14 +134,13 @@ class GamesService:
             for row in game_row.rounds
         ]
 
-        game_class = _GAME_CLASSES[(game_row.game_type, game_row.mode)]
-        return game_class(
+        return spec.game_class(
             id=game_row.id,
             owner=game_row.owner,
             rounds=rounds,
-            immich_service=self._immich_service,
             score=game_row.score,
             finished=game_row.finished,
+            **self._game_kwargs(spec.game_class),
         )
 
     def _save_new_game(self, game: BaseGame) -> None:

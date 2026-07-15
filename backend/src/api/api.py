@@ -16,9 +16,10 @@ from sqlalchemy.orm import Session
 
 from api.auth_api import router as auth_router
 from api.deps import get_db_session
-from api.schemas import CreateGameIn, GameOut, PersonSearchOut, PlayRoundOut, parse_guess
+from api.dto.common import CreateGameIn, GameOut, PersonSearchOut, PlayRoundOut, parse_guess
 from services.games_service import GamesService
 from services.immich_service import ImmichService
+from services.ml_service import MLService
 
 router = APIRouter(prefix="/api/v1")
 router.include_router(auth_router)
@@ -29,11 +30,17 @@ def get_immich_service() -> ImmichService:
     return ImmichService()
 
 
+@lru_cache(maxsize=1)
+def get_ml_service() -> MLService:
+    return MLService()
+
+
 def get_games_service(
     session: Annotated[Session, Depends(get_db_session)],
     immich_service: Annotated[ImmichService, Depends(get_immich_service)],
+    ml_service: Annotated[MLService, Depends(get_ml_service)],
 ) -> GamesService:
-    return GamesService(session, immich_service)
+    return GamesService(session, immich_service, ml_service)
 
 
 def get_owner_id(x_owner_id: Annotated[str, Header()]) -> str:
@@ -72,7 +79,7 @@ def play_round(
     # needs to hold the guess itself, not also restate a game_type the client could get wrong.
     existing_game = games_service.get_game(game_id, owner)
     try:
-        guess = parse_guess(existing_game.game_type, existing_game.mode, body)
+        guess = parse_guess(existing_game.current_round, body)
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail=exc.errors()) from exc
 
