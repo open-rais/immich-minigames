@@ -5,7 +5,6 @@ the app-level handlers registered in main.py, which is the single place mapping 
 status codes."""
 
 from collections.abc import Callable
-from functools import lru_cache
 from typing import Annotated, Any
 from uuid import UUID
 
@@ -14,25 +13,24 @@ from fastapi import APIRouter, Body, Depends, Header, HTTPException, Query, Resp
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
+from api.auth_api import get_current_user_optional
 from api.auth_api import router as auth_router
-from api.deps import get_db_session
-from api.dto.common import CreateGameIn, GameOut, PersonSearchOut, PlayRoundOut, parse_guess
+from api.deps import get_db_session, get_immich_service, get_ml_service
+from api.dto.common import (
+    CreateGameIn,
+    GameOut,
+    GameRecordsOut,
+    PersonSearchOut,
+    PlayRoundOut,
+    parse_guess,
+)
+from persistence.users import UserModel
 from services.games_service import GamesService
 from services.immich_service import ImmichService
 from services.ml_service import MLService
 
 router = APIRouter(prefix="/api/v1")
 router.include_router(auth_router)
-
-
-@lru_cache(maxsize=1)
-def get_immich_service() -> ImmichService:
-    return ImmichService()
-
-
-@lru_cache(maxsize=1)
-def get_ml_service() -> MLService:
-    return MLService()
 
 
 def get_games_service(
@@ -51,10 +49,26 @@ def get_owner_id(x_owner_id: Annotated[str, Header()]) -> str:
 def create_game(
     body: CreateGameIn,
     owner: Annotated[str, Depends(get_owner_id)],
+    user: Annotated[UserModel | None, Depends(get_current_user_optional)],
     games_service: Annotated[GamesService, Depends(get_games_service)],
 ) -> GameOut:
-    game = games_service.create_game(owner=owner, game_type=body.type, mode=body.mode)
+    game = games_service.create_game(
+        owner=owner, game_type=body.type, mode=body.mode, user_id=user.id if user else None
+    )
     return GameOut.from_game(game)
+
+
+@router.get("/games/records", response_model=GameRecordsOut)
+def get_game_records(
+    owner: Annotated[str, Depends(get_owner_id)],
+    user: Annotated[UserModel | None, Depends(get_current_user_optional)],
+    games_service: Annotated[GamesService, Depends(get_games_service)],
+) -> GameRecordsOut:
+    # Personal bests are shown to every visitor, not just logged-in accounts (confirmed with the
+    # project owner) - anonymous play is scoped to the browser's X-Owner-Id, logged-in play to the
+    # account. Leaderboards (roadmap point F) are the feature that will require auth, not this one.
+    records = games_service.get_personal_records(owner, user.id if user else None)
+    return GameRecordsOut.from_records(records)
 
 
 @router.get("/games/{game_id}", response_model=GameOut)

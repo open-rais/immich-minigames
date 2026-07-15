@@ -1,9 +1,11 @@
-"""App entrypoint. Initializes the own-schema DB tables, mounts the API router, and maps this
-app's domain exceptions to HTTP responses in one place (routes just let them propagate - see
-api/api.py)."""
+"""App entrypoint. Mounts the API router and maps this app's domain exceptions to HTTP responses
+in one place (routes just let them propagate - see api/api.py).
 
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+Own-schema DB tables are no longer created here - schema is Alembic-owned (see backend/alembic/):
+the packaged Docker image runs `alembic upgrade head` in docker-entrypoint.sh before starting this
+app, and bare `uv run uvicorn` dev usage expects that same command to have been run manually once
+(see README.md's Development Setup). persistence/base.py's init_db/reset_db still exist for
+tests (tests/conftest.py's reset_db against the throwaway test DB), unrelated to Alembic."""
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -14,7 +16,6 @@ from api.api import router
 from api.rate_limit import limiter
 from games.immichdle import DuplicateGuessError, InvalidGuessError
 from games.whos_that_person import IncompleteGuessError
-from persistence.base import init_db
 from services.auth_service import (
     EmailAlreadyExistsError,
     InvalidCredentialsError,
@@ -28,14 +29,7 @@ from services.games_service import (
     UnsupportedGameError,
 )
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    init_db()
-    yield
-
-
-app = FastAPI(title="Immich Minigames", lifespan=lifespan)
+app = FastAPI(title="Immich Minigames")
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
 

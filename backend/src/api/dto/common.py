@@ -26,7 +26,7 @@ from games.geoguessr import GeoguessrRound
 from games.immichdle import ImmichdleGame, ImmichdleRound
 from games.more_or_less import MoreOrLessRound
 from games.whos_that_person import WhosThatPersonRound
-from services.games_service import UnsupportedGameError
+from services.games_service import GameRecord, UnsupportedGameError
 
 
 class CreateGameIn(BaseModel):
@@ -162,3 +162,24 @@ class PersonSearchOut(BaseModel):
     @classmethod
     def from_persons(cls, persons: list[Person]) -> "PersonSearchOut":
         return cls(results=[PersonSearchResultOut.from_person(p) for p in persons])
+
+
+# -- personal records (roadmap point E, see GamesService.get_personal_records) ---
+
+
+class GameRecordOut(BaseModel):
+    game_type: str
+    mode: str
+    best_score: int
+
+    @classmethod
+    def from_record(cls, record: GameRecord) -> "GameRecordOut":
+        return cls(game_type=record.game_type, mode=record.mode, best_score=record.best_score)
+
+
+class GameRecordsOut(BaseModel):
+    records: list[GameRecordOut]
+
+    @classmethod
+    def from_records(cls, records: list[GameRecord]) -> "GameRecordsOut":
+        return cls(records=[GameRecordOut.from_record(r) for r in records])

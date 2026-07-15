@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID, uuid4
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from games.base import BaseGame, BaseRound
@@ -42,6 +43,16 @@ _GAMES: dict[tuple[str, str], _GameSpec] = {
     (IMMICHDLE_TYPE, MODE_PERSON): _GameSpec(ImmichdleGame, ImmichdleRound),
     (WHOS_THAT_PERSON_TYPE, MODE_NAMED_FACES): _GameSpec(WhosThatPersonGame, WhosThatPersonRound),
 }
+
+
+@dataclass(frozen=True)
+class GameRecord:
+    """One personal-best entry (roadmap point E) - a mode the owner/user has at least one finished
+    game for, with their highest score in it."""
+
+    game_type: str
+    mode: str
+    best_score: int
 
 
 class UnsupportedGameError(Exception):
@@ -84,17 +95,33 @@ class GamesService:
             kwargs["ml_service"] = self._ml_service
         return kwargs
 
-    def create_game(self, owner: str, game_type: str, mode: str) -> BaseGame:
+    def create_game(
+        self, owner: str, game_type: str, mode: str, user_id: UUID | None = None
+    ) -> BaseGame:
         spec = _GAMES.get((game_type, mode))
         if spec is None:
             raise UnsupportedGameError(f"unsupported game/mode: {game_type}/{mode}")
 
         game = spec.game_class.start(id=uuid4(), owner=owner, **self._game_kwargs(spec.game_class))
-        self._save_new_game(game)
+        self._save_new_game(game, user_id=user_id)
         return game
 
     def get_game(self, game_id: UUID, owner: str) -> BaseGame:
         return self._load_game(game_id, owner)
+
+    def get_personal_records(self, owner: str, user_id: UUID | None) -> list[GameRecord]:
+        """Roadmap point E - personal-best score per (game_type, mode), shown in the main menu.
+        Filters by the account's user_id when logged in, otherwise by the anonymous browser's
+        owner id - every game's score is higher-is-better (see games/asset_rounds.py's
+        exp_decay_score and each game's win/streak-based deltas), so MAX(score) among finished
+        games is a valid "best" for every existing game/mode."""
+        filter_clause = GameModel.user_id == user_id if user_id is not None else GameModel.owner == owner
+        rows = self._session.execute(
+            select(GameModel.game_type, GameModel.mode, func.max(GameModel.score))
+            .where(GameModel.finished.is_(True), filter_clause)
+            .group_by(GameModel.game_type, GameModel.mode)
+        ).all()
+        return [GameRecord(game_type=gt, mode=m, best_score=best) for gt, m, best in rows]
 
     def play_round(self, game_id: UUID, owner: str, round_id: UUID, guess: Any) -> BaseGame:
         """Plays the given round and returns the game with its updated state (the answered round
@@ -143,10 +170,11 @@ class GamesService:
             **self._game_kwargs(spec.game_class),
         )
 
-    def _save_new_game(self, game: BaseGame) -> None:
+    def _save_new_game(self, game: BaseGame, user_id: UUID | None = None) -> None:
         game_row = GameModel(
             id=game.id,
             owner=game.owner,
+            user_id=user_id,
             game_type=game.game_type,
             mode=game.mode,
             score=game.score,
