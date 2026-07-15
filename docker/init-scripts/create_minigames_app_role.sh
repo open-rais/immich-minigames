@@ -9,16 +9,20 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 source .env
 
-docker exec -i immich-minigames-postgres psql -U "$DB_USERNAME" -d "$DB_DATABASE_NAME" <<SQL
-DO \$\$
-BEGIN
-  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '$DB_APP_USERNAME') THEN
-    CREATE ROLE "$DB_APP_USERNAME" WITH LOGIN PASSWORD '$DB_APP_PASSWORD';
-  ELSE
-    ALTER ROLE "$DB_APP_USERNAME" WITH PASSWORD '$DB_APP_PASSWORD';
-  END IF;
-END
-\$\$;
+docker exec -i immich-minigames-postgres psql -U "$DB_USERNAME" -d "$DB_DATABASE_NAME" -v pw="$DB_APP_PASSWORD" <<SQL
+-- The password goes in via psql's own :'pw' variable substitution + format('%L', ...), not bash
+-- interpolation like the identifiers below - a bare bash \$DB_APP_PASSWORD dropped into a SQL
+-- string literal would break (or inject into) the statement if the password ever contained a
+-- single quote. format('%L', :'pw') has psql itself produce a correctly-escaped literal for
+-- whatever the password actually is, and \gexec runs the single CREATE/ALTER statement the SELECT
+-- below produces (a plain DO \$\$ block won't work here - psql doesn't substitute :'vars' inside
+-- dollar-quoted bodies).
+SELECT format('CREATE ROLE %I WITH LOGIN PASSWORD %L', '$DB_APP_USERNAME', :'pw')
+WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '$DB_APP_USERNAME')
+UNION ALL
+SELECT format('ALTER ROLE %I WITH PASSWORD %L', '$DB_APP_USERNAME', :'pw')
+WHERE EXISTS (SELECT FROM pg_roles WHERE rolname = '$DB_APP_USERNAME')
+\gexec
 
 GRANT CONNECT ON DATABASE "$DB_DATABASE_NAME" TO "$DB_APP_USERNAME";
 
