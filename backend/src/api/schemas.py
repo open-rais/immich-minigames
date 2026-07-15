@@ -9,6 +9,7 @@ it disagreed with the game's actual type, nothing would catch the mismatch befor
 domain layer as a wrongly-shaped guess.
 """
 
+from dataclasses import dataclass
 from datetime import date
 from typing import Annotated, Any, Literal, Union
 from uuid import UUID
@@ -18,15 +19,15 @@ from pydantic import BaseModel, Field
 from domain.person import Person
 from games.base import BaseGame, BaseRound
 from games.dateguessr import GAME_TYPE as DATEGUESSR_TYPE
-from games.dateguessr import MODE_DAYS_TO_DATE, DateguessrRound
+from games.dateguessr import DateguessrRound
 from games.geoguessr import GAME_TYPE as GEOGUESSR_TYPE
-from games.geoguessr import MODE_DISTANCE_BETWEEN_GUESS, LatLng, GeoguessrRound
+from games.geoguessr import LatLng, GeoguessrRound
 from games.immichdle import GAME_TYPE as IMMICHDLE_TYPE
-from games.immichdle import MODE_PERSON, ImmichdleGame, ImmichdleRound
+from games.immichdle import ImmichdleGame, ImmichdleRound
 from games.more_or_less import GAME_TYPE as MORE_OR_LESS_TYPE
-from games.more_or_less import MODE_PERSON_ASSETS, MoreOrLessRound
+from games.more_or_less import MoreOrLessRound
 from games.whos_that_person import GAME_TYPE as WHOS_THAT_PERSON_TYPE
-from games.whos_that_person import MODE_NAMED_FACES, HiddenFace, WhosThatPersonRound
+from games.whos_that_person import HiddenFace, WhosThatPersonRound
 from services.games_service import UnsupportedGameError
 
 
@@ -239,17 +240,7 @@ RoundOut = Annotated[
 def round_out_from_round(
     round_: BaseRound,
 ) -> MoreOrLessRoundOut | GeoguessrRoundOut | DateguessrRoundOut | ImmichdleRoundOut | WhosThatPersonRoundOut:
-    if isinstance(round_, MoreOrLessRound):
-        return MoreOrLessRoundOut.from_round(round_)
-    if isinstance(round_, GeoguessrRound):
-        return GeoguessrRoundOut.from_round(round_)
-    if isinstance(round_, DateguessrRound):
-        return DateguessrRoundOut.from_round(round_)
-    if isinstance(round_, ImmichdleRound):
-        return ImmichdleRoundOut.from_round(round_)
-    if isinstance(round_, WhosThatPersonRound):
-        return WhosThatPersonRoundOut.from_round(round_)
-    raise TypeError(f"unsupported round type: {type(round_)}")
+    return _round_spec(round_).out_class.from_round(round_)
 
 
 class GameOut(BaseModel):
@@ -323,25 +314,45 @@ class WhosThatPersonPlayRoundIn(BaseModel):
         return self.guesses
 
 
-_PLAY_ROUND_SCHEMAS: dict[tuple[str, str], type[BaseModel]] = {
-    (MORE_OR_LESS_TYPE, MODE_PERSON_ASSETS): MoreOrLessPlayRoundIn,
-    (GEOGUESSR_TYPE, MODE_DISTANCE_BETWEEN_GUESS): GeoguessrPlayRoundIn,
-    (DATEGUESSR_TYPE, MODE_DAYS_TO_DATE): DateguessrPlayRoundIn,
-    (IMMICHDLE_TYPE, MODE_PERSON): ImmichdlePlayRoundIn,
-    (WHOS_THAT_PERSON_TYPE, MODE_NAMED_FACES): WhosThatPersonPlayRoundIn,
+@dataclass(frozen=True)
+class _RoundSpec:
+    """One registry entry per concrete Round class - single source of truth for what this API
+    layer needs per game (used to be three separate structures that had to stay in sync: a
+    (game_type, mode)-keyed guess-schema dict here, an isinstance ladder in round_out_from_round
+    picking the right *RoundOut DTO, and another isinstance check in PlayRoundOut.from_answered for
+    whether "correct" is even a meaningful concept for this game)."""
+
+    guess_schema: type[BaseModel]
+    out_class: type[BaseModel]
+    # Whether this round type has a meaningful pass/fail "correct" (MoreOrLess/Immichdle/
+    # WhosThatPerson) vs. a continuous score with no such concept (Geoguessr/Dateguessr).
+    has_binary_correctness: bool
+
+
+_ROUND_SPECS: dict[type[BaseRound], _RoundSpec] = {
+    MoreOrLessRound: _RoundSpec(MoreOrLessPlayRoundIn, MoreOrLessRoundOut, has_binary_correctness=True),
+    GeoguessrRound: _RoundSpec(GeoguessrPlayRoundIn, GeoguessrRoundOut, has_binary_correctness=False),
+    DateguessrRound: _RoundSpec(DateguessrPlayRoundIn, DateguessrRoundOut, has_binary_correctness=False),
+    ImmichdleRound: _RoundSpec(ImmichdlePlayRoundIn, ImmichdleRoundOut, has_binary_correctness=True),
+    WhosThatPersonRound: _RoundSpec(
+        WhosThatPersonPlayRoundIn, WhosThatPersonRoundOut, has_binary_correctness=True
+    ),
 }
 
 
-def parse_guess(game_type: str, mode: str, body: dict[str, Any]) -> Any:
-    """Picks the right guess schema for an already-known (game_type, mode) - the caller (see
-    api/api.py's play_round) is expected to have looked the game up first, so this never needs the
-    client to state its own game_type. Raises pydantic.ValidationError on a malformed body, and
-    UnsupportedGameError (mapped to 400) if the (game_type, mode) pair has no schema - consistent
-    with GamesService.create_game rather than surfacing a raw KeyError as a 500."""
-    schema = _PLAY_ROUND_SCHEMAS.get((game_type, mode))
-    if schema is None:
-        raise UnsupportedGameError(f"unsupported game/mode: {game_type}/{mode}")
-    return schema.model_validate(body).to_domain()
+def _round_spec(round_: BaseRound) -> _RoundSpec:
+    spec = _ROUND_SPECS.get(type(round_))
+    if spec is None:
+        raise UnsupportedGameError(f"unsupported round type: {type(round_).__name__}")
+    return spec
+
+
+def parse_guess(round_: BaseRound, body: dict[str, Any]) -> Any:
+    """Picks the right guess schema for an already-loaded round - the caller (see api/api.py's
+    play_round) has already looked the game up (and confirmed this is the pending round), so this
+    never needs the client to also restate its own game_type in the guess body. Raises
+    pydantic.ValidationError on a malformed body."""
+    return _round_spec(round_).guess_schema.model_validate(body).to_domain()
 
 
 class PlayRoundOut(BaseModel):
@@ -358,11 +369,7 @@ class PlayRoundOut(BaseModel):
     @classmethod
     def from_answered(cls, game: BaseGame, answered_round: BaseRound) -> "PlayRoundOut":
         next_round = None if game.finished else round_out_from_round(game.current_round)
-        correct = (
-            answered_round.correct
-            if isinstance(answered_round, (MoreOrLessRound, ImmichdleRound, WhosThatPersonRound))
-            else None
-        )
+        correct = answered_round.correct if _round_spec(answered_round).has_binary_correctness else None
         return cls(
             correct=correct,
             score_delta=answered_round.score_delta,

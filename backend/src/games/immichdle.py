@@ -18,6 +18,7 @@ from uuid import UUID, uuid4
 
 from domain.person import Person
 from games.base import BaseGame, BaseRound, PlayRoundResult
+from games.serialization import DictCodec
 from services.immich_service import ImmichService
 from services.ml_service import MLService
 
@@ -41,7 +42,7 @@ class InvalidGuessError(Exception):
 
 
 @dataclass(frozen=True)
-class PersonSnapshot:
+class PersonSnapshot(DictCodec):
     """A person's identifying data frozen at the moment it's looked up (target at game start,
     guess at guess time) - not a live query result, so a round's revealed data stays stable even
     if the underlying Immich data changes later (same rationale as more_or_less.py's
@@ -63,28 +64,9 @@ class PersonSnapshot:
             first_asset_date=first_asset_date,
         )
 
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "id": str(self.id),
-            "name": self.name,
-            "asset_count": self.asset_count,
-            "birth_date": self.birth_date.isoformat() if self.birth_date else None,
-            "first_asset_date": self.first_asset_date.isoformat() if self.first_asset_date else None,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "PersonSnapshot":
-        return cls(
-            id=UUID(data["id"]),
-            name=data["name"],
-            asset_count=data["asset_count"],
-            birth_date=date.fromisoformat(data["birth_date"]) if data["birth_date"] else None,
-            first_asset_date=date.fromisoformat(data["first_asset_date"]) if data["first_asset_date"] else None,
-        )
-
 
 @dataclass(frozen=True)
-class ImmichdleClues:
+class ImmichdleClues(DictCodec):
     age: AgeComparison
     asset_count: CountComparison
     first_appearance: DateComparison
@@ -107,25 +89,6 @@ class ImmichdleClues:
     # *_close above.
     age_both_unknown: bool
     first_appearance_both_unknown: bool
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "age": self.age,
-            "asset_count": self.asset_count,
-            "first_appearance": self.first_appearance,
-            "common_names": self.common_names,
-            "ml_similarity": self.ml_similarity,
-            "assets_together": self.assets_together,
-            "age_close": self.age_close,
-            "first_appearance_close": self.first_appearance_close,
-            "asset_count_close": self.asset_count_close,
-            "age_both_unknown": self.age_both_unknown,
-            "first_appearance_both_unknown": self.first_appearance_both_unknown,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ImmichdleClues":
-        return cls(**data)
 
 
 def _is_close(target_date: date | None, guess_date: date | None) -> bool | None:
@@ -239,6 +202,7 @@ class ImmichdleGame(BaseGame):
         owner: str,
         rounds: list[ImmichdleRound],
         immich_service: ImmichService,
+        ml_service: MLService | None = None,
         score: int = _STARTING_SCORE,
         finished: bool = False,
     ) -> None:
@@ -252,11 +216,12 @@ class ImmichdleGame(BaseGame):
             finished=finished,
         )
         self._immich_service = immich_service
-        # Self-constructed rather than injected: GamesService's generic loader only ever passes
-        # immich_service to every game class's constructor (see services/games_service.py), so
-        # there's no way for it to also inject this - same default-construction pattern
-        # ImmichService() itself uses elsewhere (e.g. api/api.py's get_immich_service).
-        self._ml_service = MLService()
+        # Injected by GamesService (see services/games_service.py's _game_kwargs), which is the only
+        # game-specific dependency any game currently needs beyond immich_service. Still defaults to
+        # self-constructing when omitted - same default-construction pattern ImmichService() itself
+        # uses elsewhere (e.g. api/api.py's get_immich_service) - so direct/low-level construction
+        # (tests, a one-off script) doesn't have to wire up an MLService just to build a game.
+        self._ml_service = ml_service or MLService()
 
     @property
     def target(self) -> PersonSnapshot:
@@ -266,7 +231,9 @@ class ImmichdleGame(BaseGame):
         return self.rounds[0].target
 
     @classmethod
-    def start(cls, id: UUID, owner: str, immich_service: ImmichService) -> "ImmichdleGame":
+    def start(
+        cls, id: UUID, owner: str, immich_service: ImmichService, ml_service: MLService | None = None
+    ) -> "ImmichdleGame":
         [target_person] = immich_service.get_persons(named_only=True, random=True, limit=1)
         has_alternative = immich_service.get_persons(
             named_only=True, limit=1, exclude_ids=frozenset({target_person.id})
@@ -278,7 +245,14 @@ class ImmichdleGame(BaseGame):
             target_person, first_asset_date=immich_service.get_person_first_asset_date(target_person.id)
         )
         first_round = ImmichdleRound(id=uuid4(), game_id=id, round_index=1, target=target)
-        return cls(id=id, owner=owner, rounds=[first_round], immich_service=immich_service, score=_STARTING_SCORE)
+        return cls(
+            id=id,
+            owner=owner,
+            rounds=[first_round],
+            immich_service=immich_service,
+            ml_service=ml_service,
+            score=_STARTING_SCORE,
+        )
 
     def _guessed_person_ids(self) -> frozenset[UUID]:
         return frozenset(round_.guess for round_ in self.rounds if round_.guess is not None)

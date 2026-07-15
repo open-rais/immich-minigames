@@ -11,6 +11,7 @@ from uuid import UUID, uuid4
 
 from domain.person import Person
 from games.base import BaseGame, BaseRound
+from games.serialization import DictCodec
 from services.immich_service import ImmichService
 
 Guess = Literal["more", "less"]
@@ -31,7 +32,7 @@ _RECENT_EXCLUDE_WINDOW = 10
 
 
 @dataclass(frozen=True)
-class PersonSnapshot:
+class PersonSnapshot(DictCodec):
     """A person's name/asset count frozen at the moment a round was created - not a live query
     result, so a round's answer stays stable even if the underlying Immich data changes later."""
 
@@ -42,13 +43,6 @@ class PersonSnapshot:
     @classmethod
     def of(cls, person: Person) -> "PersonSnapshot":
         return cls(id=person.id, name=person.name, asset_count=person.asset_count)
-
-    def to_dict(self) -> dict[str, Any]:
-        return {"id": str(self.id), "name": self.name, "asset_count": self.asset_count}
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "PersonSnapshot":
-        return cls(id=UUID(data["id"]), name=data["name"], asset_count=data["asset_count"])
 
 
 def _pick_non_tied_candidate(

@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from api.auth_schemas import LoginIn, RegisterIn, UserOut
 from api.deps import get_db_session
 from api.rate_limit import limiter
-from config import Settings
+from config import get_settings
 from persistence.users import UserModel
 from services.auth_service import AuthService, UnauthorizedError
 
@@ -44,7 +44,7 @@ def _set_session_cookie(response: Response, token: str) -> None:
         httponly=True,
         samesite="lax",
         secure=False,
-        max_age=Settings().jwt_expire_days * 24 * 60 * 60,
+        max_age=get_settings().jwt_expire_days * 24 * 60 * 60,
     )
 
 
