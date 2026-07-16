@@ -1,6 +1,13 @@
 #!/bin/sh
 set -e
 
+# A `command:` override (e.g. docker-compose.app.yml's db-init service, which runs
+# bootstrap_db_role.py instead of the API server) is passed here as args, not a replacement of
+# this ENTRYPOINT - honor it instead of always falling through to migrations + uvicorn below.
+if [ "$#" -gt 0 ]; then
+  exec "$@"
+fi
+
 # Applies pending migrations on every container start - safe whether this is a brand new database
 # (alembic/versions/0001_baseline.py creates everything) or an upgrade from any prior version
 # (already-applied migrations are no-ops), so a plain `docker compose pull && docker compose up -d`
