@@ -1,6 +1,6 @@
 # Who'sThatPerson
 
-**Status:** ✗ Design stub (not yet implemented)
+**Status:** ✓ Fully playable
 
 ## Inspiration
 

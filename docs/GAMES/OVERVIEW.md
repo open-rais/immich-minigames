@@ -45,9 +45,9 @@ orchestration) is shared.
 | MoreOrLess | Classic [More Or Less](https://moreorless.io/) | Compare if candidate B has more/fewer of a stat than A; wrong guess ends game | ✓ Playable | [MORE_OR_LESS.md](./MORE_OR_LESS.md) |
 | Geoguessr | [GeoGuessr](https://www.geoguessr.com/) | Mark location on map where photo was taken; score decays with distance | ✓ Playable | [GEOGUESSR.md](./GEOGUESSR.md) |
 | Dateguessr | Geoguessr, but with dates | Mark date on timeline when photo was taken; score decays with time difference | ✓ Playable | [DATEGUESSR.md](./DATEGUESSR.md) |
-| Immichdle | Wordle-style games ([Wordle](https://www.nytimes.com/games/wordle/)) | Guess mystery person from comparative clues; fewer points per wrong guess | ✗ Design stub | [IMMICHDLE.md](./IMMICHDLE.md) |
+| Immichdle | Wordle-style games ([Wordle](https://www.nytimes.com/games/wordle/)) | Guess mystery person from comparative clues; fewer points per wrong guess | ✓ Playable | [IMMICHDLE.md](./IMMICHDLE.md) |
+| Who'sThatPerson | ["Who's That Pokémon?"](https://pokemon.fandom.com/wiki/Who's_That_Pok%C3%A9mon%3F) | Guess person's name when their face is hidden in a photo | ✓ Playable | [WHOS_THAT_PERSON.md](./WHOS_THAT_PERSON.md) |
 | Timeline | Board game [Timeline](https://www.zygomatic-games.com/en/game/timeline-classic/) | Insert photos in correct chronological order relative to already-placed ones | ✗ Design stub | [TIMELINE.md](./TIMELINE.md) |
-| Who'sThatPerson | ["Who's That Pokémon?"](https://pokemon.fandom.com/wiki/Who's_That_Pok%C3%A9mon%3F) | Guess person's name when their face is hidden in a photo | ✗ Design stub | [WHOS_THAT_PERSON.md](./WHOS_THAT_PERSON.md) |
 
 Each game also has additional "modes" (variants of which data is used as the question) that are lower
 priority and will come later. See [`docs/TODO/ROADMAP.md`](../TODO/ROADMAP.md) for the actual implementation

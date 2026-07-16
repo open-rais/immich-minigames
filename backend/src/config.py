@@ -1,5 +1,6 @@
 """App configuration, read from the repo-root .env (shared with docker-compose.yml)."""
 
+from functools import lru_cache
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -38,3 +39,12 @@ class Settings(BaseSettings):
             f"postgresql+psycopg://{self.db_app_username}:{self.db_app_password}"
             f"@{self.db_host}:{self.db_port}/{self.db_database_name}"
         )
+
+
+@lru_cache(maxsize=1)
+def get_settings() -> Settings:
+    """Cached singleton - Settings() re-parses/re-reads the .env file from disk on every call, so
+    hot paths (a request-scoped `settings or Settings()` default, engine construction) should use
+    this instead of constructing their own. Callers that genuinely want a fresh read (e.g. tests
+    isolating their own Settings instance) can still construct Settings() directly."""
+    return Settings()

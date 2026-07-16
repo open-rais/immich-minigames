@@ -3,6 +3,7 @@ from uuid import uuid4
 
 import pytest
 
+from games.asset_rounds import MAX_EXTRA_ASSETS
 from games.dateguessr import (
     DECAY_DAYS,
     MAX_SCORE,
@@ -61,6 +62,32 @@ class TestDateguessrGame:
 
         with pytest.raises(ValueError):
             game.play_round(date(2020, 1, 1))
+
+
+class TestDateguessrExtras:
+    """Extras are purely decorative (see games/asset_rounds.py's MAX_EXTRA_ASSETS) - never forced to
+    5, but whatever is picked must be from the exact same local day as the round's main asset, and
+    never repeat."""
+
+    def test_extras_are_capped_and_from_the_same_day(self, immich_service):
+        game = DateguessrGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+
+        for round_ in game.rounds:
+            assert len(round_.extras) <= MAX_EXTRA_ASSETS
+            for extra in round_.extras:
+                assert extra.date == round_.asset.date
+
+    def test_no_asset_is_ever_shown_twice_within_the_same_game(self, immich_service):
+        game = DateguessrGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        shown = list(game.current_round.shown_entities)
+
+        while not game.finished:
+            game.play_round(_guess_near(game.current_round))
+            if game.finished:
+                break
+            new_shown = game.current_round.shown_entities
+            assert not (set(new_shown) & set(shown))
+            shown.extend(new_shown)
 
 
 class TestDateguessrScoring:

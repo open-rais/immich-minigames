@@ -14,7 +14,18 @@
   },
   "mainMenu": {
     "modesCount_one": "{{count}} mode",
-    "modesCount_other": "{{count}} modes"
+    "modesCount_other": "{{count}} modes",
+    "bestScore": "Best: {{score}}",
+    "notPlayed": "Not played yet"
+  },
+  "leaderboard": {
+    "title": "Leaderboard",
+    "empty": "No one has played this mode in this window yet.",
+    "window": {
+      "all": "Historic",
+      "weekly": "Weekly",
+      "daily": "Daily"
+    }
   },
   "common": {
     "back": "Back",
@@ -24,6 +35,9 @@
     "roundOf": "Round {{current}} of {{total}}",
     "points": "+{{score}} pts",
     "playAgain": "Play again",
+    "leaderboards": "Leaderboards",
+    "previousPhoto": "Previous photo",
+    "nextPhoto": "Next photo",
     "finished": {
       "title": "Game over",
       "finalScore": "Final score: {{score}}"
@@ -84,6 +98,45 @@
       "daysOff_other": "{{count}} days off"
     }
   },
+  "immichdle": {
+    "title": "Immichdle",
+    "modes": {
+      "person": "Persondle"
+    },
+    "start": {
+      "description": "Guess the mystery person. Every guess reveals comparative clues - green means a match, amber means close, red means far off."
+    },
+    "searchPlaceholder": "Search a person by name...",
+    "searching": "Searching...",
+    "noResults": "No matches found.",
+    "unknown": "?",
+    "clues": {
+      "age": "Age",
+      "assetCount": "Assets",
+      "firstAppearance": "First seen",
+      "commonNames": "Common names",
+      "mlSimilarity": "Face match",
+      "assetsTogether": "Together"
+    },
+    "finished": {
+      "won": "You got it!",
+      "lost": "Game over"
+    }
+  },
+  "whosThatPerson": {
+    "title": "Who's That Person",
+    "modes": {
+      "namedFaces": "Classic"
+    },
+    "start": {
+      "description": "Some already-named faces in each photo are blacked out - tap one and search for who it is. Asks about 15 people total."
+    },
+    "progress": "{{current}} of {{total}} people",
+    "submit": "Submit guesses",
+    "result": {
+      "correctCount": "{{correct}}/{{total}} correct"
+    }
+  },
   "auth": {
     "fields": {
       "email": "Email",
@@ -104,7 +157,15 @@
     "profile": {
       "title": "Profile",
       "memberSince": "Member since {{date}}",
-      "logout": "Log out"
+      "logout": "Log out",
+      "edit": "Edit profile",
+      "save": "Save changes",
+      "saved": "Profile updated",
+      "skin": {
+        "label": "Skin",
+        "none": "None",
+        "clear": "Clear"
+      }
     },
     "error": {
       "generic": "Something went wrong. Please try again."

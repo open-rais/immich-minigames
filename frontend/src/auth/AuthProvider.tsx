@@ -1,8 +1,15 @@
 import { useEffect, useState } from "react"
 import type { ReactNode } from "react"
 
-import { getMe, login as apiLogin, logout as apiLogout, register as apiRegister } from "../api/auth"
-import type { LoginIn, RegisterIn, User } from "../api/types"
+import {
+  getMe,
+  login as apiLogin,
+  logout as apiLogout,
+  register as apiRegister,
+  updateProfile as apiUpdateProfile,
+  updateSkin as apiUpdateSkin,
+} from "../api/auth"
+import type { LoginIn, RegisterIn, UpdateProfileIn, User } from "../api/types"
 import { AuthContext } from "./authContext"
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -34,5 +41,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }
 
-  return <AuthContext.Provider value={{ user, loading, login, register, logout }}>{children}</AuthContext.Provider>
+  async function updateProfile(body: UpdateProfileIn) {
+    const updated = await apiUpdateProfile(body)
+    setUser(updated)
+    return updated
+  }
+
+  async function updateSkin(personId: string | null) {
+    const updated = await apiUpdateSkin(personId)
+    setUser(updated)
+    return updated
+  }
+
+  return (
+    <AuthContext.Provider value={{ user, loading, login, register, logout, updateProfile, updateSkin }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }

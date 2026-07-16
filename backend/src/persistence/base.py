@@ -12,7 +12,7 @@ from sqlalchemy import MetaData, create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
-from config import Settings
+from config import get_settings
 
 SCHEMA = "minigames"
 
@@ -23,7 +23,11 @@ class Base(DeclarativeBase):
 
 @lru_cache(maxsize=1)
 def get_engine() -> Engine:
-    return create_engine(Settings().db_url)
+    # Shared by persistence/immich_tables.py too - same URL/credentials/database (this app's own
+    # `minigames` schema and Immich's own `public` schema both live in the one Postgres instance),
+    # so there's exactly one connection pool for the whole backend, not two. pool_pre_ping=True
+    # since Postgres restarts/idle-closed connections shouldn't surface as a request-time error.
+    return create_engine(get_settings().db_url, pool_pre_ping=True)
 
 
 def get_session_factory(engine: Engine | None = None) -> sessionmaker:

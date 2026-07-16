@@ -5,35 +5,42 @@ the app-level handlers registered in main.py, which is the single place mapping 
 status codes."""
 
 from collections.abc import Callable
-from functools import lru_cache
 from typing import Annotated, Any
 from uuid import UUID
 
 import httpx
-from fastapi import APIRouter, Body, Depends, Header, HTTPException, Response
+from fastapi import APIRouter, Body, Depends, Header, HTTPException, Query, Response
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
+from api.auth_api import get_current_user_optional
 from api.auth_api import router as auth_router
-from api.deps import get_db_session
-from api.schemas import CreateGameIn, GameOut, PlayRoundOut, parse_guess
+from api.deps import get_db_session, get_immich_service, get_ml_service
+from api.dto.common import (
+    CreateGameIn,
+    GameOut,
+    GameRecordsOut,
+    LeaderboardOut,
+    LeaderboardWindow,
+    PersonSearchOut,
+    PlayRoundOut,
+    parse_guess,
+)
+from persistence.users import UserModel
 from services.games_service import GamesService
 from services.immich_service import ImmichService
+from services.ml_service import MLService
 
 router = APIRouter(prefix="/api/v1")
 router.include_router(auth_router)
 
 
-@lru_cache(maxsize=1)
-def get_immich_service() -> ImmichService:
-    return ImmichService()
-
-
 def get_games_service(
     session: Annotated[Session, Depends(get_db_session)],
     immich_service: Annotated[ImmichService, Depends(get_immich_service)],
+    ml_service: Annotated[MLService, Depends(get_ml_service)],
 ) -> GamesService:
-    return GamesService(session, immich_service)
+    return GamesService(session, immich_service, ml_service)
 
 
 def get_owner_id(x_owner_id: Annotated[str, Header()]) -> str:
@@ -44,10 +51,40 @@ def get_owner_id(x_owner_id: Annotated[str, Header()]) -> str:
 def create_game(
     body: CreateGameIn,
     owner: Annotated[str, Depends(get_owner_id)],
+    user: Annotated[UserModel | None, Depends(get_current_user_optional)],
     games_service: Annotated[GamesService, Depends(get_games_service)],
 ) -> GameOut:
-    game = games_service.create_game(owner=owner, game_type=body.type, mode=body.mode)
+    game = games_service.create_game(
+        owner=owner, game_type=body.type, mode=body.mode, user_id=user.id if user else None
+    )
     return GameOut.from_game(game)
+
+
+@router.get("/games/records", response_model=GameRecordsOut)
+def get_game_records(
+    owner: Annotated[str, Depends(get_owner_id)],
+    user: Annotated[UserModel | None, Depends(get_current_user_optional)],
+    games_service: Annotated[GamesService, Depends(get_games_service)],
+) -> GameRecordsOut:
+    # Personal bests are shown to every visitor, not just logged-in accounts (confirmed with the
+    # project owner) - anonymous play is scoped to the browser's X-Owner-Id, logged-in play to the
+    # account. Leaderboards (roadmap point F) are the feature that will require auth, not this one.
+    records = games_service.get_personal_records(owner, user.id if user else None)
+    return GameRecordsOut.from_records(records)
+
+
+@router.get("/games/{game_type}/{mode}/leaderboard", response_model=LeaderboardOut)
+def get_leaderboard(
+    game_type: str,
+    mode: str,
+    games_service: Annotated[GamesService, Depends(get_games_service)],
+    window: LeaderboardWindow = "all",
+) -> LeaderboardOut:
+    # Viewable without an account (confirmed with the project owner) - only the *entries* are
+    # restricted to logged-in players, via GamesService.get_leaderboard's inner join to UserModel
+    # (an anonymous game has no user_id to join on), not this route requiring auth.
+    entries = games_service.get_leaderboard(game_type, mode, window)
+    return LeaderboardOut.from_entries(window, entries)
 
 
 @router.get("/games/{game_id}", response_model=GameOut)
@@ -72,7 +109,7 @@ def play_round(
     # needs to hold the guess itself, not also restate a game_type the client could get wrong.
     existing_game = games_service.get_game(game_id, owner)
     try:
-        guess = parse_guess(existing_game.game_type, existing_game.mode, body)
+        guess = parse_guess(existing_game.current_round, body)
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail=exc.errors()) from exc
 
@@ -96,6 +133,20 @@ def _proxy_thumbnail(fetch: Callable[[], tuple[bytes, str]]) -> Response:
     except httpx.RequestError as exc:
         raise HTTPException(status_code=502, detail="could not reach Immich") from exc
     return Response(content=content, media_type=content_type)
+
+
+@router.get("/persons/search", response_model=PersonSearchOut)
+def search_persons(
+    query: Annotated[str, Query(min_length=1)],
+    immich_service: Annotated[ImmichService, Depends(get_immich_service)],
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=50)] = 3,
+) -> PersonSearchOut:
+    # Reusable across features (not just Immichdle's guess input, see games/immichdle.py) - a
+    # single-letter query is enough, matching is word-prefix (not substring), and results page in
+    # small batches (default 3) for infinite-scroll UIs. See ImmichService.search_persons.
+    persons = immich_service.search_persons(query, offset=offset, limit=limit)
+    return PersonSearchOut.from_persons(persons)
 
 
 @router.get("/people/{person_id}/thumbnail")

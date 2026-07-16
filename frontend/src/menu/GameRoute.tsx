@@ -12,5 +12,5 @@ export function GameRoute() {
   if (!catalogMode) return <Navigate to="/" replace />
 
   const Component = catalogMode.component
-  return <Component />
+  return <Component coverUrl={catalogMode.coverUrl} />
 }

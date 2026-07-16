@@ -8,7 +8,7 @@ import { ModeCard } from "./ModeCard"
 // One collapsible group per game, mirroring Immich's Albums-by-year sections: a chevron + title +
 // "(N modes)" header (Immich: "2025 (2 Albums)"), a divider, then a grid of mode cards - collapsing
 // the group hides the grid without unmounting it from the route.
-export function GameSection({ game }: { game: CatalogGame }) {
+export function GameSection({ game, records }: { game: CatalogGame; records: Map<string, number> }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [expanded, setExpanded] = useState(true)
@@ -51,6 +51,8 @@ export function GameSection({ game }: { game: CatalogGame }) {
               <ModeCard
                 key={mode.mode}
                 title={t(mode.modeTitleKey)}
+                coverUrl={mode.coverUrl}
+                bestScore={records.get(`${game.gameType}:${mode.mode}`)}
                 onClick={() => navigate(`/${game.gameType}/${mode.mode}`)}
               />
             ))}

@@ -2,10 +2,11 @@ import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 
-import { assetThumbnailUrl, playRound } from "../../api/games"
+import { playRound } from "../../api/games"
 import { GameType, Mode } from "../../api/types"
 import type { GeoguessrRoundOut, RoundOut } from "../../api/types"
-import { AssetPhoto } from "../shared/AssetPhoto"
+import type { GameComponentProps } from "../catalog"
+import { AssetCarousel } from "../shared/AssetCarousel"
 import { Button } from "../shared/Button"
 import { ErrorScreen, FinishedScreen, IdleScreen } from "../shared/GameScreens"
 import { GuardedBackButton } from "../shared/GuardedBackButton"
@@ -30,7 +31,7 @@ function isGeoguessrRound(round: RoundOut): round is GeoguessrRoundOut {
 
 type Pin = { lat: number; lng: number }
 
-export function GeoguessrGame() {
+export function GeoguessrGame({ coverUrl }: GameComponentProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const backToMenu = () => navigate("/")
@@ -54,6 +55,7 @@ export function GeoguessrGame() {
         title={t("geoguessr.title")}
         modeTitle={t("geoguessr.modes.distanceBetweenGuess")}
         description={t("geoguessr.start.description")}
+        coverUrl={coverUrl}
         onStart={startGame}
         onBack={backToMenu}
         busy={busy}
@@ -78,11 +80,11 @@ export function GeoguessrGame() {
 
   return (
     <div className="h-dvh w-full overflow-hidden bg-app-bg">
-      <AssetPhoto key={round.asset_id} src={assetThumbnailUrl(round.asset_id)} alt={t("geoguessr.title")} />
+      <AssetCarousel key={round.id} assetIds={round.asset_ids} alt={t("geoguessr.title")} />
 
       <GuardedBackButton onExit={backToIdle} />
       <ScoreBadge label={t("common.score")} score={game.score} />
-      <RoundBadge current={round.round_index} total={TOTAL_ROUNDS} />
+      <RoundBadge label={t("common.roundOf", { current: round.round_index, total: TOTAL_ROUNDS })} />
 
       <MapPicker pin={pin} onPinChange={setPin} actual={actual} disabled={phase !== "guessing"} forceExpanded={revealed} />
 

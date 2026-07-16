@@ -14,7 +14,18 @@
   },
   "mainMenu": {
     "modesCount_one": "{{count}} modo",
-    "modesCount_other": "{{count}} modos"
+    "modesCount_other": "{{count}} modos",
+    "bestScore": "Mejor: {{score}}",
+    "notPlayed": "Sin jugar"
+  },
+  "leaderboard": {
+    "title": "Clasificación",
+    "empty": "Todavía nadie ha jugado este modo en este período.",
+    "window": {
+      "all": "Histórico",
+      "weekly": "Semanal",
+      "daily": "Diario"
+    }
   },
   "common": {
     "back": "Volver",
@@ -24,6 +35,9 @@
     "roundOf": "Ronda {{current}} de {{total}}",
     "points": "+{{score}} pts",
     "playAgain": "Jugar de nuevo",
+    "leaderboards": "Clasificación",
+    "previousPhoto": "Foto anterior",
+    "nextPhoto": "Foto siguiente",
     "finished": {
       "title": "Juego terminado",
       "finalScore": "Puntaje final: {{score}}"
@@ -84,6 +98,45 @@
       "daysOff_other": "{{count}} días de diferencia"
     }
   },
+  "immichdle": {
+    "title": "Immichdle",
+    "modes": {
+      "person": "Persondle"
+    },
+    "start": {
+      "description": "Adivina a la persona misteriosa. Cada intento revela pistas comparativas - verde es coincidencia, amarillo es cerca, rojo es lejos."
+    },
+    "searchPlaceholder": "Busca una persona por nombre...",
+    "searching": "Buscando...",
+    "noResults": "No se encontraron resultados.",
+    "unknown": "?",
+    "clues": {
+      "age": "Edad",
+      "assetCount": "Fotos",
+      "firstAppearance": "Primera foto",
+      "commonNames": "Nombres en común",
+      "mlSimilarity": "Parecido facial",
+      "assetsTogether": "Juntos"
+    },
+    "finished": {
+      "won": "¡La adivinaste!",
+      "lost": "Juego terminado"
+    }
+  },
+  "whosThatPerson": {
+    "title": "¿Quién es?",
+    "modes": {
+      "namedFaces": "Clásico"
+    },
+    "start": {
+      "description": "Algunas caras ya nombradas de cada foto se tapan con un cuadro negro - toca una y busca quién es. Se pregunta por 15 personas en total."
+    },
+    "progress": "{{current}} de {{total}} personas",
+    "submit": "Enviar respuestas",
+    "result": {
+      "correctCount": "{{correct}}/{{total}} correctas"
+    }
+  },
   "auth": {
     "fields": {
       "email": "Correo electrónico",
@@ -104,7 +157,15 @@
     "profile": {
       "title": "Perfil",
       "memberSince": "Miembro desde {{date}}",
-      "logout": "Cerrar sesión"
+      "logout": "Cerrar sesión",
+      "edit": "Editar perfil",
+      "save": "Guardar cambios",
+      "saved": "Perfil actualizado",
+      "skin": {
+        "label": "Piel",
+        "none": "Ninguna",
+        "clear": "Quitar"
+      }
     },
     "error": {
       "generic": "Algo salió mal. Intenta de nuevo."

@@ -2,10 +2,11 @@ import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 
-import { assetThumbnailUrl, playRound } from "../../api/games"
+import { playRound } from "../../api/games"
 import { GameType, Mode } from "../../api/types"
 import type { DateguessrRoundOut, RoundOut } from "../../api/types"
-import { AssetPhoto } from "../shared/AssetPhoto"
+import type { GameComponentProps } from "../catalog"
+import { AssetCarousel } from "../shared/AssetCarousel"
 import { Button } from "../shared/Button"
 import { ErrorScreen, FinishedScreen, IdleScreen } from "../shared/GameScreens"
 import { GuardedBackButton } from "../shared/GuardedBackButton"
@@ -29,7 +30,7 @@ function isDateguessrRound(round: RoundOut): round is DateguessrRoundOut {
   return round.game_type === GameType.Dateguessr
 }
 
-export function DateguessrGame() {
+export function DateguessrGame({ coverUrl }: GameComponentProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const backToMenu = () => navigate("/")
@@ -53,6 +54,7 @@ export function DateguessrGame() {
         title={t("dateguessr.title")}
         modeTitle={t("dateguessr.modes.daysToDate")}
         description={t("dateguessr.start.description")}
+        coverUrl={coverUrl}
         onStart={startGame}
         onBack={backToMenu}
         busy={busy}
@@ -73,12 +75,12 @@ export function DateguessrGame() {
   return (
     <div className="h-dvh w-full overflow-hidden bg-app-bg">
       <div className="fixed inset-0 bottom-[124px] md:bottom-[156px] overflow-hidden">
-        <AssetPhoto key={round.asset_id} src={assetThumbnailUrl(round.asset_id)} alt={t("dateguessr.title")} />
+        <AssetCarousel key={round.id} assetIds={round.asset_ids} alt={t("dateguessr.title")} />
       </div>
 
       <GuardedBackButton onExit={backToIdle} />
       <ScoreBadge label={t("common.score")} score={game.score} />
-      <RoundBadge current={round.round_index} total={TOTAL_ROUNDS} />
+      <RoundBadge label={t("common.roundOf", { current: round.round_index, total: TOTAL_ROUNDS })} />
 
       <TimelineRuler
         selected={selectedDate}

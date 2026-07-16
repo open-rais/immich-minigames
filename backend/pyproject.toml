@@ -3,6 +3,7 @@ name = "immich-minigames-backend"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
+    "alembic>=1.18.5",
     "argon2-cffi>=25.1.0",
     "email-validator>=2.3.0",
     "fastapi>=0.139.0",
@@ -10,6 +11,7 @@ dependencies = [
     "psycopg[binary]>=3.1",
     "pydantic-settings>=2",
     "pyjwt>=2.13.0",
+    "slowapi>=0.1.10",
     "sqlalchemy>=2",
     "uvicorn>=0.51.0",
 ]
