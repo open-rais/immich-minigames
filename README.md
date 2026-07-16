@@ -32,12 +32,14 @@ Detailed gameplay for each game, including modes and scoring rules, can be found
 
 ## Current Status
 
-**Three games are fully playable:**
+**Five games are fully playable:**
 - **MoreOrLess** ✅ (PC and mobile layouts, both English and Spanish)
 - **Geoguessr** ✅ (MapLibre-powered, 5-round game mode)
 - **Dateguessr** ✅ (Timeline-based, 5-round game mode)
+- **Immichdle** ✅ (Wordle-style person guessing with comparative clues)
+- **Who'sThatPerson** ✅ (Guess person names from hidden faces in photos)
 
-**Other games are design stubs only** (Immichdle, Timeline, Who'sThatPerson).
+**Other games are design stubs only** (Timeline).
 
 **Features:**
 - ✅ User login (email/username/password, profile page, logout)
@@ -45,8 +47,9 @@ Detailed gameplay for each game, including modes and scoring rules, can be found
 - ✅ Full Spanish translation (i18n-ready codebase)
 - ✅ Docker support (GHCR images for easy deployment)
 - ✅ Direct Postgres access for game data, Immich REST API for images
+- ✅ Leaderboards (daily, weekly, all-time per game)
+- ✅ User profiles with cosmetic person avatar selection
 - ❌ Daily challenges (planned)
-- ❌ Leaderboards (planned)
 - ❌ Report incorrect metadata (planned)
 
 Full implementation roadmap is in [`docs/TODO/ROADMAP.md`](./docs/TODO/ROADMAP.md).
@@ -95,6 +98,7 @@ Full implementation roadmap is in [`docs/TODO/ROADMAP.md`](./docs/TODO/ROADMAP.m
 **Backend:**
 ```bash
 cd backend
+uv run alembic upgrade head  # applies pending DB schema migrations, run once (and after each pull)
 uv run uvicorn main:app --app-dir src --port 8000 --reload
 ```
 
@@ -128,6 +132,16 @@ own tables. Images are always fetched through Immich's REST API, never directly 
 
 **Use this at your own risk.** While access is read-only and images are never touched, you run this
 code alongside your personal photo database. Review the source code if you have concerns.
+
+## Development Approach
+
+This project is mainly **vibes-coded**. Still, The author has a software engineering background and maintains constant auditing while using AI code generation (via Claude Code). Security considerations are prioritized throughout:
+
+- Read-only database access with a minimal role
+- No storage or copying of photos
+- Careful API boundary validation
+- Continuous code review and refactoring
+- Regular security audits with multi-agent code review
 
 ## FAQs
 
