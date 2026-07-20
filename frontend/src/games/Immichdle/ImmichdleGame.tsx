@@ -36,7 +36,7 @@ interface GameState {
 function FinishedScreen({ game, onPlayAgain, onBack, busy }: { game: GameState; onPlayAgain: () => void; onBack: () => void; busy: boolean }) {
   const { t } = useTranslation()
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-app-bg px-6 text-center">
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-app-bg px-6 text-center">
       <BackButton label={t("common.back")} onClick={onBack} />
       <h1 className="text-3xl font-bold text-ink">{t(game.won ? "immichdle.finished.won" : "immichdle.finished.lost")}</h1>
       {game.targetName && <p className="text-xl font-bold text-primary">{game.targetName}</p>}
