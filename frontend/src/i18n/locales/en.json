@@ -176,7 +176,8 @@
     "comingSoon": "Coming soon",
     "users": {
       "title": "Users",
-      "description": "Manage app accounts"
+      "description": "Manage app accounts",
+      "loading": "Loading users..."
     },
     "games": {
       "title": "Games",

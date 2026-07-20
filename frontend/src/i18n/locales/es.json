@@ -176,7 +176,8 @@
     "comingSoon": "Próximamente",
     "users": {
       "title": "Usuarios",
-      "description": "Administra las cuentas de la app"
+      "description": "Administra las cuentas de la app",
+      "loading": "Cargando usuarios..."
     },
     "games": {
       "title": "Juegos",

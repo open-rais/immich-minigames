@@ -34,12 +34,33 @@ interface SettingAccordionProps {
 
 export function SettingAccordion({ icon, title, description, children, nested = false, defaultOpen = false }: SettingAccordionProps) {
   const [open, setOpen] = useState(defaultOpen)
+  // Mount children lazily on first expand, then keep them mounted (rather than tying presence
+  // directly to `open`) - some children (AdminUserRow's PersonSearchInput, see admin/AdminUserRow
+  // .tsx) autofocus an input as soon as they mount, which would fight over focus if every row's
+  // content mounted upfront while still collapsed; keeping them mounted after first open also
+  // means a row's in-progress edits survive collapsing/re-expanding it.
+  const [hasOpened, setHasOpened] = useState(defaultOpen)
+  // Tracks whether the *opening* grid-row transition has fully finished - while it's still
+  // animating (or collapsed), the wrapper below needs overflow-hidden for the grow/shrink to look
+  // right, but that same overflow-hidden also clips anything a child overlays outside its own flow
+  // height, like PersonSearchInput's absolutely-positioned results dropdown (see AdminUserRow.tsx)
+  // - the row's grid track only sizes to the *in-flow* content, so the dropdown got visually cut
+  // off instead of floating over the rest of the page. Once fully open, overflow is dropped so
+  // that dropdown can render unclipped; closing re-clips immediately (no dropdown is visible then
+  // anyway) so the collapse animation still looks right.
+  const [settled, setSettled] = useState(defaultOpen)
+
+  function toggle() {
+    setOpen((o) => !o)
+    setHasOpened((h) => h || !open)
+    if (open) setSettled(false)
+  }
 
   return (
     <div
       className={`${nested ? "mt-3 rounded-xl border border-line" : "mt-4 rounded-2xl border-2 border-primary/20"} px-6 py-4 transition-all`}
     >
-      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex w-full place-items-center justify-between text-start">
+      <button type="button" onClick={toggle} aria-expanded={open} className="flex w-full place-items-center justify-between text-start">
         <div>
           <div className="flex place-items-center gap-2">
             {icon && <span className="text-primary">{icon}</span>}
@@ -56,9 +77,12 @@ export function SettingAccordion({ icon, title, description, children, nested = 
           being. Padding (not margin) on the innermost div, since a margin there would still poke
           out past the 0fr row when collapsed. */}
       {children && (
-        <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
-          <div className="overflow-hidden">
-            <div className="pt-4">{children}</div>
+        <div
+          className={`grid transition-[grid-template-rows] duration-300 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+          onTransitionEnd={() => open && setSettled(true)}
+        >
+          <div className={settled ? "" : "overflow-hidden"}>
+            <div className="pt-4">{hasOpened && children}</div>
           </div>
         </div>
       )}

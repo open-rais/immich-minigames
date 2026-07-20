@@ -3,6 +3,7 @@ import { Link, Navigate } from "react-router-dom"
 
 import { useAuth } from "../auth/useAuth"
 import { GAME_CATALOG } from "../games/catalog"
+import { AdminUsersSection } from "./AdminUsersSection"
 import { SettingAccordion } from "./SettingAccordion"
 
 function BackArrowIcon() {
@@ -43,7 +44,7 @@ export function AdminPage() {
 
       <main className="mx-auto max-w-3xl px-6 py-8 md:px-10">
         <SettingAccordion title={t("admin.users.title")} description={t("admin.users.description")}>
-          <p className="text-sm text-faint">{t("admin.comingSoon")}</p>
+          <AdminUsersSection />
         </SettingAccordion>
 
         <SettingAccordion title={t("admin.games.title")} description={t("admin.games.description")}>
