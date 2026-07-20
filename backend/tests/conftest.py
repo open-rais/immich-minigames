@@ -15,6 +15,7 @@ from api.rate_limit import limiter
 from main import app
 from persistence.base import get_engine, get_session_factory, reset_db
 from services.auth_service import AuthService
+from services.game_settings import GameSettingsService
 from services.games_service import GamesService
 from services.immich_service import ImmichService
 from services.ml_service import MLService
@@ -58,6 +59,11 @@ def games_service(db_session, immich_service, ml_service):
 @pytest.fixture
 def auth_service(db_session):
     return AuthService(db_session)
+
+
+@pytest.fixture
+def game_settings_service(db_session):
+    return GameSettingsService(db_session)
 
 
 @pytest.fixture(autouse=True)

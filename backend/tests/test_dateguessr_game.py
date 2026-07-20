@@ -125,3 +125,31 @@ class TestDateguessrScoring:
         round_.guess = date(1900, 1, 1)
 
         assert round_.calculate_score() == 0
+
+
+class TestDateguessrAdminSettings:
+    """ADMIN-FEATURE.md point #4 - confirms an override actually changes live behavior, not just
+    what GameSettingsService reports (see test_game_settings_service.py for that)."""
+
+    def test_total_rounds_override_changes_how_many_rounds_are_played(self, immich_service):
+        game = DateguessrGame.start(
+            id=uuid4(), owner="owner", immich_service=immich_service, settings={"total_rounds": 2}
+        )
+
+        rounds_played = 0
+        while not game.finished and rounds_played < 10:
+            game.play_round(_guess_near(game.current_round))
+            rounds_played += 1
+
+        assert rounds_played == 2
+        assert len(game.rounds) == 2
+
+    def test_decay_days_override_changes_the_score(self):
+        asset = AssetSnapshot(id=uuid4(), date=date(2020, 1, 1))
+        round_ = DateguessrRound(id=uuid4(), game_id=uuid4(), round_index=1, asset=asset)
+        round_.guess = date(2020, 1, 8)
+
+        default_score = round_.calculate_score()
+        overridden_score = round_.calculate_score({"decay_days": 1.0})
+
+        assert overridden_score < default_score

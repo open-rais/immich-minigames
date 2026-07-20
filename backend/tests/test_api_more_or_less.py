@@ -19,6 +19,10 @@ class TestCreateGame:
 
         assert game["score"] == 0
         assert game["finished"] is False
+        # ADMIN-FEATURE.md point #4 - MoreOrLess has no configured total (no fixed round count),
+        # unlike Geoguessr/Dateguessr's total_rounds or WhosThatPerson's total_people.
+        assert game["total_rounds"] is None
+        assert game["total_people"] is None
         assert len(game["rounds"]) == 1
         round_ = game["rounds"][0]
         assert round_["candidate_asset_count"] is None
