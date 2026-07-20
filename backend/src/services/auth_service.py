@@ -49,6 +49,15 @@ class AuthService:
         self._session = session
         self._settings = settings or get_settings()
 
+    def list_users(self) -> list[UserModel]:
+        """Admin feature (ADMIN-FEATURE.md point #3) - every account, oldest-registered first."""
+        return list(self._session.scalars(select(UserModel).order_by(UserModel.created_at)))
+
+    def get_user_by_id(self, user_id: UUID) -> UserModel | None:
+        """Admin feature (ADMIN-FEATURE.md point #3) - looks up any account by id, not just the
+        caller's own (unlike get_user_from_token, which is JWT-subject-bound)."""
+        return self._session.get(UserModel, user_id)
+
     def register(self, email: str, username: str, full_name: str, password: str) -> UserModel:
         if self._session.scalar(select(UserModel).where(UserModel.email == email)) is not None:
             raise EmailAlreadyExistsError(f"email {email} is already registered")
