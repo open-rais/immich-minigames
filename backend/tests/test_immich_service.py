@@ -250,3 +250,44 @@ class TestSearchPersons:
         # A literal "%"/"_" in the search text must not behave as a SQL wildcard.
         assert immich_service.search_persons("%", limit=10) == []
         assert immich_service.search_persons("_", limit=10) == []
+
+    def test_matches_multiple_tokens_regardless_of_order(self, immich_service):
+        # e.g. "rai rodriguez" must match "Raimundo Rodriguez" - each token prefixes a different
+        # word in the name, and the order they're typed in doesn't have to match the name's order.
+        persons = immich_service.get_persons(named_only=True, limit=100)
+        multi_word = next(p for p in persons if len(p.name.split(" ")) >= 2)
+        first_word, last_word = multi_word.name.split(" ")[0], multi_word.name.split(" ")[-1]
+        reversed_query = f"{last_word[:2]} {first_word[:2]}"
+
+        results = immich_service.search_persons(reversed_query, limit=100)
+
+        assert multi_word.id in {p.id for p in results}
+
+    def test_every_token_must_match_a_word(self, immich_service):
+        # AND semantics, not OR - a real prefix plus a garbage token must exclude the person that
+        # only the real prefix would have matched on its own.
+        persons = immich_service.get_persons(named_only=True, limit=100)
+        multi_word = next(p for p in persons if " " in p.name)
+        first_word = multi_word.name.split(" ")[0]
+
+        results = immich_service.search_persons(f"{first_word[:2]} zzzzzzzzzz_no_such_word", limit=100)
+
+        assert results == []
+
+    def test_matches_regardless_of_accents(self, immich_service):
+        # e.g. querying "Rodríguez" (or "Rodriguez") must match a stored name spelled the other
+        # way - fold both sides of the comparison the same way search_persons does internally.
+        persons = immich_service.get_persons(named_only=True, limit=100)
+        accented_word = next(
+            (w for p in persons for w in p.name.split(" ") if any(c in w for c in "áéíóúÁÉÍÓÚñÑüÜ")),
+            None,
+        )
+        if accented_word is None:
+            pytest.skip("dev data needs at least one accented name to exercise accent-folding")
+
+        owner = next(p for p in persons if accented_word in p.name.split(" "))
+        folded_query = accented_word[:3].translate(str.maketrans("áéíóúÁÉÍÓÚñÑüÜ", "aeiouAEIOUnNuU"))
+
+        results = immich_service.search_persons(folded_query, limit=100)
+
+        assert owner.id in {p.id for p in results}

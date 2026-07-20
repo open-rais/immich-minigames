@@ -31,6 +31,18 @@ def _escape_like(value: str) -> str:
     return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
+# Accent-insensitive search (e.g. "Rodriguez" should match stored "Rodríguez") without CREATE
+# EXTENSION unaccent - this role only has SELECT on Immich's `public` schema (see
+# docs/ARCHITECTURE/IMMICH.md) and translate() is a builtin Postgres function, not an extension.
+_ACCENTED_CHARS = "áéíóúÁÉÍÓÚñÑüÜ"
+_FOLDED_CHARS = "aeiouAEIOUnNuU"
+_ACCENT_FOLD_TABLE = str.maketrans(_ACCENTED_CHARS, _FOLDED_CHARS)
+
+
+def _fold_accents(value: str) -> str:
+    return value.translate(_ACCENT_FOLD_TABLE)
+
+
 # Reused across requests (pooled connections, one client) instead of opening a new connection per
 # thumbnail. A bounded timeout means a slow/hung Immich never blocks a worker thread indefinitely.
 @lru_cache(maxsize=1)
@@ -188,17 +200,30 @@ class ImmichService:
         return [self._row_to_person(row) for row in rows]
 
     def search_persons(self, query: str, *, offset: int = 0, limit: int = 3) -> list[Person]:
-        """Named people with a *word* in their full name starting with `query` (case-insensitive) -
-        e.g. "ar" matches "Argimiro Rodriguez" and "Juan Arturo" but not "Martin Perez" (no
-        mid-word match). Two ILIKE conditions cover this for any number of name tokens: the query
-        prefixing the first word, or prefixing any later word (the leading `%` in the second
-        pattern absorbs everything before that word, including other whole words). Kept separate
-        from get_persons - its existing name_query is a plain substring filter, and nothing else
-        needs this word-prefix mode. Paginated via offset/limit (small pages, e.g. for infinite
-        scroll UIs), ordered by name for a stable scroll order."""
-        escaped = _escape_like(query)
-        starts_with = person.c.name.ilike(f"{escaped}%", escape="\\")
-        contains_word_starting_with = person.c.name.ilike(f"% {escaped}%", escape="\\")
+        """Named people matching every whitespace-separated token in `query` (case- and
+        accent-insensitive), each token matched independently against a *word* in the name - e.g.
+        "rai rodriguez" matches "Raimundo Rodríguez" (each token prefixes a different word,
+        regardless of typed order) but not "Martin Perez" (no mid-word match). Per token, two
+        ILIKE conditions cover "prefixes a word anywhere in the name": the token prefixing the
+        first word, or prefixing any later word (the leading `%` in the second pattern absorbs
+        everything before that word, including other whole words); all tokens' conditions are
+        ANDed together, which is what makes multi-word queries need every token satisfied rather
+        than any one of them. Kept separate from get_persons - its existing name_query is a plain
+        substring filter, and nothing else needs this word-prefix mode. Paginated via
+        offset/limit (small pages, e.g. for infinite scroll UIs), ordered by name for a stable
+        scroll order."""
+        tokens = query.split()
+        if not tokens:
+            return []
+
+        folded_name = func.translate(person.c.name, _ACCENTED_CHARS, _FOLDED_CHARS)
+        token_conditions = []
+        for token in tokens:
+            escaped = _escape_like(_fold_accents(token))
+            starts_with = folded_name.ilike(f"{escaped}%", escape="\\")
+            contains_word_starting_with = folded_name.ilike(f"% {escaped}%", escape="\\")
+            token_conditions.append(starts_with | contains_word_starting_with)
+
         asset_count = func.count(func.distinct(asset_face.c.assetId)).label("asset_count")
 
         stmt = (
@@ -215,7 +240,7 @@ class ImmichService:
                 person.c.isHidden.is_(False),
                 person.c.thumbnailPath != "",
                 person.c.name != "",
-                starts_with | contains_word_starting_with,
+                *token_conditions,
             )
             .group_by(person.c.id, person.c.name, person.c.birthDate)
             .order_by(person.c.name)
