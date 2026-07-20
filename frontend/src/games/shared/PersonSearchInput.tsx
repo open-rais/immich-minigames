@@ -234,7 +234,7 @@ export function PersonSearchInput({ excludeIds, onSelect, disabled, focusOnTypeA
         role="combobox"
         aria-expanded={open && results.length > 0}
         aria-controls="person-search-results"
-        className="w-full rounded-full border border-line-soft bg-surface py-3 pr-5 pl-11 text-[15px] font-semibold text-ink shadow-card outline-none placeholder:text-faint focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
+        className="w-full rounded-full border border-line-soft bg-surface py-3 pr-5 pl-11 text-base font-semibold text-ink shadow-card outline-none placeholder:text-faint focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
       />
 
       {open && query.trim() && (
