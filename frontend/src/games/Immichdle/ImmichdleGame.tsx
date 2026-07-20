@@ -158,7 +158,12 @@ export function ImmichdleGame({ coverUrl }: GameComponentProps) {
             (up to the outer max-w-4xl), matching the rest of the app's cards rather than smashdle's
             own full-bleed layout. */}
         <div className="w-full md:max-w-md">
-          <PersonSearchInput excludeIds={guessedIds} onSelect={handleGuess} disabled={busy || !pendingRoundId} />
+          <PersonSearchInput
+            excludeIds={guessedIds}
+            onSelect={handleGuess}
+            disabled={busy || !pendingRoundId}
+            focusOnTypeAnywhere
+          />
         </div>
 
         <GuessTable history={history} />

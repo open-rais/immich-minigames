@@ -16,6 +16,16 @@ interface PersonSearchInputProps {
   // and for non-guess selection (the profile page's skin picker, see auth/SkinPicker.tsx).
   onSelect: (personId: string) => void
   disabled: boolean
+  // Immichdle-only (see ImmichdleGame.tsx): lets a letter typed anywhere on the page - not just
+  // while this input is focused - jump straight into the search, since that screen has nothing
+  // else to type into. Left off (default) for WhosThatPerson's popover (one search box per face,
+  // ambiguous which one a stray keypress should target) and the profile skin picker (a settings
+  // page, not a type-to-search flow).
+  focusOnTypeAnywhere?: boolean
+}
+
+function isTextEntryElement(el: Element): boolean {
+  return el.tagName === "INPUT" || el.tagName === "TEXTAREA" || (el as HTMLElement).isContentEditable
 }
 
 // Debounced search-as-you-type input for picking a person - accent-insensitive, per-token
@@ -24,7 +34,7 @@ interface PersonSearchInputProps {
 // (excludeIds's callers use it for already-guessed people, but it's just as valid for "don't show
 // the current skin again"). Results page in via infinite scroll (see handleResultsScroll) -
 // PAGE_SIZE is deliberately small so scrolling near the bottom of the dropdown is the common case.
-export function PersonSearchInput({ excludeIds, onSelect, disabled }: PersonSearchInputProps) {
+export function PersonSearchInput({ excludeIds, onSelect, disabled, focusOnTypeAnywhere = false }: PersonSearchInputProps) {
   const { t } = useTranslation()
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<PersonSearchResultOut[]>([])
@@ -35,6 +45,7 @@ export function PersonSearchInput({ excludeIds, onSelect, disabled }: PersonSear
   // -1 = nothing keyboard-selected yet. Index into `results` (the excludeIds-filtered, currently
   // rendered list), not the raw offset - see loadMore's own offsetRef for that distinction.
   const [selectedIndex, setSelectedIndex] = useState(-1)
+  const inputRef = useRef<HTMLInputElement>(null)
   const requestTokenRef = useRef(0)
   // Raw fetched-count offset for the next page - tracked separately from results.length since
   // results is filtered by excludeIds and would otherwise cause pages to be skipped/re-fetched.
@@ -125,6 +136,26 @@ export function PersonSearchInput({ excludeIds, onSelect, disabled }: PersonSear
     resultsBoxRef.current?.querySelector(`[data-index="${selectedIndex}"]`)?.scrollIntoView({ block: "nearest" })
   }, [selectedIndex])
 
+  // focusOnTypeAnywhere: a letter typed while focus is elsewhere on the page (but not inside some
+  // other genuine text field) jumps into this search instead of being silently dropped. Manually
+  // appends the character and preventDefault()s rather than relying on the browser's normal
+  // "focus then let the keystroke land" order, since focusing the input here happens *in response
+  // to* this same keydown - the character hasn't been typed into anything yet.
+  useEffect(() => {
+    if (!focusOnTypeAnywhere || disabled) return
+    function handleGlobalKeyDown(e: KeyboardEvent) {
+      if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return
+      if (!/^\p{L}$/u.test(e.key)) return
+      const active = document.activeElement
+      if (active === inputRef.current || (active instanceof Element && isTextEntryElement(active))) return
+      e.preventDefault()
+      inputRef.current?.focus()
+      setQuery((prev) => prev + e.key)
+    }
+    document.addEventListener("keydown", handleGlobalKeyDown)
+    return () => document.removeEventListener("keydown", handleGlobalKeyDown)
+  }, [focusOnTypeAnywhere, disabled])
+
   function handleResultsScroll(e: React.UIEvent<HTMLDivElement>) {
     const el = e.currentTarget
     if (el.scrollHeight - el.scrollTop - el.clientHeight < SCROLL_THRESHOLD_PX) {
@@ -186,6 +217,7 @@ export function PersonSearchInput({ excludeIds, onSelect, disabled }: PersonSear
         <line x1="21" y1="21" x2="16.65" y2="16.65" />
       </svg>
       <input
+        ref={inputRef}
         type="text"
         value={query}
         disabled={disabled}
