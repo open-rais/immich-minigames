@@ -17,8 +17,9 @@ import { IncognitoPhoto } from "./IncognitoPhoto"
 
 const GAME_TYPE = GameType.WhosThatPerson
 const MODE = Mode.NamedFaces
-// Mirrors backend/src/games/whos_that_person.py's _TOTAL_PEOPLE - display only.
-const TOTAL_PEOPLE = 15
+// Fallback only - the real total (admin-configurable, ADMIN-FEATURE.md point #4) comes from
+// game.totalPeople, read off the backend's live GameOut.total_people.
+const DEFAULT_TOTAL_PEOPLE = 15
 // Longer than Geoguessr/Dateguessr's 2400ms - a round can reveal several faces at once, so the
 // player needs more time to read all of them.
 const REVEAL_HOLD_MS = 2800
@@ -115,7 +116,7 @@ export function WhosThatPersonGame({ coverUrl }: GameComponentProps) {
 
       <GuardedBackButton onExit={backToIdle} />
       <ScoreBadge label={t("common.score")} score={game.score} />
-      <RoundBadge label={t("whosThatPerson.progress", { current: peopleAskedTotal, total: TOTAL_PEOPLE })} />
+      <RoundBadge label={t("whosThatPerson.progress", { current: peopleAskedTotal, total: game.totalPeople ?? DEFAULT_TOTAL_PEOPLE })} />
 
       {phase === "guessing" && (
         <div className="fixed bottom-[18px] left-[18px] z-30 md:bottom-7 md:left-10">

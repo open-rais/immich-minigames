@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next"
 import { Link, Navigate } from "react-router-dom"
 
 import { useAuth } from "../auth/useAuth"
-import { GAME_CATALOG } from "../games/catalog"
+import { AdminGamesSection } from "./AdminGamesSection"
 import { AdminUsersSection } from "./AdminUsersSection"
 import { SettingAccordion } from "./SettingAccordion"
 
@@ -48,9 +48,7 @@ export function AdminPage() {
         </SettingAccordion>
 
         <SettingAccordion title={t("admin.games.title")} description={t("admin.games.description")}>
-          {GAME_CATALOG.map((game) => (
-            <SettingAccordion key={game.gameType} nested title={t(game.gameTitleKey)} description={t("admin.comingSoon")} />
-          ))}
+          <AdminGamesSection />
         </SettingAccordion>
       </main>
     </div>

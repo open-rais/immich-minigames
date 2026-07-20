@@ -10,6 +10,13 @@ interface GameState {
   id: string
   score: number
   finished: boolean
+  // Admin feature (ADMIN-FEATURE.md point #4) - the backend's live configured total for this game
+  // (Geoguessr/Dateguessr: total_rounds, WhosThatPerson: total_people; undefined for games with
+  // neither). Captured once at game start, same as the fields above - unlike `rounds`, an admin
+  // changing this setting mid-game shouldn't retroactively change what a game already in progress
+  // displays as its total.
+  totalRounds?: number | null
+  totalPeople?: number | null
 }
 
 // Shared state machine for the "fixed number of rounds, one picker per round, auto-advance after a
@@ -76,7 +83,7 @@ export function useRoundGame<TRound extends RoundOut, TGuess>({
         setScreen("error")
         return
       }
-      setGame({ id: g.id, score: g.score, finished: g.finished })
+      setGame({ id: g.id, score: g.score, finished: g.finished, totalRounds: g.total_rounds, totalPeople: g.total_people })
       setRound(firstRound)
       setPendingNextRound(null)
       onNewRoundRef.current()

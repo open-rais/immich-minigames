@@ -173,7 +173,6 @@
     }
   },
   "admin": {
-    "comingSoon": "Coming soon",
     "users": {
       "title": "Users",
       "description": "Manage app accounts",
@@ -181,7 +180,23 @@
     },
     "games": {
       "title": "Games",
-      "description": "Edit configuration for each game"
+      "description": "Edit configuration for each game",
+      "loading": "Loading games...",
+      "noSettings": "This game has no configurable settings yet.",
+      "reset": "Reset to defaults",
+      "settings": {
+        "total_rounds": "Total rounds",
+        "max_score": "Max score per round",
+        "max_extra_assets": "Extra photos shown",
+        "flat_score_radius_km": "Max-score radius (km)",
+        "decay_km": "Score decay (km)",
+        "flat_score_days": "Max-score days",
+        "decay_days": "Score decay (days)",
+        "starting_score": "Starting score",
+        "wrong_guess_penalty": "Wrong guess penalty",
+        "total_people": "Total people",
+        "max_hidden_faces": "Max hidden faces per round"
+      }
     }
   }
 }
