@@ -5,6 +5,7 @@ de hablar con Immich" for why data queries and image serving use different paths
 """
 
 import math
+import random
 from datetime import date
 from functools import lru_cache
 from typing import Literal
@@ -334,6 +335,9 @@ class ImmichService:
             if asset_row is None:
                 return []
 
+            # No SQL-level LIMIT here - every eligible face is fetched so the count to actually
+            # hide can be decided in Python below (this asset's face count is at most a handful,
+            # never a performance concern).
             faces_stmt = (
                 select(
                     asset_face.c.id,
@@ -354,12 +358,15 @@ class ImmichService:
                     person.c.name != "",
                     person.c.isHidden.is_(False),
                 )
-                .order_by(func.random())
-                .limit(max_faces)
             )
             face_rows = conn.execute(faces_stmt).all()
 
-        return [self._row_to_face(row) for row in face_rows]
+        faces = [self._row_to_face(row) for row in face_rows]
+        if len(faces) <= max_faces:
+            return faces
+        # More named faces than the cap - hide a random number of them between 1 and max_faces,
+        # not always exactly max_faces (see docstring).
+        return random.sample(faces, random.randint(1, max_faces))
 
     def get_asset_thumbnail(self, asset_id: UUID, size: str = "preview") -> tuple[bytes, str]:
         """Fetches an asset's image bytes via Immich's REST API (not the DB - see module
