@@ -33,6 +33,12 @@ class Settings(BaseSettings):
     jwt_secret: str
     jwt_expire_days: int = 30
 
+    # Admin feature (ADMIN-FEATURE.md point #1) - promotion only, not account creation: if a user
+    # already registered (via /signup) with this email, services/admin_bootstrap.py flips their
+    # is_admin flag to True on every backend startup. If no such account exists yet, it's a no-op
+    # (register normally first, then restart the backend). None/unset means no admin is managed.
+    admin_email: str | None = None
+
     @property
     def db_url(self) -> str:
         return (

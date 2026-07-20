@@ -7,6 +7,9 @@ app, and bare `uv run uvicorn` dev usage expects that same command to have been 
 (see README.md's Development Setup). persistence/base.py's init_db/reset_db still exist for
 tests (tests/conftest.py's reset_db against the throwaway test DB), unrelated to Alembic."""
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
@@ -14,8 +17,11 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from api.api import router
 from api.rate_limit import limiter
+from config import get_settings
 from games.immichdle import DuplicateGuessError, InvalidGuessError
 from games.whos_that_person import IncompleteGuessError
+from persistence.base import get_session_factory
+from services.admin_bootstrap import ensure_admin
 from services.auth_service import (
     EmailAlreadyExistsError,
     InvalidCredentialsError,
@@ -29,7 +35,21 @@ from services.games_service import (
     UnsupportedGameError,
 )
 
-app = FastAPI(title="Immich Minigames")
+
+@asynccontextmanager
+async def _lifespan(_: FastAPI) -> AsyncIterator[None]:
+    # Idempotent (see services/admin_bootstrap.py), so it's safe to run on every startup - dev's
+    # --reload included, and the packaged image's docker-entrypoint.sh (after `alembic upgrade
+    # head`, migration 0003 adds the column this depends on).
+    session = get_session_factory()()
+    try:
+        ensure_admin(session, get_settings())
+    finally:
+        session.close()
+    yield
+
+
+app = FastAPI(title="Immich Minigames", lifespan=_lifespan)
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
 

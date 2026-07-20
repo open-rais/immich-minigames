@@ -28,4 +28,7 @@ class UserModel(Base):
     # `public` schema this app never references via FK (see docs/ARCHITECTURE/BACKEND.md); multiple
     # accounts may pick the same person, it's purely decorative and not identity-linked.
     skin_person_id: Mapped[UUID | None] = mapped_column(default=None)
+    # Admin feature (ADMIN-FEATURE.md point #1) - promoted via ADMIN_EMAIL at backend startup
+    # (see services/admin_bootstrap.py), never set through a registration/profile endpoint.
+    is_admin: Mapped[bool] = mapped_column(default=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
