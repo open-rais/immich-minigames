@@ -90,6 +90,28 @@ class TestImmichdleGame:
             game.play_round(game.target.id)
 
 
+class TestImmichdleAdminSettings:
+    """ADMIN-FEATURE.md point #4 - confirms an override actually changes live behavior, not just
+    what GameSettingsService reports (see test_game_settings_service.py for that)."""
+
+    def test_starting_score_override_changes_the_initial_score(self, immich_service):
+        game = ImmichdleGame.start(
+            id=uuid4(), owner="owner", immich_service=immich_service, settings={"starting_score": 50}
+        )
+
+        assert game.score == 50
+
+    def test_wrong_guess_penalty_override_changes_the_score_delta(self, immich_service):
+        game = ImmichdleGame.start(
+            id=uuid4(), owner="owner", immich_service=immich_service, settings={"wrong_guess_penalty": 20}
+        )
+        wrong_id = _wrong_person_id(immich_service, game)
+
+        result = game.play_round(wrong_id)
+
+        assert result.score_delta == -20
+
+
 class TestComputeClues:
     """Isolated from the DB - constructs snapshots directly to deterministically exercise every
     clue direction, same style as test_more_or_less_game.py's TestMoreOrLessRoundTieScoring."""

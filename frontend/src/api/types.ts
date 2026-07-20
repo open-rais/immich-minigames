@@ -157,6 +157,12 @@ export interface GameOut {
   // game is over, win or lose. null for every other game/mode and for an in-progress Immichdle game.
   target_person_id?: string | null
   target_person_name?: string | null
+  // Admin feature (ADMIN-FEATURE.md point #4) - the live configured total for this game instance
+  // (Geoguessr/Dateguessr: total_rounds, WhosThatPerson: total_people), null for every other game.
+  // Read instead of hardcoding a display-only mirror of the backend default (see
+  // games/shared/useRoundGame.ts's GameState).
+  total_rounds?: number | null
+  total_people?: number | null
 }
 
 // No game_type here (unlike RoundOut) - game_id already fixes a round's game/mode server-side, so
@@ -214,6 +220,9 @@ export interface User {
   // Cosmetic avatar (roadmap point E) - an Immich Person id, or null if none picked yet. Shown in
   // the header's user circle (see menu/UserMenu.tsx) via personThumbnailUrl.
   skin_person_id: string | null
+  // Admin feature (ADMIN-FEATURE.md) - promoted server-side via ADMIN_EMAIL, never set from the
+  // frontend. Gates the admin panel link (menu/UserMenu.tsx) and the /admin routes (admin/AdminLayout.tsx).
+  is_admin: boolean
   created_at: string
 }
 
@@ -257,6 +266,22 @@ export interface GameRecordOut {
 
 export interface GameRecordsOut {
   records: GameRecordOut[]
+}
+
+// Admin feature (ADMIN-FEATURE.md point #4) - mirrors backend/src/api/dto/common.py's
+// GameSettingOut/GameSettingsOut. `key` names match services/game_settings.py's SettingSpec keys
+// (e.g. "decay_km", "total_rounds") - see admin/AdminGameRow.tsx for how they're labeled.
+export interface GameSettingOut {
+  key: string
+  value: number
+  default: number
+  value_type: "int" | "float"
+  min_value: number
+}
+
+export interface GameSettingsOut {
+  game_type: string
+  settings: GameSettingOut[]
 }
 
 // Roadmap point F - leaderboards (requires login, unlike the personal records above) - mirrors

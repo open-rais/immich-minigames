@@ -18,7 +18,9 @@ import { ABOVE_RULER_BOTTOM_CLASS, TimelineRuler } from "./TimelineRuler"
 
 const GAME_TYPE = GameType.Dateguessr
 const MODE = Mode.DaysToDate
-const TOTAL_ROUNDS = 5 // mirrors backend/src/games/asset_rounds.py's TOTAL_ROUNDS - display only
+// Fallback only - the real total (admin-configurable, ADMIN-FEATURE.md point #4) comes from
+// game.totalRounds, read off the backend's live GameOut.total_rounds.
+const DEFAULT_TOTAL_ROUNDS = 5
 // Same reveal-hold duration as GeoguessrGame - the ruler's own reveal animation is a bit shorter
 // (TimelineRuler.tsx's REVEAL_ANIMATION_MS) but the player still needs a beat to read the
 // score/days-off after it settles.
@@ -80,7 +82,7 @@ export function DateguessrGame({ coverUrl }: GameComponentProps) {
 
       <GuardedBackButton onExit={backToIdle} />
       <ScoreBadge label={t("common.score")} score={game.score} />
-      <RoundBadge label={t("common.roundOf", { current: round.round_index, total: TOTAL_ROUNDS })} />
+      <RoundBadge label={t("common.roundOf", { current: round.round_index, total: game.totalRounds ?? DEFAULT_TOTAL_ROUNDS })} />
 
       <TimelineRuler
         selected={selectedDate}

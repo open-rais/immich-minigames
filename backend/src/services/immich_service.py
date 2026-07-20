@@ -5,6 +5,7 @@ de hablar con Immich" for why data queries and image serving use different paths
 """
 
 import math
+import random
 from datetime import date
 from functools import lru_cache
 from typing import Literal
@@ -297,14 +298,16 @@ class ImmichService:
         self, *, max_faces: int, exclude_asset_ids: frozenset[UUID] = frozenset()
     ) -> list[Face]:
         """Picks one random asset that has at least one visible, non-deleted face already assigned
-        to a named, non-hidden person, then returns up to `max_faces` of that asset's named,
-        non-hidden faces (randomly chosen if it has more than `max_faces`) - these are the faces
-        Who'sThatPerson blacks out for a round. Faces without a name are never returned - there'd
-        be nothing to grade against, so they're left unblacked in the photo, purely decorative.
-        Hidden people (Immich's own `isHidden` flag) are excluded the same way get_persons/
-        search_persons already exclude them from the guess search box - otherwise a round could
-        black out a face the player has no way to search for and guess. Empty list if no eligible
-        asset exists (e.g. exclude_asset_ids/the game's data pool is exhausted)."""
+        to a named, non-hidden person, then returns the faces Who'sThatPerson blacks out for a
+        round: every one of that asset's named, non-hidden faces if it has `max_faces` or fewer,
+        otherwise a *random* number of them between 1 and `max_faces` (confirmed with the project
+        owner - not always exactly `max_faces`, so a photo with plenty of named people doesn't
+        deterministically always hide the maximum). Faces without a name are never returned -
+        there'd be nothing to grade against, so they're left unblacked in the photo, purely
+        decorative. Hidden people (Immich's own `isHidden` flag) are excluded the same way
+        get_persons/search_persons already exclude them from the guess search box - otherwise a
+        round could black out a face the player has no way to search for and guess. Empty list if
+        no eligible asset exists (e.g. exclude_asset_ids/the game's data pool is exhausted)."""
         visible_face = asset_face.c.isVisible.is_(True) & asset_face.c.deletedAt.is_(None)
         named_face = asset_face.join(person, person.c.id == asset_face.c.personId)
 
@@ -332,6 +335,9 @@ class ImmichService:
             if asset_row is None:
                 return []
 
+            # No SQL-level LIMIT here - every eligible face is fetched so the count to actually
+            # hide can be decided in Python below (this asset's face count is at most a handful,
+            # never a performance concern).
             faces_stmt = (
                 select(
                     asset_face.c.id,
@@ -352,12 +358,15 @@ class ImmichService:
                     person.c.name != "",
                     person.c.isHidden.is_(False),
                 )
-                .order_by(func.random())
-                .limit(max_faces)
             )
             face_rows = conn.execute(faces_stmt).all()
 
-        return [self._row_to_face(row) for row in face_rows]
+        faces = [self._row_to_face(row) for row in face_rows]
+        if len(faces) <= max_faces:
+            return faces
+        # More named faces than the cap - hide a random number of them between 1 and max_faces,
+        # not always exactly max_faces (see docstring).
+        return random.sample(faces, random.randint(1, max_faces))
 
     def get_asset_thumbnail(self, asset_id: UUID, size: str = "preview") -> tuple[bytes, str]:
         """Fetches an asset's image bytes via Immich's REST API (not the DB - see module

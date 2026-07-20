@@ -146,6 +146,19 @@ npm run dev
 Both require the Immich instance and database to be running. See `docs/ARCHITECTURE/IMMICH.md` for
 database schema details.
 
+### Creating an admin account
+
+Admin is a promotion, not a separate signup flow: register a normal account first (via the app's
+own `/signup` page), then set `ADMIN_EMAIL` in `.env` to that account's email and restart the
+backend. On every startup the backend checks `ADMIN_EMAIL` against its own `users` table and flips
+`is_admin` to true if it finds a match - if no account with that email exists yet, it just logs a
+warning and does nothing (register first, then restart).
+
+```bash
+# dev (bare uvicorn): stop it and re-run the same command from Development Setup above
+# packaged: docker compose -f docker-compose.app.yml up -d --force-recreate backend
+```
+
 ## Architecture
 
 The backend (FastAPI) is organized in layers:

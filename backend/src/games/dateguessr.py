@@ -9,6 +9,7 @@ scoring) lives in games/asset_rounds.py and is shared with Geoguessr - only the 
 per-round snapshot are Dateguessr-specific and live here.
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
 from typing import Any
@@ -75,9 +76,13 @@ class DateguessrRound(BaseRound):
             return None
         return abs((self.asset.date - self.guess).days)
 
-    def calculate_score(self) -> int:
+    def calculate_score(self, settings: Mapping[str, float] | None = None) -> int:
         assert self.days_off is not None  # BaseGame.play_round already set self.guess
-        return exp_decay_score(self.days_off, FLAT_SCORE_DAYS, DECAY_DAYS)
+        settings = settings or {}
+        flat_zone = settings.get("flat_score_days", FLAT_SCORE_DAYS)
+        decay = settings.get("decay_days", DECAY_DAYS)
+        max_score = int(settings.get("max_score", MAX_SCORE))
+        return exp_decay_score(self.days_off, flat_zone, decay, max_score)
 
     def to_payload(self) -> dict[str, Any]:
         return {

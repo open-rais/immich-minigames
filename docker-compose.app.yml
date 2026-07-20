@@ -54,6 +54,7 @@ services:
       IMMICH_SERVER_URL: ${IMMICH_SERVER_URL:-http://host.docker.internal:2283}
       IMMICH_API_KEY: ${IMMICH_API_KEY}
       JWT_SECRET: ${JWT_SECRET}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     restart: unless-stopped

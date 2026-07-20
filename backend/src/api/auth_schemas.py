@@ -40,6 +40,7 @@ class UserOut(BaseModel):
     username: str
     full_name: str
     skin_person_id: UUID | None
+    is_admin: bool
     created_at: datetime
 
     @classmethod
@@ -50,5 +51,6 @@ class UserOut(BaseModel):
             username=user.username,
             full_name=user.full_name,
             skin_person_id=user.skin_person_id,
+            is_admin=user.is_admin,
             created_at=user.created_at,
         )

@@ -20,12 +20,14 @@ from api.dto.immichdle import ImmichdlePlayRoundIn, ImmichdleRoundOut
 from api.dto.more_or_less import MoreOrLessPlayRoundIn, MoreOrLessRoundOut
 from api.dto.whos_that_person import WhosThatPersonPlayRoundIn, WhosThatPersonRoundOut
 from domain.person import Person
+from games.asset_rounds import AssetRoundsGame
 from games.base import BaseGame, BaseRound
 from games.dateguessr import DateguessrRound
 from games.geoguessr import GeoguessrRound
 from games.immichdle import ImmichdleGame, ImmichdleRound
 from games.more_or_less import MoreOrLessRound
-from games.whos_that_person import WhosThatPersonRound
+from games.whos_that_person import WhosThatPersonGame, WhosThatPersonRound
+from services.game_settings import SettingSpec
 from services.games_service import GameRecord, LeaderboardEntry, UnsupportedGameError
 
 
@@ -99,6 +101,12 @@ class GameOut(BaseModel):
     # an Immichdle game still in progress, where revealing it would be a straight cheat.
     target_person_id: UUID | None = None
     target_person_name: str | None = None
+    # Admin feature (ADMIN-FEATURE.md point #4) - the *live* configured total for this game
+    # instance (AssetRoundsGame.total_rounds / WhosThatPersonGame.total_people), so the frontend's
+    # round counter (e.g. "Round 2 of 5") reflects an admin override instead of a hardcoded
+    # display-only constant. Null for every other game, which has no such fixed/counted total.
+    total_rounds: int | None = None
+    total_people: int | None = None
 
     @classmethod
     def from_game(cls, game: BaseGame) -> "GameOut":
@@ -116,6 +124,8 @@ class GameOut(BaseModel):
             rounds=[round_out_from_round(r) for r in game.rounds],
             target_person_id=target_id,
             target_person_name=target_name,
+            total_rounds=game.total_rounds if isinstance(game, AssetRoundsGame) else None,
+            total_people=game.total_people if isinstance(game, WhosThatPersonGame) else None,
         )
 
 
@@ -213,3 +223,35 @@ class LeaderboardOut(BaseModel):
     @classmethod
     def from_entries(cls, window: LeaderboardWindow, entries: list[LeaderboardEntry]) -> "LeaderboardOut":
         return cls(window=window, entries=[LeaderboardEntryOut.from_entry(e) for e in entries])
+
+
+# -- admin game settings (ADMIN-FEATURE.md point #4, see services/game_settings.py) ---
+
+
+class GameSettingOut(BaseModel):
+    key: str
+    value: float
+    default: float
+    value_type: Literal["int", "float"]
+    min_value: float
+
+
+class GameSettingsOut(BaseModel):
+    game_type: str
+    settings: list[GameSettingOut]
+
+    @classmethod
+    def from_specs(cls, game_type: str, specs: list[SettingSpec], values: dict[str, float]) -> "GameSettingsOut":
+        return cls(
+            game_type=game_type,
+            settings=[
+                GameSettingOut(
+                    key=spec.key,
+                    value=values[spec.key],
+                    default=spec.default,
+                    value_type=spec.value_type,
+                    min_value=spec.min_value,
+                )
+                for spec in specs
+            ],
+        )
