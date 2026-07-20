@@ -4,6 +4,7 @@
   },
   "userMenu": {
     "trigger": "Menú de cuenta",
+    "adminPanel": "Admin",
     "language": "Idioma",
     "theme": "Tema",
     "themeOptions": {
@@ -169,6 +170,17 @@
     },
     "error": {
       "generic": "Algo salió mal. Intenta de nuevo."
+    }
+  },
+  "admin": {
+    "comingSoon": "Próximamente",
+    "users": {
+      "title": "Usuarios",
+      "description": "Administra las cuentas de la app"
+    },
+    "games": {
+      "title": "Juegos",
+      "description": "Edita la configuración de cada juego"
     }
   }
 }

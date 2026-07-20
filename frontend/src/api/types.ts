@@ -214,6 +214,9 @@ export interface User {
   // Cosmetic avatar (roadmap point E) - an Immich Person id, or null if none picked yet. Shown in
   // the header's user circle (see menu/UserMenu.tsx) via personThumbnailUrl.
   skin_person_id: string | null
+  // Admin feature (ADMIN-FEATURE.md) - promoted server-side via ADMIN_EMAIL, never set from the
+  // frontend. Gates the admin panel link (menu/UserMenu.tsx) and the /admin routes (admin/AdminLayout.tsx).
+  is_admin: boolean
   created_at: string
 }
 
