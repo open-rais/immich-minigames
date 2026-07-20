@@ -14,6 +14,7 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from api.admin_api import router as admin_router
+from api.admin_games_api import router as admin_games_router
 from api.auth_api import get_current_user_optional
 from api.auth_api import router as auth_router
 from api.deps import get_db_session, get_immich_service, get_ml_service
@@ -35,6 +36,7 @@ from services.ml_service import MLService
 router = APIRouter(prefix="/api/v1")
 router.include_router(auth_router)
 router.include_router(admin_router)
+router.include_router(admin_games_router)
 
 
 def get_games_service(

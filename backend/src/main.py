@@ -28,6 +28,7 @@ from services.auth_service import (
     UnauthorizedError,
     UsernameAlreadyExistsError,
 )
+from services.game_settings import InvalidGameSettingValueError, UnknownGameSettingError
 from services.games_service import (
     GameNotFoundError,
     GameOwnershipError,
@@ -78,5 +79,7 @@ app.add_exception_handler(InvalidCredentialsError, _error_handler(401))
 app.add_exception_handler(UnauthorizedError, _error_handler(401))
 app.add_exception_handler(EmailAlreadyExistsError, _error_handler(409))
 app.add_exception_handler(UsernameAlreadyExistsError, _error_handler(409))
+app.add_exception_handler(UnknownGameSettingError, _error_handler(400))
+app.add_exception_handler(InvalidGameSettingValueError, _error_handler(400))
 
 app.include_router(router)

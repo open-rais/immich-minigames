@@ -11,6 +11,7 @@ resolve/validate the guess and compute its clues before scoring (see calculate_s
 for why that split exists).
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
 from typing import Any, Literal
@@ -25,8 +26,12 @@ from services.ml_service import MLService
 GAME_TYPE = "immichdle"
 MODE_PERSON = "person"
 
-_STARTING_SCORE = 100
-_WRONG_GUESS_PENALTY = 5
+# Admin feature (ADMIN-FEATURE.md point #4) - public (no leading underscore) since
+# services/game_settings.py imports these as defaults for the admin-configurable
+# starting_score/wrong_guess_penalty settings, same convention already used by e.g.
+# asset_rounds.py's TOTAL_ROUNDS/MAX_SCORE.
+STARTING_SCORE = 100
+WRONG_GUESS_PENALTY = 5
 
 AgeComparison = Literal["older", "younger", "same", "unknown"]
 CountComparison = Literal["more", "less", "equal"]
@@ -169,9 +174,10 @@ class ImmichdleRound(BaseRound):
         assert self.guessed_person is not None
         return self.guessed_person.id == self.target.id
 
-    def calculate_score(self) -> int:
+    def calculate_score(self, settings: Mapping[str, float] | None = None) -> int:
         assert self.guessed_person is not None  # set by ImmichdleGame.play_round before this runs
-        return 0 if self.correct else -_WRONG_GUESS_PENALTY
+        penalty = (settings or {}).get("wrong_guess_penalty", WRONG_GUESS_PENALTY)
+        return 0 if self.correct else -int(penalty)
 
     def to_payload(self) -> dict[str, Any]:
         return {
@@ -203,8 +209,9 @@ class ImmichdleGame(BaseGame):
         rounds: list[ImmichdleRound],
         immich_service: ImmichService,
         ml_service: MLService | None = None,
-        score: int = _STARTING_SCORE,
+        score: int = STARTING_SCORE,
         finished: bool = False,
+        settings: Mapping[str, float] | None = None,
     ) -> None:
         super().__init__(
             id=id,
@@ -214,6 +221,7 @@ class ImmichdleGame(BaseGame):
             rounds=rounds,
             score=score,
             finished=finished,
+            settings=settings,
         )
         self._immich_service = immich_service
         # Injected by GamesService (see services/games_service.py's _game_kwargs), which is the only
@@ -232,7 +240,12 @@ class ImmichdleGame(BaseGame):
 
     @classmethod
     def start(
-        cls, id: UUID, owner: str, immich_service: ImmichService, ml_service: MLService | None = None
+        cls,
+        id: UUID,
+        owner: str,
+        immich_service: ImmichService,
+        ml_service: MLService | None = None,
+        settings: Mapping[str, float] | None = None,
     ) -> "ImmichdleGame":
         [target_person] = immich_service.get_persons(named_only=True, random=True, limit=1)
         has_alternative = immich_service.get_persons(
@@ -245,13 +258,15 @@ class ImmichdleGame(BaseGame):
             target_person, first_asset_date=immich_service.get_person_first_asset_date(target_person.id)
         )
         first_round = ImmichdleRound(id=uuid4(), game_id=id, round_index=1, target=target)
+        starting_score = int((settings or {}).get("starting_score", STARTING_SCORE))
         return cls(
             id=id,
             owner=owner,
             rounds=[first_round],
             immich_service=immich_service,
             ml_service=ml_service,
-            score=_STARTING_SCORE,
+            score=starting_score,
+            settings=settings,
         )
 
     def _guessed_person_ids(self) -> frozenset[UUID]:
@@ -280,7 +295,7 @@ class ImmichdleGame(BaseGame):
             assets_together=self._immich_service.get_assets_together_count(current.target.id, guessed.id),
         )
         current.shown_entities = [guessed.id]
-        current.score_delta = current.calculate_score()
+        current.score_delta = current.calculate_score(self._settings)
         self.score = max(0, self.score + current.score_delta)
 
         if self.has_next_round():

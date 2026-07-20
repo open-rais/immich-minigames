@@ -23,6 +23,7 @@ from games.whos_that_person import GAME_TYPE as WHOS_THAT_PERSON_TYPE
 from games.whos_that_person import MODE_NAMED_FACES, WhosThatPersonGame, WhosThatPersonRound
 from persistence.games import GameModel, RoundModel
 from persistence.users import UserModel
+from services.game_settings import GameSettingsService
 from services.immich_service import ImmichService
 from services.ml_service import MLService
 
@@ -86,7 +87,11 @@ class RoundNotPendingError(Exception):
 
 class GamesService:
     def __init__(
-        self, session: Session, immich_service: ImmichService, ml_service: MLService | None = None
+        self,
+        session: Session,
+        immich_service: ImmichService,
+        ml_service: MLService | None = None,
+        game_settings_service: GameSettingsService | None = None,
     ) -> None:
         self._session = session
         self._immich_service = immich_service
@@ -96,14 +101,21 @@ class GamesService:
         # rather than hidden inside ImmichdleGame's own constructor, and can be swapped for a fake
         # in tests.
         self._ml_service = ml_service or MLService()
+        # Admin feature (ADMIN-FEATURE.md point #4) - same optional/self-constructing pattern.
+        self._game_settings_service = game_settings_service or GameSettingsService(session)
 
-    def _game_kwargs(self, game_class: type[BaseGame]) -> dict[str, Any]:
+    def _game_kwargs(self, game_class: type[BaseGame], game_type: str) -> dict[str, Any]:
         """Constructor/`start()` kwargs every game needs, plus whichever extra ones a specific game
         class needs beyond that - today only ImmichdleGame's MLService (see games/immichdle.py).
         Centralizing the "which game needs what" knowledge here means a new game with its own extra
         dependency only ever needs one line added in this one method, not a change spread across
-        every call site that builds a game."""
-        kwargs: dict[str, Any] = {"immich_service": self._immich_service}
+        every call site that builds a game. `game_type` is a plain str (not derived from
+        `game_class`) since not every concrete game class exposes it as a class attribute - callers
+        already have the string in scope (the (game_type, mode) key that picked this spec)."""
+        kwargs: dict[str, Any] = {
+            "immich_service": self._immich_service,
+            "settings": self._game_settings_service.get_settings(game_type),
+        }
         if game_class is ImmichdleGame:
             kwargs["ml_service"] = self._ml_service
         return kwargs
@@ -115,7 +127,7 @@ class GamesService:
         if spec is None:
             raise UnsupportedGameError(f"unsupported game/mode: {game_type}/{mode}")
 
-        game = spec.game_class.start(id=uuid4(), owner=owner, **self._game_kwargs(spec.game_class))
+        game = spec.game_class.start(id=uuid4(), owner=owner, **self._game_kwargs(spec.game_class, game_type))
         self._save_new_game(game, user_id=user_id)
         return game
 
@@ -213,7 +225,7 @@ class GamesService:
             rounds=rounds,
             score=game_row.score,
             finished=game_row.finished,
-            **self._game_kwargs(spec.game_class),
+            **self._game_kwargs(spec.game_class, game_row.game_type),
         )
 
     def _save_new_game(self, game: BaseGame, user_id: UUID | None = None) -> None:

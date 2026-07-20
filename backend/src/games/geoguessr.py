@@ -10,6 +10,7 @@ and per-round snapshot are Geoguessr-specific and live here.
 """
 
 import math
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 from uuid import UUID, uuid4
@@ -101,9 +102,13 @@ class GeoguessrRound(BaseRound):
             return None
         return haversine_km(self.asset.latitude, self.asset.longitude, self.guess.latitude, self.guess.longitude)
 
-    def calculate_score(self) -> int:
+    def calculate_score(self, settings: Mapping[str, float] | None = None) -> int:
         assert self.distance_km is not None  # BaseGame.play_round already set self.guess
-        return exp_decay_score(self.distance_km, FLAT_SCORE_RADIUS_KM, DECAY_KM)
+        settings = settings or {}
+        flat_zone = settings.get("flat_score_radius_km", FLAT_SCORE_RADIUS_KM)
+        decay = settings.get("decay_km", DECAY_KM)
+        max_score = int(settings.get("max_score", MAX_SCORE))
+        return exp_decay_score(self.distance_km, flat_zone, decay, max_score)
 
     def to_payload(self) -> dict[str, Any]:
         return {
