@@ -148,3 +148,41 @@ class TestPlayRound:
         )
 
         assert response.status_code == 409
+
+
+class TestRateLimit:
+    def test_create_game_returns_429_after_the_limit(self, client):
+        responses = [
+            client.post(
+                "/api/v1/games",
+                json={"type": "more-or-less", "mode": "personAssets"},
+                headers={"X-Owner-Id": str(uuid4())},
+            )
+            for _ in range(31)
+        ]
+
+        assert all(r.status_code == 201 for r in responses[:30])
+        assert responses[30].status_code == 429
+
+    def test_play_round_returns_429_after_the_limit(self, client):
+        owner = str(uuid4())
+        game = _create_game(client, owner)
+        first_round = game["rounds"][0]
+
+        # Only the first call genuinely answers the pending round (200); the rest hit the same
+        # now-answered round_id, which would normally 409. The rate limit is checked before the
+        # route body runs though, so every call still counts against the budget regardless of
+        # what status the handler would've returned - no need to fabricate 30 real correct guesses
+        # across fresh rounds, which isn't possible from outside without seeing the hidden count.
+        responses = [
+            client.post(
+                f"/api/v1/games/{game['id']}/rounds/{first_round['id']}",
+                json={"guess": "more"},
+                headers={"X-Owner-Id": owner},
+            )
+            for _ in range(31)
+        ]
+
+        assert responses[0].status_code == 200
+        assert all(r.status_code == 409 for r in responses[1:30])
+        assert responses[30].status_code == 429
