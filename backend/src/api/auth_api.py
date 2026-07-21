@@ -50,18 +50,28 @@ def get_current_user_optional(
         return None
 
 
+def _cookie_attrs() -> dict[str, object]:
+    """Shared between _set_session_cookie and logout - browsers match a cookie for deletion by
+    (name, domain, path), but several also expect SameSite/Secure/HttpOnly to match for the
+    deletion to reliably take (docs/TODO/CODE-REVIEW.md #12) - reading both from here means they
+    can't drift again. SameSite=Lax already blocks the cookie from riding along on cross-site
+    POSTs, which covers CSRF for what this endpoint set does today. secure comes from
+    settings.cookie_secure (docs/TODO/CODE-REVIEW.md #11) - false by default since the dev stack
+    and docker-compose.app.yml both serve plain HTTP, set true behind a TLS-terminating proxy."""
+    return {
+        "path": "/",
+        "httponly": True,
+        "samesite": "lax",
+        "secure": get_settings().cookie_secure,
+    }
+
+
 def _set_session_cookie(response: Response, token: str) -> None:
-    # Secure=False for now - both the dev stack and the packaged docker-compose.app.yml serve
-    # over plain HTTP (see frontend/nginx.conf.template); revisit if an HTTPS deployment is ever
-    # documented. SameSite=Lax already blocks the cookie from riding along on cross-site POSTs,
-    # which covers CSRF for what this endpoint set does today.
     response.set_cookie(
         key=_COOKIE_NAME,
         value=token,
-        httponly=True,
-        samesite="lax",
-        secure=False,
         max_age=get_settings().jwt_expire_days * 24 * 60 * 60,
+        **_cookie_attrs(),
     )
 
 
@@ -98,7 +108,7 @@ def login(
 
 @router.post("/logout", status_code=204)
 def logout(response: Response) -> None:
-    response.delete_cookie(_COOKIE_NAME)
+    response.delete_cookie(_COOKIE_NAME, **_cookie_attrs())
 
 
 @router.get("/me", response_model=UserOut)

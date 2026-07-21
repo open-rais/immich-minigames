@@ -40,6 +40,11 @@ class Settings(BaseSettings):
     # server-side session table to selectively revoke, see docs/ARCHITECTURE/BACKEND.md).
     jwt_secret: str
     jwt_expire_days: int = 30
+    # Whether the session cookie is marked Secure (HTTPS-only). False by default because the dev
+    # stack and docker-compose.app.yml both serve plain HTTP - set to true if this is deployed
+    # behind a TLS-terminating reverse proxy (the expected way to self-host this), or the JWT
+    # cookie keeps going out without the Secure flag even over HTTPS.
+    cookie_secure: bool = False
 
     # Admin feature (ADMIN-FEATURE.md point #1) - promotion only, not account creation: if a user
     # already registered (via /signup) with this email, services/admin_bootstrap.py flips their

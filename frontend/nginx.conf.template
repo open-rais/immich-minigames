@@ -4,6 +4,28 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    # Defense in depth (docs/TODO/CODE-REVIEW.md #13) - `always` sends these on error responses
+    # too, not just 2xx. Both location blocks below inherit these automatically since neither
+    # declares its own add_header (nginx only breaks that inheritance for a location that adds its
+    # own - see the asset-caching location's comment for the one place that matters here).
+    #
+    # CSP is scoped to exactly what this app needs, checked against the actual code: 'self' for
+    # everything by default; script/style need nothing beyond 'self' (the old dark/light
+    # flash-prevention snippet was moved from an inline <script> to public/theme-init.js so
+    # script-src doesn't need 'unsafe-inline', and React's style={{}} prop sets styles via the
+    # CSSOM, not style="" attributes, so style-src isn't affected by inline styles either); img-src
+    # needs data: for maplibre-gl's own CSS (data:image/svg+xml zoom-control icons); connect-src
+    # and worker-src need to allow Geoguessr's map (games/Geoguessr/mapStyle.ts), which fetches
+    # vector tiles/glyphs live from tiles.openfreemap.org and parses them in a worker.
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options DENY always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://tiles.openfreemap.org; worker-src 'self' blob:; frame-ancestors 'self'; base-uri 'self'; form-action 'self';" always;
+
+    gzip on;
+    gzip_min_length 512;
+    gzip_types text/css application/javascript application/json image/svg+xml;
+
     # Reverse-proxies to the backend container so the browser only ever talks to this origin -
     # mirrors the Vite dev server's own proxy (frontend/vite.config.ts) and matches apiClient's
     # relative baseURL (frontend/src/api/client.ts), avoiding the need for backend CORS.
@@ -23,6 +45,21 @@ server {
         proxy_pass $backend_upstream;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    # Vite puts every hashed build output under /assets/ (confirmed against a real `npm run
+    # build`) - unlike e.g. /theme-init.js, a plain public/ file with a fixed, unhashed name that a
+    # future edit needs to actually reach already-visiting browsers. Matching by path prefix here
+    # rather than just a .js/.css/.woff2 extension is what keeps this scoped to the genuinely
+    # content-addressed files - a cached copy under /assets/ is always either the exact current
+    # version or irrelevant (a new deploy ships new hashed filenames), safe to cache for a year.
+    # This location declares its own add_header, which (nginx quirk) means it does NOT inherit the
+    # security headers above - deliberate, not an oversight: CSP/X-Frame-Options/Referrer-Policy
+    # only matter for the document response a browser actually navigates to, never for a
+    # sub-resource fetched from here.
+    location /assets/ {
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        try_files $uri =404;
     }
 
     # Client-routed React app: fall back to index.html for any unknown path.
