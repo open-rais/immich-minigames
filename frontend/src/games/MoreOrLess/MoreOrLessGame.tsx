@@ -10,6 +10,7 @@ import type { GameComponentProps } from "../catalog"
 import { ErrorScreen, FinishedScreen, IdleScreen } from "../shared/GameScreens"
 import { GuardedBackButton } from "../shared/GuardedBackButton"
 import { ScoreBadge } from "../shared/ScoreBadge"
+import { useGuardedRequests } from "../shared/useGuardedRequests"
 import type { CandidatePhase } from "./CandidateCard"
 import { CandidateCard } from "./CandidateCard"
 import { PersonCard } from "./PersonCard"
@@ -60,14 +61,12 @@ export function MoreOrLessGame({ coverUrl }: GameComponentProps) {
   const [slideOffset, setSlideOffset] = useState({ x: 0, y: 0 })
   const slidingCardRef = useRef<HTMLDivElement>(null)
 
-  // Synchronous re-entrancy guards - a click handler can fire twice before React re-renders
-  // (e.g. a fast double-click), so state like `candidatePhase`/`busy` alone isn't enough to stop
-  // a second network call; these refs are checked and set immediately, no render involved.
+  const { isCurrent, guarded, discardInFlight } = useGuardedRequests()
+  // One in-flight ref per action - start vs guess don't need to block each other, but each needs its
+  // own re-entrancy guard against a fast double-click firing before React re-renders (state like
+  // `candidatePhase`/`busy` alone isn't enough to stop a second network call).
   const guessInFlightRef = useRef(false)
   const startInFlightRef = useRef(false)
-  // Bumped on every new start/guess and on "Back" - a response for a request that's no longer
-  // current (e.g. the user hit Back while a guess was still in flight) is ignored when it arrives.
-  const requestTokenRef = useRef(0)
 
   const { value: displayCount, done: countDone } = useCountUp(countTarget, COUNT_DURATION_MS)
 
@@ -105,49 +104,45 @@ export function MoreOrLessGame({ coverUrl }: GameComponentProps) {
   }, [transitionEnabled])
 
   async function startGame() {
-    if (startInFlightRef.current) return
-    startInFlightRef.current = true
-    const token = ++requestTokenRef.current
-    setBusy(true)
-    try {
-      const g = await createGame(GAME_TYPE, MODE)
-      if (requestTokenRef.current !== token) return
-      const round = g.rounds[g.rounds.length - 1]
-      assertMoreOrLess(round)
-      setGame(g)
-      setReference({ id: round.reference_id, name: round.reference_name, assetCount: round.reference_asset_count })
-      setCandidate({ id: round.candidate_id, name: round.candidate_name, roundId: round.id })
-      setCandidatePhase("guessing")
-      setCountTarget(null)
-      setRevealResult(null)
-      setSliding(false)
-      setScreen("playing")
-    } catch {
-      if (requestTokenRef.current === token) setScreen("error")
-    } finally {
-      startInFlightRef.current = false
-      if (requestTokenRef.current === token) setBusy(false)
-    }
+    await guarded(startInFlightRef, async (token) => {
+      setBusy(true)
+      try {
+        const g = await createGame(GAME_TYPE, MODE)
+        if (!isCurrent(token)) return
+        const round = g.rounds[g.rounds.length - 1]
+        assertMoreOrLess(round)
+        setGame(g)
+        setReference({ id: round.reference_id, name: round.reference_name, assetCount: round.reference_asset_count })
+        setCandidate({ id: round.candidate_id, name: round.candidate_name, roundId: round.id })
+        setCandidatePhase("guessing")
+        setCountTarget(null)
+        setRevealResult(null)
+        setSliding(false)
+        setScreen("playing")
+      } catch {
+        if (isCurrent(token)) setScreen("error")
+      } finally {
+        if (isCurrent(token)) setBusy(false)
+      }
+    })
   }
 
   async function handleGuess(guess: MoreOrLessGuess) {
-    if (guessInFlightRef.current || !game || !candidate || candidatePhase !== "guessing") return
-    guessInFlightRef.current = true
-    const token = ++requestTokenRef.current
-    setCandidatePhase("counting")
-    try {
-      const result = await playRound(game.id, candidate.roundId, { guess })
-      if (requestTokenRef.current !== token) return
-      assertMoreOrLess(result.answered_round)
-      if (result.next_round) assertMoreOrLess(result.next_round)
-      setGame((g) => (g ? { ...g, score: result.score, finished: result.finished } : g))
-      setRevealResult({ correct: result.correct, nextRound: result.next_round })
-      setCountTarget(result.answered_round.candidate_asset_count)
-    } catch {
-      if (requestTokenRef.current === token) setScreen("error")
-    } finally {
-      guessInFlightRef.current = false
-    }
+    if (!game || !candidate || candidatePhase !== "guessing") return
+    await guarded(guessInFlightRef, async (token) => {
+      setCandidatePhase("counting")
+      try {
+        const result = await playRound(game.id, candidate.roundId, { guess })
+        if (!isCurrent(token)) return
+        assertMoreOrLess(result.answered_round)
+        if (result.next_round) assertMoreOrLess(result.next_round)
+        setGame((g) => (g ? { ...g, score: result.score, finished: result.finished } : g))
+        setRevealResult({ correct: result.correct, nextRound: result.next_round })
+        setCountTarget(result.answered_round.candidate_asset_count)
+      } catch {
+        if (isCurrent(token)) setScreen("error")
+      }
+    })
   }
 
   function handleSlideEnd(e: TransitionEvent<HTMLDivElement>) {
@@ -165,7 +160,7 @@ export function MoreOrLessGame({ coverUrl }: GameComponentProps) {
   }
 
   function backToIdle() {
-    requestTokenRef.current++ // discard any in-flight guess/start response that arrives later
+    discardInFlight() // discard any in-flight guess/start response that arrives later
     setScreen("idle")
   }
 
