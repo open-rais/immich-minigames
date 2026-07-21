@@ -5,8 +5,8 @@ import { personThumbnailUrl, searchPersons } from "../../api/games"
 import type { PersonSearchResultOut } from "../../api/types"
 import { PersonAvatar } from "./PersonAvatar"
 
-const DEBOUNCE_MS = 250
-const PAGE_SIZE = 3
+const DEBOUNCE_MS = 400
+const PAGE_SIZE = 5
 // Load the next page once the results list is scrolled to within this many px of the bottom.
 const SCROLL_THRESHOLD_PX = 48
 
@@ -32,8 +32,9 @@ function isTextEntryElement(el: Element): boolean {
 // word-prefix match against named people (see api/games.ts's searchPersons / backend's
 // search_persons), already-picked people filtered out of the results rather than shown disabled
 // (excludeIds's callers use it for already-guessed people, but it's just as valid for "don't show
-// the current skin again"). Results page in via infinite scroll (see handleResultsScroll) -
-// PAGE_SIZE is deliberately small so scrolling near the bottom of the dropdown is the common case.
+// the current skin again"). Results page in via infinite scroll (see handleResultsScroll) - the
+// dropdown's max-height (see the results box className below) only shows VISIBLE_ROWS rows at
+// once, so scrolling is the common case even though PAGE_SIZE fetches more than that per page.
 export function PersonSearchInput({ excludeIds, onSelect, disabled, focusOnTypeAnywhere = false }: PersonSearchInputProps) {
   const { t } = useTranslation()
   const [query, setQuery] = useState("")
@@ -102,7 +103,12 @@ export function PersonSearchInput({ excludeIds, onSelect, disabled, focusOnTypeA
       if (requestTokenRef.current === token) setHasMore(false)
       advanceAfterLoadRef.current = false
     } finally {
-      if (requestTokenRef.current === token) setLoadingMore(false)
+      // Unconditional: loadMore()'s own guard (loadingMore already true) prevents a second call
+      // from overlapping this one, so there's never a newer in-flight loadMore whose reset this
+      // could clobber - only the debounced search effect's token bump could race here, and if it
+      // does, this fetch's result is simply stale (dropped above) while loadingMore still must
+      // clear or every future loadMore() call is permanently blocked by its own guard.
+      setLoadingMore(false)
     }
   }
 
@@ -240,13 +246,16 @@ export function PersonSearchInput({ excludeIds, onSelect, disabled, focusOnTypeA
       {open && query.trim() && (
         // max-h + overflow-y-auto (not overflow-hidden) - the input above always stays put and
         // fully visible; only this results list itself scrolls once there are more matches than
-        // fit, same as any standard autocomplete dropdown.
+        // fit, same as any standard autocomplete dropdown. The max-h values below cap the box at
+        // roughly 3 rows tall (row height = avatar size + py-2.5 padding, which differs at the
+        // md breakpoint since PersonAvatar's avatar grows from h-10 to h-14 there) so any further
+        // matches require scrolling rather than growing the dropdown indefinitely.
         <div
           ref={resultsBoxRef}
           onScroll={handleResultsScroll}
           id="person-search-results"
           role="listbox"
-          className="absolute top-full z-40 mt-2 max-h-64 w-full overflow-y-auto overscroll-contain rounded-2xl border border-line bg-surface shadow-card"
+          className="absolute top-full z-40 mt-2 max-h-[180px] w-full overflow-y-auto overscroll-contain rounded-2xl border border-line bg-surface shadow-card md:max-h-[228px]"
         >
           {loading ? (
             <p className="px-4 py-3 text-sm text-muted">{t("immichdle.searching")}</p>
