@@ -203,7 +203,12 @@ class GamesService:
     # -- persistence glue ---------------------------------------------------
 
     def _load_game(self, game_id: UUID, owner: str, user: UserModel | None = None) -> BaseGame:
-        game_row = self._session.get(GameModel, game_id)
+        # SELECT ... FOR UPDATE - this is the single load point for both viewing a game (get_game)
+        # and loading it right before playing a round, so locking it here closes the race where two
+        # simultaneous plays of the same round both pass play_loaded_round's current_round.id check
+        # and both score (docs/TODO/CODE-REVIEW.md #6). Everything happens in one transaction per
+        # request (api/deps.py's get_db_session), so the lock is held for at most one request.
+        game_row = self._session.get(GameModel, game_id, with_for_update=True)
         if game_row is None:
             raise GameNotFoundError(f"game {game_id} not found")
         # A game created while logged in (user_id set) is owned by that account forever - the
