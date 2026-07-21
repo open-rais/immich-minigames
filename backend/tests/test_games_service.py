@@ -74,6 +74,60 @@ class TestGetGame:
         with pytest.raises(GameNotFoundError):
             games_service.get_game(uuid.uuid4(), owner="owner-a")
 
+    def test_logged_in_game_is_reachable_by_user_even_with_wrong_owner_header(self, games_service, auth_service):
+        # The account is the real proof of ownership once a game is tied to one - a stale/rotated
+        # X-Owner-Id shouldn't lock the owner out of their own game (see docs/TODO/CODE-REVIEW.md #3).
+        alice = _register_user(auth_service)
+        game = games_service.create_game(
+            owner="owner-a", game_type="more-or-less", mode="personAssets", user_id=alice.id
+        )
+
+        reloaded = games_service.get_game(game.id, owner="someone-else", user=alice)
+
+        assert reloaded.id == game.id
+
+    def test_logged_in_game_rejects_a_different_account_even_with_matching_owner_header(
+        self, games_service, auth_service
+    ):
+        # This is the actual bug #3 fixes: a leaked/guessed X-Owner-Id used to be enough on its
+        # own to read and play someone else's logged-in game.
+        alice = _register_user(auth_service)
+        bob = _register_user(auth_service)
+        game = games_service.create_game(
+            owner="owner-a", game_type="more-or-less", mode="personAssets", user_id=alice.id
+        )
+
+        with pytest.raises(GameOwnershipError):
+            games_service.get_game(game.id, owner="owner-a", user=bob)
+
+    def test_logged_in_game_rejects_an_anonymous_request_even_with_matching_owner_header(
+        self, games_service, auth_service
+    ):
+        alice = _register_user(auth_service)
+        game = games_service.create_game(
+            owner="owner-a", game_type="more-or-less", mode="personAssets", user_id=alice.id
+        )
+
+        with pytest.raises(GameOwnershipError):
+            games_service.get_game(game.id, owner="owner-a", user=None)
+
+    def test_anonymous_game_stays_owner_only_even_for_a_logged_in_request(self, games_service, auth_service):
+        # user_id is fixed at creation and never backfilled - logging in later doesn't grant
+        # access to a game started anonymously under a different/wrong owner id.
+        alice = _register_user(auth_service)
+        game = games_service.create_game(owner="owner-a", game_type="more-or-less", mode="personAssets")
+
+        with pytest.raises(GameOwnershipError):
+            games_service.get_game(game.id, owner="someone-else", user=alice)
+
+    def test_anonymous_game_is_still_reachable_by_owner_while_logged_in(self, games_service, auth_service):
+        alice = _register_user(auth_service)
+        game = games_service.create_game(owner="owner-a", game_type="more-or-less", mode="personAssets")
+
+        reloaded = games_service.get_game(game.id, owner="owner-a", user=alice)
+
+        assert reloaded.id == game.id
+
 
 class TestPlayRound:
     def test_correct_guess_persists_the_new_round(self, games_service):

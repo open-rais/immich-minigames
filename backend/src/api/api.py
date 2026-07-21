@@ -95,9 +95,10 @@ def get_leaderboard(
 def get_game(
     game_id: UUID,
     owner: Annotated[str, Depends(get_owner_id)],
+    user: Annotated[UserModel | None, Depends(get_current_user_optional)],
     games_service: Annotated[GamesService, Depends(get_games_service)],
 ) -> GameOut:
-    game = games_service.get_game(game_id, owner)
+    game = games_service.get_game(game_id, owner, user)
     return GameOut.from_game(game)
 
 
@@ -107,11 +108,12 @@ def play_round(
     round_id: UUID,
     body: Annotated[dict[str, Any], Body()],
     owner: Annotated[str, Depends(get_owner_id)],
+    user: Annotated[UserModel | None, Depends(get_current_user_optional)],
     games_service: Annotated[GamesService, Depends(get_games_service)],
 ) -> PlayRoundOut:
     # game_id already fixes this round's game/mode - looked up first so the guess body only ever
     # needs to hold the guess itself, not also restate a game_type the client could get wrong.
-    existing_game = games_service.get_game(game_id, owner)
+    existing_game = games_service.get_game(game_id, owner, user)
     try:
         guess = parse_guess(existing_game.current_round, body)
     except ValidationError as exc:

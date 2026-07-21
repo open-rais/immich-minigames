@@ -11,6 +11,18 @@ def _create_game(client, owner: str) -> dict:
     return response.json()
 
 
+def _register(client) -> None:
+    unique = uuid4().hex[:8]
+    body = {
+        "email": f"user-{unique}@example.com",
+        "username": f"user-{unique}",
+        "full_name": "Test User",
+        "password": "correct-horse-battery-staple",
+    }
+    response = client.post("/api/v1/auth/register", json=body)
+    assert response.status_code == 201
+
+
 class TestCreateGame:
     def test_returns_a_game_with_a_redacted_first_round(self, client):
         owner = str(uuid4())
@@ -58,6 +70,40 @@ class TestGetGame:
         response = client.get(f"/api/v1/games/{uuid4()}", headers={"X-Owner-Id": str(uuid4())})
 
         assert response.status_code == 404
+
+    def test_logged_in_game_is_reachable_with_a_different_owner_header(self, client):
+        # Once a game is tied to an account (see docs/TODO/CODE-REVIEW.md #3), the account is the
+        # real proof of ownership - a stale/rotated X-Owner-Id shouldn't lock the owner out.
+        owner = str(uuid4())
+        _register(client)
+        game = _create_game(client, owner)
+
+        response = client.get(f"/api/v1/games/{game['id']}", headers={"X-Owner-Id": str(uuid4())})
+
+        assert response.status_code == 200
+
+    def test_logged_in_game_returns_403_once_logged_out(self, client):
+        owner = str(uuid4())
+        _register(client)
+        game = _create_game(client, owner)
+        client.cookies.clear()
+
+        response = client.get(f"/api/v1/games/{game['id']}", headers={"X-Owner-Id": owner})
+
+        assert response.status_code == 403
+
+    def test_logged_in_game_returns_403_for_a_different_account(self, client):
+        # This is the actual bug #3 fixes: a leaked/guessed X-Owner-Id used to be enough on its
+        # own to read and play someone else's logged-in game.
+        owner = str(uuid4())
+        _register(client)
+        game = _create_game(client, owner)
+        client.cookies.clear()
+        _register(client)
+
+        response = client.get(f"/api/v1/games/{game['id']}", headers={"X-Owner-Id": owner})
+
+        assert response.status_code == 403
 
 
 class TestPlayRound:
