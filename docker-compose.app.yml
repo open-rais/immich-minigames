@@ -7,11 +7,19 @@
 # Usage: docker compose -f docker-compose.app.yml up -d
 # Then open http://localhost:${FRONTEND_PORT:-3000}.
 #
-# `db-init` runs once before `backend` and provisions the scoped Postgres role the backend
-# actually runs as (see backend/src/scripts/bootstrap_db_role.py) - it's the only thing in this
-# stack that ever sees Immich's admin DB credentials (DB_USERNAME/DB_PASSWORD), and it exits
-# immediately after. `backend` never receives those - only its own scoped DB_APP_USERNAME role.
-# Re-run it standalone any time DB_APP_PASSWORD changes:
+# `db-init` runs once before `backend` and provisions both the scoped Postgres role the backend
+# actually runs as AND this app's own database (see backend/src/scripts/bootstrap_db_role.py) -
+# it's the only thing in this stack that ever sees Immich's admin DB credentials
+# (DB_USERNAME/DB_PASSWORD), and it exits immediately after. `backend` never receives those - only
+# its own scoped DB_APP_USERNAME role.
+#
+# This app's tables live in their own database (DB_APP_DATABASE_NAME), never inside Immich's:
+# Immich's `pg_dump` backup is scoped to its own database, so tables kept in there end up in
+# Immich's dumps and break its restore. Installs predating that split are migrated automatically
+# by db-init on first run.
+#
+# Re-run it standalone any time DB_APP_PASSWORD changes, or after restoring an Immich backup
+# taken before the split (which resurrects the old schema):
 #   docker compose -f docker-compose.app.yml run --rm db-init
 #
 
@@ -20,11 +28,15 @@ name: immich-minigames-app
 services:
   db-init:
     image: ghcr.io/open-rais/immich-minigames-backend:${MINIGAMES_VERSION:-edge}
-    command: ['uv', 'run', 'python', 'src/scripts/bootstrap_db_role.py']
+    # `-m` rather than a file path: running the file directly puts src/scripts/ on sys.path
+    # instead of src/, which breaks the script's own `from scripts.migrate_legacy_schema import`.
+    command: ['uv', 'run', 'python', '-m', 'scripts.bootstrap_db_role']
     environment:
+      PYTHONPATH: /app/src
       DB_HOST: ${DB_HOST:-host.docker.internal}
       DB_PORT: ${DB_PORT:-5432}
       DB_DATABASE_NAME: ${DB_DATABASE_NAME}
+      DB_APP_DATABASE_NAME: ${DB_APP_DATABASE_NAME:-minigames}
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_APP_USERNAME: ${DB_APP_USERNAME}
@@ -49,6 +61,7 @@ services:
       DB_HOST: ${DB_HOST:-host.docker.internal}
       DB_PORT: ${DB_PORT:-5432}
       DB_DATABASE_NAME: ${DB_DATABASE_NAME}
+      DB_APP_DATABASE_NAME: ${DB_APP_DATABASE_NAME:-minigames}
       DB_APP_USERNAME: ${DB_APP_USERNAME}
       DB_APP_PASSWORD: ${DB_APP_PASSWORD}
       IMMICH_SERVER_URL: ${IMMICH_SERVER_URL:-http://host.docker.internal:2283}

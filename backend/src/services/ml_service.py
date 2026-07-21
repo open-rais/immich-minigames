@@ -10,7 +10,7 @@ from uuid import UUID
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
-from persistence.base import get_engine
+from persistence.immich_db import get_immich_engine
 
 # MAX(similarity) over every face-pair between the two people, not a single representative-face
 # comparison - a single arbitrary/off-angle photo per person could undersell real resemblance,
@@ -32,7 +32,7 @@ _FACE_SIMILARITY_QUERY = text("""
 
 class MLService:
     def __init__(self, engine: Engine | None = None) -> None:
-        self._engine = engine or get_engine()
+        self._engine = engine or get_immich_engine()
 
     def face_similarity(self, person_a_id: UUID, person_b_id: UUID) -> float | None:
         """Highest face-similarity (cosine, 0..1) between any face of person_a and any face of

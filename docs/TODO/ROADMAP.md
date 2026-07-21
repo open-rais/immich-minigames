@@ -36,17 +36,32 @@ Cuando se complete un item, marcar su checkbox.
 - [X] a. usar Claude Haiku para traducir la documentación a Inglés
 - [X] b. Actualizar documentación a estado actual, además agregando cómo instalar/usar (env, docker-compose), que juegos están implementados, features que hay/no hay
 <!-- Publicar -->
-- [ ] 8. API y frontend para Immichdle (persondle)
+- [X] 8. API y frontend para Immichdle (persondle)
 <!-- v0.4.0 -->
-- [ ] 10. API y frontend para Who'sThatPerson
+- [X] 10. API y frontend para Who'sThatPerson
+- [X] c. Opus code-review for smells, duplication, optimization, security
 <!-- v0.5.0 -->
 <!-- Aquí irá {Daily game} y {logged user features} -->
-- [ ] E. Daily games (misma seed para cada usuario, solo se juega 1 vez al día)
-- [ ] F. Aquí van las features de usuarios loggeados:
-  - Leaderboard por juego
-  - Leaderboard de daily
-  - Mostrar records personales por juego
-  - Mostrar resumen de juegos jugados
+- [X] E. Aquí van las features de usuarios loggeados:
+  - Mostrar records personales por juego (Ver implementación de albumes en immich, marcar el RP bajo al nombre del gamemode en menu principal, los daily tendrán el puntaje o un mensaje de "no jugado")
+  - Página para editar usuario:
+    - Cambiar username/nombre completo/skin
+    - Se podrá seleccionar una persona de la librería de immich como "skin cosmetica"
+      - Si puede ser repetido (Es cosmetico, no necesariamente será la persona del usuario)
+      - En el header del menú, si hay una persona seleccionada, se mostrará esa cara en el círculo del usuario
+- [X] F. Leaderboards:
+  - Leaderboard por juego (Se puede ir a la ventana de leaderboard al ):
+    - Será una tabla de top 15:
+      - Se podrá ver historico/semanal/diario con la foto, nombre y puntaje
+- [x] d. Actualizar documentación con Haiku
+  - Mencionar en README.md que el proyecto está principalmente vibecodeado:
+    - Recalcar que tengo un background en desarrollo de software, por lo que estoy haciendo auditoría constante + preocupandome en priorizar la seguridad de la instancia de immich al trabajar con Claude Code
+  - Agregar un nuevo docs/INSTALL.md con distintas maneras de instalar el código o problemas comúnes
+  - Actualizar otros archivos de documentación para cumplor con el estado actual
+<!-- Crear nueva release -->
+- [ ] G. Daily games (misma seed para cada usuario, solo se juega 1 vez al día):
+  - Se creará una nueva sección en menu principal, como si fuera un juego pero con el nombre "daily". Tendrá los mismos modos de juegos de abajo
+  - Leaderboard de dailyGame
 - [ ] 9. API y frontend para Timeline
 <!-- v0.6.0 -->
 - [ ] 11. Agregar sistema de pistas a Immichdle
@@ -80,9 +95,8 @@ avanzando el proyecto. Sí tienen restricciones de orden ya decididas:
 | **Redis** | 10 | - | Crucial para el proyecto, pero aún no entiendo cómo se usa ni cuales son sus casos de uso (soy principiante). Se prefiere ver el proyecto funcionando correctamente primero (al menos hasta el item 9) antes de meterlo. Nota: el caché simple en proceso de `get_immich_service()`/`Settings` (`functools.lru_cache`, sin estado compartido entre procesos) ya se resolvió en el punto 4 sin Redis - esta fila es sobre un caché real (compartido/distribuido), no sobre eso. | <!-- potencial v1.0.0 según lo demás que haya implementado -->
 | **User login** | 7 | 15 | - | <!-- v0.+1.0 -->
 | **Daily game** | 15 | - | Depende de tener login. Momento exacto sin definir, se decidirá según avance el proyecto. | <!-- v0.+1.0 -->
-| **Report incorrect** | 11 | - | Agrega una tabla de reportes: no corrige metadata directamente, pero saca esos assets de los juegos y permite verlos en Immich para corregirlos ahí. Probablemente vaya después del 19 también, ya que no es el foco principal del proyecto. | <!-- v0.+1.0 -->
-| **GHCR** | 5 | - | Hacer que se pueda especificar versión a pullear para tags vX.Y.Z y para último commit en main.
-| **Modo oscuro** | 5 | - | Usar paleta de colores de Immich.
+| **Report incorrect** | 11 | - | Agrega una tabla de reportes: no corrige metadata directamente, pero saca esos assets de los juegos y permite verlos en Immich para corregirlos ahí. Probablemente vaya después del 19 también, ya que no es el foco principal del proyecto. | 
+| **Script de desinstalación** | A | - | `backend/src/scripts/teardown_db_role.py`, simétrico a `bootstrap_db_role.py`: `DROP SCHEMA minigames CASCADE` + revoca los grants de `DB_APP_USERNAME` sobre `public` (incluye el `ALTER DEFAULT PRIVILEGES` que el bootstrap dejó ahí) + `DROP ROLE` - nunca toca datos ni objetos propios de Immich. Requiere confirmación explícita (`--yes`/dry-run), no debe correr automático como `db-init`. Pendiente decidir si también debe revertir el `REVOKE CREATE ON SCHEMA public FROM PUBLIC` del bootstrap - ese sí es un cambio al ACL del propio `public` de Immich, no algo scoped solo al rol de minigames.
 
 ## Limitaciones conocidas (menores, no bloquean nada)
 
