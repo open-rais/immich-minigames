@@ -10,6 +10,7 @@ from services.games_service import (
     GameNotFoundError,
     GameOwnershipError,
     GamesService,
+    NotEnoughContentError,
     RoundNotPendingError,
     UnsupportedGameError,
 )
@@ -49,6 +50,15 @@ class TestCreateGame:
     def test_unsupported_game_type_raises(self, games_service):
         with pytest.raises(UnsupportedGameError):
             games_service.create_game(owner="owner-a", game_type="geoguessr", mode="default")
+
+    def test_not_enough_content_raises_not_enough_content_error(self, games_service, immich_service, monkeypatch):
+        # A game's start() raises a plain ValueError for "library too small" (see
+        # games/more_or_less.py, games/immichdle.py) - create_game must translate it into
+        # NotEnoughContentError so main.py can map it to a 422 instead of a bare 500.
+        monkeypatch.setattr(immich_service, "get_persons", lambda **kwargs: [])
+
+        with pytest.raises(NotEnoughContentError, match="not enough named people"):
+            games_service.create_game(owner="owner-a", game_type="more-or-less", mode="personAssets")
 
     def test_user_id_is_persisted_when_given(self, games_service, db_session, auth_service):
         user = _register_user(auth_service)

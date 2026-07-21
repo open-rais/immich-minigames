@@ -89,6 +89,15 @@ class TestImmichdleGame:
         with pytest.raises(ValueError):
             game.play_round(game.target.id)
 
+    def test_starting_with_no_named_people_raises_a_friendly_error(self, immich_service, monkeypatch):
+        # Regression test: get_persons(..., limit=1) can return [] (empty library), and
+        # `[target_person] = ...` used to raise a bare `ValueError: not enough values to unpack`
+        # instead of ever reaching this friendly message.
+        monkeypatch.setattr(immich_service, "get_persons", lambda **kwargs: [])
+
+        with pytest.raises(ValueError, match="not enough named people"):
+            ImmichdleGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+
 
 class TestImmichdleAdminSettings:
     """ADMIN-FEATURE.md point #4 - confirms an override actually changes live behavior, not just

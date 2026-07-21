@@ -247,7 +247,10 @@ class ImmichdleGame(BaseGame):
         ml_service: MLService | None = None,
         settings: Mapping[str, float] | None = None,
     ) -> "ImmichdleGame":
-        [target_person] = immich_service.get_persons(named_only=True, random=True, limit=1)
+        target_people = immich_service.get_persons(named_only=True, random=True, limit=1)
+        if not target_people:
+            raise ValueError("not enough named people in Immich to start an Immichdle game")
+        [target_person] = target_people
         has_alternative = immich_service.get_persons(
             named_only=True, limit=1, exclude_ids=frozenset({target_person.id})
         )

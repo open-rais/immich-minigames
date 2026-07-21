@@ -85,6 +85,13 @@ class RoundNotPendingError(Exception):
     pass
 
 
+class NotEnoughContentError(Exception):
+    """Raised when the Immich library doesn't have enough named people/faces/located assets to
+    start a game - the friendly ValueError each game's start() already raises for that case (see
+    games/more_or_less.py, games/immichdle.py, games/whos_that_person.py, games/asset_rounds.py),
+    re-raised here so main.py can map it to a 422 instead of it reaching the client as a bare 500."""
+
+
 class GamesService:
     def __init__(
         self,
@@ -127,7 +134,10 @@ class GamesService:
         if spec is None:
             raise UnsupportedGameError(f"unsupported game/mode: {game_type}/{mode}")
 
-        game = spec.game_class.start(id=uuid4(), owner=owner, **self._game_kwargs(spec.game_class, game_type))
+        try:
+            game = spec.game_class.start(id=uuid4(), owner=owner, **self._game_kwargs(spec.game_class, game_type))
+        except ValueError as e:
+            raise NotEnoughContentError(str(e)) from e
         self._save_new_game(game, user_id=user_id)
         return game
 

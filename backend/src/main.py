@@ -32,6 +32,7 @@ from services.game_settings import InvalidGameSettingValueError, UnknownGameSett
 from services.games_service import (
     GameNotFoundError,
     GameOwnershipError,
+    NotEnoughContentError,
     RoundNotPendingError,
     UnsupportedGameError,
 )
@@ -69,6 +70,7 @@ async def _rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONR
 
 app.add_exception_handler(RateLimitExceeded, _rate_limit_handler)
 app.add_exception_handler(UnsupportedGameError, _error_handler(400))
+app.add_exception_handler(NotEnoughContentError, _error_handler(422))
 app.add_exception_handler(DuplicateGuessError, _error_handler(400))
 app.add_exception_handler(InvalidGuessError, _error_handler(400))
 app.add_exception_handler(IncompleteGuessError, _error_handler(422))
