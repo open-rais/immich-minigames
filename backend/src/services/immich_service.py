@@ -19,7 +19,7 @@ from config import Settings, get_settings
 from domain.asset import Asset
 from domain.face import Face
 from domain.person import Person
-from persistence.base import get_engine
+from persistence.immich_db import get_immich_engine
 from persistence.immich_tables import asset, asset_exif, asset_face, asset_file, person
 
 MediaType = Literal["photo", "video", "any"]
@@ -53,7 +53,7 @@ def _get_http_client() -> httpx.Client:
 
 class ImmichService:
     def __init__(self, engine: Engine | None = None, settings: Settings | None = None) -> None:
-        self._engine = engine or get_engine()
+        self._engine = engine or get_immich_engine()
         self._settings = settings or get_settings()
 
     def get_assets(

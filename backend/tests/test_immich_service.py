@@ -175,14 +175,14 @@ class TestGetRandomAssetWithNamedFaces:
             excluded.add(faces[0].asset_id)
         pytest.fail("never ran out of eligible assets after excluding 1000 distinct ones")
 
-    def test_never_returns_faces_of_hidden_people(self, immich_service, engine):
+    def test_never_returns_faces_of_hidden_people(self, immich_service, immich_engine):
         # A hidden person (Immich's own isHidden flag) never shows up in search_persons/get_persons,
         # so a round that blacked out their face would be unguessable - see the dev data's
         # "Enrique Waugh"/"Emi Sandoval"/"Vivi Blanlot" and the two assets whose only named face is
         # one of them. Walk the whole eligible-asset pool (same exhaustion pattern as
         # test_returns_empty_when_no_eligible_asset_exists) so this exercises those assets, not just
         # whichever one random() happens to land on.
-        with engine.connect() as conn:
+        with immich_engine.connect() as conn:
             hidden_ids = {row.id for row in conn.execute(select(person.c.id).where(person.c.isHidden.is_(True)))}
         assert hidden_ids, "dev data must include at least one hidden named person to exercise this"
 

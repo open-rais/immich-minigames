@@ -3,9 +3,13 @@ These are integration tests against the real dev Immich Postgres brought up by
 docker-compose.yml (see docs/ARCHITECTURE/IMMICH.md) - it's seeded with real test data
 specifically to exercise these queries. Run `docker compose up -d` first.
 
-Tests that touch this app's own tables (games/rounds) run against the same Postgres instance, in
-the separate `minigames` schema - that schema is dropped and recreated once per test session
-(_reset_own_db below) since this is disposable dev data, not something to preserve.
+Tests that touch this app's own tables (games/rounds) run against this app's OWN database on that
+same Postgres instance - a different database from Immich's, hence the two engine fixtures below.
+Its tables are dropped and recreated once per test session (_reset_own_db) since this is
+disposable dev data, not something to preserve.
+
+That database has to exist before any of this works. Provision it once with:
+    docker compose -f docker-compose.app.yml run --rm db-init
 """
 
 import pytest
@@ -13,7 +17,8 @@ from fastapi.testclient import TestClient
 
 from api.rate_limit import limiter
 from main import app
-from persistence.base import get_engine, get_session_factory, reset_db
+from persistence.base import get_app_engine, get_session_factory, reset_db
+from persistence.immich_db import get_immich_engine
 from services.auth_service import AuthService
 from services.game_settings import GameSettingsService
 from services.games_service import GamesService
@@ -22,23 +27,28 @@ from services.ml_service import MLService
 
 
 @pytest.fixture(scope="session")
-def engine():
-    return get_engine()
+def immich_engine():
+    return get_immich_engine()
+
+
+@pytest.fixture(scope="session")
+def app_engine():
+    return get_app_engine()
 
 
 @pytest.fixture
-def immich_service(engine):
-    return ImmichService(engine)
+def immich_service(immich_engine):
+    return ImmichService(immich_engine)
 
 
 @pytest.fixture
-def ml_service(engine):
-    return MLService(engine)
+def ml_service(immich_engine):
+    return MLService(immich_engine)
 
 
 @pytest.fixture(scope="session", autouse=True)
 def _reset_own_db():
-    reset_db(get_engine())
+    reset_db(get_app_engine())
 
 
 @pytest.fixture

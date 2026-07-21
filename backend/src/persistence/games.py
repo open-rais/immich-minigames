@@ -1,8 +1,8 @@
 """
-Own persistence layer for this app's games - separate from Immich's schema (see
-immich_tables.py). Lives in its own Postgres schema (`minigames`) so this app's own migrations
-never collide with Immich's (see docs/ARCHITECTURE/BACKEND.md). Shared Base/engine/session
-plumbing lives in persistence/base.py so other own-schema modules (e.g. users.py) can share it.
+Own persistence layer for this app's games - in this app's own Postgres database, a different one
+from Immich's (see persistence/base.py for why, and immich_tables.py for the read-only side).
+Shared Base/engine/session plumbing lives in persistence/base.py so other own-database modules
+(e.g. users.py) can share it.
 """
 
 from datetime import datetime
@@ -29,7 +29,7 @@ class GameModel(Base):
     # Set only when the game-creation request was authenticated (see api/api.py's create_game) -
     # anonymous play leaves this null and keeps working off `owner` alone, exactly as before this
     # column existed. A real FK (unlike skin_person_id on UserModel) since UserModel lives in this
-    # same app schema, not Immich's.
+    # same app database, not Immich's.
     user_id: Mapped[UUID | None] = mapped_column(ForeignKey(f"{SCHEMA}.users.id"), default=None)
     game_type: Mapped[str]
     mode: Mapped[str]
