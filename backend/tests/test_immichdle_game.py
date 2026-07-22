@@ -3,7 +3,14 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from games.immichdle import DuplicateGuessError, ImmichdleGame, InvalidGuessError, PersonSnapshot, _compute_clues
+from games.immichdle import (
+    ASSET_COUNT_WEIGHT_EXPONENT,
+    DuplicateGuessError,
+    ImmichdleGame,
+    InvalidGuessError,
+    PersonSnapshot,
+    _compute_clues,
+)
 
 
 def _wrong_person_id(immich_service, game: ImmichdleGame) -> UUID:
@@ -119,6 +126,37 @@ class TestImmichdleAdminSettings:
         result = game.play_round(wrong_id)
 
         assert result.score_delta == -20
+
+    def _spy_on_target_selection_call(self, immich_service, monkeypatch) -> list[dict]:
+        """Records only the kwargs of the `random=True` call (target selection) - start() makes a
+        second, unrelated get_persons() call right after (the has_alternative check) that doesn't
+        take asset_count_weight, so capturing every call indiscriminately would overwrite it."""
+        calls: list[dict] = []
+        real_get_persons = immich_service.get_persons
+
+        def _spy(**kwargs):
+            if kwargs.get("random"):
+                calls.append(kwargs)
+            return real_get_persons(**kwargs)
+
+        monkeypatch.setattr(immich_service, "get_persons", _spy)
+        return calls
+
+    def test_asset_count_weight_override_is_forwarded_to_target_selection(self, immich_service, monkeypatch):
+        calls = self._spy_on_target_selection_call(immich_service, monkeypatch)
+
+        ImmichdleGame.start(
+            id=uuid4(), owner="owner", immich_service=immich_service, settings={"asset_count_weight": 0.7}
+        )
+
+        assert calls[0]["asset_count_weight"] == 0.7
+
+    def test_asset_count_weight_defaults_when_not_overridden(self, immich_service, monkeypatch):
+        calls = self._spy_on_target_selection_call(immich_service, monkeypatch)
+
+        ImmichdleGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+
+        assert calls[0]["asset_count_weight"] == ASSET_COUNT_WEIGHT_EXPONENT
 
 
 class TestComputeClues:

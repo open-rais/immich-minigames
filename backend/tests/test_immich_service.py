@@ -108,6 +108,39 @@ class TestGetPersons:
 
         assert matches == []
 
+    def test_random_true_still_respects_limit(self, immich_service):
+        persons = immich_service.get_persons(named_only=True, random=True, limit=5)
+
+        assert len(persons) == 5
+
+    def test_asset_count_weight_of_zero_does_not_error(self, immich_service):
+        persons = immich_service.get_persons(named_only=True, random=True, asset_count_weight=0, limit=1)
+
+        assert len(persons) == 1
+
+    def test_asset_count_weight_biases_towards_higher_asset_count(self, immich_service):
+        """w=1 (peso = c_fotos ^ w) should make the person with far more photos win almost every
+        draw against one with far fewer - checked by restricting the candidate pool to exactly
+        those two (via ids=) rather than asserting anything about the full random distribution,
+        so this can't flake on an ordinary shuffle of similar-sized candidates."""
+        everyone = immich_service.get_persons(named_only=True, limit=500)
+        highest = max(everyone, key=lambda p: p.asset_count)
+        lowest = min(everyone, key=lambda p: p.asset_count)
+        assert highest.asset_count > lowest.asset_count * 10  # real dev data has enough spread
+
+        picks = [
+            immich_service.get_persons(
+                named_only=True,
+                random=True,
+                asset_count_weight=1.0,
+                ids=frozenset({highest.id, lowest.id}),
+                limit=1,
+            )[0].id
+            for _ in range(30)
+        ]
+
+        assert picks.count(highest.id) > picks.count(lowest.id)
+
 
 class TestGetPersonFirstAssetDate:
     def test_returns_a_date_for_a_person_with_assets(self, immich_service):

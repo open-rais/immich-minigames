@@ -20,7 +20,7 @@ from games.dateguessr import GAME_TYPE as DATEGUESSR_TYPE
 from games.geoguessr import DECAY_KM, FLAT_SCORE_RADIUS_KM
 from games.geoguessr import GAME_TYPE as GEOGUESSR_TYPE
 from games.immichdle import GAME_TYPE as IMMICHDLE_TYPE
-from games.immichdle import STARTING_SCORE, WRONG_GUESS_PENALTY
+from games.immichdle import ASSET_COUNT_WEIGHT_EXPONENT, STARTING_SCORE, WRONG_GUESS_PENALTY
 from games.more_or_less import GAME_TYPE as MORE_OR_LESS_TYPE
 from games.whos_that_person import GAME_TYPE as WHOS_THAT_PERSON_TYPE
 from games.whos_that_person import MAX_HIDDEN_FACES, TOTAL_PEOPLE
@@ -60,6 +60,11 @@ GAME_SETTING_SPECS: dict[str, list[SettingSpec]] = {
     IMMICHDLE_TYPE: [
         SettingSpec("starting_score", STARTING_SCORE, "int", 1, 10000),
         SettingSpec("wrong_guess_penalty", WRONG_GUESS_PENALTY, "int", 0, 1000),
+        # Not a scoring/difficulty knob like the two above but a target-selection fairness one
+        # (games/immichdle.py's ASSET_COUNT_WEIGHT_EXPONENT) - min/max are the exponent's actual
+        # valid range (0=uniform, 1=fully proportional to photo count), not the generous-multiplier
+        # safety rail this class's other max_values use.
+        SettingSpec("asset_count_weight", ASSET_COUNT_WEIGHT_EXPONENT, "float", 0, 1),
     ],
     WHOS_THAT_PERSON_TYPE: [
         SettingSpec("total_people", TOTAL_PEOPLE, "int", 1, 500),

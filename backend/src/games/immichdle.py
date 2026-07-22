@@ -32,6 +32,12 @@ MODE_PERSON = "person"
 # asset_rounds.py's TOTAL_ROUNDS/MAX_SCORE.
 STARTING_SCORE = 100
 WRONG_GUESS_PENALTY = 5
+# Exponent `w` in `peso = c_fotos ^ w` (services/immich_service.py's get_persons
+# asset_count_weight), applied only to the target person's selection at game start
+# (ImmichdleGame.start). w=0 makes every named person equally likely regardless of photo count;
+# w=1 makes a person with 1000 photos 1000x as likely as one with 1 photo. Confirmed with the
+# project owner: default is a mild bias towards people with more photos (0.2), not a strong one.
+ASSET_COUNT_WEIGHT_EXPONENT = 0.2
 
 AgeComparison = Literal["older", "younger", "same", "unknown"]
 CountComparison = Literal["more", "less", "equal"]
@@ -247,7 +253,10 @@ class ImmichdleGame(BaseGame):
         ml_service: MLService | None = None,
         settings: Mapping[str, float] | None = None,
     ) -> "ImmichdleGame":
-        target_people = immich_service.get_persons(named_only=True, random=True, limit=1)
+        asset_count_weight = float((settings or {}).get("asset_count_weight", ASSET_COUNT_WEIGHT_EXPONENT))
+        target_people = immich_service.get_persons(
+            named_only=True, random=True, limit=1, asset_count_weight=asset_count_weight
+        )
         if not target_people:
             raise ValueError("not enough named people in Immich to start an Immichdle game")
         [target_person] = target_people
