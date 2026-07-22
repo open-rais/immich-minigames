@@ -85,6 +85,13 @@ class RoundNotPendingError(Exception):
     pass
 
 
+class NotEnoughContentError(Exception):
+    """Raised when the Immich library doesn't have enough named people/faces/located assets to
+    start a game - the friendly ValueError each game's start() already raises for that case (see
+    games/more_or_less.py, games/immichdle.py, games/whos_that_person.py, games/asset_rounds.py),
+    re-raised here so main.py can map it to a 422 instead of it reaching the client as a bare 500."""
+
+
 class GamesService:
     def __init__(
         self,
@@ -127,12 +134,15 @@ class GamesService:
         if spec is None:
             raise UnsupportedGameError(f"unsupported game/mode: {game_type}/{mode}")
 
-        game = spec.game_class.start(id=uuid4(), owner=owner, **self._game_kwargs(spec.game_class, game_type))
+        try:
+            game = spec.game_class.start(id=uuid4(), owner=owner, **self._game_kwargs(spec.game_class, game_type))
+        except ValueError as e:
+            raise NotEnoughContentError(str(e)) from e
         self._save_new_game(game, user_id=user_id)
         return game
 
-    def get_game(self, game_id: UUID, owner: str) -> BaseGame:
-        return self._load_game(game_id, owner)
+    def get_game(self, game_id: UUID, owner: str, user: UserModel | None = None) -> BaseGame:
+        return self._load_game(game_id, owner, user)
 
     def get_personal_records(self, owner: str, user_id: UUID | None) -> list[GameRecord]:
         """Roadmap point E - personal-best score per (game_type, mode), shown in the main menu.
@@ -181,10 +191,12 @@ class GamesService:
             for rank, (username, skin_person_id, score) in enumerate(rows, start=1)
         ]
 
-    def play_round(self, game_id: UUID, owner: str, round_id: UUID, guess: Any) -> BaseGame:
+    def play_round(
+        self, game_id: UUID, owner: str, round_id: UUID, guess: Any, user: UserModel | None = None
+    ) -> BaseGame:
         """Plays the given round and returns the game with its updated state (the answered round
         is still in game.rounds, and game.current_round is the new pending round, if any)."""
-        game = self._load_game(game_id, owner)
+        game = self._load_game(game_id, owner, user)
         return self.play_loaded_round(game, round_id, guess)
 
     def play_loaded_round(self, game: BaseGame, round_id: UUID, guess: Any) -> BaseGame:
@@ -200,11 +212,25 @@ class GamesService:
 
     # -- persistence glue ---------------------------------------------------
 
-    def _load_game(self, game_id: UUID, owner: str) -> BaseGame:
-        game_row = self._session.get(GameModel, game_id)
+    def _load_game(self, game_id: UUID, owner: str, user: UserModel | None = None) -> BaseGame:
+        # SELECT ... FOR UPDATE - this is the single load point for both viewing a game (get_game)
+        # and loading it right before playing a round, so locking it here closes the race where two
+        # simultaneous plays of the same round both pass play_loaded_round's current_round.id check
+        # and both score (docs/TODO/CODE-REVIEW.md #6). Everything happens in one transaction per
+        # request (api/deps.py's get_db_session), so the lock is held for at most one request.
+        game_row = self._session.get(GameModel, game_id, with_for_update=True)
         if game_row is None:
             raise GameNotFoundError(f"game {game_id} not found")
-        if game_row.owner != owner:
+        # A game created while logged in (user_id set) is owned by that account forever - the
+        # X-Owner-Id header alone is no longer proof of ownership for it, even if it happens to
+        # match (leaked via logs/Referer, or a shared browser/localStorage - see #3 in
+        # docs/TODO/CODE-REVIEW.md). A game created anonymously (user_id NULL) stays owner-only,
+        # even for a request that's since logged in - user_id is fixed at creation and never
+        # backfilled, so "logged in" alone doesn't grant access to someone's past anonymous games.
+        if game_row.user_id is not None:
+            if user is None or user.id != game_row.user_id:
+                raise GameOwnershipError(f"game {game_id} does not belong to this owner")
+        elif game_row.owner != owner:
             raise GameOwnershipError(f"game {game_id} does not belong to this owner")
 
         spec = _GAMES[(game_row.game_type, game_row.mode)]

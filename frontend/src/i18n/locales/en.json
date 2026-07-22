@@ -194,6 +194,7 @@
         "decay_days": "Score decay (days)",
         "starting_score": "Starting score",
         "wrong_guess_penalty": "Wrong guess penalty",
+        "asset_count_weight": "Photo count weight (0 = uniform, 1 = proportional)",
         "total_people": "Total people",
         "max_hidden_faces": "Max hidden faces per round"
       }

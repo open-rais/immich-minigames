@@ -159,10 +159,12 @@ class ImmichService:
         name_query: str | None = None,
         ids: frozenset[UUID] | None = None,
         random: bool = False,
+        asset_count_weight: float | None = None,
         limit: int = 1,
         exclude_ids: frozenset[UUID] = frozenset(),
     ) -> list[Person]:
-        asset_count = func.count(func.distinct(asset_face.c.assetId)).label("asset_count")
+        asset_count_agg = func.count(func.distinct(asset_face.c.assetId))
+        asset_count = asset_count_agg.label("asset_count")
 
         stmt = (
             select(person.c.id, person.c.name, person.c.birthDate, asset_count)
@@ -193,7 +195,18 @@ class ImmichService:
         if min_asset_count is not None:
             stmt = stmt.having(asset_count >= min_asset_count)
 
-        stmt = stmt.order_by(func.random() if random else person.c.name).limit(limit)
+        if random and asset_count_weight:
+            # Weighted random pick (Efraimidis-Spirakis: order by random()^(1/weight) desc)
+            # instead of a plain ORDER BY random() - see games/immichdle.py's
+            # ASSET_COUNT_WEIGHT_EXPONENT for the admin-configurable exponent this implements.
+            # greatest(..., 1) avoids a division by zero for a person with 0 tagged assets.
+            weight = func.pow(func.greatest(asset_count_agg, 1), asset_count_weight)
+            stmt = stmt.order_by(func.pow(func.random(), 1.0 / weight).desc())
+        elif random:
+            stmt = stmt.order_by(func.random())
+        else:
+            stmt = stmt.order_by(person.c.name)
+        stmt = stmt.limit(limit)
 
         with self._engine.connect() as conn:
             rows = conn.execute(stmt).all()

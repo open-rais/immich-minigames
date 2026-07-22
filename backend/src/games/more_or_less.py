@@ -136,7 +136,10 @@ class MoreOrLessGame(BaseGame):
     def start(
         cls, id: UUID, owner: str, immich_service: ImmichService, settings: Mapping[str, float] | None = None
     ) -> "MoreOrLessGame":
-        [reference] = immich_service.get_persons(named_only=True, random=True, limit=1)
+        references = immich_service.get_persons(named_only=True, random=True, limit=1)
+        if not references:
+            raise ValueError("not enough named people in Immich to start a MoreOrLess game")
+        [reference] = references
         candidate = _pick_non_tied_candidate(immich_service, reference.asset_count, exclude_ids=frozenset({reference.id}))
         if candidate is None:
             raise ValueError("not enough named people in Immich to start a MoreOrLess game")

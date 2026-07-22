@@ -234,6 +234,7 @@ class GameSettingOut(BaseModel):
     default: float
     value_type: Literal["int", "float"]
     min_value: float
+    max_value: float
 
 
 class GameSettingsOut(BaseModel):
@@ -251,6 +252,7 @@ class GameSettingsOut(BaseModel):
                     default=spec.default,
                     value_type=spec.value_type,
                     min_value=spec.min_value,
+                    max_value=spec.max_value,
                 )
                 for spec in specs
             ],

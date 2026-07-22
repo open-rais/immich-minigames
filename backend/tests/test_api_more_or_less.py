@@ -11,6 +11,18 @@ def _create_game(client, owner: str) -> dict:
     return response.json()
 
 
+def _register(client) -> None:
+    unique = uuid4().hex[:8]
+    body = {
+        "email": f"user-{unique}@example.com",
+        "username": f"user-{unique}",
+        "full_name": "Test User",
+        "password": "correct-horse-battery-staple",
+    }
+    response = client.post("/api/v1/auth/register", json=body)
+    assert response.status_code == 201
+
+
 class TestCreateGame:
     def test_returns_a_game_with_a_redacted_first_round(self, client):
         owner = str(uuid4())
@@ -59,6 +71,40 @@ class TestGetGame:
 
         assert response.status_code == 404
 
+    def test_logged_in_game_is_reachable_with_a_different_owner_header(self, client):
+        # Once a game is tied to an account (see docs/TODO/CODE-REVIEW.md #3), the account is the
+        # real proof of ownership - a stale/rotated X-Owner-Id shouldn't lock the owner out.
+        owner = str(uuid4())
+        _register(client)
+        game = _create_game(client, owner)
+
+        response = client.get(f"/api/v1/games/{game['id']}", headers={"X-Owner-Id": str(uuid4())})
+
+        assert response.status_code == 200
+
+    def test_logged_in_game_returns_403_once_logged_out(self, client):
+        owner = str(uuid4())
+        _register(client)
+        game = _create_game(client, owner)
+        client.cookies.clear()
+
+        response = client.get(f"/api/v1/games/{game['id']}", headers={"X-Owner-Id": owner})
+
+        assert response.status_code == 403
+
+    def test_logged_in_game_returns_403_for_a_different_account(self, client):
+        # This is the actual bug #3 fixes: a leaked/guessed X-Owner-Id used to be enough on its
+        # own to read and play someone else's logged-in game.
+        owner = str(uuid4())
+        _register(client)
+        game = _create_game(client, owner)
+        client.cookies.clear()
+        _register(client)
+
+        response = client.get(f"/api/v1/games/{game['id']}", headers={"X-Owner-Id": owner})
+
+        assert response.status_code == 403
+
 
 class TestPlayRound:
     def test_full_playthrough_never_leaks_the_answer_before_its_round_is_played(self, client):
@@ -102,3 +148,41 @@ class TestPlayRound:
         )
 
         assert response.status_code == 409
+
+
+class TestRateLimit:
+    def test_create_game_returns_429_after_the_limit(self, client):
+        responses = [
+            client.post(
+                "/api/v1/games",
+                json={"type": "more-or-less", "mode": "personAssets"},
+                headers={"X-Owner-Id": str(uuid4())},
+            )
+            for _ in range(31)
+        ]
+
+        assert all(r.status_code == 201 for r in responses[:30])
+        assert responses[30].status_code == 429
+
+    def test_play_round_returns_429_after_the_limit(self, client):
+        owner = str(uuid4())
+        game = _create_game(client, owner)
+        first_round = game["rounds"][0]
+
+        # Only the first call genuinely answers the pending round (200); the rest hit the same
+        # now-answered round_id, which would normally 409. The rate limit is checked before the
+        # route body runs though, so every call still counts against the budget regardless of
+        # what status the handler would've returned - no need to fabricate 30 real correct guesses
+        # across fresh rounds, which isn't possible from outside without seeing the hidden count.
+        responses = [
+            client.post(
+                f"/api/v1/games/{game['id']}/rounds/{first_round['id']}",
+                json={"guess": "more"},
+                headers={"X-Owner-Id": owner},
+            )
+            for _ in range(31)
+        ]
+
+        assert responses[0].status_code == 200
+        assert all(r.status_code == 409 for r in responses[1:30])
+        assert responses[30].status_code == 429

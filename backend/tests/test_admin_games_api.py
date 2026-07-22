@@ -109,6 +109,27 @@ class TestUpdateGameSettings:
 
         assert response.status_code == 400
 
+    def test_value_above_max_returns_400(self, client, db_session):
+        _register_as_admin(client, db_session)
+
+        response = client.put(f"/api/v1/admin/games/{GEOGUESSR_TYPE}/settings", json={"total_rounds": 51})
+
+        assert response.status_code == 400
+
+    def test_nan_value_returns_400(self, client, db_session):
+        # httpx's own json= kwarg refuses to encode NaN client-side (allow_nan=False) - send the
+        # raw body instead, since Python's stdlib json (what actually parses the request server
+        # side) accepts the NaN literal, and a handcrafted request isn't bound by httpx's opinion.
+        _register_as_admin(client, db_session)
+
+        response = client.put(
+            f"/api/v1/admin/games/{GEOGUESSR_TYPE}/settings",
+            content=b'{"decay_km": NaN}',
+            headers={"Content-Type": "application/json"},
+        )
+
+        assert response.status_code == 400
+
     def test_unknown_game_type_returns_404(self, client, db_session):
         _register_as_admin(client, db_session)
 

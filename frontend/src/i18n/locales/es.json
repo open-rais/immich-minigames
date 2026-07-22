@@ -194,6 +194,7 @@
         "decay_days": "Decaimiento de puntaje (días)",
         "starting_score": "Puntaje inicial",
         "wrong_guess_penalty": "Penalización por error",
+        "asset_count_weight": "Peso de la cantidad de fotos (0 = uniforme, 1 = proporcional)",
         "total_people": "Personas totales",
         "max_hidden_faces": "Caras ocultas máximas por ronda"
       }

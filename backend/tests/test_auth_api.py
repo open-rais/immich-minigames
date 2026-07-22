@@ -95,6 +95,23 @@ class TestLogin:
 
         assert response.status_code == 401
 
+    def test_cookie_has_the_expected_attributes(self, client):
+        body = _register(client)
+        client.cookies.clear()
+
+        response = client.post(
+            "/api/v1/auth/login",
+            json={"email": body["email"], "password": body["password"]},
+        )
+
+        set_cookie = response.headers.get("set-cookie")
+        assert "HttpOnly" in set_cookie
+        assert "SameSite=lax" in set_cookie
+        assert "Path=/" in set_cookie
+        # cookie_secure defaults to False in this test env (see config.py) - Secure is omitted
+        # from the header entirely when False, never written as "Secure=False".
+        assert "Secure" not in set_cookie
+
 
 class TestLogout:
     def test_clears_the_cookie(self, client):
@@ -105,6 +122,20 @@ class TestLogout:
         assert response.status_code == 204
         me = client.get("/api/v1/auth/me")
         assert me.status_code == 401
+
+    def test_deletes_the_cookie_with_the_same_attributes_it_was_set_with(self, client):
+        # docs/TODO/CODE-REVIEW.md #12 - browsers can fail to process the deletion if these don't
+        # match what the cookie was created with.
+        _register(client)
+
+        response = client.post("/api/v1/auth/logout")
+
+        set_cookie = response.headers.get("set-cookie")
+        assert "HttpOnly" in set_cookie
+        assert "SameSite=lax" in set_cookie
+        assert "Path=/" in set_cookie
+        assert "Secure" not in set_cookie
+        assert "Max-Age=0" in set_cookie
 
 
 class TestMe:

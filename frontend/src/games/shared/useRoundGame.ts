@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 
 import { createGame } from "../../api/games"
 import type { PlayRoundOut, RoundOut } from "../../api/types"
+import { useGuardedRequests } from "./useGuardedRequests"
 
 // Only the fields that stay live for the whole game. The full GameOut also carries `rounds`, but
 // after the first round it would go stale (guesses update score/finished, not the round list), so
@@ -57,69 +58,63 @@ export function useRoundGame<TRound extends RoundOut, TGuess>({
   const [pendingNextRound, setPendingNextRound] = useState<TRound | null>(null)
   const [phase, setPhase] = useState<RoundPhase>("guessing")
 
-  // Synchronous re-entrancy guards - a click handler can fire twice before React re-renders (e.g. a
-  // fast double-click), so state alone isn't enough to stop a second network call; these refs are
-  // checked and set immediately, no render involved.
+  const { isCurrent, guarded, discardInFlight } = useGuardedRequests()
+  // One in-flight ref per action - start vs guess don't need to block each other, but each needs its
+  // own re-entrancy guard against a fast double-click firing before React re-renders.
   const guessInFlightRef = useRef(false)
   const startInFlightRef = useRef(false)
-  // Bumped on every new start/guess and on "Back" - a response for a request that's no longer
-  // current (e.g. the user hit Back while a guess was still in flight) is ignored when it arrives.
-  const requestTokenRef = useRef(0)
   // Kept in a ref so the reveal-hold effect below can call the latest onNewRound without listing it
   // as a dependency (which would re-run the timer on every render).
   const onNewRoundRef = useRef(onNewRound)
   onNewRoundRef.current = onNewRound
 
   async function startGame() {
-    if (startInFlightRef.current) return
-    startInFlightRef.current = true
-    const token = ++requestTokenRef.current
-    setBusy(true)
-    try {
-      const g = await createGame(gameType, mode)
-      if (requestTokenRef.current !== token) return
-      const firstRound = g.rounds[g.rounds.length - 1]
-      if (!isRound(firstRound)) {
-        setScreen("error")
-        return
+    await guarded(startInFlightRef, async (token) => {
+      setBusy(true)
+      try {
+        const g = await createGame(gameType, mode)
+        if (!isCurrent(token)) return
+        const firstRound = g.rounds[g.rounds.length - 1]
+        if (!isRound(firstRound)) {
+          setScreen("error")
+          return
+        }
+        setGame({ id: g.id, score: g.score, finished: g.finished, totalRounds: g.total_rounds, totalPeople: g.total_people })
+        setRound(firstRound)
+        setPendingNextRound(null)
+        onNewRoundRef.current()
+        setPhase("guessing")
+        setScreen("playing")
+      } catch {
+        if (isCurrent(token)) setScreen("error")
+      } finally {
+        if (isCurrent(token)) setBusy(false)
       }
-      setGame({ id: g.id, score: g.score, finished: g.finished, totalRounds: g.total_rounds, totalPeople: g.total_people })
-      setRound(firstRound)
-      setPendingNextRound(null)
-      onNewRoundRef.current()
-      setPhase("guessing")
-      setScreen("playing")
-    } catch {
-      if (requestTokenRef.current === token) setScreen("error")
-    } finally {
-      startInFlightRef.current = false
-      if (requestTokenRef.current === token) setBusy(false)
-    }
+    })
   }
 
   async function submitGuess(guess: TGuess) {
-    if (guessInFlightRef.current || !game || !round || phase !== "guessing") return
-    guessInFlightRef.current = true
-    const token = ++requestTokenRef.current
-    setBusy(true)
-    setPhase("submitting")
-    try {
-      const result = await playRound(game.id, round.id, guess)
-      if (requestTokenRef.current !== token) return
-      if (!isRound(result.answered_round) || (result.next_round && !isRound(result.next_round))) {
-        setScreen("error")
-        return
+    if (!game || !round || phase !== "guessing") return
+    await guarded(guessInFlightRef, async (token) => {
+      setBusy(true)
+      setPhase("submitting")
+      try {
+        const result = await playRound(game.id, round.id, guess)
+        if (!isCurrent(token)) return
+        if (!isRound(result.answered_round) || (result.next_round && !isRound(result.next_round))) {
+          setScreen("error")
+          return
+        }
+        setGame((g) => (g ? { ...g, score: result.score, finished: result.finished } : g))
+        setRound(result.answered_round)
+        setPendingNextRound(result.next_round as TRound | null)
+        setPhase("revealed")
+      } catch {
+        if (isCurrent(token)) setScreen("error")
+      } finally {
+        if (isCurrent(token)) setBusy(false)
       }
-      setGame((g) => (g ? { ...g, score: result.score, finished: result.finished } : g))
-      setRound(result.answered_round)
-      setPendingNextRound(result.next_round as TRound | null)
-      setPhase("revealed")
-    } catch {
-      if (requestTokenRef.current === token) setScreen("error")
-    } finally {
-      guessInFlightRef.current = false
-      if (requestTokenRef.current === token) setBusy(false)
-    }
+    })
   }
 
   // Once a guess is revealed, wait a beat so the player can read the result, then auto-advance to
@@ -140,7 +135,7 @@ export function useRoundGame<TRound extends RoundOut, TGuess>({
   }, [phase, game, pendingNextRound, revealHoldMs])
 
   function backToIdle() {
-    requestTokenRef.current++ // discard any in-flight guess/start response that arrives later
+    discardInFlight() // discard any in-flight guess/start response that arrives later
     setScreen("idle")
   }
 

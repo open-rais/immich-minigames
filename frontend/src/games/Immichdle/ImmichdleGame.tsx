@@ -12,6 +12,7 @@ import { GuardedBackButton } from "../shared/GuardedBackButton"
 import { ScoreBadge } from "../shared/ScoreBadge"
 import { BackButton } from "../shared/BackButton"
 import { PersonSearchInput } from "../shared/PersonSearchInput"
+import { useGuardedRequests } from "../shared/useGuardedRequests"
 import { GuessTable } from "./GuessTable"
 
 const GAME_TYPE = GameType.Immichdle
@@ -59,66 +60,65 @@ export function ImmichdleGame({ coverUrl }: GameComponentProps) {
   const [pendingRoundId, setPendingRoundId] = useState<string | null>(null)
   const [history, setHistory] = useState<ImmichdleRoundOut[]>([])
 
+  const { isCurrent, guarded, discardInFlight } = useGuardedRequests()
+  // One in-flight ref per action - start vs guess don't need to block each other, but each needs
+  // its own re-entrancy guard against a fast double-click firing before React re-renders.
   const guessInFlightRef = useRef(false)
   const startInFlightRef = useRef(false)
-  const requestTokenRef = useRef(0)
 
   async function startGame() {
-    if (startInFlightRef.current) return
-    startInFlightRef.current = true
-    const token = ++requestTokenRef.current
-    setBusy(true)
-    try {
-      const g = await createGame(GAME_TYPE, MODE)
-      if (requestTokenRef.current !== token) return
-      const round = g.rounds[g.rounds.length - 1]
-      assertImmichdle(round)
-      setGame({ id: g.id, score: g.score, finished: false, won: false, targetName: null })
-      setPendingRoundId(round.id)
-      setHistory([])
-      setScreen("playing")
-    } catch {
-      if (requestTokenRef.current === token) setScreen("error")
-    } finally {
-      startInFlightRef.current = false
-      if (requestTokenRef.current === token) setBusy(false)
-    }
+    await guarded(startInFlightRef, async (token) => {
+      setBusy(true)
+      try {
+        const g = await createGame(GAME_TYPE, MODE)
+        if (!isCurrent(token)) return
+        const round = g.rounds[g.rounds.length - 1]
+        assertImmichdle(round)
+        setGame({ id: g.id, score: g.score, finished: false, won: false, targetName: null })
+        setPendingRoundId(round.id)
+        setHistory([])
+        setScreen("playing")
+      } catch {
+        if (isCurrent(token)) setScreen("error")
+      } finally {
+        if (isCurrent(token)) setBusy(false)
+      }
+    })
   }
 
   async function handleGuess(personId: string) {
-    if (guessInFlightRef.current || !game || !pendingRoundId) return
-    guessInFlightRef.current = true
-    const token = ++requestTokenRef.current
-    setBusy(true)
-    try {
-      const result = await playRound(game.id, pendingRoundId, { person_id: personId })
-      if (requestTokenRef.current !== token) return
-      assertImmichdle(result.answered_round)
-      if (result.next_round) assertImmichdle(result.next_round)
+    if (!game || !pendingRoundId) return
+    await guarded(guessInFlightRef, async (token) => {
+      setBusy(true)
+      try {
+        const result = await playRound(game.id, pendingRoundId, { person_id: personId })
+        if (!isCurrent(token)) return
+        assertImmichdle(result.answered_round)
+        if (result.next_round) assertImmichdle(result.next_round)
 
-      let targetName: string | null = null
-      if (result.finished) {
-        const finalState = await getGame(game.id)
-        if (requestTokenRef.current !== token) return
-        targetName = finalState.target_person_name ?? null
+        let targetName: string | null = null
+        if (result.finished) {
+          const finalState = await getGame(game.id)
+          if (!isCurrent(token)) return
+          targetName = finalState.target_person_name ?? null
+        }
+
+        setHistory((h) => [result.answered_round as ImmichdleRoundOut, ...h])
+        setGame((g) =>
+          g ? { ...g, score: result.score, finished: result.finished, won: result.correct === true, targetName } : g,
+        )
+        setPendingRoundId(result.next_round ? result.next_round.id : null)
+        if (result.finished) setScreen("finished")
+      } catch {
+        if (isCurrent(token)) setScreen("error")
+      } finally {
+        if (isCurrent(token)) setBusy(false)
       }
-
-      setHistory((h) => [result.answered_round as ImmichdleRoundOut, ...h])
-      setGame((g) =>
-        g ? { ...g, score: result.score, finished: result.finished, won: result.correct === true, targetName } : g,
-      )
-      setPendingRoundId(result.next_round ? result.next_round.id : null)
-      if (result.finished) setScreen("finished")
-    } catch {
-      if (requestTokenRef.current === token) setScreen("error")
-    } finally {
-      guessInFlightRef.current = false
-      if (requestTokenRef.current === token) setBusy(false)
-    }
+    })
   }
 
   function backToIdle() {
-    requestTokenRef.current++ // discard any in-flight guess/start response that arrives later
+    discardInFlight() // discard any in-flight guess/start response that arrives later
     setScreen("idle")
   }
 

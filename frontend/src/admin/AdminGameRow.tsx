@@ -81,6 +81,7 @@ export function AdminGameRow({ gameType, title, settings, onUpdated }: AdminGame
               type="number"
               step={setting.value_type === "int" ? 1 : "any"}
               min={setting.min_value}
+              max={setting.max_value}
               required
               value={values[setting.key]}
               onChange={(e) => {

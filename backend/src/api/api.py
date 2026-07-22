@@ -9,7 +9,7 @@ from typing import Annotated, Any
 from uuid import UUID
 
 import httpx
-from fastapi import APIRouter, Body, Depends, Header, HTTPException, Query, Response
+from fastapi import APIRouter, Body, Depends, Header, HTTPException, Query, Request, Response
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
@@ -28,6 +28,7 @@ from api.dto.common import (
     PlayRoundOut,
     parse_guess,
 )
+from api.rate_limit import GAME_ACTION_LIMIT, SEARCH_LIMIT, THUMBNAIL_LIMIT, limiter
 from persistence.users import UserModel
 from services.games_service import GamesService
 from services.immich_service import ImmichService
@@ -52,7 +53,9 @@ def get_owner_id(x_owner_id: Annotated[str, Header()]) -> str:
 
 
 @router.post("/games", response_model=GameOut, status_code=201)
+@limiter.limit(GAME_ACTION_LIMIT)
 def create_game(
+    request: Request,
     body: CreateGameIn,
     owner: Annotated[str, Depends(get_owner_id)],
     user: Annotated[UserModel | None, Depends(get_current_user_optional)],
@@ -95,23 +98,27 @@ def get_leaderboard(
 def get_game(
     game_id: UUID,
     owner: Annotated[str, Depends(get_owner_id)],
+    user: Annotated[UserModel | None, Depends(get_current_user_optional)],
     games_service: Annotated[GamesService, Depends(get_games_service)],
 ) -> GameOut:
-    game = games_service.get_game(game_id, owner)
+    game = games_service.get_game(game_id, owner, user)
     return GameOut.from_game(game)
 
 
 @router.post("/games/{game_id}/rounds/{round_id}", response_model=PlayRoundOut)
+@limiter.limit(GAME_ACTION_LIMIT)
 def play_round(
+    request: Request,
     game_id: UUID,
     round_id: UUID,
     body: Annotated[dict[str, Any], Body()],
     owner: Annotated[str, Depends(get_owner_id)],
+    user: Annotated[UserModel | None, Depends(get_current_user_optional)],
     games_service: Annotated[GamesService, Depends(get_games_service)],
 ) -> PlayRoundOut:
     # game_id already fixes this round's game/mode - looked up first so the guess body only ever
     # needs to hold the guess itself, not also restate a game_type the client could get wrong.
-    existing_game = games_service.get_game(game_id, owner)
+    existing_game = games_service.get_game(game_id, owner, user)
     try:
         guess = parse_guess(existing_game.current_round, body)
     except ValidationError as exc:
@@ -140,7 +147,9 @@ def _proxy_thumbnail(fetch: Callable[[], tuple[bytes, str]]) -> Response:
 
 
 @router.get("/persons/search", response_model=PersonSearchOut)
+@limiter.limit(SEARCH_LIMIT)
 def search_persons(
+    request: Request,
     query: Annotated[str, Query(min_length=1)],
     immich_service: Annotated[ImmichService, Depends(get_immich_service)],
     offset: Annotated[int, Query(ge=0)] = 0,
@@ -154,7 +163,9 @@ def search_persons(
 
 
 @router.get("/people/{person_id}/thumbnail")
+@limiter.limit(THUMBNAIL_LIMIT)
 def get_person_thumbnail(
+    request: Request,
     person_id: UUID,
     immich_service: Annotated[ImmichService, Depends(get_immich_service)],
 ) -> Response:
@@ -162,7 +173,9 @@ def get_person_thumbnail(
 
 
 @router.get("/assets/{asset_id}/thumbnail")
+@limiter.limit(THUMBNAIL_LIMIT)
 def get_asset_thumbnail(
+    request: Request,
     asset_id: UUID,
     immich_service: Annotated[ImmichService, Depends(get_immich_service)],
 ) -> Response:

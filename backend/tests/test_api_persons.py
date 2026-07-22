@@ -41,3 +41,11 @@ class TestSearchPersons:
         response = client.get("/api/v1/persons/search", params={"query": ""})
 
         assert response.status_code == 422
+
+
+class TestRateLimit:
+    def test_returns_429_after_the_limit(self, client):
+        responses = [client.get("/api/v1/persons/search", params={"query": "a"}) for _ in range(61)]
+
+        assert all(r.status_code == 200 for r in responses[:60])
+        assert responses[60].status_code == 429

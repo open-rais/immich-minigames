@@ -61,6 +61,28 @@ class TestUpdateSettings:
         with pytest.raises(InvalidGameSettingValueError):
             game_settings_service.update_settings(GEOGUESSR_TYPE, {"total_rounds": 0})
 
+    def test_value_above_max_raises(self, game_settings_service):
+        with pytest.raises(InvalidGameSettingValueError):
+            game_settings_service.update_settings(GEOGUESSR_TYPE, {"total_rounds": 51})
+
+    def test_nan_raises(self, game_settings_service):
+        with pytest.raises(InvalidGameSettingValueError):
+            game_settings_service.update_settings(GEOGUESSR_TYPE, {"decay_km": float("nan")})
+
+    def test_positive_infinity_raises(self, game_settings_service):
+        with pytest.raises(InvalidGameSettingValueError):
+            game_settings_service.update_settings(GEOGUESSR_TYPE, {"decay_km": float("inf")})
+
+    def test_negative_infinity_raises(self, game_settings_service):
+        with pytest.raises(InvalidGameSettingValueError):
+            game_settings_service.update_settings(GEOGUESSR_TYPE, {"decay_km": float("-inf")})
+
+    def test_nan_for_an_int_spec_raises_the_typed_error(self, game_settings_service):
+        # Without the isfinite guard running first, int(float("nan")) raises a raw ValueError here
+        # instead of the typed InvalidGameSettingValueError main.py knows how to map to a 400.
+        with pytest.raises(InvalidGameSettingValueError):
+            game_settings_service.update_settings(GEOGUESSR_TYPE, {"total_rounds": float("nan")})
+
     def test_non_integer_value_for_an_int_spec_raises(self, game_settings_service):
         with pytest.raises(InvalidGameSettingValueError):
             game_settings_service.update_settings(GEOGUESSR_TYPE, {"total_rounds": 5.5})
