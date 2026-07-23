@@ -12,21 +12,18 @@ from sqlalchemy.engine import Engine
 
 from persistence.immich_db import get_immich_engine
 
-# MAX(similarity) over every face-pair between the two people, not a single representative-face
-# comparison - a single arbitrary/off-angle photo per person could undersell real resemblance,
-# which matters for the sibling/family-relative cases this clue is meant to catch. See
-# docs/ARCHITECTURE/IMMICH.md's face_search section for the full rationale/precedent
-# (immich-power-tools' similar-faces query, which compares one representative face instead).
+# Single representative-face comparison (each person's own profile/thumbnail face,
+# person."faceAssetId") rather than MAX over every face-pair cross join - O(1) two indexed
+# lookups instead of O(n*m) faces-per-person, same pattern immich-power-tools' similar-faces query
+# uses. See docs/ARCHITECTURE/IMMICH.md's face_search section for the precedent/rationale and why
+# this replaced the earlier cross-join version.
 _FACE_SIMILARITY_QUERY = text("""
-    SELECT MAX(1 - (fs_a.embedding <=> fs_b.embedding)) AS similarity
-    FROM asset_face fa
-    JOIN face_search fs_a ON fs_a."faceId" = fa.id
-    JOIN asset_face fb
-      ON fb."personId" = :person_b_id
-      AND fb."deletedAt" IS NULL AND fb."isVisible"
-    JOIN face_search fs_b ON fs_b."faceId" = fb.id
-    WHERE fa."personId" = :person_a_id
-      AND fa."deletedAt" IS NULL AND fa."isVisible"
+    SELECT 1 - (fs_a.embedding <=> fs_b.embedding) AS similarity
+    FROM person pa
+    JOIN face_search fs_a ON fs_a."faceId" = pa."faceAssetId"
+    JOIN person pb ON pb.id = :person_b_id
+    JOIN face_search fs_b ON fs_b."faceId" = pb."faceAssetId"
+    WHERE pa.id = :person_a_id
 """)
 
 
@@ -35,9 +32,11 @@ class MLService:
         self._engine = engine or get_immich_engine()
 
     def face_similarity(self, person_a_id: UUID, person_b_id: UUID) -> float | None:
-        """Highest face-similarity (cosine, 0..1) between any face of person_a and any face of
-        person_b - None if either has no visible, non-deleted detected faces. Powers Immichdle's
-        MLSimilarity clue."""
+        """Face-similarity (cosine, mathematically -1..1 though unrelated faces usually land near
+        0 - slightly negative is normal, not a bug, see docs/ARCHITECTURE/IMMICH.md's face_search
+        section) between person_a's and person_b's profile face (person.faceAssetId - the same
+        face Immich shows as that person's thumbnail) - None if either has no profile face set.
+        Powers Immichdle's MLSimilarity clue."""
         if person_a_id == person_b_id:
             return 1.0
         with self._engine.connect() as conn:
