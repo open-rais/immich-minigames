@@ -18,6 +18,7 @@ from uuid import UUID, uuid4
 from domain.asset import Asset
 from games.asset_rounds import MAX_SCORE, TOTAL_ROUNDS, AssetRoundsGame, exp_decay_score  # noqa: F401 (MAX_SCORE/TOTAL_ROUNDS re-exported for tests)
 from games.base import BaseRound
+from games.serialization import DictCodec
 
 GAME_TYPE = "dateguessr"
 MODE_DAYS_TO_DATE = "daysToDate"
@@ -32,10 +33,13 @@ _MIN_CANDIDATE_SEPARATION_DAYS = 100
 
 
 @dataclass(frozen=True)
-class AssetSnapshot:
+class AssetSnapshot(DictCodec):
     """An asset's id/date frozen at the moment a round was created - not a live query result, so a
     round's answer stays stable even if the underlying Immich data changes later (same rationale as
-    more_or_less.py's PersonSnapshot / geoguessr.py's AssetSnapshot)."""
+    more_or_less.py's PersonSnapshot / geoguessr.py's AssetSnapshot). The `date` field's annotation
+    resolves to the `date` type at class-definition time despite sharing its name (no value is bound
+    to `date` in the class namespace by an annotation-only statement) - DictCodec.from_dict's
+    `f.type is date` check works correctly, confirmed by this game's round-trip test."""
 
     id: UUID
     date: date
@@ -46,13 +50,6 @@ class AssetSnapshot:
         # so a photo taken late in the local evening must not read as the next (UTC) day. See
         # domain/asset.py's local_date.
         return cls(id=asset.id, date=asset.local_date)
-
-    def to_dict(self) -> dict[str, Any]:
-        return {"id": str(self.id), "date": self.date.isoformat()}
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "AssetSnapshot":
-        return cls(id=UUID(data["id"]), date=date.fromisoformat(data["date"]))
 
 
 class DateguessrRound(BaseRound):
@@ -77,7 +74,8 @@ class DateguessrRound(BaseRound):
         return abs((self.asset.date - self.guess).days)
 
     def calculate_score(self, settings: Mapping[str, float] | None = None) -> int:
-        assert self.days_off is not None  # BaseGame.play_round already set self.guess
+        if self.days_off is None:
+            raise RuntimeError("calculate_score() called before BaseGame.play_round set self.guess")
         settings = settings or {}
         flat_zone = settings.get("flat_score_days", FLAT_SCORE_DAYS)
         decay = settings.get("decay_days", DECAY_DAYS)
@@ -113,16 +111,16 @@ class DateguessrGame(AssetRoundsGame):
     _min_separation = _MIN_CANDIDATE_SEPARATION_DAYS
     _not_enough_assets_message = "not enough photos in Immich to start a Dateguessr game"
 
-    def _query_assets(self, exclude_ids: frozenset[UUID], *, limit: int, random: bool) -> list[Asset]:
+    def _query_assets(self, exclude_ids: frozenset[UUID], *, limit: int, randomize: bool) -> list[Asset]:
         return self._immich_service.get_assets(
-            media_type="photo", random=random, limit=limit, exclude_ids=exclude_ids
+            media_type="photo", randomize=randomize, limit=limit, exclude_ids=exclude_ids
         )
 
     def _query_extra_assets(self, main: Asset, exclude_ids: frozenset[UUID], *, limit: int) -> list[Asset]:
         return self._immich_service.get_assets(
             media_type="photo",
             local_date=main.local_date,
-            random=True,
+            randomize=True,
             limit=limit,
             exclude_ids=exclude_ids,
         )

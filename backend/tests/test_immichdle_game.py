@@ -128,14 +128,14 @@ class TestImmichdleAdminSettings:
         assert result.score_delta == -20
 
     def _spy_on_target_selection_call(self, immich_service, monkeypatch) -> list[dict]:
-        """Records only the kwargs of the `random=True` call (target selection) - start() makes a
+        """Records only the kwargs of the `randomize=True` call (target selection) - start() makes a
         second, unrelated get_persons() call right after (the has_alternative check) that doesn't
         take asset_count_weight, so capturing every call indiscriminately would overwrite it."""
         calls: list[dict] = []
         real_get_persons = immich_service.get_persons
 
         def _spy(**kwargs):
-            if kwargs.get("random"):
+            if kwargs.get("randomize"):
                 calls.append(kwargs)
             return real_get_persons(**kwargs)
 

@@ -98,7 +98,8 @@ class WhosThatPersonRound(BaseRound):
     def results(self) -> list[bool]:
         """Per-face correctness, in self.faces order - the fixed order calculate_score() streaks
         over."""
-        assert self.guess is not None
+        if self.guess is None:
+            raise RuntimeError("results accessed before the round was answered")
         return [self.guess[face.face_id] == face.person_id for face in self.faces]
 
     @property
@@ -249,7 +250,8 @@ class WhosThatPersonGame(BaseGame):
         if not faces:
             raise ValueError("no more eligible photos left - has_next_round() should have returned False")
 
-        assert previous.ending_streak is not None  # set by calculate_score() before this runs
+        if previous.ending_streak is None:
+            raise RuntimeError("create_next_round() called before calculate_score() set ending_streak")
         return WhosThatPersonRound(
             id=uuid4(),
             game_id=self.id,

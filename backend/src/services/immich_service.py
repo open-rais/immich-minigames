@@ -66,7 +66,7 @@ class ImmichService:
         local_date: date | None = None,
         local_month: int | None = None,
         near_km: tuple[float, float, float] | None = None,
-        random: bool = False,
+        randomize: bool = False,
         limit: int = 1,
         exclude_ids: frozenset[UUID] = frozenset(),
     ) -> list[Asset]:
@@ -143,7 +143,7 @@ class ImmichService:
         if exclude_ids:
             stmt = stmt.where(asset.c.id.notin_(exclude_ids))
 
-        stmt = stmt.order_by(func.random() if random else asset.c.fileCreatedAt).limit(limit)
+        stmt = stmt.order_by(func.random() if randomize else asset.c.fileCreatedAt).limit(limit)
 
         with self._engine.connect() as conn:
             rows = conn.execute(stmt).all()
@@ -158,7 +158,7 @@ class ImmichService:
         min_asset_count: int | None = None,
         name_query: str | None = None,
         ids: frozenset[UUID] | None = None,
-        random: bool = False,
+        randomize: bool = False,
         asset_count_weight: float | None = None,
         limit: int = 1,
         exclude_ids: frozenset[UUID] = frozenset(),
@@ -195,14 +195,14 @@ class ImmichService:
         if min_asset_count is not None:
             stmt = stmt.having(asset_count >= min_asset_count)
 
-        if random and asset_count_weight:
+        if randomize and asset_count_weight:
             # Weighted random pick (Efraimidis-Spirakis: order by random()^(1/weight) desc)
             # instead of a plain ORDER BY random() - see games/immichdle.py's
             # ASSET_COUNT_WEIGHT_EXPONENT for the admin-configurable exponent this implements.
             # greatest(..., 1) avoids a division by zero for a person with 0 tagged assets.
             weight = func.pow(func.greatest(asset_count_agg, 1), asset_count_weight)
             stmt = stmt.order_by(func.pow(func.random(), 1.0 / weight).desc())
-        elif random:
+        elif randomize:
             stmt = stmt.order_by(func.random())
         else:
             stmt = stmt.order_by(person.c.name)

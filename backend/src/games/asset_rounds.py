@@ -110,7 +110,7 @@ class AssetRoundsGame(BaseGame):
     # -- hooks concrete games implement ------------------------------------
 
     @abstractmethod
-    def _query_assets(self, exclude_ids: frozenset[UUID], *, limit: int, random: bool) -> list[Asset]:
+    def _query_assets(self, exclude_ids: frozenset[UUID], *, limit: int, randomize: bool) -> list[Asset]:
         """The assets eligible for this game (e.g. Geoguessr additionally requires a location)."""
 
     @abstractmethod
@@ -142,7 +142,7 @@ class AssetRoundsGame(BaseGame):
         return frozenset(id_ for round_ in self.rounds for id_ in round_.shown_entities)
 
     def _pick_asset(self, exclude_ids: frozenset[UUID]) -> Asset | None:
-        candidates = self._query_assets(exclude_ids, limit=_CANDIDATE_SAMPLE_SIZE, random=True)
+        candidates = self._query_assets(exclude_ids, limit=_CANDIDATE_SAMPLE_SIZE, randomize=True)
         return pick_spread_asset(candidates, self._previous_answers(), self._separation, self._min_separation)
 
     def _pick_extras(self, main: Asset, exclude_ids: frozenset[UUID]) -> list[Asset]:
@@ -167,7 +167,7 @@ class AssetRoundsGame(BaseGame):
         # Cheap existence check - create_next_round()'s separation-aware pick always succeeds as long
         # as the candidate pool isn't empty (see pick_spread_asset's fallback), so this is consistent
         # with it without needing to sample _CANDIDATE_SAMPLE_SIZE rows twice.
-        remaining = self._query_assets(self._shown_asset_ids, limit=1, random=False)
+        remaining = self._query_assets(self._shown_asset_ids, limit=1, randomize=False)
         return bool(remaining)
 
     def create_next_round(self) -> BaseRound:

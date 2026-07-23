@@ -109,12 +109,12 @@ class TestGetPersons:
         assert matches == []
 
     def test_random_true_still_respects_limit(self, immich_service):
-        persons = immich_service.get_persons(named_only=True, random=True, limit=5)
+        persons = immich_service.get_persons(named_only=True, randomize=True, limit=5)
 
         assert len(persons) == 5
 
     def test_asset_count_weight_of_zero_does_not_error(self, immich_service):
-        persons = immich_service.get_persons(named_only=True, random=True, asset_count_weight=0, limit=1)
+        persons = immich_service.get_persons(named_only=True, randomize=True, asset_count_weight=0, limit=1)
 
         assert len(persons) == 1
 
@@ -131,7 +131,7 @@ class TestGetPersons:
         picks = [
             immich_service.get_persons(
                 named_only=True,
-                random=True,
+                randomize=True,
                 asset_count_weight=1.0,
                 ids=frozenset({highest.id, lowest.id}),
                 limit=1,

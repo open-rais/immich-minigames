@@ -177,11 +177,13 @@ class ImmichdleRound(BaseRound):
         for the DTOs, same role as MoreOrLessRound.correct."""
         if not self.answered:
             return None
-        assert self.guessed_person is not None
+        if self.guessed_person is None:
+            raise RuntimeError("correct accessed on an answered round with no guessed_person set")
         return self.guessed_person.id == self.target.id
 
     def calculate_score(self, settings: Mapping[str, float] | None = None) -> int:
-        assert self.guessed_person is not None  # set by ImmichdleGame.play_round before this runs
+        if self.guessed_person is None:
+            raise RuntimeError("calculate_score() called before ImmichdleGame.play_round set guessed_person")
         penalty = (settings or {}).get("wrong_guess_penalty", WRONG_GUESS_PENALTY)
         return 0 if self.correct else -int(penalty)
 
@@ -255,7 +257,7 @@ class ImmichdleGame(BaseGame):
     ) -> "ImmichdleGame":
         asset_count_weight = float((settings or {}).get("asset_count_weight", ASSET_COUNT_WEIGHT_EXPONENT))
         target_people = immich_service.get_persons(
-            named_only=True, random=True, limit=1, asset_count_weight=asset_count_weight
+            named_only=True, randomize=True, limit=1, asset_count_weight=asset_count_weight
         )
         if not target_people:
             raise ValueError("not enough named people in Immich to start an Immichdle game")

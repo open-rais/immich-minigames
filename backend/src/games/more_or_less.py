@@ -50,7 +50,7 @@ def _pick_non_tied_candidate(
     immich_service: ImmichService, reference_asset_count: int, exclude_ids: frozenset[UUID]
 ) -> Person | None:
     candidates = immich_service.get_persons(
-        named_only=True, random=True, limit=_CANDIDATE_SAMPLE_SIZE, exclude_ids=exclude_ids
+        named_only=True, randomize=True, limit=_CANDIDATE_SAMPLE_SIZE, exclude_ids=exclude_ids
     )
     if not candidates:
         return None
@@ -136,7 +136,7 @@ class MoreOrLessGame(BaseGame):
     def start(
         cls, id: UUID, owner: str, immich_service: ImmichService, settings: Mapping[str, float] | None = None
     ) -> "MoreOrLessGame":
-        references = immich_service.get_persons(named_only=True, random=True, limit=1)
+        references = immich_service.get_persons(named_only=True, randomize=True, limit=1)
         if not references:
             raise ValueError("not enough named people in Immich to start a MoreOrLess game")
         [reference] = references
