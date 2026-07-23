@@ -110,7 +110,7 @@ base de datos separada" below. Inside it they sit in a `minigames` schema rather
 with the app owning the whole database that's cosmetic, but it keeps every already-applied
 migration (which hardcodes `schema=`) valid and untouched.
 
-Alembic owns the schema (`backend/alembic/versions/`, currently 0001–0005); `docker-entrypoint.sh`
+Alembic owns the schema (`backend/alembic/versions/`, currently 0001–0006); `docker-entrypoint.sh`
 runs `alembic upgrade head` on every container start, and `db-init` runs it too — as the app role,
 so the tables end up owned by the role that later has to `ALTER` them. `init_db`/`reset_db` in
 `persistence/base.py` exist only for tests.
@@ -122,6 +122,7 @@ so the tables end up owned by the role that later has to `ALTER` them. `init_db`
 | `users` | `email`/`username` unique, `password_hash` (argon2), `skin_person_id` (deliberately **not** a FK — it points into Immich's database, which foreign keys cannot span), `is_admin`, `created_at`. |
 | `game_settings` | `game_type` PK, `values` JSONB. One row per game type; a missing row or key falls back to the module constant. |
 | `legacy_import` | Marker written by the one-time move out of Immich's database. Its presence means that copy committed — see below. |
+| `person_face_embedding_cache` | `person_id` PK, `embedding vector(512)`, `face_count`, `computed_at`. Caches Immichdle's `MLSimilarity` clue's per-person representative embedding (average across that person's visible faces) - see `docs/ARCHITECTURE/IMMICH.md`'s "Face similarity" section. The only own table with a non-JSON/UUID/text column type, hence `persistence/ml_cache.py`'s hand-rolled `Vector` SQLAlchemy type instead of a plain `mapped_column`. |
 
 **Generic rounds table + JSONB payload** is the core persistence decision: adding a game never
 requires a migration, only a `to_payload`/`from_payload` pair.
@@ -129,7 +130,11 @@ requires a migration, only a `to_payload`/`from_payload` pair.
 Two engines, two pools, one login role: `get_app_engine` (`persistence/base.py`, read/write) and
 `get_immich_engine` (`persistence/immich_db.py`, read-only). Both `lru_cache`d with
 `pool_pre_ping=True`. No query ever spans them — Immich reads go through Core `engine.connect()`,
-own-data access through the ORM `Session`, and the two never meet in one statement or transaction.
+own-data access usually through the ORM `Session` (games/users/settings), and the two never meet
+in one statement or transaction. `services/ml_service.py`'s embedding cache is the one exception to
+"Session for own data": it holds plain `Engine`s on both sides (matching the raw-SQL style it
+already used for Immich reads) rather than threading a `Session` through a service that's normally
+constructed without one.
 
 ### Por qué una base de datos separada
 

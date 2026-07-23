@@ -12,6 +12,10 @@ variant (persondle): there's a hidden target and each attempt reveals comparativ
 A random person is secretly chosen. The player tries names of other people as guesses. Each guess reveals
 comparative clues about the mystery person:
 
+The target isn't picked with uniform probability by default: an admin-configurable exponent `w` (0-1, default
+0.2) biases the pick towards people with more photos, following `peso = c_fotos ^ w` - `w = 0` gives everyone
+the same odds, `w = 1` makes a person with 1000 photos 1000x as likely to be picked as one with 1.
+
 - **Age**: older, younger, same age, or unknown.
 - **AssetCount**: more, fewer, or equal number of photos.
 - **FirstAppearance**: whether this person's first asset is before, after, or the same as the mystery person's.

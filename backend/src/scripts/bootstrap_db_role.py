@@ -144,6 +144,13 @@ def _configure_app_database(cur: psycopg.Cursor, env: dict[str, str]) -> None:
     app_role = sql.Identifier(env["DB_APP_USERNAME"])
     schema = sql.Identifier(SCHEMA)
 
+    # Needed for minigames.person_face_embedding_cache's `embedding vector(512)` column
+    # (services/ml_service.py) - the same extension Immich's own database already has installed
+    # for face_search/smart_search, just in this separate database too. Runs on this admin
+    # connection (not the app role's, which has no database-level CREATE) - see
+    # persistence/ml_cache.py for why that table lives here rather than in Immich's database.
+    cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
+
     # Same Postgres 14 wart as in Immich's database.
     cur.execute("REVOKE CREATE ON SCHEMA public FROM PUBLIC")
 

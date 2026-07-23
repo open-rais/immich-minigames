@@ -135,23 +135,38 @@ reads the embeddings that service already computed and stored in `face_search.em
 (`vector(512)`, pgvector). Two reasons: the ML container is not reachable from the host in the dev
 stack, and recomputing an embedding for a face Immich already indexed is pure waste.
 
-```sql
-SELECT MAX(1 - (fs_a.embedding <=> fs_b.embedding)) AS similarity
-FROM asset_face fa
-JOIN face_search fs_a ON fs_a."faceId" = fa.id
-JOIN asset_face fb ON fb."personId" = :person_b_id AND fb."deletedAt" IS NULL AND fb."isVisible"
-JOIN face_search fs_b ON fs_b."faceId" = fb.id
-WHERE fa."personId" = :person_a_id AND fa."deletedAt" IS NULL AND fa."isVisible"
-```
+`MLService.face_similarity` compares each person's *representative* embedding — the element-wise
+average (pgvector's `avg(vector)` aggregate) across all of that person's currently visible,
+non-deleted faces, not a single photo — via plain cosine similarity (`1 - (a <=> b)`, pgvector's
+`<=>` being cosine **distance**, `0..2`, so similarity is `-1..1`). Unrelated people typically land
+close to `0`, not exactly at it: small negative values (e.g. -0.03) are normal and just mean "no
+relationship", not a computation error.
 
-`<=>` is pgvector's cosine **distance**, so `1 - distance` is similarity in `0..1`.
+This went through three designs, in order:
+1. `MAX(similarity)` over the full cross join of both people's faces — most accurate (a single
+   off-angle photo can't undersell a real resemblance), but `O(n·m)` and slow enough with people
+   who have hundreds/thousands of tagged photos to freeze a request.
+2. A single representative face each (`person.faceAssetId`, the same photo Immich shows as that
+   person's thumbnail, matching immich-power-tools' similar-faces query) — `O(1)`, but with ~300
+   named people in practice two people rarely *look* alike going by one photo each; the clue read
+   as noise more often than not.
+3. **Current**: the averaged-embedding cache below — a `O(1)` amortized lookup (one query per
+   person on a cache hit) with a more robust per-person representation than a single photo,
+   without paying the cross-join cost on every comparison.
 
-This takes `MAX` over *every* face pair between the two people, unlike immich-power-tools' similar
-faces query which compares one representative face each. The reason is the clue's purpose: catching
-family resemblance. A single off-angle photo of one person would undersell a real sibling
-resemblance, and the clue would read as noise. The cost is that it is a full cross join of both
-people's faces — fine for a home library, potentially slow for someone with hundreds of faces per
-person (see finding #16).
+**The cache**: `minigames.person_face_embedding_cache` (`persistence/ml_cache.py`) — `person_id`
+(PK), `embedding vector(512)`, `face_count`, `computed_at`. Lives in this app's own database, not
+Immich's: Immich's database is read-only for this app's DB role (see "The scoped DB role" above),
+so a cache this app writes to has nowhere to go but its own database, even though the embeddings
+it's built from are read from Immich's `face_search`. This is also why the `vector` extension now
+has to be installed in **both** databases — `scripts/bootstrap_db_role.py` runs `CREATE EXTENSION
+IF NOT EXISTS vector` in the app's own database too now (Immich's already had it, for
+`face_search`/`smart_search`).
+
+**Freshness** is deliberately cheap, not exact: a cached row is considered stale (and recomputed)
+whenever `face_count` no longer matches that person's current count of visible, non-deleted
+`asset_face` rows. Swapping one face for another without changing the total count is not detected
+- accepted imprecision for now (confirmed with the project owner).
 
 ## Dev instance
 

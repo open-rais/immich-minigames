@@ -97,6 +97,10 @@ def migrated_target(databases):
     source, target = databases
     with psycopg.connect(_admin_url(target), autocommit=True) as conn, conn.cursor() as cur:
         cur.execute(sql.SQL("CREATE SCHEMA IF NOT EXISTS {}").format(sql.Identifier(LEGACY_SCHEMA)))
+        # Mirrors scripts/bootstrap_db_role.py's _configure_app_database, which now installs this
+        # before running migrations - head includes 0006's person_face_embedding_cache table,
+        # whose `embedding` column needs the `vector` type to exist.
+        cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
     _run_alembic(target, "head")
     return source, target
 
