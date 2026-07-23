@@ -10,6 +10,7 @@ from alembic import context
 import persistence.game_settings  # noqa: F401
 import persistence.games  # noqa: F401
 import persistence.legacy_import  # noqa: F401
+import persistence.ml_cache  # noqa: F401
 import persistence.users  # noqa: F401
 from config import get_settings
 from persistence.base import SCHEMA, Base
