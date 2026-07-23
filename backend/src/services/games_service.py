@@ -101,6 +101,10 @@ class GamesService:
         game_settings_service: GameSettingsService | None = None,
     ) -> None:
         self._session = session
+        # Populated by _load_game() and consulted by _save_played_round() so playing a round never
+        # has to re-fetch (and assume the existence of) a GameModel row this same service instance
+        # already loaded earlier in the request (see docs/TODO/CODE-REVIEW.md #28).
+        self._loaded_game_rows: dict[UUID, GameModel] = {}
         self._immich_service = immich_service
         # Optional/self-constructing like immich_service is elsewhere (see api/api.py's
         # get_immich_service) - only ImmichdleGame actually uses it (see _game_kwargs), but
@@ -233,6 +237,8 @@ class GamesService:
         elif game_row.owner != owner:
             raise GameOwnershipError(f"game {game_id} does not belong to this owner")
 
+        self._loaded_game_rows[game_row.id] = game_row
+
         spec = _GAMES[(game_row.game_type, game_row.mode)]
         rounds = [
             spec.round_class.from_payload(
@@ -269,11 +275,19 @@ class GamesService:
         self._session.commit()
 
     def _save_played_round(self, game: BaseGame, answered_round: BaseRound) -> None:
-        game_row = self._session.get(GameModel, game.id)
+        # No session.get() re-fetch here - the row was already loaded (and, on the play path,
+        # FOR UPDATE-locked) by _load_game earlier in this same service instance/request, so
+        # re-querying it by id would be redundant and, being Optional, would need an unjustified
+        # existence check for a row we know is already in the session (see CODE-REVIEW.md #28).
+        game_row = self._loaded_game_rows.get(game.id)
+        if game_row is None:
+            raise RuntimeError(f"_save_played_round called for game {game.id}, which was never loaded via _load_game")
         game_row.score = game.score
         game_row.finished = game.finished
 
-        round_row = self._session.get(RoundModel, answered_round.id)
+        round_row = next((r for r in game_row.rounds if r.id == answered_round.id), None)
+        if round_row is None:
+            raise RuntimeError(f"round {answered_round.id} not found among already-loaded rows of game {game.id}")
         round_row.score_delta = answered_round.score_delta
         round_row.payload = answered_round.to_payload()
 
