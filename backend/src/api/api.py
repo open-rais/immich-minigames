@@ -180,3 +180,18 @@ def get_asset_thumbnail(
     immich_service: Annotated[ImmichService, Depends(get_immich_service)],
 ) -> Response:
     return _proxy_thumbnail(lambda: immich_service.get_asset_thumbnail(asset_id))
+
+
+@router.get("/albums/{album_id}/thumbnail")
+@limiter.limit(THUMBNAIL_LIMIT)
+def get_album_thumbnail(
+    request: Request,
+    album_id: UUID,
+    immich_service: Annotated[ImmichService, Depends(get_immich_service)],
+) -> Response:
+    # An album has no thumbnail of its own - its cover is one of its assets (Immich's chosen cover,
+    # or the first asset as a fallback), whose bytes are then served like any other asset thumbnail.
+    cover_asset_id = immich_service.get_album_cover_asset_id(album_id)
+    if cover_asset_id is None:
+        raise HTTPException(status_code=404, detail="album has no cover")
+    return _proxy_thumbnail(lambda: immich_service.get_asset_thumbnail(cover_asset_id))
