@@ -16,11 +16,12 @@ from sqlalchemy import Date, cast, exists, extract, func, select
 from sqlalchemy.engine import Engine, Row
 
 from config import Settings, get_settings
+from domain.album import Album
 from domain.asset import Asset
 from domain.face import Face
 from domain.person import Person
 from persistence.immich_db import get_immich_engine
-from persistence.immich_tables import asset, asset_exif, asset_face, asset_file, person
+from persistence.immich_tables import album, album_asset, asset, asset_exif, asset_face, asset_file, person
 
 MediaType = Literal["photo", "video", "any"]
 
@@ -381,6 +382,51 @@ class ImmichService:
         # not always exactly max_faces (see docstring).
         return random.sample(faces, random.randint(1, max_faces))
 
+    def get_albums(
+        self,
+        *,
+        randomize: bool = False,
+        limit: int = 1,
+        exclude_ids: frozenset[UUID] = frozenset(),
+    ) -> list[Album]:
+        """Non-deleted albums with their asset count - the data source for MoreOrLess's albumAssets
+        mode (see games/more_or_less.py's AlbumAssetsProvider), mirroring get_persons' shape
+        (randomize/limit/exclude_ids). asset_count comes from the album_asset join; an album with no
+        assets still comes back (count 0)."""
+        asset_count = func.count(album_asset.c.assetId).label("asset_count")
+
+        stmt = (
+            select(album.c.id, album.c.albumName, album.c.albumThumbnailAssetId, asset_count)
+            .select_from(album.outerjoin(album_asset, album_asset.c.albumId == album.c.id))
+            .where(album.c.deletedAt.is_(None))
+            .group_by(album.c.id, album.c.albumName, album.c.albumThumbnailAssetId)
+        )
+
+        if exclude_ids:
+            stmt = stmt.where(album.c.id.notin_(exclude_ids))
+
+        stmt = stmt.order_by(func.random() if randomize else album.c.albumName).limit(limit)
+
+        with self._engine.connect() as conn:
+            rows = conn.execute(stmt).all()
+
+        return [self._row_to_album(row) for row in rows]
+
+    def get_album_cover_asset_id(self, album_id: UUID) -> UUID | None:
+        """The asset whose thumbnail represents this album: Immich's chosen cover
+        (album.albumThumbnailAssetId) if set, else this album's first asset. None if the album
+        doesn't exist or has no assets at all - the caller (api/api.py's album thumbnail route)
+        maps that to a 404. The actual image bytes are then served via get_asset_thumbnail."""
+        with self._engine.connect() as conn:
+            cover_id = conn.execute(
+                select(album.c.albumThumbnailAssetId).where(album.c.id == album_id)
+            ).scalar()
+            if cover_id is not None:
+                return cover_id
+            return conn.execute(
+                select(album_asset.c.assetId).where(album_asset.c.albumId == album_id).limit(1)
+            ).scalar()
+
     def get_asset_thumbnail(self, asset_id: UUID, size: str = "preview") -> tuple[bytes, str]:
         """Fetches an asset's image bytes via Immich's REST API (not the DB - see module
         docstring). `size="preview"` (~1440px JPEG derivative) rather than the default `thumbnail`
@@ -428,6 +474,15 @@ class ImmichService:
             city=row.city,
             state=row.state,
             country=row.country,
+        )
+
+    @staticmethod
+    def _row_to_album(row: Row) -> Album:
+        return Album(
+            id=row.id,
+            name=row.albumName,
+            asset_count=row.asset_count,
+            thumbnail_asset_id=row.albumThumbnailAssetId,
         )
 
     @staticmethod
