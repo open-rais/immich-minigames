@@ -10,6 +10,7 @@ and per-round snapshot are Geoguessr-specific and live here.
 """
 
 import math
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 from uuid import UUID, uuid4
@@ -17,6 +18,7 @@ from uuid import UUID, uuid4
 from domain.asset import Asset
 from games.asset_rounds import MAX_SCORE, TOTAL_ROUNDS, AssetRoundsGame, exp_decay_score  # noqa: F401 (MAX_SCORE/TOTAL_ROUNDS re-exported for tests)
 from games.base import BaseRound
+from games.serialization import DictCodec
 
 GAME_TYPE = "geoguessr"
 MODE_DISTANCE_BETWEEN_GUESS = "distanceBetweenGuess"
@@ -44,20 +46,13 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 
 @dataclass(frozen=True)
-class LatLng:
+class LatLng(DictCodec):
     latitude: float
     longitude: float
 
-    def to_dict(self) -> dict[str, float]:
-        return {"latitude": self.latitude, "longitude": self.longitude}
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "LatLng":
-        return cls(latitude=data["latitude"], longitude=data["longitude"])
-
 
 @dataclass(frozen=True)
-class AssetSnapshot:
+class AssetSnapshot(DictCodec):
     """An asset's id/location frozen at the moment a round was created - not a live query result,
     so a round's answer stays stable even if the underlying Immich data changes later (same
     rationale as more_or_less.py's PersonSnapshot)."""
@@ -71,13 +66,6 @@ class AssetSnapshot:
         if asset.latitude is None or asset.longitude is None:
             raise ValueError(f"asset {asset.id} has no location")
         return cls(id=asset.id, latitude=asset.latitude, longitude=asset.longitude)
-
-    def to_dict(self) -> dict[str, Any]:
-        return {"id": str(self.id), "latitude": self.latitude, "longitude": self.longitude}
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "AssetSnapshot":
-        return cls(id=UUID(data["id"]), latitude=data["latitude"], longitude=data["longitude"])
 
 
 class GeoguessrRound(BaseRound):
@@ -101,9 +89,14 @@ class GeoguessrRound(BaseRound):
             return None
         return haversine_km(self.asset.latitude, self.asset.longitude, self.guess.latitude, self.guess.longitude)
 
-    def calculate_score(self) -> int:
-        assert self.distance_km is not None  # BaseGame.play_round already set self.guess
-        return exp_decay_score(self.distance_km, FLAT_SCORE_RADIUS_KM, DECAY_KM)
+    def calculate_score(self, settings: Mapping[str, float] | None = None) -> int:
+        if self.distance_km is None:
+            raise RuntimeError("calculate_score() called before BaseGame.play_round set self.guess")
+        settings = settings or {}
+        flat_zone = settings.get("flat_score_radius_km", FLAT_SCORE_RADIUS_KM)
+        decay = settings.get("decay_km", DECAY_KM)
+        max_score = int(settings.get("max_score", MAX_SCORE))
+        return exp_decay_score(self.distance_km, flat_zone, decay, max_score)
 
     def to_payload(self) -> dict[str, Any]:
         return {
@@ -134,9 +127,9 @@ class GeoguessrGame(AssetRoundsGame):
     _min_separation = _MIN_CANDIDATE_SEPARATION_KM
     _not_enough_assets_message = "not enough located photos in Immich to start a Geoguessr game"
 
-    def _query_assets(self, exclude_ids: frozenset[UUID], *, limit: int, random: bool) -> list[Asset]:
+    def _query_assets(self, exclude_ids: frozenset[UUID], *, limit: int, randomize: bool) -> list[Asset]:
         return self._immich_service.get_assets(
-            media_type="photo", with_location=True, random=random, limit=limit, exclude_ids=exclude_ids
+            media_type="photo", with_location=True, randomize=randomize, limit=limit, exclude_ids=exclude_ids
         )
 
     def _query_extra_assets(self, main: Asset, exclude_ids: frozenset[UUID], *, limit: int) -> list[Asset]:
@@ -146,7 +139,7 @@ class GeoguessrGame(AssetRoundsGame):
             with_location=True,
             near_km=(main.latitude, main.longitude, _EXTRA_RADIUS_KM),
             local_month=main.local_date.month,
-            random=True,
+            randomize=True,
             limit=limit,
             exclude_ids=exclude_ids,
         )

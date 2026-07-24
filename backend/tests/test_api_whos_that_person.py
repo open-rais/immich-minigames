@@ -29,6 +29,8 @@ class TestCreateGame:
 
         assert game["score"] == 0
         assert game["finished"] is False
+        # ADMIN-FEATURE.md point #4 - the live configured total, not a hardcoded frontend mirror.
+        assert game["total_people"] == 15
         assert len(game["rounds"]) == 1
         round_ = game["rounds"][0]
         assert round_["correct"] is None
@@ -57,7 +59,7 @@ class TestGetGame:
 
 
 class TestPlayRound:
-    def test_correct_guesses_reveal_answers_and_update_score(self, client, games_service):
+    def test_correct_guesses_reveal_answers_and_update_score(self, client, games_service, db_session):
         owner = str(uuid4())
         game = _create_game(client, owner)
         round_id = game["rounds"][0]["id"]
@@ -67,6 +69,11 @@ class TestPlayRound:
         domain_game = games_service.get_game(game["id"], owner)
         first_round = domain_game.current_round
         guesses = {face.face_id: face.person_id for face in first_round.faces}
+        # _load_game reads the row with SELECT ... FOR UPDATE (docs/TODO/CODE-REVIEW.md #6) - this
+        # inspection-only read would otherwise hold that lock for the rest of the test (games_service
+        # here shares db_session, only closed at teardown) and deadlock against the HTTP call below,
+        # which loads the same game_id through its own request-scoped session.
+        db_session.rollback()
 
         response = _play(client, game["id"], round_id, owner, guesses)
 
@@ -81,13 +88,14 @@ class TestPlayRound:
             assert face["person_id"] is not None
             assert face["correct"] is True
 
-    def test_wrong_guess_is_revealed_as_incorrect(self, client, games_service):
+    def test_wrong_guess_is_revealed_as_incorrect(self, client, games_service, db_session):
         owner = str(uuid4())
         game = _create_game(client, owner)
         round_id = game["rounds"][0]["id"]
         domain_game = games_service.get_game(game["id"], owner)
         first_round = domain_game.current_round
         guesses = {face.face_id: uuid4() for face in first_round.faces}
+        db_session.rollback()  # release the FOR UPDATE lock - see the comment above for why
 
         response = _play(client, game["id"], round_id, owner, guesses)
 
@@ -97,12 +105,13 @@ class TestPlayRound:
         assert result["score_delta"] == 0
         assert result["finished"] is False
 
-    def test_incomplete_guess_returns_422(self, client, games_service):
+    def test_incomplete_guess_returns_422(self, client, games_service, db_session):
         owner = str(uuid4())
         game = _create_game(client, owner)
         round_id = game["rounds"][0]["id"]
         domain_game = games_service.get_game(game["id"], owner)
         [first_face, *_] = domain_game.current_round.faces
+        db_session.rollback()  # release the FOR UPDATE lock - see the comment above for why
 
         response = _play(client, game["id"], round_id, owner, {first_face.face_id: first_face.person_id})
 

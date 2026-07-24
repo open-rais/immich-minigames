@@ -5,6 +5,7 @@ de hablar con Immich" for why data queries and image serving use different paths
 """
 
 import math
+import random
 from datetime import date
 from functools import lru_cache
 from typing import Literal
@@ -18,7 +19,7 @@ from config import Settings, get_settings
 from domain.asset import Asset
 from domain.face import Face
 from domain.person import Person
-from persistence.base import get_engine
+from persistence.immich_db import get_immich_engine
 from persistence.immich_tables import asset, asset_exif, asset_face, asset_file, person
 
 MediaType = Literal["photo", "video", "any"]
@@ -31,6 +32,18 @@ def _escape_like(value: str) -> str:
     return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
+# Accent-insensitive search (e.g. "Rodriguez" should match stored "Rodríguez") without CREATE
+# EXTENSION unaccent - this role only has SELECT on Immich's `public` schema (see
+# docs/ARCHITECTURE/IMMICH.md) and translate() is a builtin Postgres function, not an extension.
+_ACCENTED_CHARS = "áéíóúÁÉÍÓÚñÑüÜ"
+_FOLDED_CHARS = "aeiouAEIOUnNuU"
+_ACCENT_FOLD_TABLE = str.maketrans(_ACCENTED_CHARS, _FOLDED_CHARS)
+
+
+def _fold_accents(value: str) -> str:
+    return value.translate(_ACCENT_FOLD_TABLE)
+
+
 # Reused across requests (pooled connections, one client) instead of opening a new connection per
 # thumbnail. A bounded timeout means a slow/hung Immich never blocks a worker thread indefinitely.
 @lru_cache(maxsize=1)
@@ -40,7 +53,7 @@ def _get_http_client() -> httpx.Client:
 
 class ImmichService:
     def __init__(self, engine: Engine | None = None, settings: Settings | None = None) -> None:
-        self._engine = engine or get_engine()
+        self._engine = engine or get_immich_engine()
         self._settings = settings or get_settings()
 
     def get_assets(
@@ -53,7 +66,7 @@ class ImmichService:
         local_date: date | None = None,
         local_month: int | None = None,
         near_km: tuple[float, float, float] | None = None,
-        random: bool = False,
+        randomize: bool = False,
         limit: int = 1,
         exclude_ids: frozenset[UUID] = frozenset(),
     ) -> list[Asset]:
@@ -130,7 +143,7 @@ class ImmichService:
         if exclude_ids:
             stmt = stmt.where(asset.c.id.notin_(exclude_ids))
 
-        stmt = stmt.order_by(func.random() if random else asset.c.fileCreatedAt).limit(limit)
+        stmt = stmt.order_by(func.random() if randomize else asset.c.fileCreatedAt).limit(limit)
 
         with self._engine.connect() as conn:
             rows = conn.execute(stmt).all()
@@ -145,11 +158,13 @@ class ImmichService:
         min_asset_count: int | None = None,
         name_query: str | None = None,
         ids: frozenset[UUID] | None = None,
-        random: bool = False,
+        randomize: bool = False,
+        asset_count_weight: float | None = None,
         limit: int = 1,
         exclude_ids: frozenset[UUID] = frozenset(),
     ) -> list[Person]:
-        asset_count = func.count(func.distinct(asset_face.c.assetId)).label("asset_count")
+        asset_count_agg = func.count(func.distinct(asset_face.c.assetId))
+        asset_count = asset_count_agg.label("asset_count")
 
         stmt = (
             select(person.c.id, person.c.name, person.c.birthDate, asset_count)
@@ -180,7 +195,18 @@ class ImmichService:
         if min_asset_count is not None:
             stmt = stmt.having(asset_count >= min_asset_count)
 
-        stmt = stmt.order_by(func.random() if random else person.c.name).limit(limit)
+        if randomize and asset_count_weight:
+            # Weighted random pick (Efraimidis-Spirakis: order by random()^(1/weight) desc)
+            # instead of a plain ORDER BY random() - see games/immichdle.py's
+            # ASSET_COUNT_WEIGHT_EXPONENT for the admin-configurable exponent this implements.
+            # greatest(..., 1) avoids a division by zero for a person with 0 tagged assets.
+            weight = func.pow(func.greatest(asset_count_agg, 1), asset_count_weight)
+            stmt = stmt.order_by(func.pow(func.random(), 1.0 / weight).desc())
+        elif randomize:
+            stmt = stmt.order_by(func.random())
+        else:
+            stmt = stmt.order_by(person.c.name)
+        stmt = stmt.limit(limit)
 
         with self._engine.connect() as conn:
             rows = conn.execute(stmt).all()
@@ -188,17 +214,30 @@ class ImmichService:
         return [self._row_to_person(row) for row in rows]
 
     def search_persons(self, query: str, *, offset: int = 0, limit: int = 3) -> list[Person]:
-        """Named people with a *word* in their full name starting with `query` (case-insensitive) -
-        e.g. "ar" matches "Argimiro Rodriguez" and "Juan Arturo" but not "Martin Perez" (no
-        mid-word match). Two ILIKE conditions cover this for any number of name tokens: the query
-        prefixing the first word, or prefixing any later word (the leading `%` in the second
-        pattern absorbs everything before that word, including other whole words). Kept separate
-        from get_persons - its existing name_query is a plain substring filter, and nothing else
-        needs this word-prefix mode. Paginated via offset/limit (small pages, e.g. for infinite
-        scroll UIs), ordered by name for a stable scroll order."""
-        escaped = _escape_like(query)
-        starts_with = person.c.name.ilike(f"{escaped}%", escape="\\")
-        contains_word_starting_with = person.c.name.ilike(f"% {escaped}%", escape="\\")
+        """Named people matching every whitespace-separated token in `query` (case- and
+        accent-insensitive), each token matched independently against a *word* in the name - e.g.
+        "rai rodriguez" matches "Raimundo Rodríguez" (each token prefixes a different word,
+        regardless of typed order) but not "Martin Perez" (no mid-word match). Per token, two
+        ILIKE conditions cover "prefixes a word anywhere in the name": the token prefixing the
+        first word, or prefixing any later word (the leading `%` in the second pattern absorbs
+        everything before that word, including other whole words); all tokens' conditions are
+        ANDed together, which is what makes multi-word queries need every token satisfied rather
+        than any one of them. Kept separate from get_persons - its existing name_query is a plain
+        substring filter, and nothing else needs this word-prefix mode. Paginated via
+        offset/limit (small pages, e.g. for infinite scroll UIs), ordered by name for a stable
+        scroll order."""
+        tokens = query.split()
+        if not tokens:
+            return []
+
+        folded_name = func.translate(person.c.name, _ACCENTED_CHARS, _FOLDED_CHARS)
+        token_conditions = []
+        for token in tokens:
+            escaped = _escape_like(_fold_accents(token))
+            starts_with = folded_name.ilike(f"{escaped}%", escape="\\")
+            contains_word_starting_with = folded_name.ilike(f"% {escaped}%", escape="\\")
+            token_conditions.append(starts_with | contains_word_starting_with)
+
         asset_count = func.count(func.distinct(asset_face.c.assetId)).label("asset_count")
 
         stmt = (
@@ -215,7 +254,7 @@ class ImmichService:
                 person.c.isHidden.is_(False),
                 person.c.thumbnailPath != "",
                 person.c.name != "",
-                starts_with | contains_word_starting_with,
+                *token_conditions,
             )
             .group_by(person.c.id, person.c.name, person.c.birthDate)
             .order_by(person.c.name)
@@ -272,14 +311,16 @@ class ImmichService:
         self, *, max_faces: int, exclude_asset_ids: frozenset[UUID] = frozenset()
     ) -> list[Face]:
         """Picks one random asset that has at least one visible, non-deleted face already assigned
-        to a named, non-hidden person, then returns up to `max_faces` of that asset's named,
-        non-hidden faces (randomly chosen if it has more than `max_faces`) - these are the faces
-        Who'sThatPerson blacks out for a round. Faces without a name are never returned - there'd
-        be nothing to grade against, so they're left unblacked in the photo, purely decorative.
-        Hidden people (Immich's own `isHidden` flag) are excluded the same way get_persons/
-        search_persons already exclude them from the guess search box - otherwise a round could
-        black out a face the player has no way to search for and guess. Empty list if no eligible
-        asset exists (e.g. exclude_asset_ids/the game's data pool is exhausted)."""
+        to a named, non-hidden person, then returns the faces Who'sThatPerson blacks out for a
+        round: every one of that asset's named, non-hidden faces if it has `max_faces` or fewer,
+        otherwise a *random* number of them between 1 and `max_faces` (confirmed with the project
+        owner - not always exactly `max_faces`, so a photo with plenty of named people doesn't
+        deterministically always hide the maximum). Faces without a name are never returned -
+        there'd be nothing to grade against, so they're left unblacked in the photo, purely
+        decorative. Hidden people (Immich's own `isHidden` flag) are excluded the same way
+        get_persons/search_persons already exclude them from the guess search box - otherwise a
+        round could black out a face the player has no way to search for and guess. Empty list if
+        no eligible asset exists (e.g. exclude_asset_ids/the game's data pool is exhausted)."""
         visible_face = asset_face.c.isVisible.is_(True) & asset_face.c.deletedAt.is_(None)
         named_face = asset_face.join(person, person.c.id == asset_face.c.personId)
 
@@ -307,6 +348,9 @@ class ImmichService:
             if asset_row is None:
                 return []
 
+            # No SQL-level LIMIT here - every eligible face is fetched so the count to actually
+            # hide can be decided in Python below (this asset's face count is at most a handful,
+            # never a performance concern).
             faces_stmt = (
                 select(
                     asset_face.c.id,
@@ -327,12 +371,15 @@ class ImmichService:
                     person.c.name != "",
                     person.c.isHidden.is_(False),
                 )
-                .order_by(func.random())
-                .limit(max_faces)
             )
             face_rows = conn.execute(faces_stmt).all()
 
-        return [self._row_to_face(row) for row in face_rows]
+        faces = [self._row_to_face(row) for row in face_rows]
+        if len(faces) <= max_faces:
+            return faces
+        # More named faces than the cap - hide a random number of them between 1 and max_faces,
+        # not always exactly max_faces (see docstring).
+        return random.sample(faces, random.randint(1, max_faces))
 
     def get_asset_thumbnail(self, asset_id: UUID, size: str = "preview") -> tuple[bytes, str]:
         """Fetches an asset's image bytes via Immich's REST API (not the DB - see module

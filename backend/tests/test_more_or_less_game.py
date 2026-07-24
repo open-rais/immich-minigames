@@ -86,6 +86,15 @@ class TestMoreOrLessGame:
         with pytest.raises(ValueError):
             game.play_round("more")
 
+    def test_starting_with_no_named_people_raises_a_friendly_error(self, immich_service, monkeypatch):
+        # Regression test: get_persons(..., limit=1) can return [] (empty library), and
+        # `[reference] = ...` used to raise a bare `ValueError: not enough values to unpack`
+        # instead of ever reaching this friendly message.
+        monkeypatch.setattr(immich_service, "get_persons", lambda **kwargs: [])
+
+        with pytest.raises(ValueError, match="not enough named people"):
+            MoreOrLessGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+
 
 class TestMoreOrLessRoundTieScoring:
     """Isolated from the DB - constructs rounds directly to deterministically exercise a tie,

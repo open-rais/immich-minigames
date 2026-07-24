@@ -116,6 +116,11 @@ export function UserMenu() {
           <Link to={user ? "/profile" : "/login"} className="block rounded-xl px-3 py-2.5 text-sm font-semibold text-body hover:bg-hover-tint">
             {user ? user.username : t("auth.login.cta")}
           </Link>
+          {user?.is_admin && (
+            <Link to="/admin" className="block rounded-xl px-3 py-2.5 text-sm font-semibold text-body hover:bg-hover-tint">
+              {t("userMenu.adminPanel")}
+            </Link>
+          )}
           <div className="my-1 border-t border-line" />
           <div className="px-3 py-2">
             <p className="mb-1.5 text-xs font-semibold tracking-wide text-faint uppercase">{t("userMenu.language")}</p>

@@ -23,6 +23,7 @@ from games.whos_that_person import GAME_TYPE as WHOS_THAT_PERSON_TYPE
 from games.whos_that_person import MODE_NAMED_FACES, WhosThatPersonGame, WhosThatPersonRound
 from persistence.games import GameModel, RoundModel
 from persistence.users import UserModel
+from services.game_settings import GameSettingsService
 from services.immich_service import ImmichService
 from services.ml_service import MLService
 
@@ -84,11 +85,26 @@ class RoundNotPendingError(Exception):
     pass
 
 
+class NotEnoughContentError(Exception):
+    """Raised when the Immich library doesn't have enough named people/faces/located assets to
+    start a game - the friendly ValueError each game's start() already raises for that case (see
+    games/more_or_less.py, games/immichdle.py, games/whos_that_person.py, games/asset_rounds.py),
+    re-raised here so main.py can map it to a 422 instead of it reaching the client as a bare 500."""
+
+
 class GamesService:
     def __init__(
-        self, session: Session, immich_service: ImmichService, ml_service: MLService | None = None
+        self,
+        session: Session,
+        immich_service: ImmichService,
+        ml_service: MLService | None = None,
+        game_settings_service: GameSettingsService | None = None,
     ) -> None:
         self._session = session
+        # Populated by _load_game() and consulted by _save_played_round() so playing a round never
+        # has to re-fetch (and assume the existence of) a GameModel row this same service instance
+        # already loaded earlier in the request (see docs/TODO/CODE-REVIEW.md #28).
+        self._loaded_game_rows: dict[UUID, GameModel] = {}
         self._immich_service = immich_service
         # Optional/self-constructing like immich_service is elsewhere (see api/api.py's
         # get_immich_service) - only ImmichdleGame actually uses it (see _game_kwargs), but
@@ -96,14 +112,21 @@ class GamesService:
         # rather than hidden inside ImmichdleGame's own constructor, and can be swapped for a fake
         # in tests.
         self._ml_service = ml_service or MLService()
+        # Admin feature (ADMIN-FEATURE.md point #4) - same optional/self-constructing pattern.
+        self._game_settings_service = game_settings_service or GameSettingsService(session)
 
-    def _game_kwargs(self, game_class: type[BaseGame]) -> dict[str, Any]:
+    def _game_kwargs(self, game_class: type[BaseGame], game_type: str) -> dict[str, Any]:
         """Constructor/`start()` kwargs every game needs, plus whichever extra ones a specific game
         class needs beyond that - today only ImmichdleGame's MLService (see games/immichdle.py).
         Centralizing the "which game needs what" knowledge here means a new game with its own extra
         dependency only ever needs one line added in this one method, not a change spread across
-        every call site that builds a game."""
-        kwargs: dict[str, Any] = {"immich_service": self._immich_service}
+        every call site that builds a game. `game_type` is a plain str (not derived from
+        `game_class`) since not every concrete game class exposes it as a class attribute - callers
+        already have the string in scope (the (game_type, mode) key that picked this spec)."""
+        kwargs: dict[str, Any] = {
+            "immich_service": self._immich_service,
+            "settings": self._game_settings_service.get_settings(game_type),
+        }
         if game_class is ImmichdleGame:
             kwargs["ml_service"] = self._ml_service
         return kwargs
@@ -115,12 +138,15 @@ class GamesService:
         if spec is None:
             raise UnsupportedGameError(f"unsupported game/mode: {game_type}/{mode}")
 
-        game = spec.game_class.start(id=uuid4(), owner=owner, **self._game_kwargs(spec.game_class))
+        try:
+            game = spec.game_class.start(id=uuid4(), owner=owner, **self._game_kwargs(spec.game_class, game_type))
+        except ValueError as e:
+            raise NotEnoughContentError(str(e)) from e
         self._save_new_game(game, user_id=user_id)
         return game
 
-    def get_game(self, game_id: UUID, owner: str) -> BaseGame:
-        return self._load_game(game_id, owner)
+    def get_game(self, game_id: UUID, owner: str, user: UserModel | None = None) -> BaseGame:
+        return self._load_game(game_id, owner, user)
 
     def get_personal_records(self, owner: str, user_id: UUID | None) -> list[GameRecord]:
         """Roadmap point E - personal-best score per (game_type, mode), shown in the main menu.
@@ -169,10 +195,12 @@ class GamesService:
             for rank, (username, skin_person_id, score) in enumerate(rows, start=1)
         ]
 
-    def play_round(self, game_id: UUID, owner: str, round_id: UUID, guess: Any) -> BaseGame:
+    def play_round(
+        self, game_id: UUID, owner: str, round_id: UUID, guess: Any, user: UserModel | None = None
+    ) -> BaseGame:
         """Plays the given round and returns the game with its updated state (the answered round
         is still in game.rounds, and game.current_round is the new pending round, if any)."""
-        game = self._load_game(game_id, owner)
+        game = self._load_game(game_id, owner, user)
         return self.play_loaded_round(game, round_id, guess)
 
     def play_loaded_round(self, game: BaseGame, round_id: UUID, guess: Any) -> BaseGame:
@@ -188,12 +216,28 @@ class GamesService:
 
     # -- persistence glue ---------------------------------------------------
 
-    def _load_game(self, game_id: UUID, owner: str) -> BaseGame:
-        game_row = self._session.get(GameModel, game_id)
+    def _load_game(self, game_id: UUID, owner: str, user: UserModel | None = None) -> BaseGame:
+        # SELECT ... FOR UPDATE - this is the single load point for both viewing a game (get_game)
+        # and loading it right before playing a round, so locking it here closes the race where two
+        # simultaneous plays of the same round both pass play_loaded_round's current_round.id check
+        # and both score (docs/TODO/CODE-REVIEW.md #6). Everything happens in one transaction per
+        # request (api/deps.py's get_db_session), so the lock is held for at most one request.
+        game_row = self._session.get(GameModel, game_id, with_for_update=True)
         if game_row is None:
             raise GameNotFoundError(f"game {game_id} not found")
-        if game_row.owner != owner:
+        # A game created while logged in (user_id set) is owned by that account forever - the
+        # X-Owner-Id header alone is no longer proof of ownership for it, even if it happens to
+        # match (leaked via logs/Referer, or a shared browser/localStorage - see #3 in
+        # docs/TODO/CODE-REVIEW.md). A game created anonymously (user_id NULL) stays owner-only,
+        # even for a request that's since logged in - user_id is fixed at creation and never
+        # backfilled, so "logged in" alone doesn't grant access to someone's past anonymous games.
+        if game_row.user_id is not None:
+            if user is None or user.id != game_row.user_id:
+                raise GameOwnershipError(f"game {game_id} does not belong to this owner")
+        elif game_row.owner != owner:
             raise GameOwnershipError(f"game {game_id} does not belong to this owner")
+
+        self._loaded_game_rows[game_row.id] = game_row
 
         spec = _GAMES[(game_row.game_type, game_row.mode)]
         rounds = [
@@ -213,7 +257,7 @@ class GamesService:
             rounds=rounds,
             score=game_row.score,
             finished=game_row.finished,
-            **self._game_kwargs(spec.game_class),
+            **self._game_kwargs(spec.game_class, game_row.game_type),
         )
 
     def _save_new_game(self, game: BaseGame, user_id: UUID | None = None) -> None:
@@ -231,11 +275,19 @@ class GamesService:
         self._session.commit()
 
     def _save_played_round(self, game: BaseGame, answered_round: BaseRound) -> None:
-        game_row = self._session.get(GameModel, game.id)
+        # No session.get() re-fetch here - the row was already loaded (and, on the play path,
+        # FOR UPDATE-locked) by _load_game earlier in this same service instance/request, so
+        # re-querying it by id would be redundant and, being Optional, would need an unjustified
+        # existence check for a row we know is already in the session (see CODE-REVIEW.md #28).
+        game_row = self._loaded_game_rows.get(game.id)
+        if game_row is None:
+            raise RuntimeError(f"_save_played_round called for game {game.id}, which was never loaded via _load_game")
         game_row.score = game.score
         game_row.finished = game.finished
 
-        round_row = self._session.get(RoundModel, answered_round.id)
+        round_row = next((r for r in game_row.rounds if r.id == answered_round.id), None)
+        if round_row is None:
+            raise RuntimeError(f"round {answered_round.id} not found among already-loaded rows of game {game.id}")
         round_row.score_delta = answered_round.score_delta
         round_row.payload = answered_round.to_payload()
 

@@ -12,12 +12,20 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=_REPO_ROOT_ENV_FILE, extra="ignore")
 
     # The backend's single DB role (see scripts/bootstrap_db_role.py, which provisions it): read-only
-    # on Immich's own schema, full control on this app's own `minigames` schema. Never
+    # on Immich's own database, full control on this app's own database. Never
     # DB_USERNAME/DB_PASSWORD - those are Immich's own admin connection, not used by this backend.
     db_app_username: str
     db_app_password: str
 
+    # Immich's own database - this app only ever reads from it (see immich_db_url below).
     db_database_name: str
+    # This app's own database, on the same Postgres instance but deliberately NOT inside Immich's:
+    # Immich backs up with `pg_dump --clean --if-exists` over its own database, so anything living
+    # there ends up in Immich's dumps and breaks its restore (see docs/ARCHITECTURE/BACKEND.md's
+    # "Por qué una base de datos separada"). Defaulted rather than required so that upgrading an
+    # existing install is zero-config - a missing value here would fail db-init, and the backend
+    # would never start behind its `service_completed_successfully` dependency.
+    db_app_database_name: str = "minigames"
     db_host: str = "localhost"
     db_port: int = 5432
 
@@ -32,13 +40,35 @@ class Settings(BaseSettings):
     # server-side session table to selectively revoke, see docs/ARCHITECTURE/BACKEND.md).
     jwt_secret: str
     jwt_expire_days: int = 30
+    # Whether the session cookie is marked Secure (HTTPS-only). False by default because the dev
+    # stack and docker-compose.app.yml both serve plain HTTP - set to true if this is deployed
+    # behind a TLS-terminating reverse proxy (the expected way to self-host this), or the JWT
+    # cookie keeps going out without the Secure flag even over HTTPS.
+    cookie_secure: bool = False
 
-    @property
-    def db_url(self) -> str:
+    # Admin feature (ADMIN-FEATURE.md point #1) - promotion only, not account creation: if a user
+    # already registered (via /signup) with this email, services/admin_bootstrap.py flips their
+    # is_admin flag to True on every backend startup. If no such account exists yet, it's a no-op
+    # (register normally first, then restart the backend). None/unset means no admin is managed.
+    admin_email: str | None = None
+
+    # Two databases, one role. Deliberately no single `db_url` property: an ambiguous name pointing
+    # at one of two databases is exactly the class of mistake the split exists to rule out.
+    def _db_url(self, database: str) -> str:
         return (
             f"postgresql+psycopg://{self.db_app_username}:{self.db_app_password}"
-            f"@{self.db_host}:{self.db_port}/{self.db_database_name}"
+            f"@{self.db_host}:{self.db_port}/{database}"
         )
+
+    @property
+    def immich_db_url(self) -> str:
+        """Immich's database - read-only (see persistence/immich_db.py)."""
+        return self._db_url(self.db_database_name)
+
+    @property
+    def app_db_url(self) -> str:
+        """This app's own database - read/write (see persistence/base.py)."""
+        return self._db_url(self.db_app_database_name)
 
 
 @lru_cache(maxsize=1)

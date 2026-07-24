@@ -4,6 +4,7 @@
   },
   "userMenu": {
     "trigger": "Menú de cuenta",
+    "adminPanel": "Admin",
     "language": "Idioma",
     "theme": "Tema",
     "themeOptions": {
@@ -169,6 +170,34 @@
     },
     "error": {
       "generic": "Algo salió mal. Intenta de nuevo."
+    }
+  },
+  "admin": {
+    "users": {
+      "title": "Usuarios",
+      "description": "Administra las cuentas de la app",
+      "loading": "Cargando usuarios..."
+    },
+    "games": {
+      "title": "Juegos",
+      "description": "Edita la configuración de cada juego",
+      "loading": "Cargando juegos...",
+      "noSettings": "Este juego todavía no tiene configuración disponible.",
+      "reset": "Resetear por defecto",
+      "settings": {
+        "total_rounds": "Rondas totales",
+        "max_score": "Puntaje máximo por ronda",
+        "max_extra_assets": "Fotos extra mostradas",
+        "flat_score_radius_km": "Radio de puntaje máximo (km)",
+        "decay_km": "Decaimiento de puntaje (km)",
+        "flat_score_days": "Días de puntaje máximo",
+        "decay_days": "Decaimiento de puntaje (días)",
+        "starting_score": "Puntaje inicial",
+        "wrong_guess_penalty": "Penalización por error",
+        "asset_count_weight": "Peso de la cantidad de fotos (0 = uniforme, 1 = proporcional)",
+        "total_people": "Personas totales",
+        "max_hidden_faces": "Caras ocultas máximas por ronda"
+      }
     }
   }
 }

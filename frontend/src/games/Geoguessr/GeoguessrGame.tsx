@@ -18,7 +18,9 @@ import { MapPicker } from "./MapPicker"
 
 const GAME_TYPE = GameType.Geoguessr
 const MODE = Mode.DistanceBetweenGuess
-const TOTAL_ROUNDS = 5 // mirrors backend/src/games/asset_rounds.py's TOTAL_ROUNDS - display only
+// Fallback only - the real total (admin-configurable, ADMIN-FEATURE.md point #4) comes from
+// game.totalRounds, read off the backend's live GameOut.total_rounds.
+const DEFAULT_TOTAL_ROUNDS = 5
 // Longer than MoreOrLess's own REVEAL_HOLD_MS (1400ms) - there's more to take in here (the map's
 // own 600ms fitBounds animation, plus reading both the score and the distance).
 const REVEAL_HOLD_MS = 2400
@@ -84,7 +86,7 @@ export function GeoguessrGame({ coverUrl }: GameComponentProps) {
 
       <GuardedBackButton onExit={backToIdle} />
       <ScoreBadge label={t("common.score")} score={game.score} />
-      <RoundBadge label={t("common.roundOf", { current: round.round_index, total: TOTAL_ROUNDS })} />
+      <RoundBadge label={t("common.roundOf", { current: round.round_index, total: game.totalRounds ?? DEFAULT_TOTAL_ROUNDS })} />
 
       <MapPicker pin={pin} onPinChange={setPin} actual={actual} disabled={phase !== "guessing"} forceExpanded={revealed} />
 

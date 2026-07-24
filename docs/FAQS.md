@@ -28,13 +28,44 @@ Direct read-only access lets us query this data efficiently without duplicating 
 ### Is it safe to run this alongside Immich?
 
 **Use at your own risk.** Safety measures in place:
-- The database user (`DB_APP_USERNAME`) is read-only on Immich's `public` schema
-- Only the app's own `minigames` schema (owned by that role) can be modified
+- The database user (`DB_APP_USERNAME`) is read-only on Immich's **entire database**, granted via
+  `pg_read_all_data` — `SELECT` and nothing else, never `INSERT`/`UPDATE`/`DELETE`
+- This app's own tables live in a **separate database**, so nothing it writes can land in Immich's
 - Image files are never touched—thumbnails come only via the REST API
-- All direct database access is read-only except for the app's own game tables
+- All direct database access to Immich is read-only, enforced by Postgres privileges rather than
+  by convention
 
 That said, you're running code with direct access to your personal photo database. Review the source code
 if you have concerns. The author takes no responsibility for any issues that arise.
+
+### Does this interfere with Immich's backups?
+
+**No — and making sure of that is why this app keeps its data in its own database.**
+
+Immich backs up with `pg_dump` scoped to its own database. Anything stored inside that database
+rides along in Immich's dumps, and that turns out to break the *restore*: the dump tries to
+`DROP SCHEMA` before recreating it, which fails against any table created after the backup was
+taken, and since Immich restores in a single transaction with `ON_ERROR_STOP=on`, the whole restore
+aborts.
+
+Because this app uses a separate database, it is outside `pg_dump`'s scope entirely. It also leaves
+no ACLs naming its role inside Immich's database, so Immich's dumps contain no trace of it at all.
+
+Two consequences worth knowing:
+- **Back up this app's database separately** if you care about your scores and accounts. Immich's
+  backup will not include them (by design).
+- **After restoring an Immich backup taken before this split**, re-run
+  `docker compose -f docker-compose.app.yml run --rm db-init`. The restore resurrects the old
+  schema inside Immich's database; `db-init` recognises it as stale and cleans it up.
+
+### I'm upgrading from an older version. Do I need to migrate anything by hand?
+
+No. Older versions stored this app's tables in a `minigames` schema inside Immich's own database.
+The first `db-init` after upgrading moves them into this app's own database automatically: it
+copies the data, verifies the row counts, and only then removes the old schema. If anything doesn't
+add up it stops without deleting anything and tells you what to do.
+
+You don't need to add `DB_APP_DATABASE_NAME` to your `.env` — it defaults to `minigames`.
 
 ## Installation & Deployment
 
@@ -53,11 +84,13 @@ See the Installation & Usage section in the README.md for:
 ### Can I run this on a different machine from Immich?
 
 Yes. You need:
-- Network access to your Immich database (Postgres on the network)
-- Network access to your Immich API server (HTTP/HTTPS)
-- Network access to Immich-ML service (if using clues that depend on face similarity)
+- Network access to your Immich database (Postgres on the network) — both
+  Immich's own database and this app's, which live on the same instance
+- Network access to your Immich API server (HTTP/HTTPS), for thumbnails
 
-Set `DB_HOST`, `IMMICH_API_URL`, and `IMMICH_ML_URL` in your `.env` accordingly.
+Set `DB_HOST`, `DB_PORT` and `IMMICH_SERVER_URL` in your `.env` accordingly. There is no
+Immich-ML URL to set: face-similarity data is read from Immich's Postgres, not by calling
+Immich-ML directly.
 
 ### How do I configure environment variables?
 
@@ -65,13 +98,26 @@ Create a `.env` file in the project root. Required variables:
 ```env
 DB_HOST=<postgres-host>
 DB_PORT=5432
-DB_NAME=immich
-DB_APP_USERNAME=immich_app
-DB_APP_PASSWORD=<password-from-immich-docker-compose>
-IMMICH_API_URL=http://<immich-server>/api
-IMMICH_ML_URL=http://<immich-ml-service>:3003
+
+# Immich's own database - read-only for this app
+DB_DATABASE_NAME=immich
+# Immich's admin credentials - only the one-shot `db-init` step sees these
+DB_USERNAME=postgres
+DB_PASSWORD=<postgres-password>
+
+# The scoped role the backend runs as, created by `db-init`
+DB_APP_USERNAME=minigames_app
+DB_APP_PASSWORD=<any-password-you-pick>
+# This app's own database, also created by `db-init`. Optional - defaults to `minigames`
+DB_APP_DATABASE_NAME=minigames
+
+IMMICH_SERVER_URL=http://<immich-server>:2283
+IMMICH_API_KEY=<key-from-immich-account-settings>
+JWT_SECRET=<openssl rand -hex 32>
 BACKEND_PORT=8000
 ```
+
+See `.env.example` in the repository root for the fully commented version.
 
 ## Games & Features
 
@@ -163,6 +209,17 @@ cd backend
 uv run pytest
 ```
 
+These are integration tests against the real dev Immich Postgres, so `docker compose up -d` has to
+be running first. They also need **this app's own database to exist** — provision it once with:
+
+```bash
+docker compose -f docker-compose.app.yml run --rm db-init
+```
+
+Without it every test errors at setup with `database "minigames" does not exist`. The suite drops
+and recreates this app's own tables on each run, so don't point it at a database whose contents you
+want to keep.
+
 ### What stack does this use?
 
 **Backend:**
@@ -210,12 +267,15 @@ Feel free to reference or adapt patterns for your own projects.
 ### The app can't connect to the database
 
 Check:
-- `DB_HOST`, `DB_PORT`, `DB_NAME` are correct
-- `DB_APP_USERNAME` and `DB_APP_PASSWORD` match your Immich setup
+- `DB_HOST`, `DB_PORT`, `DB_DATABASE_NAME` are correct
+- `DB_APP_USERNAME` and `DB_APP_PASSWORD` match what `db-init` provisioned
 - Network connectivity to the database
 - Firewall isn't blocking the connection
 
-The database user must have read access to Immich's `public` schema.
+The app connects to **two** databases on that host: Immich's (read-only) and its own. If the error
+names a missing database rather than a refused connection, run
+`docker compose -f docker-compose.app.yml run --rm db-init` — it creates the app's own database and
+the role's grants.
 
 ### Games say "no photos available"
 
@@ -229,7 +289,7 @@ Check your Immich library for the required metadata for each game.
 ### The frontend shows "Unable to connect to API"
 
 Check:
-- `IMMICH_API_URL` is correct and the Immich server is running
+- `IMMICH_SERVER_URL` is correct and the Immich server is running
 - Backend is running and listening on the correct port
 - Network connectivity between frontend and backend
 - Frontend is making requests to the correct backend URL

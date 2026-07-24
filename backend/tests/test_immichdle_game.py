@@ -3,7 +3,14 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from games.immichdle import DuplicateGuessError, ImmichdleGame, InvalidGuessError, PersonSnapshot, _compute_clues
+from games.immichdle import (
+    ASSET_COUNT_WEIGHT_EXPONENT,
+    DuplicateGuessError,
+    ImmichdleGame,
+    InvalidGuessError,
+    PersonSnapshot,
+    _compute_clues,
+)
 
 
 def _wrong_person_id(immich_service, game: ImmichdleGame) -> UUID:
@@ -88,6 +95,68 @@ class TestImmichdleGame:
 
         with pytest.raises(ValueError):
             game.play_round(game.target.id)
+
+    def test_starting_with_no_named_people_raises_a_friendly_error(self, immich_service, monkeypatch):
+        # Regression test: get_persons(..., limit=1) can return [] (empty library), and
+        # `[target_person] = ...` used to raise a bare `ValueError: not enough values to unpack`
+        # instead of ever reaching this friendly message.
+        monkeypatch.setattr(immich_service, "get_persons", lambda **kwargs: [])
+
+        with pytest.raises(ValueError, match="not enough named people"):
+            ImmichdleGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+
+
+class TestImmichdleAdminSettings:
+    """ADMIN-FEATURE.md point #4 - confirms an override actually changes live behavior, not just
+    what GameSettingsService reports (see test_game_settings_service.py for that)."""
+
+    def test_starting_score_override_changes_the_initial_score(self, immich_service):
+        game = ImmichdleGame.start(
+            id=uuid4(), owner="owner", immich_service=immich_service, settings={"starting_score": 50}
+        )
+
+        assert game.score == 50
+
+    def test_wrong_guess_penalty_override_changes_the_score_delta(self, immich_service):
+        game = ImmichdleGame.start(
+            id=uuid4(), owner="owner", immich_service=immich_service, settings={"wrong_guess_penalty": 20}
+        )
+        wrong_id = _wrong_person_id(immich_service, game)
+
+        result = game.play_round(wrong_id)
+
+        assert result.score_delta == -20
+
+    def _spy_on_target_selection_call(self, immich_service, monkeypatch) -> list[dict]:
+        """Records only the kwargs of the `randomize=True` call (target selection) - start() makes a
+        second, unrelated get_persons() call right after (the has_alternative check) that doesn't
+        take asset_count_weight, so capturing every call indiscriminately would overwrite it."""
+        calls: list[dict] = []
+        real_get_persons = immich_service.get_persons
+
+        def _spy(**kwargs):
+            if kwargs.get("randomize"):
+                calls.append(kwargs)
+            return real_get_persons(**kwargs)
+
+        monkeypatch.setattr(immich_service, "get_persons", _spy)
+        return calls
+
+    def test_asset_count_weight_override_is_forwarded_to_target_selection(self, immich_service, monkeypatch):
+        calls = self._spy_on_target_selection_call(immich_service, monkeypatch)
+
+        ImmichdleGame.start(
+            id=uuid4(), owner="owner", immich_service=immich_service, settings={"asset_count_weight": 0.7}
+        )
+
+        assert calls[0]["asset_count_weight"] == 0.7
+
+    def test_asset_count_weight_defaults_when_not_overridden(self, immich_service, monkeypatch):
+        calls = self._spy_on_target_selection_call(immich_service, monkeypatch)
+
+        ImmichdleGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+
+        assert calls[0]["asset_count_weight"] == ASSET_COUNT_WEIGHT_EXPONENT
 
 
 class TestComputeClues:

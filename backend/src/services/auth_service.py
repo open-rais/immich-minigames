@@ -18,6 +18,7 @@ import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from config import Settings, get_settings
@@ -49,6 +50,15 @@ class AuthService:
         self._session = session
         self._settings = settings or get_settings()
 
+    def list_users(self) -> list[UserModel]:
+        """Admin feature (ADMIN-FEATURE.md point #3) - every account, oldest-registered first."""
+        return list(self._session.scalars(select(UserModel).order_by(UserModel.created_at)))
+
+    def get_user_by_id(self, user_id: UUID) -> UserModel | None:
+        """Admin feature (ADMIN-FEATURE.md point #3) - looks up any account by id, not just the
+        caller's own (unlike get_user_from_token, which is JWT-subject-bound)."""
+        return self._session.get(UserModel, user_id)
+
     def register(self, email: str, username: str, full_name: str, password: str) -> UserModel:
         if self._session.scalar(select(UserModel).where(UserModel.email == email)) is not None:
             raise EmailAlreadyExistsError(f"email {email} is already registered")
@@ -62,7 +72,17 @@ class AuthService:
             password_hash=_hasher.hash(password),
         )
         self._session.add(user)
-        self._session.commit()
+        try:
+            self._session.commit()
+        except IntegrityError:
+            # Lost the race against another registration between the checks above and this commit
+            # (docs/TODO/CODE-REVIEW.md #8) - re-run the same checks to surface the right typed
+            # error instead of letting the raw IntegrityError reach main.py unmapped (500). The
+            # commit only fails on email or username, so one of these two is guaranteed to hit now.
+            self._session.rollback()
+            if self._session.scalar(select(UserModel).where(UserModel.email == email)) is not None:
+                raise EmailAlreadyExistsError(f"email {email} is already registered") from None
+            raise UsernameAlreadyExistsError(f"username {username} is already taken") from None
         return user
 
     def update_profile(
@@ -77,7 +97,12 @@ class AuthService:
             user.username = username
         if full_name is not None:
             user.full_name = full_name
-        self._session.commit()
+        try:
+            self._session.commit()
+        except IntegrityError:
+            # Same race as register(), but only username is writable here.
+            self._session.rollback()
+            raise UsernameAlreadyExistsError(f"username {username} is already taken") from None
         return user
 
     def set_skin(self, user: UserModel, person_id: UUID | None) -> UserModel:

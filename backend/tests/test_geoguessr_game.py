@@ -136,6 +136,34 @@ class TestGeoguessrScoring:
         assert round_.calculate_score() == 0
 
 
+class TestGeoguessrAdminSettings:
+    """ADMIN-FEATURE.md point #4 - confirms an override actually changes live behavior, not just
+    what GameSettingsService reports (see test_game_settings_service.py for that)."""
+
+    def test_total_rounds_override_changes_how_many_rounds_are_played(self, immich_service):
+        game = GeoguessrGame.start(
+            id=uuid4(), owner="owner", immich_service=immich_service, settings={"total_rounds": 2}
+        )
+
+        rounds_played = 0
+        while not game.finished and rounds_played < 10:
+            game.play_round(_guess_near(game.current_round))
+            rounds_played += 1
+
+        assert rounds_played == 2
+        assert len(game.rounds) == 2
+
+    def test_decay_km_override_changes_the_score(self):
+        asset = AssetSnapshot(id=uuid4(), latitude=0.0, longitude=0.0)
+        round_ = GeoguessrRound(id=uuid4(), game_id=uuid4(), round_index=1, asset=asset)
+        round_.guess = LatLng(latitude=10.0, longitude=0.0)
+
+        default_score = round_.calculate_score()
+        overridden_score = round_.calculate_score({"decay_km": 1.0})
+
+        assert overridden_score < default_score
+
+
 class TestHaversine:
     def test_same_point_is_zero(self):
         assert haversine_km(10.0, 20.0, 10.0, 20.0) == 0.0

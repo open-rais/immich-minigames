@@ -1,17 +1,17 @@
-import { useRef, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 
-import { createGame, getGame, playRound } from "../../api/games"
+import { createGame, getGame, personThumbnailUrl, playRound } from "../../api/games"
 import { GameType, Mode } from "../../api/types"
 import type { ImmichdleRoundOut, RoundOut } from "../../api/types"
 import type { GameComponentProps } from "../catalog"
-import { Button } from "../shared/Button"
-import { ErrorScreen, IdleScreen } from "../shared/GameScreens"
+import { ErrorScreen, FinishedScreen, IdleScreen } from "../shared/GameScreens"
 import { GuardedBackButton } from "../shared/GuardedBackButton"
+import { PersonAvatar } from "../shared/PersonAvatar"
 import { ScoreBadge } from "../shared/ScoreBadge"
-import { BackButton } from "../shared/BackButton"
 import { PersonSearchInput } from "../shared/PersonSearchInput"
+import { useGuardedRequests } from "../shared/useGuardedRequests"
 import { GuessTable } from "./GuessTable"
 
 const GAME_TYPE = GameType.Immichdle
@@ -31,21 +31,7 @@ interface GameState {
   finished: boolean
   won: boolean
   targetName: string | null
-}
-
-function FinishedScreen({ game, onPlayAgain, onBack, busy }: { game: GameState; onPlayAgain: () => void; onBack: () => void; busy: boolean }) {
-  const { t } = useTranslation()
-  return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-app-bg px-6 text-center">
-      <BackButton label={t("common.back")} onClick={onBack} />
-      <h1 className="text-3xl font-bold text-ink">{t(game.won ? "immichdle.finished.won" : "immichdle.finished.lost")}</h1>
-      {game.targetName && <p className="text-xl font-bold text-primary">{game.targetName}</p>}
-      <p className="text-xl text-muted">{t("common.finished.finalScore", { score: game.score })}</p>
-      <Button variant="primary" className="px-8 py-3" onClick={onPlayAgain} disabled={busy}>
-        {t("common.playAgain")}
-      </Button>
-    </div>
-  )
+  targetPersonId: string | null
 }
 
 export function ImmichdleGame({ coverUrl }: GameComponentProps) {
@@ -58,67 +44,74 @@ export function ImmichdleGame({ coverUrl }: GameComponentProps) {
   const [game, setGame] = useState<GameState | null>(null)
   const [pendingRoundId, setPendingRoundId] = useState<string | null>(null)
   const [history, setHistory] = useState<ImmichdleRoundOut[]>([])
+  // Stable reference across renders that don't change history - PersonSearchInput's debounced
+  // search effect depends on excludeIds by reference (see its own docstring, and the other
+  // consumers - SkinPicker/AdminUserRow/FaceGuessPopover - that already follow this contract).
+  const guessedIds = useMemo(() => new Set(history.map((r) => r.guess_person_id!)), [history])
 
+  const { isCurrent, guarded, discardInFlight } = useGuardedRequests()
+  // One in-flight ref per action - start vs guess don't need to block each other, but each needs
+  // its own re-entrancy guard against a fast double-click firing before React re-renders.
   const guessInFlightRef = useRef(false)
   const startInFlightRef = useRef(false)
-  const requestTokenRef = useRef(0)
 
   async function startGame() {
-    if (startInFlightRef.current) return
-    startInFlightRef.current = true
-    const token = ++requestTokenRef.current
-    setBusy(true)
-    try {
-      const g = await createGame(GAME_TYPE, MODE)
-      if (requestTokenRef.current !== token) return
-      const round = g.rounds[g.rounds.length - 1]
-      assertImmichdle(round)
-      setGame({ id: g.id, score: g.score, finished: false, won: false, targetName: null })
-      setPendingRoundId(round.id)
-      setHistory([])
-      setScreen("playing")
-    } catch {
-      if (requestTokenRef.current === token) setScreen("error")
-    } finally {
-      startInFlightRef.current = false
-      if (requestTokenRef.current === token) setBusy(false)
-    }
+    await guarded(startInFlightRef, async (token) => {
+      setBusy(true)
+      try {
+        const g = await createGame(GAME_TYPE, MODE)
+        if (!isCurrent(token)) return
+        const round = g.rounds[g.rounds.length - 1]
+        assertImmichdle(round)
+        setGame({ id: g.id, score: g.score, finished: false, won: false, targetName: null, targetPersonId: null })
+        setPendingRoundId(round.id)
+        setHistory([])
+        setScreen("playing")
+      } catch {
+        if (isCurrent(token)) setScreen("error")
+      } finally {
+        if (isCurrent(token)) setBusy(false)
+      }
+    })
   }
 
   async function handleGuess(personId: string) {
-    if (guessInFlightRef.current || !game || !pendingRoundId) return
-    guessInFlightRef.current = true
-    const token = ++requestTokenRef.current
-    setBusy(true)
-    try {
-      const result = await playRound(game.id, pendingRoundId, { person_id: personId })
-      if (requestTokenRef.current !== token) return
-      assertImmichdle(result.answered_round)
-      if (result.next_round) assertImmichdle(result.next_round)
+    if (!game || !pendingRoundId) return
+    await guarded(guessInFlightRef, async (token) => {
+      setBusy(true)
+      try {
+        const result = await playRound(game.id, pendingRoundId, { person_id: personId })
+        if (!isCurrent(token)) return
+        assertImmichdle(result.answered_round)
+        if (result.next_round) assertImmichdle(result.next_round)
 
-      let targetName: string | null = null
-      if (result.finished) {
-        const finalState = await getGame(game.id)
-        if (requestTokenRef.current !== token) return
-        targetName = finalState.target_person_name ?? null
+        let targetName: string | null = null
+        let targetPersonId: string | null = null
+        if (result.finished) {
+          const finalState = await getGame(game.id)
+          if (!isCurrent(token)) return
+          targetName = finalState.target_person_name ?? null
+          targetPersonId = finalState.target_person_id ?? null
+        }
+
+        setHistory((h) => [result.answered_round as ImmichdleRoundOut, ...h])
+        setGame((g) =>
+          g
+            ? { ...g, score: result.score, finished: result.finished, won: result.correct === true, targetName, targetPersonId }
+            : g,
+        )
+        setPendingRoundId(result.next_round ? result.next_round.id : null)
+        if (result.finished) setScreen("finished")
+      } catch {
+        if (isCurrent(token)) setScreen("error")
+      } finally {
+        if (isCurrent(token)) setBusy(false)
       }
-
-      setHistory((h) => [result.answered_round as ImmichdleRoundOut, ...h])
-      setGame((g) =>
-        g ? { ...g, score: result.score, finished: result.finished, won: result.correct === true, targetName } : g,
-      )
-      setPendingRoundId(result.next_round ? result.next_round.id : null)
-      if (result.finished) setScreen("finished")
-    } catch {
-      if (requestTokenRef.current === token) setScreen("error")
-    } finally {
-      guessInFlightRef.current = false
-      if (requestTokenRef.current === token) setBusy(false)
-    }
+    })
   }
 
   function backToIdle() {
-    requestTokenRef.current++ // discard any in-flight guess/start response that arrives later
+    discardInFlight() // discard any in-flight guess/start response that arrives later
     setScreen("idle")
   }
 
@@ -141,12 +134,25 @@ export function ImmichdleGame({ coverUrl }: GameComponentProps) {
   }
 
   if (screen === "finished" && game) {
-    return <FinishedScreen game={game} onPlayAgain={startGame} onBack={backToMenu} busy={busy} />
+    return (
+      <FinishedScreen
+        score={game.score}
+        onPlayAgain={startGame}
+        onBack={backToMenu}
+        busy={busy}
+        title={t(game.won ? "immichdle.finished.won" : "immichdle.finished.lost")}
+      >
+        {game.targetPersonId && (
+          <div className="flex flex-col items-center gap-2">
+            <PersonAvatar src={personThumbnailUrl(game.targetPersonId)} alt={game.targetName ?? ""} size="lg" />
+            {game.targetName && <p className="text-xl font-bold text-primary">{game.targetName}</p>}
+          </div>
+        )}
+      </FinishedScreen>
+    )
   }
 
   if (!game) return null
-
-  const guessedIds = new Set(history.map((r) => r.guess_person_id!))
 
   return (
     <div className="flex min-h-dvh flex-col gap-4 bg-app-bg px-[18px] py-[22px] md:px-10 md:py-7">
@@ -158,7 +164,12 @@ export function ImmichdleGame({ coverUrl }: GameComponentProps) {
             (up to the outer max-w-4xl), matching the rest of the app's cards rather than smashdle's
             own full-bleed layout. */}
         <div className="w-full md:max-w-md">
-          <PersonSearchInput excludeIds={guessedIds} onSelect={handleGuess} disabled={busy || !pendingRoundId} />
+          <PersonSearchInput
+            excludeIds={guessedIds}
+            onSelect={handleGuess}
+            disabled={busy || !pendingRoundId}
+            focusOnTypeAnywhere
+          />
         </div>
 
         <GuessTable history={history} />

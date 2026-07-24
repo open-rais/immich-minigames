@@ -6,6 +6,7 @@ persistence/games.py.
 """
 
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
@@ -25,8 +26,13 @@ class BaseRound(ABC):
         return self.guess is not None
 
     @abstractmethod
-    def calculate_score(self) -> int:
-        """Score delta to apply to the game's total. Only called once `guess` has been set."""
+    def calculate_score(self, settings: Mapping[str, float] | None = None) -> int:
+        """Score delta to apply to the game's total. Only called once `guess` has been set.
+        `settings` is this game's live admin-configurable values (ADMIN-FEATURE.md point #4, see
+        services/game_settings.py) - implementations without any configurable score knob
+        (MoreOrLess, WhosThatPerson today) just ignore it. Defaults to None/{} so direct
+        construction (tests, a one-off script) doesn't have to pass one to get the same behavior
+        as before this param existed."""
 
     @abstractmethod
     def to_payload(self) -> dict[str, Any]:
@@ -63,6 +69,7 @@ class BaseGame(ABC):
         rounds: list[BaseRound],
         score: int = 0,
         finished: bool = False,
+        settings: Mapping[str, float] | None = None,
     ) -> None:
         self.id = id
         self.owner = owner
@@ -71,6 +78,11 @@ class BaseGame(ABC):
         self.rounds = rounds
         self.score = score
         self.finished = finished
+        # Admin feature (ADMIN-FEATURE.md point #4) - this game_type's live admin-configurable
+        # values (services/game_settings.py), injected by GamesService. Read fresh on every
+        # request (see GamesService._game_kwargs), never snapshotted onto a round, so a change
+        # takes effect on the very next round played rather than only on new games.
+        self._settings: Mapping[str, float] = settings or {}
 
     @property
     def current_round(self) -> BaseRound:
@@ -82,7 +94,7 @@ class BaseGame(ABC):
 
         current = self.current_round
         current.guess = guess
-        current.score_delta = current.calculate_score()
+        current.score_delta = current.calculate_score(self._settings)
         self.score += current.score_delta
 
         if self.has_next_round():

@@ -1,6 +1,6 @@
 """
 Based on Who's That Pokémon. A photo is shown with some of its already-named detected faces blacked
-out (up to _MAX_HIDDEN_FACES) - the player identifies every blacked-out face before submitting. A
+out (up to MAX_HIDDEN_FACES) - the player identifies every blacked-out face before submitting. A
 round is one photo: even when it hides several faces, they're all answered in a single submit, so
 the round keeps the same one-guess shape every other game uses (see BaseRound.guess). The same
 person can appear twice in one photo (mirrors, collages, etc.) - each hidden face is graded
@@ -8,7 +8,7 @@ independently against its own true person, never deduplicated. Faces without a n
 blacked out (there'd be nothing to grade), so a photo can have more visible faces than hidden ones.
 See docs/GAMES/WHOS_THAT_PERSON.md.
 
-The game asks about _TOTAL_PEOPLE people total, across as many rounds as it takes to reach that
+The game asks about TOTAL_PEOPLE people total, across as many rounds as it takes to reach that
 count - a round's face count is capped so the running total never overshoots it.
 
 Scoring is a combo streak counted by person, not by round: each correct guess adds the current
@@ -19,6 +19,7 @@ happen to come before a miss within the same round don't get to spend a streak c
 previous round (see WhosThatPersonRound.calculate_score).
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 from uuid import UUID, uuid4
@@ -31,8 +32,12 @@ from services.immich_service import ImmichService
 GAME_TYPE = "whos-that-person"
 MODE_NAMED_FACES = "namedFaces"
 
-_TOTAL_PEOPLE = 15
-_MAX_HIDDEN_FACES = 5
+# Admin feature (ADMIN-FEATURE.md point #4) - public (no leading underscore) since
+# services/game_settings.py imports these as defaults for the admin-configurable
+# total_people/max_hidden_faces settings, same convention already used by e.g.
+# asset_rounds.py's TOTAL_ROUNDS/MAX_SCORE.
+TOTAL_PEOPLE = 15
+MAX_HIDDEN_FACES = 5
 
 
 class IncompleteGuessError(Exception):
@@ -93,7 +98,8 @@ class WhosThatPersonRound(BaseRound):
     def results(self) -> list[bool]:
         """Per-face correctness, in self.faces order - the fixed order calculate_score() streaks
         over."""
-        assert self.guess is not None
+        if self.guess is None:
+            raise RuntimeError("results accessed before the round was answered")
         return [self.guess[face.face_id] == face.person_id for face in self.faces]
 
     @property
@@ -104,7 +110,10 @@ class WhosThatPersonRound(BaseRound):
             return None
         return all(self.results)
 
-    def calculate_score(self) -> int:
+    def calculate_score(self, settings: Mapping[str, float] | None = None) -> int:
+        # No admin-configurable knob affects this game's scoring (only its length, see
+        # WhosThatPersonGame's total_people/_max_hidden_faces) - settings is accepted only to
+        # satisfy BaseRound's shared signature.
         results = self.results
         # A miss anywhere in this round zeroes the streak before any of the round's own hits are
         # scored - not just from the point of the miss onward (see module docstring).
@@ -157,6 +166,7 @@ class WhosThatPersonGame(BaseGame):
         immich_service: ImmichService,
         score: int = 0,
         finished: bool = False,
+        settings: Mapping[str, float] | None = None,
     ) -> None:
         super().__init__(
             id=id,
@@ -166,12 +176,26 @@ class WhosThatPersonGame(BaseGame):
             rounds=rounds,
             score=score,
             finished=finished,
+            settings=settings,
         )
         self._immich_service = immich_service
 
     @property
     def _people_asked(self) -> int:
         return sum(len(round_.faces) for round_ in self.rounds)
+
+    # -- admin-configurable (ADMIN-FEATURE.md point #4, see services/game_settings.py) ----------
+
+    @property
+    def total_people(self) -> int:
+        # Public (no leading underscore) - api/dto/common.py's GameOut reads this to show the
+        # frontend the *live* total instead of the hardcoded display-only constant it used to
+        # mirror.
+        return int(self._settings.get("total_people", TOTAL_PEOPLE))
+
+    @property
+    def _max_hidden_faces(self) -> int:
+        return int(self._settings.get("max_hidden_faces", MAX_HIDDEN_FACES))
 
     @property
     def _shown_asset_ids(self) -> frozenset[UUID]:
@@ -180,8 +204,12 @@ class WhosThatPersonGame(BaseGame):
         return frozenset(round_.asset_id for round_ in self.rounds)
 
     @classmethod
-    def start(cls, id: UUID, owner: str, immich_service: ImmichService) -> "WhosThatPersonGame":
-        faces = immich_service.get_random_asset_with_named_faces(max_faces=min(_MAX_HIDDEN_FACES, _TOTAL_PEOPLE))
+    def start(
+        cls, id: UUID, owner: str, immich_service: ImmichService, settings: Mapping[str, float] | None = None
+    ) -> "WhosThatPersonGame":
+        total_people = int((settings or {}).get("total_people", TOTAL_PEOPLE))
+        max_hidden_faces = int((settings or {}).get("max_hidden_faces", MAX_HIDDEN_FACES))
+        faces = immich_service.get_random_asset_with_named_faces(max_faces=min(max_hidden_faces, total_people))
         if not faces:
             raise ValueError("not enough named faces in Immich to start a Who'sThatPerson game")
 
@@ -192,7 +220,7 @@ class WhosThatPersonGame(BaseGame):
             asset_id=faces[0].asset_id,
             faces=[HiddenFace.of(f) for f in faces],
         )
-        return cls(id=id, owner=owner, rounds=[first_round], immich_service=immich_service)
+        return cls(id=id, owner=owner, rounds=[first_round], immich_service=immich_service, settings=settings)
 
     def play_round(self, guess: dict[UUID, UUID]) -> PlayRoundResult:
         if self.finished:
@@ -203,9 +231,9 @@ class WhosThatPersonGame(BaseGame):
         return super().play_round(guess)
 
     def has_next_round(self) -> bool:
-        if self._people_asked >= _TOTAL_PEOPLE:
+        if self._people_asked >= self.total_people:
             return False
-        max_faces = min(_MAX_HIDDEN_FACES, _TOTAL_PEOPLE - self._people_asked)
+        max_faces = min(self._max_hidden_faces, self.total_people - self._people_asked)
         # Cheap-ish existence check, discarded - create_next_round() samples again, same
         # double-sample pattern MoreOrLessGame/AssetRoundsGame already use.
         candidate = self._immich_service.get_random_asset_with_named_faces(
@@ -215,14 +243,15 @@ class WhosThatPersonGame(BaseGame):
 
     def create_next_round(self) -> WhosThatPersonRound:
         previous = self.current_round
-        max_faces = min(_MAX_HIDDEN_FACES, _TOTAL_PEOPLE - self._people_asked)
+        max_faces = min(self._max_hidden_faces, self.total_people - self._people_asked)
         faces = self._immich_service.get_random_asset_with_named_faces(
             max_faces=max_faces, exclude_asset_ids=self._shown_asset_ids
         )
         if not faces:
             raise ValueError("no more eligible photos left - has_next_round() should have returned False")
 
-        assert previous.ending_streak is not None  # set by calculate_score() before this runs
+        if previous.ending_streak is None:
+            raise RuntimeError("create_next_round() called before calculate_score() set ending_streak")
         return WhosThatPersonRound(
             id=uuid4(),
             game_id=self.id,

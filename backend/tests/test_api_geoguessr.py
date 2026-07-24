@@ -19,6 +19,8 @@ class TestCreateGame:
 
         assert game["score"] == 0
         assert game["finished"] is False
+        # ADMIN-FEATURE.md point #4 - the live configured total, not a hardcoded frontend mirror.
+        assert game["total_rounds"] == 5
         assert len(game["rounds"]) == 1
         round_ = game["rounds"][0]
         assert round_["game_type"] == "geoguessr"

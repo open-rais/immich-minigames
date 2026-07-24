@@ -1,12 +1,16 @@
+import threading
 import uuid
 from datetime import datetime, timedelta
 
 import pytest
 
+from persistence.base import get_session_factory
 from persistence.games import GameModel
 from services.games_service import (
     GameNotFoundError,
     GameOwnershipError,
+    GamesService,
+    NotEnoughContentError,
     RoundNotPendingError,
     UnsupportedGameError,
 )
@@ -47,6 +51,15 @@ class TestCreateGame:
         with pytest.raises(UnsupportedGameError):
             games_service.create_game(owner="owner-a", game_type="geoguessr", mode="default")
 
+    def test_not_enough_content_raises_not_enough_content_error(self, games_service, immich_service, monkeypatch):
+        # A game's start() raises a plain ValueError for "library too small" (see
+        # games/more_or_less.py, games/immichdle.py) - create_game must translate it into
+        # NotEnoughContentError so main.py can map it to a 422 instead of a bare 500.
+        monkeypatch.setattr(immich_service, "get_persons", lambda **kwargs: [])
+
+        with pytest.raises(NotEnoughContentError, match="not enough named people"):
+            games_service.create_game(owner="owner-a", game_type="more-or-less", mode="personAssets")
+
     def test_user_id_is_persisted_when_given(self, games_service, db_session, auth_service):
         user = _register_user(auth_service)
         game = games_service.create_game(
@@ -73,6 +86,60 @@ class TestGetGame:
     def test_missing_game_raises(self, games_service):
         with pytest.raises(GameNotFoundError):
             games_service.get_game(uuid.uuid4(), owner="owner-a")
+
+    def test_logged_in_game_is_reachable_by_user_even_with_wrong_owner_header(self, games_service, auth_service):
+        # The account is the real proof of ownership once a game is tied to one - a stale/rotated
+        # X-Owner-Id shouldn't lock the owner out of their own game (see docs/TODO/CODE-REVIEW.md #3).
+        alice = _register_user(auth_service)
+        game = games_service.create_game(
+            owner="owner-a", game_type="more-or-less", mode="personAssets", user_id=alice.id
+        )
+
+        reloaded = games_service.get_game(game.id, owner="someone-else", user=alice)
+
+        assert reloaded.id == game.id
+
+    def test_logged_in_game_rejects_a_different_account_even_with_matching_owner_header(
+        self, games_service, auth_service
+    ):
+        # This is the actual bug #3 fixes: a leaked/guessed X-Owner-Id used to be enough on its
+        # own to read and play someone else's logged-in game.
+        alice = _register_user(auth_service)
+        bob = _register_user(auth_service)
+        game = games_service.create_game(
+            owner="owner-a", game_type="more-or-less", mode="personAssets", user_id=alice.id
+        )
+
+        with pytest.raises(GameOwnershipError):
+            games_service.get_game(game.id, owner="owner-a", user=bob)
+
+    def test_logged_in_game_rejects_an_anonymous_request_even_with_matching_owner_header(
+        self, games_service, auth_service
+    ):
+        alice = _register_user(auth_service)
+        game = games_service.create_game(
+            owner="owner-a", game_type="more-or-less", mode="personAssets", user_id=alice.id
+        )
+
+        with pytest.raises(GameOwnershipError):
+            games_service.get_game(game.id, owner="owner-a", user=None)
+
+    def test_anonymous_game_stays_owner_only_even_for_a_logged_in_request(self, games_service, auth_service):
+        # user_id is fixed at creation and never backfilled - logging in later doesn't grant
+        # access to a game started anonymously under a different/wrong owner id.
+        alice = _register_user(auth_service)
+        game = games_service.create_game(owner="owner-a", game_type="more-or-less", mode="personAssets")
+
+        with pytest.raises(GameOwnershipError):
+            games_service.get_game(game.id, owner="someone-else", user=alice)
+
+    def test_anonymous_game_is_still_reachable_by_owner_while_logged_in(self, games_service, auth_service):
+        alice = _register_user(auth_service)
+        game = games_service.create_game(owner="owner-a", game_type="more-or-less", mode="personAssets")
+
+        reloaded = games_service.get_game(game.id, owner="owner-a", user=alice)
+
+        assert reloaded.id == game.id
 
 
 class TestPlayRound:
@@ -108,6 +175,52 @@ class TestPlayRound:
 
         with pytest.raises(RoundNotPendingError):
             games_service.play_round(game.id, "owner-a", first_round.id, "more")
+
+
+class TestPlayRoundConcurrency:
+    def test_simultaneous_plays_of_the_same_round_do_not_double_score(
+        self, games_service, immich_service, ml_service
+    ):
+        # Two independent sessions, exactly like two real concurrent HTTP requests would get
+        # (api/deps.py's get_db_session hands out a fresh Session per request) - this is what
+        # docs/TODO/CODE-REVIEW.md #6 is about: without the FOR UPDATE lock in _load_game, both
+        # could pass play_loaded_round's current_round.id check and both score.
+        game = games_service.create_game(owner="owner-a", game_type="more-or-less", mode="personAssets")
+        first_round = game.rounds[0]
+        guess = _correct_guess(first_round)
+
+        session_b = get_session_factory()()
+        try:
+            service_b = GamesService(session_b, immich_service, ml_service)
+
+            # Load (and lock) the row via the service under test, but don't commit yet - simulates
+            # request A having read the game and being about to play it.
+            loaded_a = games_service._load_game(game.id, owner="owner-a")
+
+            b_result = {}
+
+            def run_b():
+                try:
+                    b_result["game"] = service_b.play_round(game.id, "owner-a", first_round.id, guess)
+                except Exception as exc:  # RoundNotPendingError, expected once unblocked
+                    b_result["error"] = exc
+
+            t = threading.Thread(target=run_b)
+            t.start()
+            t.join(timeout=0.3)
+            assert not b_result  # still blocked on A's FOR UPDATE lock
+
+            # A finishes playing and commits, releasing the lock.
+            games_service.play_loaded_round(loaded_a, first_round.id, guess)
+
+            t.join(timeout=2)
+        finally:
+            session_b.close()
+
+        # B must have seen A's committed result once unblocked, not double-scored.
+        assert isinstance(b_result.get("error"), RoundNotPendingError)
+        reloaded = games_service.get_game(game.id, owner="owner-a")
+        assert reloaded.score == 1
 
 
 class TestPersonalRecords:

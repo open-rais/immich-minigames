@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate, useParams } from "react-router-dom"
 
@@ -40,7 +41,7 @@ export function IdleScreen({
   const navigate = useNavigate()
   const leaderboardHref = useLeaderboardHref()
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-app-bg px-6 text-center">
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-app-bg px-6 text-center">
       <BackButton label={t("common.back")} onClick={onBack} />
       {coverUrl && (
         <img src={coverUrl} alt="" className="h-28 w-28 rounded-2xl object-cover shadow-card" />
@@ -71,7 +72,7 @@ interface ErrorScreenProps {
 export function ErrorScreen({ onRetry, onBack, busy }: ErrorScreenProps) {
   const { t } = useTranslation()
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-app-bg px-6 text-center">
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-app-bg px-6 text-center">
       <BackButton label={t("common.back")} onClick={onBack} />
       <p className="text-body">{t("common.error.message")}</p>
       <Button variant="primary" className="px-6 py-3" onClick={onRetry} disabled={busy}>
@@ -86,16 +87,23 @@ interface FinishedScreenProps {
   onPlayAgain: () => void
   onBack: () => void
   busy: boolean
+  // Overrides the default "common.finished.title" heading - e.g. Immichdle's won/lost-specific
+  // copy. Left unset for every other game, which shares the plain generic title.
+  title?: string
+  // Extra content shown between the title and the score line - e.g. Immichdle's revealed target
+  // person (face + name). Undefined for every other game.
+  children?: ReactNode
 }
 
-export function FinishedScreen({ score, onPlayAgain, onBack, busy }: FinishedScreenProps) {
+export function FinishedScreen({ score, onPlayAgain, onBack, busy, title, children }: FinishedScreenProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const leaderboardHref = useLeaderboardHref()
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-app-bg px-6 text-center">
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-app-bg px-6 text-center">
       <BackButton label={t("common.back")} onClick={onBack} />
-      <h1 className="text-3xl font-bold text-ink">{t("common.finished.title")}</h1>
+      <h1 className="text-3xl font-bold text-ink">{title ?? t("common.finished.title")}</h1>
+      {children}
       <p className="text-xl text-muted">{t("common.finished.finalScore", { score })}</p>
       <div className="flex flex-col items-stretch gap-3">
         <Button variant="primary" className="w-56 py-3" onClick={onPlayAgain} disabled={busy}>

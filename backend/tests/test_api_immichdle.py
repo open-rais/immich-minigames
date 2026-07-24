@@ -89,7 +89,7 @@ class TestPlayRound:
         owner = str(uuid4())
         game = _create_game(client, owner)
         pending_round_id = game["rounds"][0]["id"]
-        [candidate] = immich_service.get_persons(named_only=True, random=True, limit=1)
+        [candidate] = immich_service.get_persons(named_only=True, randomize=True, limit=1)
 
         response = _play(client, game["id"], pending_round_id, owner, candidate.id)
 

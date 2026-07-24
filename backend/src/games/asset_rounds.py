@@ -11,7 +11,7 @@ concrete games fill in the abstract hooks below.
 
 import math
 from abc import abstractmethod
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Any, TypeVar
 from uuid import UUID
 
@@ -80,6 +80,7 @@ class AssetRoundsGame(BaseGame):
         immich_service: ImmichService,
         score: int = 0,
         finished: bool = False,
+        settings: Mapping[str, float] | None = None,
     ) -> None:
         super().__init__(
             id=id,
@@ -89,13 +90,27 @@ class AssetRoundsGame(BaseGame):
             rounds=rounds,
             score=score,
             finished=finished,
+            settings=settings,
         )
         self._immich_service = immich_service
+
+    # -- admin-configurable (ADMIN-FEATURE.md point #4, see services/game_settings.py) ----------
+
+    @property
+    def total_rounds(self) -> int:
+        # Public (no leading underscore) - api/dto/common.py's GameOut reads this to show the
+        # frontend the *live* round count (see games/asset_rounds.py callers) instead of the
+        # hardcoded display-only constant it used to mirror.
+        return int(self._settings.get("total_rounds", TOTAL_ROUNDS))
+
+    @property
+    def _max_extra_assets(self) -> int:
+        return int(self._settings.get("max_extra_assets", MAX_EXTRA_ASSETS))
 
     # -- hooks concrete games implement ------------------------------------
 
     @abstractmethod
-    def _query_assets(self, exclude_ids: frozenset[UUID], *, limit: int, random: bool) -> list[Asset]:
+    def _query_assets(self, exclude_ids: frozenset[UUID], *, limit: int, randomize: bool) -> list[Asset]:
         """The assets eligible for this game (e.g. Geoguessr additionally requires a location)."""
 
     @abstractmethod
@@ -127,16 +142,18 @@ class AssetRoundsGame(BaseGame):
         return frozenset(id_ for round_ in self.rounds for id_ in round_.shown_entities)
 
     def _pick_asset(self, exclude_ids: frozenset[UUID]) -> Asset | None:
-        candidates = self._query_assets(exclude_ids, limit=_CANDIDATE_SAMPLE_SIZE, random=True)
+        candidates = self._query_assets(exclude_ids, limit=_CANDIDATE_SAMPLE_SIZE, randomize=True)
         return pick_spread_asset(candidates, self._previous_answers(), self._separation, self._min_separation)
 
     def _pick_extras(self, main: Asset, exclude_ids: frozenset[UUID]) -> list[Asset]:
         candidates = self._query_extra_assets(main, exclude_ids, limit=_EXTRA_CANDIDATE_SAMPLE_SIZE)
-        return candidates[:MAX_EXTRA_ASSETS]
+        return candidates[: self._max_extra_assets]
 
     @classmethod
-    def start(cls, id: UUID, owner: str, immich_service: ImmichService) -> "AssetRoundsGame":
-        game = cls(id=id, owner=owner, rounds=[], immich_service=immich_service)
+    def start(
+        cls, id: UUID, owner: str, immich_service: ImmichService, settings: Mapping[str, float] | None = None
+    ) -> "AssetRoundsGame":
+        game = cls(id=id, owner=owner, rounds=[], immich_service=immich_service, settings=settings)
         asset = game._pick_asset(exclude_ids=frozenset())
         if asset is None:
             raise ValueError(cls._not_enough_assets_message)
@@ -145,12 +162,12 @@ class AssetRoundsGame(BaseGame):
         return game
 
     def has_next_round(self) -> bool:
-        if self.current_round.round_index >= TOTAL_ROUNDS:
+        if self.current_round.round_index >= self.total_rounds:
             return False
         # Cheap existence check - create_next_round()'s separation-aware pick always succeeds as long
         # as the candidate pool isn't empty (see pick_spread_asset's fallback), so this is consistent
         # with it without needing to sample _CANDIDATE_SAMPLE_SIZE rows twice.
-        remaining = self._query_assets(self._shown_asset_ids, limit=1, random=False)
+        remaining = self._query_assets(self._shown_asset_ids, limit=1, randomize=False)
         return bool(remaining)
 
     def create_next_round(self) -> BaseRound:

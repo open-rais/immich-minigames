@@ -5,6 +5,7 @@ assets than the reference. A correct guess chains into a new round (the candidat
 reference); a wrong guess ends the game. See docs/GAMES/MORE_OR_LESS.md.
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Literal
 from uuid import UUID, uuid4
@@ -49,7 +50,7 @@ def _pick_non_tied_candidate(
     immich_service: ImmichService, reference_asset_count: int, exclude_ids: frozenset[UUID]
 ) -> Person | None:
     candidates = immich_service.get_persons(
-        named_only=True, random=True, limit=_CANDIDATE_SAMPLE_SIZE, exclude_ids=exclude_ids
+        named_only=True, randomize=True, limit=_CANDIDATE_SAMPLE_SIZE, exclude_ids=exclude_ids
     )
     if not candidates:
         return None
@@ -68,7 +69,9 @@ class MoreOrLessRound(BaseRound):
         self.candidate = candidate
         self.guess: Guess | None = None
 
-    def calculate_score(self) -> int:
+    def calculate_score(self, settings: Mapping[str, float] | None = None) -> int:
+        # No admin-configurable knob affects this game (ADMIN-FEATURE.md point #4) - settings is
+        # accepted only to satisfy BaseRound's shared signature.
         if self.candidate.asset_count == self.reference.asset_count:
             # A tie isn't a fair "wrong" either way - always counts as a win.
             return 1
@@ -115,6 +118,7 @@ class MoreOrLessGame(BaseGame):
         immich_service: ImmichService,
         score: int = 0,
         finished: bool = False,
+        settings: Mapping[str, float] | None = None,
     ) -> None:
         super().__init__(
             id=id,
@@ -124,12 +128,18 @@ class MoreOrLessGame(BaseGame):
             rounds=rounds,
             score=score,
             finished=finished,
+            settings=settings,
         )
         self._immich_service = immich_service
 
     @classmethod
-    def start(cls, id: UUID, owner: str, immich_service: ImmichService) -> "MoreOrLessGame":
-        [reference] = immich_service.get_persons(named_only=True, random=True, limit=1)
+    def start(
+        cls, id: UUID, owner: str, immich_service: ImmichService, settings: Mapping[str, float] | None = None
+    ) -> "MoreOrLessGame":
+        references = immich_service.get_persons(named_only=True, randomize=True, limit=1)
+        if not references:
+            raise ValueError("not enough named people in Immich to start a MoreOrLess game")
+        [reference] = references
         candidate = _pick_non_tied_candidate(immich_service, reference.asset_count, exclude_ids=frozenset({reference.id}))
         if candidate is None:
             raise ValueError("not enough named people in Immich to start a MoreOrLess game")
@@ -141,7 +151,7 @@ class MoreOrLessGame(BaseGame):
             reference=PersonSnapshot.of(reference),
             candidate=PersonSnapshot.of(candidate),
         )
-        return cls(id=id, owner=owner, rounds=[first_round], immich_service=immich_service)
+        return cls(id=id, owner=owner, rounds=[first_round], immich_service=immich_service, settings=settings)
 
     def _recent_shown_ids(self) -> frozenset[UUID]:
         """The most-recently-shown people (deduplicated, capped at _RECENT_EXCLUDE_WINDOW) - see

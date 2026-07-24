@@ -10,6 +10,8 @@ How many photos does that person have? Where was this taken? Whose face is hidde
 > Unofficial project, unaffiliated with the Immich team. Runs alongside an existing Immich instance,
 > reusing its database and Immich-ML service—no separate copy of your photos is stored.
 
+<p align="center"><img src="docs/images/demo.png" alt="Immich Minigames running on desktop and mobile" width="500" /></p>
+
 ## Why?
 
 Just why not? It's entertaining, and it rewards keeping your metadata organized. The better
@@ -125,9 +127,17 @@ docker compose -f docker-compose.app.yml run --rm db-init
 ### Development Setup
 
 For working on this app's own code (not just running it), run each service from source instead of
-its container image. This still needs Immich's Postgres role provisioned - either run `docker
-compose -f docker-compose.app.yml run --rm db-init` once, or apply the same grants manually if
-you're not using Docker for that step at all.
+its container image.
+
+**Run this once first** - it provisions the scoped Postgres role *and creates this app's own
+database*, which nothing else does:
+
+```bash
+docker compose -f docker-compose.app.yml run --rm db-init
+```
+
+Without it the backend and `uv run pytest` both fail at startup with `database "minigames" does not
+exist`. It is idempotent, so re-running it is always safe.
 
 **Backend:**
 ```bash
@@ -146,13 +156,27 @@ npm run dev
 Both require the Immich instance and database to be running. See `docs/ARCHITECTURE/IMMICH.md` for
 database schema details.
 
+### Creating an admin account
+
+Admin is a promotion, not a separate signup flow: register a normal account first (via the app's
+own `/signup` page), then set `ADMIN_EMAIL` in `.env` to that account's email and restart the
+backend. On every startup the backend checks `ADMIN_EMAIL` against its own `users` table and flips
+`is_admin` to true if it finds a match - if no account with that email exists yet, it just logs a
+warning and does nothing (register first, then restart).
+
+```bash
+# dev (bare uvicorn): stop it and re-run the same command from Development Setup above
+# packaged: docker compose -f docker-compose.app.yml up -d --force-recreate backend
+```
+
 ## Architecture
 
 The backend (FastAPI) is organized in layers:
 - **API** (`api/api.py`): REST endpoints, mounted routes
 - **Services** (`services/`): business logic for games, Immich integration, ML
 - **Domain** (`domain/`): models (Asset, Person, Album)
-- **Persistence** (`persistence/games.py`): app-specific database models
+- **Persistence** (`persistence/`): app-specific database models (`games.py`, `users.py`, …) plus
+  the two engines - `base.py` for this app's own database, `immich_db.py` for Immich's (read-only)
 - **Games** (`games/`): one module per minigame (shared contract in `base.py`)
 
 The frontend (React + Vite + Tailwind) is organized per game under `frontend/src/games/<Game>/` with
@@ -160,21 +184,38 @@ shared components and design tokens in `index.css`.
 
 ## Database Access & Security
 
-This app accesses the Immich Postgres database directly (read-only on Immich's own `public` schema)
-to fetch game data efficiently, alongside its own separate `minigames` schema for game state.
-Images are always fetched through Immich's REST API, never directly from disk or the database.
+This app accesses the Immich Postgres database directly (read-only) to fetch game data efficiently,
+and keeps its own game state in a **separate database** on that same Postgres instance - never
+inside Immich's own. That separation is deliberate: Immich's backup dumps its own database, so
+anything stored in there rides along in Immich's backups and breaks its restore (see
+`docs/ARCHITECTURE/BACKEND.md`). Images are always fetched through Immich's REST API, never
+directly from disk or the database.
 
 The long-running backend never holds Immich's admin database credentials
 (`DB_USERNAME`/`DB_PASSWORD`). It only ever connects as a dedicated, scoped role
 (`DB_APP_USERNAME`) that is:
-- **read-only** on Immich's own `public` schema - a bug in a query can't write to your Immich data
-- **full control**, but only on this app's own `minigames` schema - nothing outside it
+- **read-only** on Immich's own database - a bug in a query can't write to your Immich data
+- **full control**, but only on this app's own database - nothing outside it
 
-That role doesn't need to exist beforehand: `docker compose -f docker-compose.app.yml up` first runs
-a one-shot `db-init` step (`backend/src/scripts/bootstrap_db_role.py`) that creates or refreshes it,
-then starts the backend with only its scoped credentials. `db-init` is the *only* container that
-ever sees the admin credentials, and it exits immediately once the role is provisioned - see the
-comments in `docker-compose.app.yml` for the exact scoping.
+Neither the role nor the database needs to exist beforehand: `docker compose -f
+docker-compose.app.yml up` first runs a one-shot `db-init` step
+(`backend/src/scripts/bootstrap_db_role.py`) that creates or refreshes both, then starts the backend
+with only its scoped credentials. `db-init` is the *only* container that ever sees the admin
+credentials, and it exits immediately once provisioning is done - see the comments in
+`docker-compose.app.yml` for the exact scoping.
+
+### Backups
+
+Because this app's data lives in its own database, **Immich's backup does not include it** - that's
+deliberate, and it's what keeps Immich's own restore working. Back it up separately if you care
+about your scores and accounts:
+
+```bash
+pg_dump -h <DB_HOST> -U <DB_USERNAME> -d <DB_APP_DATABASE_NAME> > minigames-backup.sql
+```
+
+If you're upgrading from a version that stored its tables inside Immich's database, the move is
+automatic on the next `db-init` - see [docs/INSTALL.md](docs/INSTALL.md) § Upgrading.
 
 **Use this at your own risk.** While access to Immich's own data is read-only and images are never
 touched, you run this code alongside your personal photo database. Review the source code if you

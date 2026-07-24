@@ -92,6 +92,21 @@ class TestWhosThatPersonGame:
             game.play_round({})
 
 
+class TestWhosThatPersonAdminSettings:
+    """ADMIN-FEATURE.md point #4 - confirms an override actually changes live behavior, not just
+    what GameSettingsService reports (see test_game_settings_service.py for that)."""
+
+    def test_total_people_override_changes_how_many_are_asked(self, immich_service):
+        game = WhosThatPersonGame.start(
+            id=uuid4(), owner="owner", immich_service=immich_service, settings={"total_people": 3}
+        )
+
+        _play_correctly_to_completion(game)
+
+        assert game.finished is True
+        assert sum(len(r.faces) for r in game.rounds) == 3
+
+
 class TestWhosThatPersonRoundScoring:
     """Isolated from the DB - constructs rounds/faces directly to deterministically exercise the
     streak math, same style as test_more_or_less_game.py's TestMoreOrLessRoundTieScoring."""
