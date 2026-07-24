@@ -10,6 +10,8 @@ How many photos does that person have? Where was this taken? Whose face is hidde
 > Unofficial project, unaffiliated with the Immich team. Runs alongside an existing Immich instance,
 > reusing its database and Immich-ML service—no separate copy of your photos is stored.
 
+<p align="center"><img src="docs/images/demo.png" alt="Immich Minigames running on desktop and mobile" width="500" /></p>
+
 ## Why?
 
 Just why not? It's entertaining, and it rewards keeping your metadata organized. The better
