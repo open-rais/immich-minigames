@@ -57,10 +57,12 @@
   "moreOrLess": {
     "title": "More or Less",
     "modes": {
-      "personAssets": "Fotos de personas"
+      "personAssets": "Fotos de personas",
+      "albumAssets": "Fotos de álbumes"
     },
     "start": {
-      "description": "Adivina si la siguiente persona tiene más o menos fotos que la anterior. Una respuesta incorrecta termina la partida."
+      "personAssets": "Adivina si la siguiente persona tiene más o menos fotos que la anterior. Una respuesta incorrecta termina la partida.",
+      "albumAssets": "Adivina si el siguiente álbum tiene más o menos fotos que el anterior. Una respuesta incorrecta termina la partida."
     },
     "has": "tiene",
     "unit_one": "foto",
