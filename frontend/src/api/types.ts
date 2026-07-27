@@ -301,3 +301,8 @@ export interface LeaderboardOut {
   window: LeaderboardWindow
   entries: LeaderboardEntryOut[]
 }
+
+// Roadmap point #10 (rounds review) - mirrors backend/src/api/dto/common.py's ConfigOut.
+export interface ConfigOut {
+  immich_external_url: string | null
+}

@@ -39,6 +39,7 @@
     "leaderboards": "Leaderboards",
     "previousPhoto": "Previous photo",
     "nextPhoto": "Next photo",
+    "viewInImmich": "View in Immich",
     "finished": {
       "title": "Game over",
       "finalScore": "Final score: {{score}}"

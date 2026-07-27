@@ -39,6 +39,7 @@
     "leaderboards": "Clasificación",
     "previousPhoto": "Foto anterior",
     "nextPhoto": "Foto siguiente",
+    "viewInImmich": "Ver en Immich",
     "finished": {
       "title": "Juego terminado",
       "finalScore": "Puntaje final: {{score}}"
