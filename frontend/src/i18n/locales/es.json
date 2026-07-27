@@ -39,6 +39,8 @@
     "leaderboards": "Clasificación",
     "previousPhoto": "Foto anterior",
     "nextPhoto": "Foto siguiente",
+    "previousRound": "Ronda anterior",
+    "nextRound": "Ronda siguiente",
     "viewInImmich": "Ver en Immich",
     "viewRounds": "Ver juego",
     "rounds": {

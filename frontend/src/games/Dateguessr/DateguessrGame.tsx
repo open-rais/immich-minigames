@@ -32,7 +32,7 @@ function isDateguessrRound(round: RoundOut): round is DateguessrRoundOut {
   return round.game_type === GameType.Dateguessr
 }
 
-export function DateguessrGame({ coverUrl }: GameComponentProps) {
+export function DateguessrGame({ coverUrl, hasRoundsView }: GameComponentProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const backToMenu = () => navigate("/")
@@ -69,7 +69,16 @@ export function DateguessrGame({ coverUrl }: GameComponentProps) {
   }
 
   if (screen === "finished") {
-    return <FinishedScreen score={game?.score ?? 0} onPlayAgain={startGame} onBack={backToMenu} busy={busy} />
+    return (
+      <FinishedScreen
+        score={game?.score ?? 0}
+        onPlayAgain={startGame}
+        onBack={backToMenu}
+        busy={busy}
+        gameId={game?.id}
+        hasRoundsView={hasRoundsView}
+      />
+    )
   }
 
   if (!game || !round) return null

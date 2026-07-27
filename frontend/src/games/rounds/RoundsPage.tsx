@@ -61,13 +61,22 @@ export function RoundsPage() {
   }
 
   const RoundsComponent = catalogMode.roundsComponent
+  const onBack = () => navigate(`/${gameType}/${mode}`)
+
+  // "Fullscreen" family (Geoguessr/Dateguessr, later WhosThatPerson) owns the whole viewport itself
+  // - MapPicker/TimelineRuler are fixed full-screen components that don't belong inside RoundsShell's
+  // padded scrolling column (ROUNDS-VIEW.md §5), and the round stepper needs state that only the
+  // component itself holds. RoundsShell is reserved for the "list" family (MoreOrLess, Immichdle).
+  if (catalogMode.roundsLayout === "fullscreen") {
+    return <RoundsComponent game={state.game} onBack={onBack} />
+  }
 
   return (
     <RoundsShell
       gameTitle={t(game_.gameTitleKey)}
       modeTitle={t(catalogMode.modeTitleKey)}
       score={state.game.score}
-      onBack={() => navigate(`/${gameType}/${mode}`)}
+      onBack={onBack}
     >
       <RoundsComponent game={state.game} />
     </RoundsShell>
