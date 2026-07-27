@@ -36,7 +36,7 @@ _MIN_CANDIDATE_SEPARATION_DAYS = 100
 class AssetSnapshot(DictCodec):
     """An asset's id/date frozen at the moment a round was created - not a live query result, so a
     round's answer stays stable even if the underlying Immich data changes later (same rationale as
-    more_or_less.py's PersonSnapshot / geoguessr.py's AssetSnapshot). The `date` field's annotation
+    more_or_less.py's EntitySnapshot / geoguessr.py's AssetSnapshot). The `date` field's annotation
     resolves to the `date` type at class-definition time despite sharing its name (no value is bound
     to `date` in the class namespace by an annotation-only statement) - DictCodec.from_dict's
     `f.type is date` check works correctly, confirmed by this game's round-trip test."""

@@ -80,6 +80,26 @@ person = Table(
     Column("isHidden", Boolean),
 )
 
+album = Table(
+    "album",
+    metadata,
+    Column("id", Uuid, primary_key=True),
+    Column("ownerId", Uuid),
+    Column("albumName", String),
+    # The album's chosen cover asset (nullable - Immich falls back to the first asset). Used by
+    # MoreOrLess's albumAssets mode to serve an album thumbnail - see immich_service.get_albums.
+    Column("albumThumbnailAssetId", Uuid),
+    Column("deletedAt", DateTime(timezone=True)),
+)
+
+# Join table between album and asset (Immich's own naming: albumId / assetId).
+album_asset = Table(
+    "album_asset",
+    metadata,
+    Column("albumId", Uuid, primary_key=True),
+    Column("assetId", Uuid, primary_key=True),
+)
+
 asset_face = Table(
     "asset_face",
     metadata,

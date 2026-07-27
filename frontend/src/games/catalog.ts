@@ -47,6 +47,14 @@ export const GAME_CATALOG: CatalogGame[] = [
         component: MoreOrLessGame,
         coverUrl: "/covers/more-or-less.webp",
       },
+      {
+        // Same component as personAssets - it reads its mode from the URL and swaps only the data
+        // source (albums) and thumbnail endpoint. See MoreOrLessGame's MODE_CONFIG.
+        mode: Mode.AlbumAssets,
+        modeTitleKey: "moreOrLess.modes.albumAssets",
+        component: MoreOrLessGame,
+        coverUrl: "/covers/more-or-less-albums.webp",
+      },
     ],
   },
   {

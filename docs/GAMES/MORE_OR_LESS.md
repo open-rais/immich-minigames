@@ -36,7 +36,7 @@ without their count. The player must guess whether B has **more** or **fewer** t
 | Mode | What's compared | Priority |
 |---|---|---|
 | `personAssets` | Photo/video count for a person | Implemented |
-| `albumAssets` | Photo/video count for an album | Future |
+| `albumAssets` | Photo/video count for an album | Implemented |
 | `assetDate` | Date a photo was taken | Future |
 | `personBirthDate` | Person's birthday | Future |
 

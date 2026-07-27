@@ -57,10 +57,12 @@
   "moreOrLess": {
     "title": "More or Less",
     "modes": {
-      "personAssets": "Person assets"
+      "personAssets": "Person assets",
+      "albumAssets": "Album assets"
     },
     "start": {
-      "description": "Guess whether the next person has more or fewer assets than the last. One wrong guess ends the run."
+      "personAssets": "Guess whether the next person has more or fewer assets than the last. One wrong guess ends the run.",
+      "albumAssets": "Guess whether the next album has more or fewer assets than the last. One wrong guess ends the run."
     },
     "has": "has",
     "unit_one": "asset",

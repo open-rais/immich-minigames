@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react"
 import type { TransitionEvent } from "react"
 import { useTranslation } from "react-i18next"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useParams } from "react-router-dom"
 
-import { createGame, personThumbnailUrl, playRound } from "../../api/games"
+import { albumThumbnailUrl, createGame, personThumbnailUrl, playRound } from "../../api/games"
 import { GameType, Mode } from "../../api/types"
 import type { GameOut, MoreOrLessGuess, MoreOrLessRoundOut, RoundOut } from "../../api/types"
 import type { GameComponentProps } from "../catalog"
@@ -17,7 +17,28 @@ import { PersonCard } from "./PersonCard"
 import { useCountUp } from "./useCountUp"
 
 const GAME_TYPE = GameType.MoreOrLess
-const MODE = Mode.PersonAssets
+
+// The two MoreOrLess modes differ only in their data source and thumbnail endpoint - everything else
+// (the whole streak/slide state machine below) is identical, so one component serves both, keyed by
+// the mode in the URL (see catalog.ts). A future non-count mode would add an entry here.
+interface ModeConfig {
+  thumbnailUrl: (id: string) => string
+  modeTitleKey: string
+  descriptionKey: string
+}
+
+const MODE_CONFIG: Record<string, ModeConfig> = {
+  [Mode.PersonAssets]: {
+    thumbnailUrl: personThumbnailUrl,
+    modeTitleKey: "moreOrLess.modes.personAssets",
+    descriptionKey: "moreOrLess.start.personAssets",
+  },
+  [Mode.AlbumAssets]: {
+    thumbnailUrl: albumThumbnailUrl,
+    modeTitleKey: "moreOrLess.modes.albumAssets",
+    descriptionKey: "moreOrLess.start.albumAssets",
+  },
+}
 
 const COUNT_DURATION_MS = 1600
 const REVEAL_HOLD_MS = 1400
@@ -41,6 +62,12 @@ export function MoreOrLessGame({ coverUrl }: GameComponentProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const backToMenu = () => navigate("/")
+
+  // GameRoute only renders this component for a mode that resolved in the catalog, so `mode` is
+  // always one of MODE_CONFIG's keys here; the PersonAssets fallback is just a defensive default.
+  const { mode = Mode.PersonAssets } = useParams<{ mode: string }>()
+  const config = MODE_CONFIG[mode] ?? MODE_CONFIG[Mode.PersonAssets]
+  const thumbnailUrl = config.thumbnailUrl
 
   const [screen, setScreen] = useState<Screen>("idle")
   const [busy, setBusy] = useState(false)
@@ -107,7 +134,7 @@ export function MoreOrLessGame({ coverUrl }: GameComponentProps) {
     await guarded(startInFlightRef, async (token) => {
       setBusy(true)
       try {
-        const g = await createGame(GAME_TYPE, MODE)
+        const g = await createGame(GAME_TYPE, mode)
         if (!isCurrent(token)) return
         const round = g.rounds[g.rounds.length - 1]
         assertMoreOrLess(round)
@@ -168,8 +195,8 @@ export function MoreOrLessGame({ coverUrl }: GameComponentProps) {
     return (
       <IdleScreen
         title={t("moreOrLess.title")}
-        modeTitle={t("moreOrLess.modes.personAssets")}
-        description={t("moreOrLess.start.description")}
+        modeTitle={t(config.modeTitleKey)}
+        description={t(config.descriptionKey)}
         coverUrl={coverUrl}
         onStart={startGame}
         onBack={backToMenu}
@@ -201,7 +228,7 @@ export function MoreOrLessGame({ coverUrl }: GameComponentProps) {
             key={reference.id}
             name={reference.name}
             assetCount={reference.assetCount}
-            thumbnailUrl={personThumbnailUrl(reference.id)}
+            thumbnailUrl={thumbnailUrl(reference.id)}
           />
         </div>
 
@@ -211,7 +238,7 @@ export function MoreOrLessGame({ coverUrl }: GameComponentProps) {
               <CandidateCard
                 key={revealResult.nextRound.candidate_id}
                 name={revealResult.nextRound.candidate_name}
-                thumbnailUrl={personThumbnailUrl(revealResult.nextRound.candidate_id)}
+                thumbnailUrl={thumbnailUrl(revealResult.nextRound.candidate_id)}
                 phase="guessing"
                 displayCount={0}
                 correct={null}
@@ -231,7 +258,7 @@ export function MoreOrLessGame({ coverUrl }: GameComponentProps) {
             <CandidateCard
               key={candidate.id}
               name={candidate.name}
-              thumbnailUrl={personThumbnailUrl(candidate.id)}
+              thumbnailUrl={thumbnailUrl(candidate.id)}
               phase={candidatePhase}
               displayCount={displayCount}
               correct={revealResult?.correct ?? null}
