@@ -79,8 +79,13 @@ export function commonNamesClue(round: ImmichdleRoundOut): ClueResult {
 export function mlSimilarityClue(round: ImmichdleRoundOut): ClueResult {
   const similarity = round.clues!.ml_similarity
   if (similarity === null) return { variant: "miss", background: null, kind: "text", value: "?" }
-  const variant: ClueVariant = similarity === 1 ? "match" : similarity > 0.85 ? "close" : "miss"
-  return { variant, background: null, kind: "percent", value: Math.round(similarity * 100) }
+  // ml_similarity is a raw cosine (-1..1); negative values aren't a meaningful concept to the
+  // player ("less similar than nothing"), so they're floored to 0% for display only - the backend
+  // keeps sending the signed value. 0.30 (not the naive 0.85 "very similar") is where averaged-
+  // embedding similarity actually lands for people who look alike in this library.
+  const clamped = Math.max(0, similarity)
+  const variant: ClueVariant = similarity === 1 ? "match" : clamped > 0.3 ? "close" : "miss"
+  return { variant, background: null, kind: "percent", value: Math.round(clamped * 100) }
 }
 
 export function assetsTogetherClue(round: ImmichdleRoundOut): ClueResult {

@@ -91,7 +91,7 @@
       "distanceBetweenGuess": "Clásico"
     },
     "start": {
-      "description": "Adivina dónde se tomó cada foto. 5 rondas, el puntaje baja según la distancia al lugar real."
+      "description": "Adivina dónde se tomó cada foto. El puntaje baja según la distancia al lugar real."
     },
     "result": {
       "distance": "A {{distance}} km"
@@ -103,7 +103,7 @@
       "daysToDate": "Clásico"
     },
     "start": {
-      "description": "Adivina cuándo se tomó cada foto. 5 rondas, el puntaje baja según la distancia a la fecha real."
+      "description": "Adivina cuándo se tomó cada foto. El puntaje baja según la distancia a la fecha real."
     },
     "result": {
       "daysOff_one": "{{count}} día de diferencia",
@@ -141,7 +141,7 @@
       "namedFaces": "Clásico"
     },
     "start": {
-      "description": "Algunas caras ya nombradas de cada foto se tapan con un cuadro negro - toca una y busca quién es. Se pregunta por 15 personas en total."
+      "description": "Algunas caras ya nombradas de cada foto se tapan con un cuadro negro - toca una y busca quién es."
     },
     "progress": "{{current}} de {{total}} personas",
     "submit": "Enviar respuestas",

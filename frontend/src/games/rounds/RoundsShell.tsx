@@ -2,6 +2,7 @@ import type { ReactNode } from "react"
 import { useTranslation } from "react-i18next"
 
 import { BackButton } from "../shared/BackButton"
+import { GameModeSubtitle } from "../shared/GameModeSubtitle"
 
 interface RoundsShellProps {
   gameTitle: string
@@ -26,9 +27,7 @@ export function RoundsShell({ gameTitle, modeTitle, score, onBack, children }: R
       <BackButton label={t("common.back")} onClick={onBack} />
       <div className="mt-14 text-center md:mt-0">
         <h1 className="text-3xl font-bold text-ink">{t("common.rounds.title")}</h1>
-        <h2 className="mt-1 text-lg font-semibold text-muted">
-          {gameTitle} · {modeTitle}
-        </h2>
+        <GameModeSubtitle gameTitle={gameTitle} modeTitle={modeTitle} />
         <p className="mt-2 text-lg text-muted">{t("common.finished.finalScore", { score })}</p>
       </div>
       <div className="w-full">{children}</div>
