@@ -7,6 +7,7 @@ import { DateguessrRounds } from "./Dateguessr/DateguessrRounds"
 import { GeoguessrGame } from "./Geoguessr/GeoguessrGame"
 import { GeoguessrRounds } from "./Geoguessr/GeoguessrRounds"
 import { ImmichdleGame } from "./Immichdle/ImmichdleGame"
+import { ImmichdleRounds } from "./Immichdle/ImmichdleRounds"
 import { MoreOrLessGame } from "./MoreOrLess/MoreOrLessGame"
 import { MoreOrLessRounds } from "./MoreOrLess/MoreOrLessRounds"
 import { WhosThatPersonGame } from "./WhosThatPerson/WhosThatPersonGame"
@@ -125,6 +126,7 @@ export const GAME_CATALOG: CatalogGame[] = [
         modeTitleKey: "immichdle.modes.person",
         component: ImmichdleGame,
         coverUrl: "/covers/persondle.webp",
+        roundsComponent: ImmichdleRounds,
       },
     ],
   },

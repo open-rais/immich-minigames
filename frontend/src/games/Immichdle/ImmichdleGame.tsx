@@ -34,7 +34,7 @@ interface GameState {
   targetPersonId: string | null
 }
 
-export function ImmichdleGame({ coverUrl }: GameComponentProps) {
+export function ImmichdleGame({ coverUrl, hasRoundsView }: GameComponentProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const backToMenu = () => navigate("/")
@@ -140,6 +140,8 @@ export function ImmichdleGame({ coverUrl }: GameComponentProps) {
         onPlayAgain={startGame}
         onBack={backToMenu}
         busy={busy}
+        gameId={game.id}
+        hasRoundsView={hasRoundsView}
         title={t(game.won ? "immichdle.finished.won" : "immichdle.finished.lost")}
       >
         {game.targetPersonId && (

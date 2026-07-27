@@ -158,6 +158,10 @@ export interface GameOut {
   // game is over, win or lose. null for every other game/mode and for an in-progress Immichdle game.
   target_person_id?: string | null
   target_person_name?: string | null
+  // Roadmap #10 (rounds review) - same redaction condition as target_person_id/name above.
+  target_asset_count?: number | null
+  target_birth_date?: string | null
+  target_first_asset_date?: string | null
   // Admin feature (ADMIN-FEATURE.md point #4) - the live configured total for this game instance
   // (Geoguessr/Dateguessr: total_rounds, WhosThatPerson: total_people), null for every other game.
   // Read instead of hardcoding a display-only mirror of the backend default (see
