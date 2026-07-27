@@ -40,6 +40,12 @@
     "previousPhoto": "Foto anterior",
     "nextPhoto": "Foto siguiente",
     "viewInImmich": "Ver en Immich",
+    "viewRounds": "Ver juego",
+    "rounds": {
+      "title": "Juego",
+      "notFound": "Esta partida no existe o no es tuya.",
+      "optionsMenu": "Opciones"
+    },
     "finished": {
       "title": "Juego terminado",
       "finalScore": "Puntaje final: {{score}}"

@@ -1,10 +1,12 @@
 import type { ComponentType } from "react"
 
+import type { GameOut } from "../api/types"
 import { GameType, Mode } from "../api/types"
 import { DateguessrGame } from "./Dateguessr/DateguessrGame"
 import { GeoguessrGame } from "./Geoguessr/GeoguessrGame"
 import { ImmichdleGame } from "./Immichdle/ImmichdleGame"
 import { MoreOrLessGame } from "./MoreOrLess/MoreOrLessGame"
+import { MoreOrLessRounds } from "./MoreOrLess/MoreOrLessRounds"
 import { WhosThatPersonGame } from "./WhosThatPerson/WhosThatPersonGame"
 
 // Mirrors backend/src/services/games_service.py's _GAME_CLASSES/_ROUND_CLASSES by hand - same
@@ -16,6 +18,17 @@ import { WhosThatPersonGame } from "./WhosThatPerson/WhosThatPersonGame"
 // itself up in the catalog.
 export interface GameComponentProps {
   coverUrl?: string
+  // Roadmap #10 - whether this mode has a roundsComponent registered (see CatalogMode below),
+  // resolved once by GameRoute.tsx and threaded down so FinishedScreen can decide whether to show
+  // its "Ver rondas" button without any game-tree module importing this catalog file itself (that
+  // would cycle back through the *Game.tsx components this file already imports).
+  hasRoundsView?: boolean
+}
+
+// Roadmap #10 (rounds review) - every <Name>Rounds component takes the finished GameOut it reviews,
+// already loaded by RoundsPage.tsx.
+export interface RoundsComponentProps {
+  game: GameOut
 }
 
 export interface CatalogMode {
@@ -28,6 +41,10 @@ export interface CatalogMode {
   // falls back to the plain bg-primary block and IdleScreen just skips the image if omitted, for
   // any future game/mode added before its art is ready.
   coverUrl?: string
+  // Roadmap #10 - which component reviews a finished game of this mode (games/rounds/RoundsPage.tsx).
+  // Optional and added phase by phase (ROUNDS-VIEW.md's F1-F4) - GameScreens.tsx's FinishedScreen
+  // only shows its "Ver rondas" button once a mode has one registered here.
+  roundsComponent?: ComponentType<RoundsComponentProps>
 }
 
 export interface CatalogGame {
@@ -46,6 +63,7 @@ export const GAME_CATALOG: CatalogGame[] = [
         modeTitleKey: "moreOrLess.modes.personAssets",
         component: MoreOrLessGame,
         coverUrl: "/covers/more-or-less.webp",
+        roundsComponent: MoreOrLessRounds,
       },
       {
         // Same component as personAssets - it reads its mode from the URL and swaps only the data
@@ -54,6 +72,7 @@ export const GAME_CATALOG: CatalogGame[] = [
         modeTitleKey: "moreOrLess.modes.albumAssets",
         component: MoreOrLessGame,
         coverUrl: "/covers/more-or-less-albums.webp",
+        roundsComponent: MoreOrLessRounds,
       },
     ],
   },

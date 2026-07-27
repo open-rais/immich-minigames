@@ -3,7 +3,7 @@ import type { TransitionEvent } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate, useParams } from "react-router-dom"
 
-import { albumThumbnailUrl, createGame, personThumbnailUrl, playRound } from "../../api/games"
+import { createGame, playRound } from "../../api/games"
 import { GameType, Mode } from "../../api/types"
 import type { GameOut, MoreOrLessGuess, MoreOrLessRoundOut, RoundOut } from "../../api/types"
 import type { GameComponentProps } from "../catalog"
@@ -13,32 +13,11 @@ import { ScoreBadge } from "../shared/ScoreBadge"
 import { useGuardedRequests } from "../shared/useGuardedRequests"
 import type { CandidatePhase } from "./CandidateCard"
 import { CandidateCard } from "./CandidateCard"
+import { MODE_CONFIG } from "./modeConfig"
 import { PersonCard } from "./PersonCard"
 import { useCountUp } from "./useCountUp"
 
 const GAME_TYPE = GameType.MoreOrLess
-
-// The two MoreOrLess modes differ only in their data source and thumbnail endpoint - everything else
-// (the whole streak/slide state machine below) is identical, so one component serves both, keyed by
-// the mode in the URL (see catalog.ts). A future non-count mode would add an entry here.
-interface ModeConfig {
-  thumbnailUrl: (id: string) => string
-  modeTitleKey: string
-  descriptionKey: string
-}
-
-const MODE_CONFIG: Record<string, ModeConfig> = {
-  [Mode.PersonAssets]: {
-    thumbnailUrl: personThumbnailUrl,
-    modeTitleKey: "moreOrLess.modes.personAssets",
-    descriptionKey: "moreOrLess.start.personAssets",
-  },
-  [Mode.AlbumAssets]: {
-    thumbnailUrl: albumThumbnailUrl,
-    modeTitleKey: "moreOrLess.modes.albumAssets",
-    descriptionKey: "moreOrLess.start.albumAssets",
-  },
-}
 
 const COUNT_DURATION_MS = 1600
 const REVEAL_HOLD_MS = 1400
@@ -58,7 +37,7 @@ function assertMoreOrLess(round: RoundOut): asserts round is MoreOrLessRoundOut 
   if (round.game_type !== GameType.MoreOrLess) throw new Error(`expected a more-or-less round, got ${round.game_type}`)
 }
 
-export function MoreOrLessGame({ coverUrl }: GameComponentProps) {
+export function MoreOrLessGame({ coverUrl, hasRoundsView }: GameComponentProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const backToMenu = () => navigate("/")
@@ -210,7 +189,16 @@ export function MoreOrLessGame({ coverUrl }: GameComponentProps) {
   }
 
   if (screen === "finished") {
-    return <FinishedScreen score={game?.score ?? 0} onPlayAgain={startGame} onBack={backToMenu} busy={busy} />
+    return (
+      <FinishedScreen
+        score={game?.score ?? 0}
+        onPlayAgain={startGame}
+        onBack={backToMenu}
+        busy={busy}
+        gameId={game?.id}
+        hasRoundsView={hasRoundsView}
+      />
+    )
   }
 
   if (!game || !reference || !candidate) return null

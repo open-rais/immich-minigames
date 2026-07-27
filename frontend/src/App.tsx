@@ -6,6 +6,7 @@ import { EditProfilePage } from './auth/EditProfilePage'
 import { LoginPage } from './auth/LoginPage'
 import { ProfilePage } from './auth/ProfilePage'
 import { SignupPage } from './auth/SignupPage'
+import { RoundsPage } from './games/rounds/RoundsPage'
 import { GameRoute } from './menu/GameRoute'
 import { LeaderboardPage } from './menu/LeaderboardPage'
 import { MainMenu } from './menu/MainMenu'
@@ -24,6 +25,7 @@ function App() {
             <Route path="/profile/edit" element={<EditProfilePage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/:gameType/:mode/leaderboard" element={<LeaderboardPage />} />
+            <Route path="/:gameType/:mode/game/:gameId/rounds" element={<RoundsPage />} />
             <Route path="/:gameType/:mode" element={<GameRoute />} />
           </Routes>
         </AuthProvider>

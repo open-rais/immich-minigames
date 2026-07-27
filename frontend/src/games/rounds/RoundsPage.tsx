@@ -1,0 +1,75 @@
+import { useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
+import { Navigate, useNavigate, useParams } from "react-router-dom"
+
+import { getGame } from "../../api/games"
+import type { GameOut } from "../../api/types"
+import { findCatalogMode, GAME_CATALOG } from "../catalog"
+import { Button } from "../shared/Button"
+import { RoundsShell } from "./RoundsShell"
+
+type LoadState = { status: "loading" } | { status: "error" } | { status: "ready"; game: GameOut }
+
+// Loads a finished game and hands it to that mode's roundsComponent (ROUNDS-VIEW.md roadmap #10) -
+// modeled directly on menu/LeaderboardPage.tsx (params -> catalog lookup -> fetch -> render).
+export function RoundsPage() {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const { gameType, mode, gameId } = useParams<{ gameType: string; mode: string; gameId: string }>()
+  const catalogMode = gameType && mode ? findCatalogMode(gameType, mode) : undefined
+  const game_ = GAME_CATALOG.find((g) => g.gameType === gameType)
+  const [state, setState] = useState<LoadState>({ status: "loading" })
+
+  useEffect(() => {
+    if (!gameId) return
+    let cancelled = false
+    setState({ status: "loading" })
+    getGame(gameId)
+      .then((game) => {
+        if (!cancelled) setState({ status: "ready", game })
+      })
+      .catch(() => {
+        if (!cancelled) setState({ status: "error" })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [gameId])
+
+  // An unknown mode, a mode with no roundsComponent registered yet (F2-F4 still pending), or a
+  // missing gameId all mean there's nothing sensible to render here - bounce to the menu the same
+  // way GameRoute does for an unknown (gameType, mode).
+  if (!catalogMode || !game_ || !gameType || !mode || !gameId || !catalogMode.roundsComponent) {
+    return <Navigate to="/" replace />
+  }
+
+  if (state.status === "loading") {
+    return <div className="min-h-dvh bg-app-bg" />
+  }
+
+  if (state.status === "error") {
+    // One message for every failure (including 403/404) - a game that's inaccessible or doesn't
+    // exist looks the same to the player either way (§4.4 of the doc).
+    return (
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-app-bg px-6 text-center">
+        <p className="text-body">{t("common.rounds.notFound")}</p>
+        <Button variant="primary" className="px-6 py-3" onClick={() => navigate("/")}>
+          {t("common.back")}
+        </Button>
+      </div>
+    )
+  }
+
+  const RoundsComponent = catalogMode.roundsComponent
+
+  return (
+    <RoundsShell
+      gameTitle={t(game_.gameTitleKey)}
+      modeTitle={t(catalogMode.modeTitleKey)}
+      score={state.game.score}
+      onBack={() => navigate(`/${gameType}/${mode}`)}
+    >
+      <RoundsComponent game={state.game} />
+    </RoundsShell>
+  )
+}
