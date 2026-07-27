@@ -10,12 +10,12 @@ import type { GameComponentProps } from "../catalog"
 import { ErrorScreen, FinishedScreen, IdleScreen } from "../shared/GameScreens"
 import { GuardedBackButton } from "../shared/GuardedBackButton"
 import { ScoreBadge } from "../shared/ScoreBadge"
+import { useCountUp } from "../shared/useCountUp"
 import { useGuardedRequests } from "../shared/useGuardedRequests"
 import type { CandidatePhase } from "./CandidateCard"
 import { CandidateCard } from "./CandidateCard"
 import { MODE_CONFIG } from "./modeConfig"
 import { PersonCard } from "./PersonCard"
-import { useCountUp } from "./useCountUp"
 
 const GAME_TYPE = GameType.MoreOrLess
 

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 
@@ -44,6 +44,13 @@ export function ImmichdleGame({ coverUrl, hasRoundsView }: GameComponentProps) {
   const [game, setGame] = useState<GameState | null>(null)
   const [pendingRoundId, setPendingRoundId] = useState<string | null>(null)
   const [history, setHistory] = useState<ImmichdleRoundOut[]>([])
+  // §7 of docs/TODO/UI-ENHANCEMENTS.md - the guess-reveal sequence. `animatingRoundId` is the row
+  // GuessTable/AnimatedGuessRow is currently running its own entrance/reveal timers for; the effect
+  // below only advances past it once that row reports done *and* (only relevant when this was the
+  // game's last guess) the target-person fetch below has also resolved - whichever finishes last.
+  const [animatingRoundId, setAnimatingRoundId] = useState<string | null>(null)
+  const [rowAnimationDone, setRowAnimationDone] = useState(false)
+  const [targetFetchDone, setTargetFetchDone] = useState(true)
   // Stable reference across renders that don't change history - PersonSearchInput's debounced
   // search effect depends on excludeIds by reference (see its own docstring, and the other
   // consumers - SkinPicker/AdminUserRow/FaceGuessPopover - that already follow this contract).
@@ -66,6 +73,9 @@ export function ImmichdleGame({ coverUrl, hasRoundsView }: GameComponentProps) {
         setGame({ id: g.id, score: g.score, finished: false, won: false, targetName: null, targetPersonId: null })
         setPendingRoundId(round.id)
         setHistory([])
+        setAnimatingRoundId(null)
+        setRowAnimationDone(false)
+        setTargetFetchDone(true)
         setScreen("playing")
       } catch {
         if (isCurrent(token)) setScreen("error")
@@ -84,24 +94,43 @@ export function ImmichdleGame({ coverUrl, hasRoundsView }: GameComponentProps) {
         if (!isCurrent(token)) return
         assertImmichdle(result.answered_round)
         if (result.next_round) assertImmichdle(result.next_round)
+        const answeredRound = result.answered_round as ImmichdleRoundOut
 
-        let targetName: string | null = null
-        let targetPersonId: string | null = null
-        if (result.finished) {
-          const finalState = await getGame(game.id)
-          if (!isCurrent(token)) return
-          targetName = finalState.target_person_name ?? null
-          targetPersonId = finalState.target_person_id ?? null
-        }
-
-        setHistory((h) => [result.answered_round as ImmichdleRoundOut, ...h])
-        setGame((g) =>
-          g
-            ? { ...g, score: result.score, finished: result.finished, won: result.correct === true, targetName, targetPersonId }
-            : g,
-        )
+        setHistory((h) => [answeredRound, ...h])
+        setGame((g) => (g ? { ...g, score: result.score, finished: result.finished, won: result.correct === true } : g))
         setPendingRoundId(result.next_round ? result.next_round.id : null)
-        if (result.finished) setScreen("finished")
+
+        // Kicks off the row's own entrance/reveal timers (AnimatedGuessRow, via GuessTable) - the
+        // watcher effect below advances the screen once it reports done.
+        setAnimatingRoundId(answeredRound.id)
+        setRowAnimationDone(false)
+
+        // The target-person fetch runs in parallel with that animation instead of blocking before
+        // it (so the row doesn't sit frozen waiting on the network) - only relevant when this guess
+        // just finished the game; otherwise there's nothing to fetch and the row alone gates the
+        // watcher effect below.
+        if (result.finished) {
+          setTargetFetchDone(false)
+          getGame(game.id)
+            .then((finalState) => {
+              if (!isCurrent(token)) return
+              setGame((g) =>
+                g
+                  ? {
+                      ...g,
+                      targetName: finalState.target_person_name ?? null,
+                      targetPersonId: finalState.target_person_id ?? null,
+                    }
+                  : g,
+              )
+              setTargetFetchDone(true)
+            })
+            .catch(() => {
+              if (isCurrent(token)) setScreen("error")
+            })
+        } else {
+          setTargetFetchDone(true)
+        }
       } catch {
         if (isCurrent(token)) setScreen("error")
       } finally {
@@ -109,6 +138,15 @@ export function ImmichdleGame({ coverUrl, hasRoundsView }: GameComponentProps) {
       }
     })
   }
+
+  // Advances past the guess-reveal sequence once both the row's own animation and (only when this
+  // guess finished the game) the target fetch above have resolved - whichever finishes last is what
+  // actually triggers this, without branching on win/lose (§7 [DECISIÓN F0]).
+  useEffect(() => {
+    if (!animatingRoundId || !rowAnimationDone || !targetFetchDone) return
+    setAnimatingRoundId(null)
+    if (game?.finished) setScreen("finished")
+  }, [animatingRoundId, rowAnimationDone, targetFetchDone, game?.finished])
 
   function backToIdle() {
     discardInFlight() // discard any in-flight guess/start response that arrives later
@@ -161,20 +199,27 @@ export function ImmichdleGame({ coverUrl, hasRoundsView }: GameComponentProps) {
       <GuardedBackButton onExit={backToIdle} />
       <ScoreBadge label={t("common.score")} score={game.score} />
 
-      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center gap-4 pt-14 md:pt-16">
+      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center gap-4 pt-14 md:pt-16">
         {/* Search bar stays narrower/centered - the table below is free to be wider on desktop
-            (up to the outer max-w-4xl), matching the rest of the app's cards rather than smashdle's
-            own full-bleed layout. */}
+            (up to the outer max-w-5xl), matching the rest of the app's cards rather than smashdle's
+            own full-bleed layout. max-w-5xl (not -4xl) is deliberate: GuessTable's own natural
+            desktop width (PERSON_COL + 6*CLUE_COL = 224+672 = 896px, plus its border) lands right at
+            -4xl's 896px cap, so it used to clip by a couple pixels and trigger an unnecessary
+            horizontal scrollbar on desktop even though the table visually "fits". */}
         <div className="w-full md:max-w-md">
           <PersonSearchInput
             excludeIds={guessedIds}
             onSelect={handleGuess}
-            disabled={busy || !pendingRoundId}
+            disabled={busy || !pendingRoundId || animatingRoundId !== null}
             focusOnTypeAnywhere
           />
         </div>
 
-        <GuessTable history={history} />
+        <GuessTable
+          history={history}
+          animatingRoundId={animatingRoundId}
+          onRowAnimationDone={() => setRowAnimationDone(true)}
+        />
       </div>
     </div>
   )

@@ -96,6 +96,33 @@ body {
  * dark constants are kept in sync with these by hand) - Dateguessr's ruler consumes these same
  * tokens directly via var() in its inline styles, no separate sync needed there.
  */
+/*
+ * Immichdle's guess-reveal sequence (games/Immichdle/AnimatedGuessRow.tsx) - the project's first
+ * @keyframes. Both play once on mount and land exactly on the element's normal resting style (no
+ * `animation-fill-mode: forwards` needed): `immichdle-row-grow`'s "to" is the same `1fr` the row's
+ * base class already sets, and `immichdle-fade-in`'s "to" is the same full opacity the content
+ * already has outside the animation - the keyframe is purely how it *arrives* there.
+ * `grid-template-rows: <n>fr` interpolates smoothly like any other animatable property, which is
+ * what lets the row grow to its real (breakpoint-dependent) height with no JS measurement at all.
+ */
+@keyframes immichdle-row-grow {
+  from {
+    grid-template-rows: 0fr;
+  }
+  to {
+    grid-template-rows: 1fr;
+  }
+}
+
+@keyframes immichdle-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .dark {
   --color-app-bg: oklch(0.16 0.006 260);
   --color-surface: oklch(0.24 0.008 260);
