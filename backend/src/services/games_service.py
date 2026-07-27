@@ -3,6 +3,7 @@ Games service - creates/loads/plays games. Bridges the game-logic layer (games/*
 persistence awareness) and this app's own DB (persistence/games.py).
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Literal
 from uuid import UUID, uuid4
@@ -18,7 +19,15 @@ from games.geoguessr import MODE_DISTANCE_BETWEEN_GUESS, GeoguessrGame, Geoguess
 from games.immichdle import GAME_TYPE as IMMICHDLE_TYPE
 from games.immichdle import MODE_PERSON, ImmichdleGame, ImmichdleRound
 from games.more_or_less import GAME_TYPE as MORE_OR_LESS_TYPE
-from games.more_or_less import MODE_PERSON_ASSETS, MoreOrLessGame, MoreOrLessRound
+from games.more_or_less import (
+    MODE_ALBUM_ASSETS,
+    MODE_PERSON_ASSETS,
+    AlbumAssetsProvider,
+    CandidateProvider,
+    MoreOrLessGame,
+    MoreOrLessRound,
+    PersonAssetsProvider,
+)
 from games.whos_that_person import GAME_TYPE as WHOS_THAT_PERSON_TYPE
 from games.whos_that_person import MODE_NAMED_FACES, WhosThatPersonGame, WhosThatPersonRound
 from persistence.games import GameModel, RoundModel
@@ -32,14 +41,25 @@ from services.ml_service import MLService
 class _GameSpec:
     """One registry entry per (game_type, mode) - single source of truth for which game/round
     classes a combination maps to, so adding a game only ever means adding one entry here (used to
-    be two separate dicts that had to stay in lockstep)."""
+    be two separate dicts that had to stay in lockstep).
+
+    `provider_factory` is only set for multi-mode games whose modes differ solely in their data
+    source (MoreOrLess: personAssets vs albumAssets). When present, GamesService builds the provider
+    and hands the game `provider` + `mode` *instead of* immich_service - the provider fully replaces
+    the game's data source, so it has no other use for immich_service directly."""
 
     game_class: type[BaseGame]
     round_class: type[BaseRound]
+    provider_factory: Callable[[ImmichService], CandidateProvider] | None = None
 
 
 _GAMES: dict[tuple[str, str], _GameSpec] = {
-    (MORE_OR_LESS_TYPE, MODE_PERSON_ASSETS): _GameSpec(MoreOrLessGame, MoreOrLessRound),
+    (MORE_OR_LESS_TYPE, MODE_PERSON_ASSETS): _GameSpec(
+        MoreOrLessGame, MoreOrLessRound, provider_factory=PersonAssetsProvider
+    ),
+    (MORE_OR_LESS_TYPE, MODE_ALBUM_ASSETS): _GameSpec(
+        MoreOrLessGame, MoreOrLessRound, provider_factory=AlbumAssetsProvider
+    ),
     (GEOGUESSR_TYPE, MODE_DISTANCE_BETWEEN_GUESS): _GameSpec(GeoguessrGame, GeoguessrRound),
     (DATEGUESSR_TYPE, MODE_DAYS_TO_DATE): _GameSpec(DateguessrGame, DateguessrRound),
     (IMMICHDLE_TYPE, MODE_PERSON): _GameSpec(ImmichdleGame, ImmichdleRound),
@@ -115,19 +135,26 @@ class GamesService:
         # Admin feature (ADMIN-FEATURE.md point #4) - same optional/self-constructing pattern.
         self._game_settings_service = game_settings_service or GameSettingsService(session)
 
-    def _game_kwargs(self, game_class: type[BaseGame], game_type: str) -> dict[str, Any]:
+    def _game_kwargs(self, spec: _GameSpec, game_type: str, mode: str) -> dict[str, Any]:
         """Constructor/`start()` kwargs every game needs, plus whichever extra ones a specific game
-        class needs beyond that - today only ImmichdleGame's MLService (see games/immichdle.py).
-        Centralizing the "which game needs what" knowledge here means a new game with its own extra
-        dependency only ever needs one line added in this one method, not a change spread across
-        every call site that builds a game. `game_type` is a plain str (not derived from
-        `game_class`) since not every concrete game class exposes it as a class attribute - callers
-        already have the string in scope (the (game_type, mode) key that picked this spec)."""
+        class needs beyond that - ImmichdleGame's MLService (see games/immichdle.py), and, for a
+        provider-based multi-mode game (MoreOrLess), its per-mode `provider` + `mode`. Centralizing
+        the "which game needs what" knowledge here means a new game with its own extra dependency
+        only ever needs one line added in this one method, not a change spread across every call
+        site that builds a game. `game_type`/`mode` are plain strs (not derived from `game_class`)
+        since not every concrete game class exposes them - callers already have the (game_type, mode)
+        key that picked this spec in scope."""
         kwargs: dict[str, Any] = {
-            "immich_service": self._immich_service,
             "settings": self._game_settings_service.get_settings(game_type),
         }
-        if game_class is ImmichdleGame:
+        if spec.provider_factory is not None:
+            # The provider fully replaces this game's data source, so it gets provider + mode
+            # instead of immich_service (see _GameSpec.provider_factory).
+            kwargs["provider"] = spec.provider_factory(self._immich_service)
+            kwargs["mode"] = mode
+        else:
+            kwargs["immich_service"] = self._immich_service
+        if spec.game_class is ImmichdleGame:
             kwargs["ml_service"] = self._ml_service
         return kwargs
 
@@ -139,7 +166,7 @@ class GamesService:
             raise UnsupportedGameError(f"unsupported game/mode: {game_type}/{mode}")
 
         try:
-            game = spec.game_class.start(id=uuid4(), owner=owner, **self._game_kwargs(spec.game_class, game_type))
+            game = spec.game_class.start(id=uuid4(), owner=owner, **self._game_kwargs(spec, game_type, mode))
         except ValueError as e:
             raise NotEnoughContentError(str(e)) from e
         self._save_new_game(game, user_id=user_id)
@@ -257,7 +284,7 @@ class GamesService:
             rounds=rounds,
             score=game_row.score,
             finished=game_row.finished,
-            **self._game_kwargs(spec.game_class, game_row.game_type),
+            **self._game_kwargs(spec, game_row.game_type, game_row.mode),
         )
 
     def _save_new_game(self, game: BaseGame, user_id: UUID | None = None) -> None:

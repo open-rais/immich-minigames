@@ -61,6 +61,14 @@ DB_APP_DATABASE_NAME=minigames
 IMMICH_SERVER_URL=http://your-immich-server:2283
 IMMICH_API_KEY=your-immich-api-key
 
+# Public URL the *browser* opens for the "Ver en Immich" links on the post-game rounds review
+# (e.g. https://photos.example.com). Distinct from IMMICH_SERVER_URL above, which is how the
+# *backend* reaches Immich and is often an address only reachable from inside your Docker network
+# (like host.docker.internal) - not something a browser can open. Optional: if unset, this falls
+# back to IMMICH_SERVER_URL, which works fine if that's already a browser-reachable address, but
+# produces a broken link if it isn't.
+IMMICH_EXTERNAL_URL=https://your-public-immich-url
+
 # Backend configuration
 BACKEND_PORT=8000
 JWT_SECRET=your-random-secret-key-32-chars
@@ -376,6 +384,12 @@ IMMICH_API_KEY=<your-api-key>
 ```
 
 **Note:** The ML URL might vary depending on your Immich setup. Check your Immich instance's documentation.
+
+If `IMMICH_SERVER_URL` above is itself a browser-reachable address (as in this example), the "Ver en
+Immich" links on the rounds review screen work with no further configuration. If instead your backend
+reaches Immich through an address a browser can't open (e.g. `host.docker.internal` when both stacks
+run on the same machine, as in the default `docker-compose.app.yml` setup), set `IMMICH_EXTERNAL_URL`
+to the public URL separately - see the `.env` example above.
 
 ### Custom Ports
 

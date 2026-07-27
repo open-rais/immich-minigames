@@ -33,7 +33,7 @@ function isGeoguessrRound(round: RoundOut): round is GeoguessrRoundOut {
 
 type Pin = { lat: number; lng: number }
 
-export function GeoguessrGame({ coverUrl }: GameComponentProps) {
+export function GeoguessrGame({ coverUrl, hasRoundsView }: GameComponentProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const backToMenu = () => navigate("/")
@@ -70,7 +70,16 @@ export function GeoguessrGame({ coverUrl }: GameComponentProps) {
   }
 
   if (screen === "finished") {
-    return <FinishedScreen score={game?.score ?? 0} onPlayAgain={startGame} onBack={backToMenu} busy={busy} />
+    return (
+      <FinishedScreen
+        score={game?.score ?? 0}
+        onPlayAgain={startGame}
+        onBack={backToMenu}
+        busy={busy}
+        gameId={game?.id}
+        hasRoundsView={hasRoundsView}
+      />
+    )
   }
 
   if (!game || !round) return null
@@ -82,7 +91,9 @@ export function GeoguessrGame({ coverUrl }: GameComponentProps) {
 
   return (
     <div className="h-dvh w-full overflow-hidden bg-app-bg">
-      <AssetCarousel key={round.id} assetIds={round.asset_ids} alt={t("geoguessr.title")} />
+      <div className="fixed inset-0">
+        <AssetCarousel key={round.id} assetIds={round.asset_ids} alt={t("geoguessr.title")} />
+      </div>
 
       <GuardedBackButton onExit={backToIdle} />
       <ScoreBadge label={t("common.score")} score={game.score} />

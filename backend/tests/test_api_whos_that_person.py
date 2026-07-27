@@ -1,4 +1,4 @@
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -39,6 +39,8 @@ class TestCreateGame:
             assert face["person_id"] is None
             assert face["person_name"] is None
             assert face["correct"] is None
+            assert face["guess_person_id"] is None
+            assert face["guess_person_name"] is None
             assert face["image_width"] > 0
             assert face["bounding_box_x2"] > face["bounding_box_x1"]
 
@@ -87,6 +89,10 @@ class TestPlayRound:
         for face in answered["faces"]:
             assert face["person_id"] is not None
             assert face["correct"] is True
+            # Roadmap #10 (rounds review) - guessed the true person_id, a real named person, so
+            # both are resolved.
+            assert face["guess_person_id"] == str(guesses[UUID(face["face_id"])])
+            assert face["guess_person_name"] is not None
 
     def test_wrong_guess_is_revealed_as_incorrect(self, client, games_service, db_session):
         owner = str(uuid4())
@@ -104,6 +110,11 @@ class TestPlayRound:
         assert result["correct"] is False
         assert result["score_delta"] == 0
         assert result["finished"] is False
+        for face in result["answered_round"]["faces"]:
+            # Roadmap #10 - the guess itself is always shown (guess_person_id == what was
+            # submitted), but these are random uuid4()s, so none resolve to a real person's name.
+            assert face["guess_person_id"] == str(guesses[UUID(face["face_id"])])
+            assert face["guess_person_name"] is None
 
     def test_incomplete_guess_returns_422(self, client, games_service, db_session):
         owner = str(uuid4())

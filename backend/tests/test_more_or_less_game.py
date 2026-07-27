@@ -1,21 +1,38 @@
+import random
 from uuid import uuid4
 
 import pytest
 
-from games.more_or_less import _RECENT_EXCLUDE_WINDOW, MoreOrLessGame, MoreOrLessRound, PersonSnapshot
+from games.more_or_less import (
+    MODE_ALBUM_ASSETS,
+    MODE_PERSON_ASSETS,
+    _RECENT_EXCLUDE_WINDOW,
+    AlbumAssetsProvider,
+    CandidateProvider,
+    EntitySnapshot,
+    MoreOrLessGame,
+    MoreOrLessRound,
+    PersonAssetsProvider,
+)
+
+
+def _start_game(immich_service):
+    return MoreOrLessGame.start(
+        id=uuid4(), owner="owner", mode=MODE_PERSON_ASSETS, provider=PersonAssetsProvider(immich_service)
+    )
 
 
 def _wrong_guess(round_) -> str:
-    return "less" if round_.candidate.asset_count > round_.reference.asset_count else "more"
+    return "less" if round_.candidate.value > round_.reference.value else "more"
 
 
 def _correct_guess(round_) -> str:
-    return "more" if round_.candidate.asset_count > round_.reference.asset_count else "less"
+    return "more" if round_.candidate.value > round_.reference.value else "less"
 
 
 class TestMoreOrLessGame:
     def test_correct_guess_chains_a_new_round_and_scores_one(self, immich_service):
-        game = MoreOrLessGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        game = _start_game(immich_service)
         first_round = game.current_round
 
         result = game.play_round(_correct_guess(first_round))
@@ -27,12 +44,12 @@ class TestMoreOrLessGame:
         assert game.current_round is not first_round
 
     def test_wrong_guess_ends_the_game_and_scores_zero(self, immich_service):
-        game = MoreOrLessGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        game = _start_game(immich_service)
         first_round = game.current_round
         # A tie can't be scored "wrong" either way (see MoreOrLessRound.calculate_score), so
         # _wrong_guess() only actually loses the round when the two aren't tied - guard the
         # assertion instead of assuming a loss, so this test isn't flaky on the rare tie.
-        tied = first_round.candidate.asset_count == first_round.reference.asset_count
+        tied = first_round.candidate.value == first_round.reference.value
 
         result = game.play_round(_wrong_guess(first_round))
 
@@ -51,7 +68,7 @@ class TestMoreOrLessGame:
         # *candidate* that was already shown within the last _RECENT_EXCLUDE_WINDOW people (the
         # game is infinite - see test_game_continues_past_the_full_named_people_pool below - so
         # repeats are expected once a person ages out of that window, just not before).
-        game = MoreOrLessGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        game = _start_game(immich_service)
 
         recent = [game.current_round.reference.id, game.current_round.candidate.id]
         for _ in range(_RECENT_EXCLUDE_WINDOW + 3):
@@ -70,7 +87,7 @@ class TestMoreOrLessGame:
         # infinite, only avoiding *recent* repeats (_RECENT_EXCLUDE_WINDOW), not all-time ones.
         named_people_count = len(immich_service.get_persons(named_only=True, limit=1000))
 
-        game = MoreOrLessGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        game = _start_game(immich_service)
         for _ in range(named_people_count + 5):
             if game.finished:
                 break
@@ -80,7 +97,7 @@ class TestMoreOrLessGame:
         assert len(game.rounds) > named_people_count
 
     def test_playing_an_already_finished_game_raises(self, immich_service):
-        game = MoreOrLessGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        game = _start_game(immich_service)
         game.play_round(_wrong_guess(game.current_round))
 
         with pytest.raises(ValueError):
@@ -92,8 +109,8 @@ class TestMoreOrLessGame:
         # instead of ever reaching this friendly message.
         monkeypatch.setattr(immich_service, "get_persons", lambda **kwargs: [])
 
-        with pytest.raises(ValueError, match="not enough named people"):
-            MoreOrLessGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        with pytest.raises(ValueError, match="not enough entities"):
+            _start_game(immich_service)
 
 
 class TestMoreOrLessRoundTieScoring:
@@ -101,8 +118,8 @@ class TestMoreOrLessRoundTieScoring:
     which is rare (and not reliably reproducible) via the real random-candidate-picking flow."""
 
     def _tied_round(self, guess: str) -> MoreOrLessRound:
-        reference = PersonSnapshot(id=uuid4(), name="Reference", asset_count=42)
-        candidate = PersonSnapshot(id=uuid4(), name="Candidate", asset_count=42)
+        reference = EntitySnapshot(id=uuid4(), name="Reference", value=42)
+        candidate = EntitySnapshot(id=uuid4(), name="Candidate", value=42)
         round_ = MoreOrLessRound(id=uuid4(), game_id=uuid4(), round_index=1, reference=reference, candidate=candidate)
         round_.guess = guess
         return round_
@@ -112,3 +129,49 @@ class TestMoreOrLessRoundTieScoring:
 
     def test_tie_scores_a_win_when_guess_is_less(self):
         assert self._tied_round("less").calculate_score() == 1
+
+
+class _SmallPoolProvider(CandidateProvider):
+    """A fixed, tiny pool - smaller than _RECENT_EXCLUDE_WINDOW - to deterministically exercise the
+    "never end even when every entity is within the recent window" fallback (decision B), without
+    depending on how many albums/people the dev library happens to have."""
+
+    def __init__(self, size: int = 3) -> None:
+        self._entities = [EntitySnapshot(id=uuid4(), name=f"E{i}", value=i) for i in range(size)]
+
+    def sample(self, *, limit, exclude_ids):
+        available = [e for e in self._entities if e.id not in exclude_ids]
+        random.shuffle(available)
+        return available[:limit]
+
+    def any_exist(self):
+        return bool(self._entities)
+
+
+class TestMoreOrLessNeverEnds:
+    def test_game_never_ends_on_correct_guesses_even_with_a_tiny_pool(self):
+        # Pool of 3, window of 10 - after the first few rounds every entity is always within the
+        # recent window, so without the fallback create_next_round would run dry and the game would
+        # end. It must keep going (allowing repeats) instead.
+        game = MoreOrLessGame.start(
+            id=uuid4(), owner="owner", mode=MODE_ALBUM_ASSETS, provider=_SmallPoolProvider(size=3)
+        )
+        for _ in range(_RECENT_EXCLUDE_WINDOW * 3):
+            game.play_round(_correct_guess(game.current_round))
+            assert not game.finished, "game ended on a correct guess despite the pool never being empty"
+
+
+class TestMoreOrLessAlbumMode:
+    """Integration against the dev library's real albums (see conftest)."""
+
+    def test_album_mode_plays_a_round(self, immich_service):
+        game = MoreOrLessGame.start(
+            id=uuid4(), owner="owner", mode=MODE_ALBUM_ASSETS, provider=AlbumAssetsProvider(immich_service)
+        )
+        assert game.mode == MODE_ALBUM_ASSETS
+        first_round = game.current_round
+
+        result = game.play_round(_correct_guess(first_round))
+
+        assert result.score_delta == 1
+        assert not game.finished

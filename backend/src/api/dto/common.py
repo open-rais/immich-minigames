@@ -9,6 +9,7 @@ wrongly-shaped guess.
 """
 
 from dataclasses import dataclass
+from datetime import date
 from typing import Annotated, Any, Literal, Union
 from uuid import UUID
 
@@ -101,6 +102,12 @@ class GameOut(BaseModel):
     # an Immichdle game still in progress, where revealing it would be a straight cheat.
     target_person_id: UUID | None = None
     target_person_name: str | None = None
+    # Roadmap #10 (rounds review) - the target row in the post-game GuessTable (ROUNDS-VIEW.md §4.6).
+    # Same redaction condition as target_person_id/name above - PersonSnapshot already carries these,
+    # just not previously surfaced here.
+    target_asset_count: int | None = None
+    target_birth_date: date | None = None
+    target_first_asset_date: date | None = None
     # Admin feature (ADMIN-FEATURE.md point #4) - the *live* configured total for this game
     # instance (AssetRoundsGame.total_rounds / WhosThatPersonGame.total_people), so the frontend's
     # round counter (e.g. "Round 2 of 5") reflects an admin override instead of a hardcoded
@@ -112,9 +119,15 @@ class GameOut(BaseModel):
     def from_game(cls, game: BaseGame) -> "GameOut":
         target_id = None
         target_name = None
+        target_asset_count = None
+        target_birth_date = None
+        target_first_asset_date = None
         if isinstance(game, ImmichdleGame) and game.finished:
             target_id = game.target.id
             target_name = game.target.name
+            target_asset_count = game.target.asset_count
+            target_birth_date = game.target.birth_date
+            target_first_asset_date = game.target.first_asset_date
         return cls(
             id=game.id,
             type=game.game_type,
@@ -124,6 +137,9 @@ class GameOut(BaseModel):
             rounds=[round_out_from_round(r) for r in game.rounds],
             target_person_id=target_id,
             target_person_name=target_name,
+            target_asset_count=target_asset_count,
+            target_birth_date=target_birth_date,
+            target_first_asset_date=target_first_asset_date,
             total_rounds=game.total_rounds if isinstance(game, AssetRoundsGame) else None,
             total_people=game.total_people if isinstance(game, WhosThatPersonGame) else None,
         )
@@ -257,3 +273,13 @@ class GameSettingsOut(BaseModel):
                 for spec in specs
             ],
         )
+
+
+# -- public runtime config (ROUNDS-VIEW.md roadmap point #10, see Settings.immich_public_url) ---
+
+
+class ConfigOut(BaseModel):
+    # Settings.immich_public_url, already resolved (IMMICH_EXTERNAL_URL or a fallback to
+    # IMMICH_SERVER_URL) - optional because immich_server_url is a plain str field with no
+    # guarantee against being blanked out, not because callers are expected to see null in practice.
+    immich_external_url: str | None

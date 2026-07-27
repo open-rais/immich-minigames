@@ -30,7 +30,7 @@ function isWhosThatPersonRound(round: RoundOut): round is WhosThatPersonRoundOut
   return round.game_type === GameType.WhosThatPerson
 }
 
-export function WhosThatPersonGame({ coverUrl }: GameComponentProps) {
+export function WhosThatPersonGame({ coverUrl, hasRoundsView }: GameComponentProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const backToMenu = () => navigate("/")
@@ -93,7 +93,16 @@ export function WhosThatPersonGame({ coverUrl }: GameComponentProps) {
   }
 
   if (screen === "finished") {
-    return <FinishedScreen score={game?.score ?? 0} onPlayAgain={handleStart} onBack={backToMenu} busy={busy} />
+    return (
+      <FinishedScreen
+        score={game?.score ?? 0}
+        onPlayAgain={handleStart}
+        onBack={backToMenu}
+        busy={busy}
+        gameId={game?.id}
+        hasRoundsView={hasRoundsView}
+      />
+    )
   }
 
   if (!game || !round) return null
@@ -103,16 +112,18 @@ export function WhosThatPersonGame({ coverUrl }: GameComponentProps) {
 
   return (
     <div className="h-dvh w-full overflow-hidden bg-app-bg">
-      <IncognitoPhoto
-        key={round.id}
-        assetId={round.asset_id}
-        faces={round.faces}
-        guesses={guesses}
-        activeFaceId={activeFaceId}
-        onSelectFace={setActiveFaceId}
-        onGuess={handleGuess}
-        phase={phase}
-      />
+      <div className="fixed inset-0">
+        <IncognitoPhoto
+          key={round.id}
+          assetId={round.asset_id}
+          faces={round.faces}
+          guesses={guesses}
+          activeFaceId={activeFaceId}
+          onSelectFace={setActiveFaceId}
+          onGuess={handleGuess}
+          phase={phase}
+        />
+      </div>
 
       <GuardedBackButton onExit={backToIdle} />
       <ScoreBadge label={t("common.score")} score={game.score} />

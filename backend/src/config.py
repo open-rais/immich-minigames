@@ -35,6 +35,13 @@ class Settings(BaseSettings):
     immich_api_key: str
     immich_server_url: str = "http://localhost:2283"
 
+    # Public URL the *browser* uses to open Immich directly ("Ver en Immich" buttons, roadmap #10) -
+    # distinct from immich_server_url above, which is how the *backend* reaches Immich and is often an
+    # internal Docker host, useless as a browser link. Falls back to immich_server_url when unset -
+    # convenient for localhost dev, but produces a broken link if the backend reaches Immich through an
+    # internal Docker host and this isn't set explicitly (see .env.example).
+    immich_external_url: str | None = None
+
     # Signs/verifies this app's own login JWT (services/auth_service.py) - unrelated to Immich.
     # Generate with `openssl rand -hex 32`. Rotating it invalidates every existing session (no
     # server-side session table to selectively revoke, see docs/ARCHITECTURE/BACKEND.md).
@@ -69,6 +76,10 @@ class Settings(BaseSettings):
     def app_db_url(self) -> str:
         """This app's own database - read/write (see persistence/base.py)."""
         return self._db_url(self.db_app_database_name)
+
+    @property
+    def immich_public_url(self) -> str:
+        return (self.immich_external_url or self.immich_server_url).rstrip("/")
 
 
 @lru_cache(maxsize=1)

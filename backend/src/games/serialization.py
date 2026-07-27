@@ -1,5 +1,5 @@
 """Generic to_dict()/from_dict() for the frozen-dataclass "snapshot" types every game uses to
-freeze a person/face's data into a round's JSONB payload (games/*.py's PersonSnapshot, HiddenFace,
+freeze a person/face's data into a round's JSONB payload (games/*.py's EntitySnapshot, HiddenFace,
 etc.) - each used to hand-rewrite the same UUID-to-str/date-to-isoformat round trip, one field at a
 time, which is exactly the kind of repetition that's easy to get subtly wrong (a forgotten None
 check, a typo'd key) as a new game gets added. DictCodec infers the conversion from each field's own

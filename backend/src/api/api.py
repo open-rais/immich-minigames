@@ -19,6 +19,7 @@ from api.auth_api import get_current_user_optional
 from api.auth_api import router as auth_router
 from api.deps import get_db_session, get_immich_service, get_ml_service
 from api.dto.common import (
+    ConfigOut,
     CreateGameIn,
     GameOut,
     GameRecordsOut,
@@ -29,6 +30,7 @@ from api.dto.common import (
     parse_guess,
 )
 from api.rate_limit import GAME_ACTION_LIMIT, SEARCH_LIMIT, THUMBNAIL_LIMIT, limiter
+from config import Settings, get_settings
 from persistence.users import UserModel
 from services.games_service import GamesService
 from services.immich_service import ImmichService
@@ -50,6 +52,15 @@ def get_games_service(
 
 def get_owner_id(x_owner_id: Annotated[str, Header()]) -> str:
     return x_owner_id
+
+
+@router.get("/config", response_model=ConfigOut)
+def get_config(settings: Annotated[Settings, Depends(get_settings)]) -> ConfigOut:
+    # Public and unauthenticated (no X-Owner-Id, no rate limit) - static config, no DB/Immich call,
+    # used by the frontend's "Ver en Immich" buttons (ROUNDS-VIEW.md roadmap point #10). Depends()
+    # rather than calling get_settings() inline (see auth_api.py) so tests can override this one
+    # dependency without touching the lru_cache singleton every other module shares.
+    return ConfigOut(immich_external_url=settings.immich_public_url)
 
 
 @router.post("/games", response_model=GameOut, status_code=201)
@@ -180,3 +191,18 @@ def get_asset_thumbnail(
     immich_service: Annotated[ImmichService, Depends(get_immich_service)],
 ) -> Response:
     return _proxy_thumbnail(lambda: immich_service.get_asset_thumbnail(asset_id))
+
+
+@router.get("/albums/{album_id}/thumbnail")
+@limiter.limit(THUMBNAIL_LIMIT)
+def get_album_thumbnail(
+    request: Request,
+    album_id: UUID,
+    immich_service: Annotated[ImmichService, Depends(get_immich_service)],
+) -> Response:
+    # An album has no thumbnail of its own - its cover is one of its assets (Immich's chosen cover,
+    # or the first asset as a fallback), whose bytes are then served like any other asset thumbnail.
+    cover_asset_id = immich_service.get_album_cover_asset_id(album_id)
+    if cover_asset_id is None:
+        raise HTTPException(status_code=404, detail="album has no cover")
+    return _proxy_thumbnail(lambda: immich_service.get_asset_thumbnail(cover_asset_id))

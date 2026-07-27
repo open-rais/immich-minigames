@@ -69,3 +69,10 @@ export function personThumbnailUrl(personId: string): string {
 export function assetThumbnailUrl(assetId: string): string {
   return `/api/v1/assets/${assetId}/thumbnail`
 }
+
+// An album has no thumbnail of its own - the backend resolves its cover asset and proxies that
+// asset's thumbnail (see backend/src/api/api.py's album thumbnail route). Used by MoreOrLess's
+// albumAssets mode.
+export function albumThumbnailUrl(albumId: string): string {
+  return `/api/v1/albums/${albumId}/thumbnail`
+}

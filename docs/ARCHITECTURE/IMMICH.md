@@ -140,7 +140,10 @@ average (pgvector's `avg(vector)` aggregate) across all of that person's current
 non-deleted faces, not a single photo — via plain cosine similarity (`1 - (a <=> b)`, pgvector's
 `<=>` being cosine **distance**, `0..2`, so similarity is `-1..1`). Unrelated people typically land
 close to `0`, not exactly at it: small negative values (e.g. -0.03) are normal and just mean "no
-relationship", not a computation error.
+relationship", not a computation error. The backend keeps sending this signed value as-is; the
+frontend's `mlSimilarityClue` (`clueColors.ts`) floors it at 0% for display only, and colors the clue
+amber above 0.30 raw similarity - both are presentation-only decisions, not a change to what's
+computed or stored here.
 
 This went through three designs, in order:
 1. `MAX(similarity)` over the full cross join of both people's faces — most accurate (a single

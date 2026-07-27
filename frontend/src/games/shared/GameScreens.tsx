@@ -13,6 +13,17 @@ function useLeaderboardHref(): string {
   return `/${gameType}/${mode}/leaderboard`
 }
 
+// Roadmap #10 (rounds review) - null unless the caller says this mode has a roundsComponent
+// registered (see games/catalog.ts's CatalogMode) *and* passed a gameId. Whether a roundsComponent
+// exists is looked up once in GameRoute.tsx and threaded down as `hasRoundsView`, the same way
+// GameRoute already threads down `coverUrl` - not looked up here directly, which would make this
+// game-tree module import games/catalog.ts, which imports every *Game.tsx (a cycle).
+function useRoundsHref(gameId: string | undefined, hasRoundsView: boolean | undefined): string | null {
+  const { gameType, mode } = useParams<{ gameType: string; mode: string }>()
+  if (!gameId || !hasRoundsView || !gameType || !mode) return null
+  return `/${gameType}/${mode}/game/${gameId}/rounds`
+}
+
 // The idle / error / finished full-screen states are identical across every game (only the title
 // and start-description differ), so they live here instead of being copy-pasted into each game
 // component. Game-specific strings are passed in already translated; everything else comes from the
@@ -93,12 +104,20 @@ interface FinishedScreenProps {
   // Extra content shown between the title and the score line - e.g. Immichdle's revealed target
   // person (face + name). Undefined for every other game.
   children?: ReactNode
+  // The just-finished game's id (roadmap #10) - shows a "Ver rondas" button when present *and*
+  // hasRoundsView is true (see useRoundsHref above). Every game passes gameId now; the button
+  // itself only lights up once each phase of ROUNDS-VIEW.md registers that mode's roundsComponent.
+  gameId?: string
+  // Forwarded from GameComponentProps (see games/catalog.ts/GameRoute.tsx) - whether the current
+  // mode has a roundsComponent registered at all.
+  hasRoundsView?: boolean
 }
 
-export function FinishedScreen({ score, onPlayAgain, onBack, busy, title, children }: FinishedScreenProps) {
+export function FinishedScreen({ score, onPlayAgain, onBack, busy, title, children, gameId, hasRoundsView }: FinishedScreenProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const leaderboardHref = useLeaderboardHref()
+  const roundsHref = useRoundsHref(gameId, hasRoundsView)
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-app-bg px-6 text-center">
       <BackButton label={t("common.back")} onClick={onBack} />
@@ -109,6 +128,11 @@ export function FinishedScreen({ score, onPlayAgain, onBack, busy, title, childr
         <Button variant="primary" className="w-56 py-3" onClick={onPlayAgain} disabled={busy}>
           {t("common.playAgain")}
         </Button>
+        {roundsHref && (
+          <Button variant="secondary" className="w-56 py-3" onClick={() => navigate(roundsHref)}>
+            {t("common.viewRounds")}
+          </Button>
+        )}
         <Button variant="secondary" className="w-56 py-3" onClick={() => navigate(leaderboardHref)}>
           {t("common.leaderboards")}
         </Button>

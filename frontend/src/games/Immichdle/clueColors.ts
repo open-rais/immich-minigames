@@ -79,12 +79,56 @@ export function commonNamesClue(round: ImmichdleRoundOut): ClueResult {
 export function mlSimilarityClue(round: ImmichdleRoundOut): ClueResult {
   const similarity = round.clues!.ml_similarity
   if (similarity === null) return { variant: "miss", background: null, kind: "text", value: "?" }
-  const variant: ClueVariant = similarity === 1 ? "match" : similarity > 0.85 ? "close" : "miss"
-  return { variant, background: null, kind: "percent", value: Math.round(similarity * 100) }
+  // ml_similarity is a raw cosine (-1..1); negative values aren't a meaningful concept to the
+  // player ("less similar than nothing"), so they're floored to 0% for display only - the backend
+  // keeps sending the signed value. 0.30 (not the naive 0.85 "very similar") is where averaged-
+  // embedding similarity actually lands for people who look alike in this library.
+  const clamped = Math.max(0, similarity)
+  const variant: ClueVariant = similarity === 1 ? "match" : clamped > 0.3 ? "close" : "miss"
+  return { variant, background: null, kind: "percent", value: Math.round(clamped * 100) }
 }
 
 export function assetsTogetherClue(round: ImmichdleRoundOut): ClueResult {
   const clues = round.clues!
   const variant: ClueVariant = round.correct ? "match" : clues.assets_together === 0 ? "miss" : "close"
   return { variant, background: null, kind: "count", value: clues.assets_together }
+}
+
+// The target row (roadmap #10 rounds review, ROUNDS-VIEW.md §3 F/§4.6) - one xTargetClue per xClue
+// above, all `variant: "match"` and no background glyph (there's no direction to hint at when
+// showing the target's own value, not a comparison).
+export interface TargetSnapshot {
+  personId: string
+  name: string
+  assetCount: number
+  birthDate: string | null
+  firstAssetDate: string | null
+}
+
+export function ageTargetClue(target: TargetSnapshot): ClueResult {
+  if (target.birthDate === null) return { variant: "match", background: null, kind: "text", value: "?" }
+  return { variant: "match", background: null, kind: "date", value: target.birthDate }
+}
+
+export function assetCountTargetClue(target: TargetSnapshot): ClueResult {
+  return { variant: "match", background: null, kind: "count", value: target.assetCount }
+}
+
+export function firstAppearanceTargetClue(target: TargetSnapshot): ClueResult {
+  if (target.firstAssetDate === null) return { variant: "match", background: null, kind: "text", value: "?" }
+  return { variant: "match", background: null, kind: "date", value: target.firstAssetDate }
+}
+
+export function commonNamesTargetClue(target: TargetSnapshot): ClueResult {
+  // The max achievable in this column - every word of the target's own name matches itself.
+  const wordCount = target.name.trim().split(/\s+/).filter(Boolean).length
+  return { variant: "match", background: null, kind: "count", value: wordCount }
+}
+
+export function mlSimilarityTargetClue(): ClueResult {
+  return { variant: "match", background: null, kind: "text", value: "=" }
+}
+
+export function assetsTogetherTargetClue(): ClueResult {
+  return { variant: "match", background: null, kind: "text", value: "-" }
 }

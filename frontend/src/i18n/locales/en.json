@@ -39,6 +39,15 @@
     "leaderboards": "Leaderboards",
     "previousPhoto": "Previous photo",
     "nextPhoto": "Next photo",
+    "previousRound": "Previous round",
+    "nextRound": "Next round",
+    "viewInImmich": "View in Immich",
+    "viewRounds": "View game",
+    "rounds": {
+      "title": "Game",
+      "notFound": "This game doesn't exist or isn't yours.",
+      "optionsMenu": "Options"
+    },
     "finished": {
       "title": "Game over",
       "finalScore": "Final score: {{score}}"
@@ -57,10 +66,12 @@
   "moreOrLess": {
     "title": "More or Less",
     "modes": {
-      "personAssets": "Person assets"
+      "personAssets": "Person assets",
+      "albumAssets": "Album assets"
     },
     "start": {
-      "description": "Guess whether the next person has more or fewer assets than the last. One wrong guess ends the run."
+      "personAssets": "Guess whether the next person has more or fewer assets than the last. One wrong guess ends the run.",
+      "albumAssets": "Guess whether the next album has more or fewer assets than the last. One wrong guess ends the run."
     },
     "has": "has",
     "unit_one": "asset",
@@ -80,7 +91,7 @@
       "distanceBetweenGuess": "Classic"
     },
     "start": {
-      "description": "Guess where each photo was taken. 5 rounds, score decays with distance from the real spot."
+      "description": "Guess where each photo was taken. Score decays with distance from the real spot."
     },
     "result": {
       "distance": "{{distance}} km away"
@@ -92,8 +103,10 @@
       "daysToDate": "Classic"
     },
     "start": {
-      "description": "Guess when each photo was taken. 5 rounds, score decays with distance from the real date."
+      "description": "Guess when each photo was taken. Score decays with distance from the real date."
     },
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
     "result": {
       "daysOff_one": "{{count}} day off",
       "daysOff_other": "{{count}} days off"
@@ -130,12 +143,16 @@
       "namedFaces": "Classic"
     },
     "start": {
-      "description": "Some already-named faces in each photo are blacked out - tap one and search for who it is. Asks about 15 people total."
+      "description": "Some already-named faces in each photo are blacked out - tap one and search for who it is."
     },
     "progress": "{{current}} of {{total}} people",
     "submit": "Submit guesses",
     "result": {
       "correctCount": "{{correct}}/{{total}} correct"
+    },
+    "rounds": {
+      "yourAnswer": "Your answer",
+      "real": "Real"
     }
   },
   "auth": {

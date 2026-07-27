@@ -29,11 +29,11 @@ def _register_user(auth_service):
 
 
 def _correct_guess(round_) -> str:
-    return "more" if round_.candidate.asset_count > round_.reference.asset_count else "less"
+    return "more" if round_.candidate.value > round_.reference.value else "less"
 
 
 def _wrong_guess(round_) -> str:
-    return "less" if round_.candidate.asset_count > round_.reference.asset_count else "more"
+    return "less" if round_.candidate.value > round_.reference.value else "more"
 
 
 class TestCreateGame:
@@ -57,7 +57,7 @@ class TestCreateGame:
         # NotEnoughContentError so main.py can map it to a 422 instead of a bare 500.
         monkeypatch.setattr(immich_service, "get_persons", lambda **kwargs: [])
 
-        with pytest.raises(NotEnoughContentError, match="not enough named people"):
+        with pytest.raises(NotEnoughContentError, match="not enough entities"):
             games_service.create_game(owner="owner-a", game_type="more-or-less", mode="personAssets")
 
     def test_user_id_is_persisted_when_given(self, games_service, db_session, auth_service):

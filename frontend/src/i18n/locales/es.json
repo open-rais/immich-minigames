@@ -39,6 +39,15 @@
     "leaderboards": "Clasificación",
     "previousPhoto": "Foto anterior",
     "nextPhoto": "Foto siguiente",
+    "previousRound": "Ronda anterior",
+    "nextRound": "Ronda siguiente",
+    "viewInImmich": "Ver en Immich",
+    "viewRounds": "Ver juego",
+    "rounds": {
+      "title": "Juego",
+      "notFound": "Esta partida no existe o no es tuya.",
+      "optionsMenu": "Opciones"
+    },
     "finished": {
       "title": "Juego terminado",
       "finalScore": "Puntaje final: {{score}}"
@@ -57,10 +66,12 @@
   "moreOrLess": {
     "title": "More or Less",
     "modes": {
-      "personAssets": "Fotos de personas"
+      "personAssets": "Fotos de personas",
+      "albumAssets": "Fotos de álbumes"
     },
     "start": {
-      "description": "Adivina si la siguiente persona tiene más o menos fotos que la anterior. Una respuesta incorrecta termina la partida."
+      "personAssets": "Adivina si la siguiente persona tiene más o menos fotos que la anterior. Una respuesta incorrecta termina la partida.",
+      "albumAssets": "Adivina si el siguiente álbum tiene más o menos fotos que el anterior. Una respuesta incorrecta termina la partida."
     },
     "has": "tiene",
     "unit_one": "foto",
@@ -80,7 +91,7 @@
       "distanceBetweenGuess": "Clásico"
     },
     "start": {
-      "description": "Adivina dónde se tomó cada foto. 5 rondas, el puntaje baja según la distancia al lugar real."
+      "description": "Adivina dónde se tomó cada foto. El puntaje baja según la distancia al lugar real."
     },
     "result": {
       "distance": "A {{distance}} km"
@@ -92,8 +103,10 @@
       "daysToDate": "Clásico"
     },
     "start": {
-      "description": "Adivina cuándo se tomó cada foto. 5 rondas, el puntaje baja según la distancia a la fecha real."
+      "description": "Adivina cuándo se tomó cada foto. El puntaje baja según la distancia a la fecha real."
     },
+    "zoomIn": "Acercar",
+    "zoomOut": "Alejar",
     "result": {
       "daysOff_one": "{{count}} día de diferencia",
       "daysOff_other": "{{count}} días de diferencia"
@@ -130,12 +143,16 @@
       "namedFaces": "Clásico"
     },
     "start": {
-      "description": "Algunas caras ya nombradas de cada foto se tapan con un cuadro negro - toca una y busca quién es. Se pregunta por 15 personas en total."
+      "description": "Algunas caras ya nombradas de cada foto se tapan con un cuadro negro - toca una y busca quién es."
     },
     "progress": "{{current}} de {{total}} personas",
     "submit": "Enviar respuestas",
     "result": {
       "correctCount": "{{correct}}/{{total}} correctas"
+    },
+    "rounds": {
+      "yourAnswer": "Tu respuesta",
+      "real": "Real"
     }
   },
   "auth": {

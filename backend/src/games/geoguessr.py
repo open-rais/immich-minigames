@@ -55,7 +55,7 @@ class LatLng(DictCodec):
 class AssetSnapshot(DictCodec):
     """An asset's id/location frozen at the moment a round was created - not a live query result,
     so a round's answer stays stable even if the underlying Immich data changes later (same
-    rationale as more_or_less.py's PersonSnapshot)."""
+    rationale as more_or_less.py's EntitySnapshot)."""
 
     id: UUID
     latitude: float

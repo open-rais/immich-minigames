@@ -40,10 +40,11 @@ export function FaceGuessPopover({ style, onGuess, onClose }: FaceGuessPopoverPr
   // game shell is overflow-hidden). When the popover closes and the keyboard dismisses (the input
   // is removed from the DOM, which alone drops focus and closes the keyboard), Safari leaves that
   // residual window.scrollY in place *and* doesn't recompute the touch hit-regions of the fixed
-  // game layer (AssetPhoto's `fixed inset-0`) or the fixed submit button, so every following tap
-  // lands offset by that scroll amount - a dead zone the player could only clear by pinch-zooming
-  // the whole page. Snapping scroll back to the origin as the popover unmounts (any close path:
-  // guess picked, outside tap, or reveal) realigns the layout and visual viewports and restores tap
+  // game layer (the screen's own `fixed inset-0` wrapper around IncognitoPhoto) or the fixed submit
+  // button, so every following tap lands offset by that scroll amount - a dead zone the player
+  // could only clear by pinch-zooming the whole page. Snapping scroll back to the origin as the
+  // popover unmounts (any close path: guess picked, outside tap, or reveal) realigns the layout and
+  // visual viewports and restores tap
   // handling. Deliberately no blur() here: it would fire on StrictMode's dev-only mount-time
   // setup/cleanup/setup double-invoke and steal focus from the just-autofocused input. A no-op on
   // browsers without the quirk (scrollY already 0).
