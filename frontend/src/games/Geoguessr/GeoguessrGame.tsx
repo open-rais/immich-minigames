@@ -91,7 +91,9 @@ export function GeoguessrGame({ coverUrl, hasRoundsView }: GameComponentProps) {
 
   return (
     <div className="h-dvh w-full overflow-hidden bg-app-bg">
-      <AssetCarousel key={round.id} assetIds={round.asset_ids} alt={t("geoguessr.title")} />
+      <div className="fixed inset-0">
+        <AssetCarousel key={round.id} assetIds={round.asset_ids} alt={t("geoguessr.title")} />
+      </div>
 
       <GuardedBackButton onExit={backToIdle} />
       <ScoreBadge label={t("common.score")} score={game.score} />

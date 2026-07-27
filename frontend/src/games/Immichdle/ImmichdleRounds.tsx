@@ -12,9 +12,16 @@ export function ImmichdleRounds({ game }: RoundsComponentProps) {
   // MoreOrLessRounds.tsx/GeoguessrRounds.tsx already established (§3 H). A won game's last guess
   // *is* the target - also dropped here, since the target row above already shows that same
   // person; keeping it in the history below would just show it twice.
+  //
+  // Reversed to newest-first ([DECISIÓN G]) - `game.rounds` comes back chronological, but the live
+  // game's own `history` state (ImmichdleGame.tsx) is newest-first (new guesses prepend), so without
+  // this the same finished game reads backwards depending on whether you're mid-game or reviewing
+  // it. As a side effect the target row above (always first) now sits next to the *last* guess
+  // instead of the first, which is the more natural reading ("this is how it ended").
   const history = game.rounds
     .filter((r): r is ImmichdleRoundOut => r.game_type === GameType.Immichdle)
     .filter((r) => r.guess_person_id !== null && !r.correct)
+    .reverse()
 
   // Only ever set for a finished Immichdle game (backend redacts it otherwise - see
   // api/dto/common.py's GameOut.from_game) - RoundsPage never reaches an unfinished game anyway.
@@ -30,7 +37,10 @@ export function ImmichdleRounds({ game }: RoundsComponentProps) {
       : undefined
 
   return (
-    <div className="mx-auto w-full max-w-4xl">
+    // max-w-5xl, not -4xl - this table's own natural desktop width (with the target row's actions
+    // column) is wider than -4xl's 896px cap, which used to force an unnecessary horizontal
+    // scrollbar (see the same fix/reasoning in ImmichdleGame.tsx).
+    <div className="mx-auto w-full max-w-5xl">
       <GuessTable history={history} target={target} />
     </div>
   )

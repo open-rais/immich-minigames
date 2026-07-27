@@ -39,12 +39,24 @@ function BackgroundGlyph({ background }: { background: ClueResult["background"] 
   )
 }
 
+interface ClueCellProps {
+  clue: ClueResult
+  // The guess-reveal sequence (AnimatedGuessRow.tsx) renders every tile in this state before its
+  // turn to reveal - a plain neutral square, ignoring `clue` entirely (no variant/value/glyph to
+  // leak the answer early). Always false outside that sequence, which is every other call site.
+  pending?: boolean
+}
+
 // One clue's tile - always square, a solid Wordle-style fill (unlike the rest of the app's cards/
 // badges, which pair a light tint with dark saturated text) since this is the one place the app
 // shows a 3-way match/close/miss verdict at a glance. No label here - GuessTable renders the column
 // labels once, in a header row, instead of repeating them on every tile.
-export function ClueCell({ clue }: { clue: ClueResult }) {
+export function ClueCell({ clue, pending = false }: ClueCellProps) {
   const { i18n } = useTranslation()
+
+  if (pending) {
+    return <div className="aspect-square w-full rounded-xl border border-line bg-count-bg" />
+  }
 
   const text =
     clue.kind === "text"

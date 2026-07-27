@@ -7,6 +7,7 @@ import type { LeaderboardEntryOut, LeaderboardWindow } from "../api/types"
 import { useAuth } from "../auth/useAuth"
 import { GAME_CATALOG } from "../games/catalog"
 import { BackButton } from "../games/shared/BackButton"
+import { GameModeSubtitle } from "../games/shared/GameModeSubtitle"
 import { PersonAvatar } from "../games/shared/PersonAvatar"
 import { SegmentedControl } from "../games/shared/SegmentedControl"
 
@@ -56,9 +57,7 @@ export function LeaderboardPage() {
 
       <div className="mt-14 text-center md:mt-0">
         <h1 className="text-3xl font-bold text-ink">{t("leaderboard.title")}</h1>
-        <h2 className="mt-1 text-lg font-semibold text-muted">
-          {t(game.gameTitleKey)} · {t(catalogMode.modeTitleKey)}
-        </h2>
+        <GameModeSubtitle gameTitle={t(game.gameTitleKey)} modeTitle={t(catalogMode.modeTitleKey)} />
       </div>
 
       <div className="w-full max-w-xs">

@@ -91,7 +91,7 @@
       "distanceBetweenGuess": "Classic"
     },
     "start": {
-      "description": "Guess where each photo was taken. 5 rounds, score decays with distance from the real spot."
+      "description": "Guess where each photo was taken. Score decays with distance from the real spot."
     },
     "result": {
       "distance": "{{distance}} km away"
@@ -103,8 +103,10 @@
       "daysToDate": "Classic"
     },
     "start": {
-      "description": "Guess when each photo was taken. 5 rounds, score decays with distance from the real date."
+      "description": "Guess when each photo was taken. Score decays with distance from the real date."
     },
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
     "result": {
       "daysOff_one": "{{count}} day off",
       "daysOff_other": "{{count}} days off"
@@ -141,7 +143,7 @@
       "namedFaces": "Classic"
     },
     "start": {
-      "description": "Some already-named faces in each photo are blacked out - tap one and search for who it is. Asks about 15 people total."
+      "description": "Some already-named faces in each photo are blacked out - tap one and search for who it is."
     },
     "progress": "{{current}} of {{total}} people",
     "submit": "Submit guesses",

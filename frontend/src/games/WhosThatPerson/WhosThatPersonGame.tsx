@@ -112,16 +112,18 @@ export function WhosThatPersonGame({ coverUrl, hasRoundsView }: GameComponentPro
 
   return (
     <div className="h-dvh w-full overflow-hidden bg-app-bg">
-      <IncognitoPhoto
-        key={round.id}
-        assetId={round.asset_id}
-        faces={round.faces}
-        guesses={guesses}
-        activeFaceId={activeFaceId}
-        onSelectFace={setActiveFaceId}
-        onGuess={handleGuess}
-        phase={phase}
-      />
+      <div className="fixed inset-0">
+        <IncognitoPhoto
+          key={round.id}
+          assetId={round.asset_id}
+          faces={round.faces}
+          guesses={guesses}
+          activeFaceId={activeFaceId}
+          onSelectFace={setActiveFaceId}
+          onGuess={handleGuess}
+          phase={phase}
+        />
+      </div>
 
       <GuardedBackButton onExit={backToIdle} />
       <ScoreBadge label={t("common.score")} score={game.score} />

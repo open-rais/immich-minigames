@@ -8,10 +8,14 @@ const placeholderStyle = {
     "repeating-linear-gradient(135deg, var(--color-placeholder-a), var(--color-placeholder-a) 6px, var(--color-placeholder-b) 6px, var(--color-placeholder-b) 12px)",
 }
 
-// "sm" (default) is the compact size used in rows/results; "lg" is for a standalone hero reveal
-// (e.g. Immichdle's finished screen showing who the mystery person was).
+// "sm" (default) is the compact size used in rows/results; "md" is the same on mobile but a bit
+// bigger on desktop (Immichdle's GuessTable/PersonCell, once its own column started growing to fill
+// leftover desktop width - see guessTableColumns.ts's PERSON_COL - a same-size avatar there was
+// swimming in space); "lg" is for a standalone hero reveal (e.g. Immichdle's finished screen showing
+// who the mystery person was).
 const SIZE_CLASSES = {
   sm: "h-10 w-10 md:h-14 md:w-14",
+  md: "h-10 w-10 md:h-16 md:w-16",
   lg: "h-24 w-24 md:h-32 md:w-32",
 } as const
 
