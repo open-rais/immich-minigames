@@ -105,6 +105,8 @@
     "start": {
       "description": "Adivina cuándo se tomó cada foto. El puntaje baja según la distancia a la fecha real."
     },
+    "zoomIn": "Acercar",
+    "zoomOut": "Alejar",
     "result": {
       "daysOff_one": "{{count}} día de diferencia",
       "daysOff_other": "{{count}} días de diferencia"

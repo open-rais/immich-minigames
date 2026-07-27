@@ -56,7 +56,14 @@ export function DateguessrRounds({ game, onBack }: RoundsComponentProps) {
       {/* key={round.id} remounts the ruler fresh on every stepper navigation, so its own pan/zoom
           reveal animation replays instead of tweening between two unrelated rounds' dates (§5 of
           the doc, same reasoning as GeoguessrRounds.tsx's MapPicker). */}
-      <TimelineRuler key={round.id} selected={round.guess_date} onSelectedChange={noop} actual={round.actual_date} disabled />
+      <TimelineRuler
+        key={round.id}
+        selected={round.guess_date}
+        onSelectedChange={noop}
+        actual={round.actual_date}
+        disabled
+        showZoomControls={false}
+      />
 
       {round.days_off !== null && round.score_delta !== null && (
         <RevealResultCard

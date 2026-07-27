@@ -105,6 +105,8 @@
     "start": {
       "description": "Guess when each photo was taken. Score decays with distance from the real date."
     },
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
     "result": {
       "daysOff_one": "{{count}} day off",
       "daysOff_other": "{{count}} days off"
