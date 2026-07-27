@@ -10,7 +10,7 @@ import { EntryOptionsMenu } from "../shared/EntryOptionsMenu"
 import { ImmichLink } from "../shared/ImmichLink"
 import { RevealResultCard } from "../shared/RevealResultCard"
 import { RoundStepper } from "../rounds/RoundStepper"
-import { ABOVE_RULER_BOTTOM_CLASS, TimelineRuler } from "./TimelineRuler"
+import { ABOVE_RULER_BOTTOM_CLASS, RULER_BOTTOM_CLASS, TimelineRuler } from "./TimelineRuler"
 
 // TimelineRuler's onSelectedChange is a required prop even in read-only review - every round here
 // is `disabled`, so it's never actually invoked.
@@ -35,7 +35,7 @@ export function DateguessrRounds({ game, onBack }: RoundsComponentProps) {
 
   return (
     <div className="h-dvh w-full overflow-hidden bg-app-bg">
-      <div className="fixed inset-0 bottom-[124px] md:bottom-[156px] overflow-hidden">
+      <div className={`fixed inset-0 ${RULER_BOTTOM_CLASS} overflow-hidden`}>
         <AssetCarousel key={round.id} assetIds={round.asset_ids} alt={t("dateguessr.title")} />
       </div>
 

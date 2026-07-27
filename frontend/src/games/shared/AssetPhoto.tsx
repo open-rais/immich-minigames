@@ -33,6 +33,10 @@ function clamp(value: number, min: number, max: number): number {
 // fitBox below - and inherits the same pan/zoom transform as the image, so interactive content
 // placed on top of the photo (e.g. Who'sThatPerson's face boxes) stays pixel-aligned to it at any
 // zoom/pan state.
+// Fills its parent (`absolute inset-0`) rather than positioning itself against the viewport - the
+// caller declares the box (typically `fixed inset-0`, or a smaller area like Dateguessr's
+// above-the-ruler wrapper) so a `position: fixed` ancestor that isn't itself a containing block
+// can't silently make that box a no-op (see AssetCarousel.tsx and each game's own wrapper).
 export function AssetPhoto({ src, alt, overlay }: { src: string; alt: string; overlay?: ReactNode }) {
   const [failed, setFailed] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -195,7 +199,7 @@ export function AssetPhoto({ src, alt, overlay }: { src: string; alt: string; ov
   }
 
   if (failed) {
-    return <div className="fixed inset-0" style={placeholderStyle} />
+    return <div className="absolute inset-0" style={placeholderStyle} />
   }
 
   // When there's an overlay to keep pixel-aligned to the photo (e.g. Who'sThatPerson's face
@@ -211,7 +215,7 @@ export function AssetPhoto({ src, alt, overlay }: { src: string; alt: string; ov
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
-      className="fixed inset-0 touch-none overflow-hidden bg-app-bg select-none"
+      className="absolute inset-0 touch-none overflow-hidden bg-app-bg select-none"
     >
       <div
         style={{ transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})` }}

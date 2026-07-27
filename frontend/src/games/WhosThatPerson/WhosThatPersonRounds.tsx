@@ -42,18 +42,20 @@ export function WhosThatPersonRounds({ game, onBack }: RoundsComponentProps) {
     <div className="h-dvh w-full overflow-hidden bg-app-bg">
       {/* Unlike live play's IncognitoPhoto, this is always the real, uncensored photo - the player
           already knows every answer by the time they're reviewing. */}
-      <AssetPhoto
-        key={round.id}
-        src={assetThumbnailUrl(round.asset_id)}
-        alt=""
-        overlay={
-          <>
-            {round.faces.map((face) => (
-              <FaceBoxReadOnly key={face.face_id} face={face} mode={mode} />
-            ))}
-          </>
-        }
-      />
+      <div className="fixed inset-0">
+        <AssetPhoto
+          key={round.id}
+          src={assetThumbnailUrl(round.asset_id)}
+          alt=""
+          overlay={
+            <>
+              {round.faces.map((face) => (
+                <FaceBoxReadOnly key={face.face_id} face={face} mode={mode} />
+              ))}
+            </>
+          }
+        />
+      </div>
 
       <BackButton label={t("common.back")} onClick={() => onBack?.()} />
       <RoundStepper

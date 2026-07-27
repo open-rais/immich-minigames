@@ -39,7 +39,9 @@ export function GeoguessrRounds({ game, onBack }: RoundsComponentProps) {
 
   return (
     <div className="h-dvh w-full overflow-hidden bg-app-bg">
-      <AssetCarousel key={round.id} assetIds={round.asset_ids} alt={t("geoguessr.title")} />
+      <div className="fixed inset-0">
+        <AssetCarousel key={round.id} assetIds={round.asset_ids} alt={t("geoguessr.title")} />
+      </div>
 
       <BackButton label={t("common.back")} onClick={() => onBack?.()} />
       <RoundStepper

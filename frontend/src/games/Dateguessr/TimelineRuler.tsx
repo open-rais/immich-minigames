@@ -29,11 +29,16 @@ const REVEAL_FIT_FRACTION = 0.7
 const GUESS_MARKER_COLOR = "var(--color-primary)"
 const ACTUAL_MARKER_COLOR = "#e11d48"
 
-// The ruler is a full-width bar pinned to the bottom of the screen. Its height and the matching
-// bottom offset for controls that sit just above it (DateguessrGame's confirm button / result card)
-// live here together so a height change is a single edit, not a hunt across files - the pixel
-// coupling CLAUDE.md warns about. Offset = ruler height (112/144px) + a 12px gap.
+// The ruler is a full-width bar pinned to the bottom of the screen. Its height and the two derived
+// bottom offsets live here together so a height change is a single edit, not a hunt across files -
+// the pixel coupling CLAUDE.md warns about.
 const RULER_HEIGHT_CLASS = "h-28 md:h-36"
+// Exactly the ruler's own height (112/144px) - for anything that must stop flush against its top
+// edge, with no gap (the asset photo wrapper: a gap there would show bare `--color-app-bg` through
+// a sliver between the photo and the ruler instead of the photo running right up to it).
+export const RULER_BOTTOM_CLASS = "bottom-28 md:bottom-36"
+// Ruler height + a 12px breathing gap - for floating controls that sit just above the ruler
+// (DateguessrGame's confirm button / result card), which do want visible space between them and it.
 export const ABOVE_RULER_BOTTOM_CLASS = "bottom-[124px] md:bottom-[156px]"
 
 type LodTier = "year" | "month" | "day"

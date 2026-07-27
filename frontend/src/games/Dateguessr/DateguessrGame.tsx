@@ -14,7 +14,7 @@ import { RevealResultCard } from "../shared/RevealResultCard"
 import { RoundBadge } from "../shared/RoundBadge"
 import { ScoreBadge } from "../shared/ScoreBadge"
 import { useRoundGame } from "../shared/useRoundGame"
-import { ABOVE_RULER_BOTTOM_CLASS, TimelineRuler } from "./TimelineRuler"
+import { ABOVE_RULER_BOTTOM_CLASS, RULER_BOTTOM_CLASS, TimelineRuler } from "./TimelineRuler"
 
 const GAME_TYPE = GameType.Dateguessr
 const MODE = Mode.DaysToDate
@@ -85,7 +85,7 @@ export function DateguessrGame({ coverUrl, hasRoundsView }: GameComponentProps) 
 
   return (
     <div className="h-dvh w-full overflow-hidden bg-app-bg">
-      <div className="fixed inset-0 bottom-[124px] md:bottom-[156px] overflow-hidden">
+      <div className={`fixed inset-0 ${RULER_BOTTOM_CLASS} overflow-hidden`}>
         <AssetCarousel key={round.id} assetIds={round.asset_ids} alt={t("dateguessr.title")} />
       </div>
 
