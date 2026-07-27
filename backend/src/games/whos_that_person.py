@@ -89,6 +89,11 @@ class WhosThatPersonRound(BaseRound):
         self.asset_id = asset_id
         self.faces = faces
         self.guess: dict[UUID, UUID] | None = None  # face_id -> guessed person_id
+        # person_id -> name, frozen at guess time by WhosThatPersonGame.play_round (roadmap #10's
+        # rounds review, ROUNDS-VIEW.md §4.3) - same "snapshot" rationale as every other game's
+        # *Snapshot types: the name the player *saw* shouldn't depend on Immich data staying put.
+        # Empty (not None) for a round played before this field existed - see from_payload.
+        self.guess_names: dict[UUID, str] = {}
         # Set at construction (the previous round's ending_streak, or 0 for the game's first
         # round) rather than injected later - see calculate_score().
         self.incoming_streak = incoming_streak
@@ -133,6 +138,7 @@ class WhosThatPersonRound(BaseRound):
             "asset_id": str(self.asset_id),
             "faces": [f.to_dict() for f in self.faces],
             "guess": {str(k): str(v) for k, v in self.guess.items()} if self.guess is not None else None,
+            "guess_names": {str(k): v for k, v in self.guess_names.items()},
             "incoming_streak": self.incoming_streak,
             "ending_streak": self.ending_streak,
         }
@@ -152,6 +158,10 @@ class WhosThatPersonRound(BaseRound):
         round_.guess = (
             {UUID(k): UUID(v) for k, v in payload["guess"].items()} if payload["guess"] is not None else None
         )
+        # payload.get(...) or {} rather than payload["guess_names"] - a round played before this
+        # field existed has no such key at all; it just shows "?" instead of a name in the "Tu
+        # respuesta" rounds-review view (ROUNDS-VIEW.md §4.3), not a KeyError.
+        round_.guess_names = {UUID(k): v for k, v in (payload.get("guess_names") or {}).items()}
         round_.ending_streak = payload["ending_streak"]
         round_.score_delta = score_delta
         return round_
@@ -228,6 +238,13 @@ class WhosThatPersonGame(BaseGame):
         expected_face_ids = {face.face_id for face in self.current_round.faces}
         if set(guess) != expected_face_ids:
             raise IncompleteGuessError("guess must include exactly one entry per hidden face in the round")
+        # Frozen here (roadmap #10's rounds review, ROUNDS-VIEW.md §4.3) rather than looked up again
+        # whenever the round is later displayed - one query for every guessed person in this round,
+        # not one per face. A guessed id that no longer resolves to a real person (deleted from
+        # Immich since) just doesn't show up in the result, leaving that face's name unresolved.
+        guessed_person_ids = frozenset(guess.values())
+        persons = self._immich_service.get_persons(named_only=True, ids=guessed_person_ids, limit=len(guessed_person_ids))
+        self.current_round.guess_names = {person.id: person.name for person in persons}
         return super().play_round(guess)
 
     def has_next_round(self) -> bool:

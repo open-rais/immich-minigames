@@ -91,6 +91,49 @@ class TestWhosThatPersonGame:
         with pytest.raises(ValueError):
             game.play_round({})
 
+    def test_correct_guess_freezes_the_guessed_names(self, immich_service):
+        # Roadmap #10 (rounds review, ROUNDS-VIEW.md §4.3) - names are resolved in one query and
+        # stored on the round itself, not looked up again whenever it's displayed later.
+        game = WhosThatPersonGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        first_round = game.current_round
+        guess = _correct_guess(first_round)
+
+        game.play_round(guess)
+
+        for face in first_round.faces:
+            assert first_round.guess_names[guess[face.face_id]] == face.person_name
+
+    def test_a_guess_that_does_not_resolve_to_a_real_person_is_left_unnamed(self, immich_service):
+        game = WhosThatPersonGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        first_round = game.current_round
+        bogus_guess = {face.face_id: uuid4() for face in first_round.faces}
+
+        game.play_round(bogus_guess)
+
+        assert first_round.guess_names == {}
+
+
+class TestWhosThatPersonRoundPayloadCompatibility:
+    def test_from_payload_tolerates_a_payload_with_no_guess_names(self, immich_service):
+        # A round persisted before this field existed has no "guess_names" key at all - from_payload
+        # must not KeyError on that, just fall back to an empty dict (ROUNDS-VIEW.md §4.3).
+        game = WhosThatPersonGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        round_ = game.current_round
+        game.play_round(_correct_guess(round_))
+
+        payload = round_.to_payload()
+        del payload["guess_names"]
+
+        restored = WhosThatPersonRound.from_payload(
+            id=round_.id,
+            game_id=round_.game_id,
+            round_index=round_.round_index,
+            payload=payload,
+            score_delta=round_.score_delta,
+        )
+
+        assert restored.guess_names == {}
+
 
 class TestWhosThatPersonAdminSettings:
     """ADMIN-FEATURE.md point #4 - confirms an override actually changes live behavior, not just

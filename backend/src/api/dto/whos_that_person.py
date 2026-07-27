@@ -23,9 +23,17 @@ class HiddenFaceOut(BaseModel):
     person_id: UUID | None
     person_name: str | None
     correct: bool | None
+    # Roadmap #10 (rounds review) - what the player guessed for this face, frozen at guess time
+    # (WhosThatPersonGame.play_round, see WhosThatPersonRound.guess_names). guess_person_id was
+    # already in the payload (the raw guess), just not exposed here before. guess_person_name is
+    # null if that person no longer exists in Immich.
+    guess_person_id: UUID | None
+    guess_person_name: str | None
 
     @classmethod
-    def from_face(cls, face: HiddenFace, guess: UUID | None, answered: bool) -> "HiddenFaceOut":
+    def from_face(
+        cls, face: HiddenFace, guess: UUID | None, guess_name: str | None, answered: bool
+    ) -> "HiddenFaceOut":
         return cls(
             face_id=face.face_id,
             image_width=face.image_width,
@@ -37,6 +45,8 @@ class HiddenFaceOut(BaseModel):
             person_id=face.person_id if answered else None,
             person_name=face.person_name if answered else None,
             correct=(guess == face.person_id) if answered else None,
+            guess_person_id=guess if answered else None,
+            guess_person_name=guess_name if answered else None,
         )
 
 
@@ -56,11 +66,17 @@ class WhosThatPersonRoundOut(BaseModel):
     def from_round(cls, round_: WhosThatPersonRound) -> "WhosThatPersonRoundOut":
         answered = round_.answered
         guesses = round_.guess or {}
+        guess_names = round_.guess_names or {}
+        faces = []
+        for face in round_.faces:
+            guessed_id = guesses.get(face.face_id)
+            guessed_name = guess_names.get(guessed_id) if guessed_id is not None else None
+            faces.append(HiddenFaceOut.from_face(face, guessed_id, guessed_name, answered))
         return cls(
             id=round_.id,
             round_index=round_.round_index,
             asset_id=round_.asset_id,
-            faces=[HiddenFaceOut.from_face(face, guesses.get(face.face_id), answered) for face in round_.faces],
+            faces=faces,
             score_delta=round_.score_delta,
             correct=round_.correct,
         )
