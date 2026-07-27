@@ -18,8 +18,9 @@ of `Round`s played so far, and a flag for whether it's finished (`finished`).
 Each individual question within a game is a **`Round`**: it has an id, a reference to its `Game`, an
 index (which round number), the correct answer to compare against the player's guess, the actual guess
 the player entered, and the entities shown (assets and/or people depending on the game)—the latter two
-are saved so the round can be reconstructed later (for the future "View rounds" feature and the future
-ability to report incorrect metadata).
+are saved so the round can be reconstructed later. That's what powers the post-game "Ver rondas"/"Ver
+juego" review screen (what was asked, what you answered, the correct answer, a link back to Immich),
+and will do the same for the future ability to report incorrect metadata.
 
 The game loop is always the same, regardless of which minigame it is:
 

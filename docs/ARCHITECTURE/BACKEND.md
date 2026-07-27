@@ -1,8 +1,8 @@
 # Backend
 
 FastAPI app in `backend/src/`. Run: `cd backend && uv run uvicorn main:app --app-dir src --port 8000`
-(needs `alembic upgrade head` once first). Tests: `cd backend && uv run pytest` (234 passing as of
-2026-07-20).
+(needs `alembic upgrade head` once first). Tests: `cd backend && uv run pytest` (291 passing as of
+2026-07-27).
 
 ## Layering
 
@@ -239,11 +239,28 @@ played. Resetting deletes the row rather than writing defaults back.
 DTOs are where secrets are stripped, not the domain layer. `MoreOrLessRoundOut.candidate_asset_count`,
 `GeoguessrRoundOut.actual_latitude/longitude`, `DateguessrRoundOut.actual_date`,
 `HiddenFaceOut.person_id/person_name` are all `None` until `round_.answered`. Immichdle's target is
-never in a round's output at all — it surfaces only via `GameOut.target_person_id/name`, and only
-once the game is finished.
+never in a round's output at all — it surfaces only via `GameOut.target_person_id/name` (plus
+`target_asset_count`/`target_birth_date`/`target_first_asset_date`, added for the rounds review
+below), and only once the game is finished. `HiddenFaceOut.guess_person_id/guess_person_name` (what
+the player guessed, frozen at guess time in `WhosThatPersonRound.guess_names` — roadmap #10) follow
+the same `answered`-gated redaction as `person_id`/`person_name`.
 
 This layer is well-disciplined. Note that it is defeated for Who'sThatPerson by the unauthenticated
 thumbnail proxy (finding #4): the faces are hidden by a DOM overlay, not by altering the image.
+
+## Rounds review (roadmap #10)
+
+`GET /api/v1/games/{game_id}` already returns every round of a finished game, redacted exactly as
+above — the post-game "Ver rondas"/"Ver juego" review is a pure GET + render, no new endpoint per
+game. `GamesService._load_game`'s existing ownership check (`owner`/`user_id` match, else
+`GameOwnershipError`/`GameNotFoundError`) is inherited for free.
+
+The one new endpoint is `GET /api/v1/config` (`api/api.py`, public, unauthenticated, no rate limit —
+static config, touches neither the DB nor Immich): returns `{"immich_external_url": ...}`, the
+frontend's only way to build a "Ver en Immich" deep link. It's `Settings.immich_public_url`
+(`IMMICH_EXTERNAL_URL`, falling back to `IMMICH_SERVER_URL` if unset — see the Configuration table
+below), never `IMMICH_SERVER_URL` directly: that variable is how the *backend* reaches Immich (often
+an internal Docker host in `docker-compose.app.yml`), not a URL a browser can open.
 
 ## Configuration
 
@@ -257,5 +274,6 @@ because constructing `Settings()` re-reads the file from disk.
 | `DB_DATABASE_NAME` | Immich's own database — **read-only** for this app. |
 | `DB_APP_DATABASE_NAME` | This app's own database (default `minigames`), created by `db-init`. Read/write. |
 | `IMMICH_SERVER_URL` / `IMMICH_API_KEY` | Immich's REST API, for image bytes. |
+| `IMMICH_EXTERNAL_URL` | Public URL the *browser* opens for "Ver en Immich" (roadmap #10) — served via `GET /config`. Optional; falls back to `IMMICH_SERVER_URL` if unset. |
 | `JWT_SECRET` / `JWT_EXPIRE_DAYS` | This app's own sessions. |
 | `ADMIN_EMAIL` | Account to promote to admin on startup. |
