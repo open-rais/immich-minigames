@@ -147,6 +147,10 @@
     "submit": "Enviar respuestas",
     "result": {
       "correctCount": "{{correct}}/{{total}} correctas"
+    },
+    "rounds": {
+      "yourAnswer": "Tu respuesta",
+      "real": "Real"
     }
   },
   "auth": {

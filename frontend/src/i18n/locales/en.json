@@ -147,6 +147,10 @@
     "submit": "Submit guesses",
     "result": {
       "correctCount": "{{correct}}/{{total}} correct"
+    },
+    "rounds": {
+      "yourAnswer": "Your answer",
+      "real": "Real"
     }
   },
   "auth": {
