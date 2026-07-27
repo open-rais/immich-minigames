@@ -126,6 +126,10 @@ export interface HiddenFaceOut {
   person_id: string | null
   person_name: string | null
   correct: boolean | null
+  // Roadmap #10 (rounds review) - what the player guessed, frozen at guess time. guess_person_name
+  // is null if that person no longer exists in Immich.
+  guess_person_id: string | null
+  guess_person_name: string | null
 }
 
 export interface WhosThatPersonRoundOut {
@@ -158,6 +162,10 @@ export interface GameOut {
   // game is over, win or lose. null for every other game/mode and for an in-progress Immichdle game.
   target_person_id?: string | null
   target_person_name?: string | null
+  // Roadmap #10 (rounds review) - same redaction condition as target_person_id/name above.
+  target_asset_count?: number | null
+  target_birth_date?: string | null
+  target_first_asset_date?: string | null
   // Admin feature (ADMIN-FEATURE.md point #4) - the live configured total for this game instance
   // (Geoguessr/Dateguessr: total_rounds, WhosThatPerson: total_people), null for every other game.
   // Read instead of hardcoding a display-only mirror of the backend default (see
@@ -300,4 +308,9 @@ export interface LeaderboardEntryOut {
 export interface LeaderboardOut {
   window: LeaderboardWindow
   entries: LeaderboardEntryOut[]
+}
+
+// Roadmap point #10 (rounds review) - mirrors backend/src/api/dto/common.py's ConfigOut.
+export interface ConfigOut {
+  immich_external_url: string | null
 }

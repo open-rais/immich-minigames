@@ -14,6 +14,7 @@ Dev: `npm run dev`. Typecheck: `npx tsc -b`. Lint: `npx oxlint`. Both clean as o
 | `/admin` | `AdminPage` (redirects non-admins) |
 | `/:gameType/:mode` | `GameRoute` → looks up `GAME_CATALOG`, renders that mode's component |
 | `/:gameType/:mode/leaderboard` | `LeaderboardPage` |
+| `/:gameType/:mode/game/:gameId/rounds` | `RoundsPage` — post-game "Ver rondas"/"Ver juego" review (roadmap #10, see below) |
 
 `games/catalog.ts` is the frontend's registry of playable game/modes and is **hand-mirrored** from
 the backend's `_GAMES` dict. An unknown `:gameType/:mode` bounces to `/` rather than 404ing.
@@ -52,6 +53,34 @@ component keeps only its own guess-input state. It handles:
 Reveal-hold durations differ on purpose: MoreOrLess 1400ms, Geoguessr/Dateguessr 2400ms (the map's
 own 600ms `fitBounds` animation plus reading two numbers), Who'sThatPerson 2800ms (several faces to
 read at once).
+
+## Rounds review (roadmap #10)
+
+`games/rounds/RoundsPage.tsx` loads `GET /games/{id}` and hands it to that mode's own review
+component, chosen from `catalog.ts`'s `roundsComponent` (mirroring how `GameRoute` picks
+`component`). Two visual families, both driven by `CatalogMode.roundsLayout`:
+
+- **`"list"`** (default, unset — MoreOrLess, Immichdle): wrapped in `games/rounds/RoundsShell.tsx`,
+  a normal padded/scrolling page (back button, title, final score).
+- **`"fullscreen"`** (Geoguessr, Dateguessr, Who'sThatPerson): `RoundsShell` is skipped entirely —
+  `MapPicker`/`TimelineRuler`/`AssetPhoto` are all `position: fixed`, full-viewport components that
+  don't belong inside a padded scrolling shell, and each `<XxxRounds>` owns its whole screen the same
+  way the live `*Game.tsx` components already do (their own `BackButton`, and
+  `games/rounds/RoundStepper.tsx` — an interactive `RoundBadge` with prev/next arrows — in the same
+  top-center slot `RoundBadge` uses during play).
+
+`games/shared/EntryOptionsMenu.tsx` (a "⋯" trigger + popover, today holding just
+`games/shared/ImmichLink.tsx`) is the shared "Ver en Immich" entry point everywhere it appears. Its
+popover is positioned `fixed` from the trigger's own `getBoundingClientRect()` rather than `absolute`
+relative to the trigger — Immichdle's `GuessTable` needs it inside an `overflow-x-auto` container,
+and a mismatched-axis `overflow` (one axis non-`visible`, e.g. `overflow-x-auto`) computes the other
+axis to `auto` too, silently clipping an `absolute` popover that spills past the table's box. `fixed`
+ignores ancestor overflow clipping entirely.
+
+`ImmichLink` itself renders `null` whenever `useImmichLinks()` (`api/config.ts`) has no
+`IMMICH_EXTERNAL_URL`/`IMMICH_SERVER_URL` to build a link from (a single, module-scope-cached
+`GET /config` shared by every mounted `ImmichLink` on a page) — every call site is written with no
+conditional of its own around it.
 
 ## Design system
 

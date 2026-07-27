@@ -105,6 +105,10 @@ Finish filling in your `.env` (create it from `.env.example` if you skipped step
 - If pointing at an Immich instance *not* started by this repo's own `docker-compose.yml`, also set
   `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE_NAME`, and `IMMICH_SERVER_URL` to
   match it
+- `IMMICH_EXTERNAL_URL` - the public URL your browser can open, for the "Ver en Immich" links on the
+  post-game rounds review. Only needed if `IMMICH_SERVER_URL` above isn't itself browser-reachable
+  (e.g. it's `host.docker.internal`, as it is by default when Immich runs on the same machine via
+  this repo's own `docker-compose.yml`) - see `.env.example` and [docs/INSTALL.md](docs/INSTALL.md).
 
 Then:
 

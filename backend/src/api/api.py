@@ -19,6 +19,7 @@ from api.auth_api import get_current_user_optional
 from api.auth_api import router as auth_router
 from api.deps import get_db_session, get_immich_service, get_ml_service
 from api.dto.common import (
+    ConfigOut,
     CreateGameIn,
     GameOut,
     GameRecordsOut,
@@ -29,6 +30,7 @@ from api.dto.common import (
     parse_guess,
 )
 from api.rate_limit import GAME_ACTION_LIMIT, SEARCH_LIMIT, THUMBNAIL_LIMIT, limiter
+from config import Settings, get_settings
 from persistence.users import UserModel
 from services.games_service import GamesService
 from services.immich_service import ImmichService
@@ -50,6 +52,15 @@ def get_games_service(
 
 def get_owner_id(x_owner_id: Annotated[str, Header()]) -> str:
     return x_owner_id
+
+
+@router.get("/config", response_model=ConfigOut)
+def get_config(settings: Annotated[Settings, Depends(get_settings)]) -> ConfigOut:
+    # Public and unauthenticated (no X-Owner-Id, no rate limit) - static config, no DB/Immich call,
+    # used by the frontend's "Ver en Immich" buttons (ROUNDS-VIEW.md roadmap point #10). Depends()
+    # rather than calling get_settings() inline (see auth_api.py) so tests can override this one
+    # dependency without touching the lru_cache singleton every other module shares.
+    return ConfigOut(immich_external_url=settings.immich_public_url)
 
 
 @router.post("/games", response_model=GameOut, status_code=201)

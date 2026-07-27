@@ -39,6 +39,15 @@
     "leaderboards": "Leaderboards",
     "previousPhoto": "Previous photo",
     "nextPhoto": "Next photo",
+    "previousRound": "Previous round",
+    "nextRound": "Next round",
+    "viewInImmich": "View in Immich",
+    "viewRounds": "View game",
+    "rounds": {
+      "title": "Game",
+      "notFound": "This game doesn't exist or isn't yours.",
+      "optionsMenu": "Options"
+    },
     "finished": {
       "title": "Game over",
       "finalScore": "Final score: {{score}}"
@@ -138,6 +147,10 @@
     "submit": "Submit guesses",
     "result": {
       "correctCount": "{{correct}}/{{total}} correct"
+    },
+    "rounds": {
+      "yourAnswer": "Your answer",
+      "real": "Real"
     }
   },
   "auth": {

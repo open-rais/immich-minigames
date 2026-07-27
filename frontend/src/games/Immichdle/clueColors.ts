@@ -88,3 +88,42 @@ export function assetsTogetherClue(round: ImmichdleRoundOut): ClueResult {
   const variant: ClueVariant = round.correct ? "match" : clues.assets_together === 0 ? "miss" : "close"
   return { variant, background: null, kind: "count", value: clues.assets_together }
 }
+
+// The target row (roadmap #10 rounds review, ROUNDS-VIEW.md §3 F/§4.6) - one xTargetClue per xClue
+// above, all `variant: "match"` and no background glyph (there's no direction to hint at when
+// showing the target's own value, not a comparison).
+export interface TargetSnapshot {
+  personId: string
+  name: string
+  assetCount: number
+  birthDate: string | null
+  firstAssetDate: string | null
+}
+
+export function ageTargetClue(target: TargetSnapshot): ClueResult {
+  if (target.birthDate === null) return { variant: "match", background: null, kind: "text", value: "?" }
+  return { variant: "match", background: null, kind: "date", value: target.birthDate }
+}
+
+export function assetCountTargetClue(target: TargetSnapshot): ClueResult {
+  return { variant: "match", background: null, kind: "count", value: target.assetCount }
+}
+
+export function firstAppearanceTargetClue(target: TargetSnapshot): ClueResult {
+  if (target.firstAssetDate === null) return { variant: "match", background: null, kind: "text", value: "?" }
+  return { variant: "match", background: null, kind: "date", value: target.firstAssetDate }
+}
+
+export function commonNamesTargetClue(target: TargetSnapshot): ClueResult {
+  // The max achievable in this column - every word of the target's own name matches itself.
+  const wordCount = target.name.trim().split(/\s+/).filter(Boolean).length
+  return { variant: "match", background: null, kind: "count", value: wordCount }
+}
+
+export function mlSimilarityTargetClue(): ClueResult {
+  return { variant: "match", background: null, kind: "text", value: "=" }
+}
+
+export function assetsTogetherTargetClue(): ClueResult {
+  return { variant: "match", background: null, kind: "text", value: "-" }
+}

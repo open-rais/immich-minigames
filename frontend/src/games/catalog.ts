@@ -1,11 +1,17 @@
 import type { ComponentType } from "react"
 
+import type { GameOut } from "../api/types"
 import { GameType, Mode } from "../api/types"
 import { DateguessrGame } from "./Dateguessr/DateguessrGame"
+import { DateguessrRounds } from "./Dateguessr/DateguessrRounds"
 import { GeoguessrGame } from "./Geoguessr/GeoguessrGame"
+import { GeoguessrRounds } from "./Geoguessr/GeoguessrRounds"
 import { ImmichdleGame } from "./Immichdle/ImmichdleGame"
+import { ImmichdleRounds } from "./Immichdle/ImmichdleRounds"
 import { MoreOrLessGame } from "./MoreOrLess/MoreOrLessGame"
+import { MoreOrLessRounds } from "./MoreOrLess/MoreOrLessRounds"
 import { WhosThatPersonGame } from "./WhosThatPerson/WhosThatPersonGame"
+import { WhosThatPersonRounds } from "./WhosThatPerson/WhosThatPersonRounds"
 
 // Mirrors backend/src/services/games_service.py's _GAME_CLASSES/_ROUND_CLASSES by hand - same
 // manual-sync convention already used for api/types.ts vs schemas.py. Add an entry here whenever a
@@ -16,6 +22,20 @@ import { WhosThatPersonGame } from "./WhosThatPerson/WhosThatPersonGame"
 // itself up in the catalog.
 export interface GameComponentProps {
   coverUrl?: string
+  // Roadmap #10 - whether this mode has a roundsComponent registered (see CatalogMode below),
+  // resolved once by GameRoute.tsx and threaded down so FinishedScreen can decide whether to show
+  // its "Ver rondas" button without any game-tree module importing this catalog file itself (that
+  // would cycle back through the *Game.tsx components this file already imports).
+  hasRoundsView?: boolean
+}
+
+// Roadmap #10 (rounds review) - every <Name>Rounds component takes the finished GameOut it reviews,
+// already loaded by RoundsPage.tsx. onBack is only used by the "fullscreen" family below (the
+// "list" family's RoundsShell already renders its own back button, so MoreOrLessRounds/
+// ImmichdleRounds just ignore it).
+export interface RoundsComponentProps {
+  game: GameOut
+  onBack?: () => void
 }
 
 export interface CatalogMode {
@@ -28,6 +48,18 @@ export interface CatalogMode {
   // falls back to the plain bg-primary block and IdleScreen just skips the image if omitted, for
   // any future game/mode added before its art is ready.
   coverUrl?: string
+  // Roadmap #10 - which component reviews a finished game of this mode (games/rounds/RoundsPage.tsx).
+  // Every mode has one today, but stays optional so a future new game/mode can land before its
+  // rounds review is built (same reasoning as coverUrl above) - GameScreens.tsx's FinishedScreen
+  // only shows its "Ver rondas" button once a mode has one registered here.
+  roundsComponent?: ComponentType<RoundsComponentProps>
+  // Which of ROUNDS-VIEW.md §2's two visual families that roundsComponent belongs to - "list"
+  // (default, unset) is a normal scrolling page wrapped in RoundsShell (MoreOrLess, Immichdle);
+  // "fullscreen" (Geoguessr, Dateguessr, Who'sThatPerson) skips RoundsShell entirely and lets the
+  // component own the whole viewport itself, the same way *Game.tsx already does - RoundsShell is
+  // a padded, scrolling, min-h-dvh column, and MapPicker/TimelineRuler/AssetPhoto are fixed
+  // full-viewport components that don't belong inside one (see RoundsPage.tsx).
+  roundsLayout?: "list" | "fullscreen"
 }
 
 export interface CatalogGame {
@@ -46,6 +78,7 @@ export const GAME_CATALOG: CatalogGame[] = [
         modeTitleKey: "moreOrLess.modes.personAssets",
         component: MoreOrLessGame,
         coverUrl: "/covers/more-or-less.webp",
+        roundsComponent: MoreOrLessRounds,
       },
       {
         // Same component as personAssets - it reads its mode from the URL and swaps only the data
@@ -54,6 +87,7 @@ export const GAME_CATALOG: CatalogGame[] = [
         modeTitleKey: "moreOrLess.modes.albumAssets",
         component: MoreOrLessGame,
         coverUrl: "/covers/more-or-less-albums.webp",
+        roundsComponent: MoreOrLessRounds,
       },
     ],
   },
@@ -66,6 +100,8 @@ export const GAME_CATALOG: CatalogGame[] = [
         modeTitleKey: "geoguessr.modes.distanceBetweenGuess",
         component: GeoguessrGame,
         coverUrl: "/covers/geoguessr.webp",
+        roundsComponent: GeoguessrRounds,
+        roundsLayout: "fullscreen",
       },
     ],
   },
@@ -78,6 +114,8 @@ export const GAME_CATALOG: CatalogGame[] = [
         modeTitleKey: "dateguessr.modes.daysToDate",
         component: DateguessrGame,
         coverUrl: "/covers/dateguessr.webp",
+        roundsComponent: DateguessrRounds,
+        roundsLayout: "fullscreen",
       },
     ],
   },
@@ -90,6 +128,7 @@ export const GAME_CATALOG: CatalogGame[] = [
         modeTitleKey: "immichdle.modes.person",
         component: ImmichdleGame,
         coverUrl: "/covers/persondle.webp",
+        roundsComponent: ImmichdleRounds,
       },
     ],
   },
@@ -102,6 +141,8 @@ export const GAME_CATALOG: CatalogGame[] = [
         modeTitleKey: "whosThatPerson.modes.namedFaces",
         component: WhosThatPersonGame,
         coverUrl: "/covers/whos-that-person.webp",
+        roundsComponent: WhosThatPersonRounds,
+        roundsLayout: "fullscreen",
       },
     ],
   },

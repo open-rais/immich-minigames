@@ -62,6 +62,9 @@ class TestCreateGame:
         assert game["finished"] is False
         assert game["target_person_id"] is None
         assert game["target_person_name"] is None
+        assert game["target_asset_count"] is None
+        assert game["target_birth_date"] is None
+        assert game["target_first_asset_date"] is None
         assert len(game["rounds"]) == 1
         round_ = game["rounds"][0]
         assert round_["guess_person_id"] is None
@@ -148,3 +151,6 @@ class TestPlayRound:
         assert state["finished"] is True
         assert state["target_person_id"] is not None
         assert state["target_person_name"] is not None
+        # asset_count is never null on a real person (unlike birth_date/first_asset_date, which
+        # legitimately can be - not asserted here, that's real per-person data, not redaction).
+        assert state["target_asset_count"] is not None
