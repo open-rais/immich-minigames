@@ -49,15 +49,16 @@ export interface CatalogMode {
   // any future game/mode added before its art is ready.
   coverUrl?: string
   // Roadmap #10 - which component reviews a finished game of this mode (games/rounds/RoundsPage.tsx).
-  // Optional and added phase by phase (ROUNDS-VIEW.md's F1-F4) - GameScreens.tsx's FinishedScreen
+  // Every mode has one today, but stays optional so a future new game/mode can land before its
+  // rounds review is built (same reasoning as coverUrl above) - GameScreens.tsx's FinishedScreen
   // only shows its "Ver rondas" button once a mode has one registered here.
   roundsComponent?: ComponentType<RoundsComponentProps>
   // Which of ROUNDS-VIEW.md §2's two visual families that roundsComponent belongs to - "list"
   // (default, unset) is a normal scrolling page wrapped in RoundsShell (MoreOrLess, Immichdle);
-  // "fullscreen" (Geoguessr/Dateguessr, later WhosThatPerson) skips RoundsShell entirely and lets
-  // the component own the whole viewport itself, the same way *Game.tsx already does - RoundsShell
-  // is a padded, scrolling, min-h-dvh column, and MapPicker/TimelineRuler are fixed full-viewport
-  // components that don't belong inside one (see RoundsPage.tsx).
+  // "fullscreen" (Geoguessr, Dateguessr, Who'sThatPerson) skips RoundsShell entirely and lets the
+  // component own the whole viewport itself, the same way *Game.tsx already does - RoundsShell is
+  // a padded, scrolling, min-h-dvh column, and MapPicker/TimelineRuler/AssetPhoto are fixed
+  // full-viewport components that don't belong inside one (see RoundsPage.tsx).
   roundsLayout?: "list" | "fullscreen"
 }
 

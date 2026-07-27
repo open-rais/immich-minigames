@@ -36,9 +36,9 @@ export function RoundsPage() {
     }
   }, [gameId])
 
-  // An unknown mode, a mode with no roundsComponent registered yet (F2-F4 still pending), or a
-  // missing gameId all mean there's nothing sensible to render here - bounce to the menu the same
-  // way GameRoute does for an unknown (gameType, mode).
+  // An unknown mode, a mode with no roundsComponent registered (shouldn't happen - every mode has
+  // one), or a missing gameId all mean there's nothing sensible to render here - bounce to the menu
+  // the same way GameRoute does for an unknown (gameType, mode).
   if (!catalogMode || !game_ || !gameType || !mode || !gameId || !catalogMode.roundsComponent) {
     return <Navigate to="/" replace />
   }
@@ -63,10 +63,11 @@ export function RoundsPage() {
   const RoundsComponent = catalogMode.roundsComponent
   const onBack = () => navigate(`/${gameType}/${mode}`)
 
-  // "Fullscreen" family (Geoguessr/Dateguessr, later WhosThatPerson) owns the whole viewport itself
-  // - MapPicker/TimelineRuler are fixed full-screen components that don't belong inside RoundsShell's
-  // padded scrolling column (ROUNDS-VIEW.md §5), and the round stepper needs state that only the
-  // component itself holds. RoundsShell is reserved for the "list" family (MoreOrLess, Immichdle).
+  // "Fullscreen" family (Geoguessr/Dateguessr/Who'sThatPerson) owns the whole viewport itself -
+  // MapPicker/TimelineRuler/AssetPhoto are fixed full-screen components that don't belong inside
+  // RoundsShell's padded scrolling column (ROUNDS-VIEW.md §5), and the round stepper needs state
+  // that only the component itself holds. RoundsShell is reserved for the "list" family
+  // (MoreOrLess, Immichdle).
   if (catalogMode.roundsLayout === "fullscreen") {
     return <RoundsComponent game={state.game} onBack={onBack} />
   }

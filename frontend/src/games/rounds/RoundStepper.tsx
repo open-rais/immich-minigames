@@ -13,7 +13,7 @@ const ARROW_BUTTON_CLASS =
 // Interactive counterpart to games/shared/RoundBadge.tsx (same top-center fixed slot/pill shown
 // during real gameplay) - this one lets the player step back and forth through already-played
 // rounds instead of only ever advancing (ROUNDS-VIEW.md roadmap #10, "one round at a time" family:
-// Geoguessr/Dateguessr today, WhosThatPerson later).
+// Geoguessr, Dateguessr, Who'sThatPerson).
 export function RoundStepper({ current, total, onPrev, onNext }: RoundStepperProps) {
   const { t } = useTranslation()
   return (
