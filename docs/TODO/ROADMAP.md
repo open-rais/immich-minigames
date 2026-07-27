@@ -48,10 +48,10 @@ Cuando se complete un item, marcar su checkbox.
   - Agregar un nuevo docs/INSTALL.md con distintas maneras de instalar el código o problemas comúnes
   - Actualizar otros archivos de documentación para cumplor con el estado actual
 - [x] 10. Vista "Ver rounds": muestra cada asset mostrado en las rondas de un juego finalizado, con botón "ver en Immich"
-- [ ] G. Daily games (misma seed para cada usuario, solo se juega 1 vez al día):
+- [ ] G. Daily games (misma seed para cada usuario, solo se juega 1 vez al día, se puede ver la partida si ya se jugó, se puede compartir un link para invitar a jugar (Tipo wordle, etc)):
   - Se creará una nueva sección en menu principal, como si fuera un juego pero con el nombre "daily". Tendrá los mismos modos de juegos de abajo
-  - Leaderboard de dailyGame
-  - El admin puede decir qué juegos están en el daily y cuales no
+  - Leaderboard de dailyGame (Se puede mover hacia atras en los días para ver los leaderboard de los dailies pasados)
+  - El admin puede decir qué juegos están en el daily y cuales no, además de sus parámetros para el daily
   - Se podrá compartir un link a cada juego daily
   - No se debe repetir ningun asset/persona de los últimos N (default 30) días (excepto en more-or-less, ahi solo debe ser otra seed)
 - [ ] 11. API y frontend para Timeline
