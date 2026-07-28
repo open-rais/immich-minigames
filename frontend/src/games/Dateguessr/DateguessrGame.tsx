@@ -38,17 +38,15 @@ export function DateguessrGame({ coverUrl, hasRoundsView }: GameComponentProps) 
   const backToMenu = () => navigate("/")
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
-  const { screen, busy, game, round, phase, revealed, startGame, submitGuess, backToIdle } = useRoundGame<
-    DateguessrRoundOut,
-    string
-  >({
-    gameType: GAME_TYPE,
-    mode: MODE,
-    revealHoldMs: REVEAL_HOLD_MS,
-    isRound: isDateguessrRound,
-    playRound: (gameId, roundId, guess) => playRound(gameId, roundId, { date: guess }),
-    onNewRound: () => setSelectedDate(null),
-  })
+  const { screen, busy, game, round, phase, revealed, hasCurrentGame, startGame, resumeGame, submitGuess, backToIdle } =
+    useRoundGame<DateguessrRoundOut, string>({
+      gameType: GAME_TYPE,
+      mode: MODE,
+      revealHoldMs: REVEAL_HOLD_MS,
+      isRound: isDateguessrRound,
+      playRound: (gameId, roundId, guess) => playRound(gameId, roundId, { date: guess }),
+      onNewRound: () => setSelectedDate(null),
+    })
 
   if (screen === "idle") {
     return (
@@ -60,6 +58,8 @@ export function DateguessrGame({ coverUrl, hasRoundsView }: GameComponentProps) 
         onStart={startGame}
         onBack={backToMenu}
         busy={busy}
+        hasCurrentGame={hasCurrentGame}
+        onContinue={resumeGame}
       />
     )
   }

@@ -174,6 +174,12 @@ export interface GameOut {
   total_people?: number | null
 }
 
+// Roadmap #e - idle-screen "Continuar" lookup. A wrapper (not a bare nullable GameOut/404) so "no
+// active game" - the expected result on every idle-screen visit - is never mistaken for an error.
+export interface CurrentGameOut {
+  game: GameOut | null
+}
+
 // No game_type here (unlike RoundOut) - game_id already fixes a round's game/mode server-side, so
 // the guess body only needs the guess itself; see backend/src/api/schemas.py's parse_guess.
 export interface MoreOrLessPlayRoundIn {
@@ -275,6 +281,22 @@ export interface GameRecordOut {
 
 export interface GameRecordsOut {
   records: GameRecordOut[]
+}
+
+// Roadmap #e - profile "Ver juegos" modal - mirrors backend/src/api/dto/common.py's
+// RecentGameOut/RecentGamesOut. Only ever finished or abandoned games (never a still-active one).
+export interface RecentGameOut {
+  id: string
+  game_type: string
+  mode: string
+  score: number
+  finished: boolean
+  abandoned: boolean
+  created_at: string
+}
+
+export interface RecentGamesOut {
+  games: RecentGameOut[]
 }
 
 // Admin feature (ADMIN-FEATURE.md point #4) - mirrors backend/src/api/dto/common.py's

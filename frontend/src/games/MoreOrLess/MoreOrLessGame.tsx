@@ -3,7 +3,7 @@ import type { TransitionEvent } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate, useParams } from "react-router-dom"
 
-import { createGame, playRound } from "../../api/games"
+import { createGame, getCurrentGame, playRound } from "../../api/games"
 import { GameType, Mode } from "../../api/types"
 import type { GameOut, MoreOrLessGuess, MoreOrLessRoundOut, RoundOut } from "../../api/types"
 import type { GameComponentProps } from "../catalog"
@@ -67,6 +67,10 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView }: GameComponentProps) 
   const [slideOffset, setSlideOffset] = useState({ x: 0, y: 0 })
   const slidingCardRef = useRef<HTMLDivElement>(null)
 
+  // Roadmap #e - whether the current player has an unfinished game for this mode; null while the
+  // idle-screen check below is still in flight (IdleScreen treats that the same as false).
+  const [hasCurrentGame, setHasCurrentGame] = useState<boolean | null>(null)
+
   const { isCurrent, guarded, discardInFlight } = useGuardedRequests()
   // One in-flight ref per action - start vs guess don't need to block each other, but each needs its
   // own re-entrancy guard against a fast double-click firing before React re-renders (state like
@@ -109,22 +113,60 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView }: GameComponentProps) 
     return () => cancelAnimationFrame(raf)
   }, [transitionEnabled])
 
+  // Re-checked every time the idle screen is (re-)shown - roadmap #e's "Continuar" affordance.
+  useEffect(() => {
+    if (screen !== "idle") return
+    let cancelled = false
+    getCurrentGame(GAME_TYPE, mode)
+      .then((g) => {
+        if (!cancelled) setHasCurrentGame(g !== null)
+      })
+      .catch(() => {
+        if (!cancelled) setHasCurrentGame(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [screen, mode])
+
+  // Shared by startGame (fresh GameOut from createGame) and resumeGame (an existing one from
+  // getCurrentGame) - both hand off a GameOut whose last round is the current pending one.
+  function applyGame(g: GameOut) {
+    const round = g.rounds[g.rounds.length - 1]
+    assertMoreOrLess(round)
+    setGame(g)
+    setReference({ id: round.reference_id, name: round.reference_name, assetCount: round.reference_asset_count })
+    setCandidate({ id: round.candidate_id, name: round.candidate_name, roundId: round.id })
+    setCandidatePhase("guessing")
+    setCountTarget(null)
+    setRevealResult(null)
+    setSliding(false)
+    setScreen("playing")
+  }
+
   async function startGame() {
     await guarded(startInFlightRef, async (token) => {
       setBusy(true)
       try {
         const g = await createGame(GAME_TYPE, mode)
         if (!isCurrent(token)) return
-        const round = g.rounds[g.rounds.length - 1]
-        assertMoreOrLess(round)
-        setGame(g)
-        setReference({ id: round.reference_id, name: round.reference_name, assetCount: round.reference_asset_count })
-        setCandidate({ id: round.candidate_id, name: round.candidate_name, roundId: round.id })
-        setCandidatePhase("guessing")
-        setCountTarget(null)
-        setRevealResult(null)
-        setSliding(false)
-        setScreen("playing")
+        applyGame(g)
+      } catch {
+        if (isCurrent(token)) setScreen("error")
+      } finally {
+        if (isCurrent(token)) setBusy(false)
+      }
+    })
+  }
+
+  // Roadmap #e - "Continuar" button's action: picks the player's existing unfinished game back up.
+  async function resumeGame() {
+    await guarded(startInFlightRef, async (token) => {
+      setBusy(true)
+      try {
+        const g = await getCurrentGame(GAME_TYPE, mode)
+        if (!isCurrent(token) || !g) return
+        applyGame(g)
       } catch {
         if (isCurrent(token)) setScreen("error")
       } finally {
@@ -180,6 +222,8 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView }: GameComponentProps) 
         onStart={startGame}
         onBack={backToMenu}
         busy={busy}
+        hasCurrentGame={hasCurrentGame}
+        onContinue={resumeGame}
       />
     )
   }

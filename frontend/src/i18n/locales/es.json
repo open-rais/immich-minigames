@@ -32,6 +32,8 @@
     "back": "Volver",
     "score": "Puntaje",
     "startCta": "Comenzar juego",
+    "continueCta": "Continuar",
+    "newGameCta": "Nuevo juego",
     "confirmGuess": "Confirmar respuesta",
     "roundOf": "Ronda {{current}} de {{total}}",
     "points": "+{{score}} pts",
@@ -58,7 +60,7 @@
     },
     "exitConfirm": {
       "title": "¿Seguro que quieres salir?",
-      "message": "No podrás continuar el juego.",
+      "message": "Esta ronda quedará sin responder, pero podrás continuar esta partida más tarde desde su menú.",
       "confirm": "Salir",
       "cancel": "Cancelar"
     }
@@ -179,10 +181,19 @@
       "edit": "Editar perfil",
       "save": "Guardar cambios",
       "saved": "Perfil actualizado",
+      "viewGames": "Ver juegos",
       "skin": {
         "label": "Piel",
         "none": "Ninguna",
         "clear": "Quitar"
+      },
+      "recentGames": {
+        "title": "Juegos recientes",
+        "loading": "Cargando juegos...",
+        "empty": "Aún no has terminado ninguna partida.",
+        "score": "{{score}} pts",
+        "finished": "Terminado",
+        "abandoned": "Abandonado"
       }
     },
     "error": {

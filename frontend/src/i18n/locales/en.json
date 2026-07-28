@@ -32,6 +32,8 @@
     "back": "Back",
     "score": "Score",
     "startCta": "Start game",
+    "continueCta": "Continue",
+    "newGameCta": "New game",
     "confirmGuess": "Confirm guess",
     "roundOf": "Round {{current}} of {{total}}",
     "points": "+{{score}} pts",
@@ -58,7 +60,7 @@
     },
     "exitConfirm": {
       "title": "Are you sure you want to exit?",
-      "message": "You won't be able to continue this game.",
+      "message": "You'll leave this round unanswered, but you can continue this game later from its menu.",
       "confirm": "Exit",
       "cancel": "Cancel"
     }
@@ -179,10 +181,19 @@
       "edit": "Edit profile",
       "save": "Save changes",
       "saved": "Profile updated",
+      "viewGames": "View games",
       "skin": {
         "label": "Skin",
         "none": "None",
         "clear": "Clear"
+      },
+      "recentGames": {
+        "title": "Recent games",
+        "loading": "Loading games...",
+        "empty": "You haven't finished any games yet.",
+        "score": "{{score}} pts",
+        "finished": "Finished",
+        "abandoned": "Abandoned"
       }
     },
     "error": {

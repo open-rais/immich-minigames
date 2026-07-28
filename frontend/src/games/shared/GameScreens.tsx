@@ -37,6 +37,13 @@ interface IdleScreenProps {
   onStart: () => void
   onBack: () => void
   busy: boolean
+  // Roadmap #e - whether the current player (owner or account) has an unfinished game for this
+  // mode. Both optional/default-omitted (undefined behaves like false) so this stays fully
+  // backward-compatible for any caller that hasn't wired resuming up yet. `null` (still checking)
+  // also renders like false - an accepted brief "plain layout, then Continue pops in" flash rather
+  // than a loading spinner, which would be a bigger UX change than this roadmap item asks for.
+  hasCurrentGame?: boolean | null
+  onContinue?: () => void
 }
 
 export function IdleScreen({
@@ -47,10 +54,13 @@ export function IdleScreen({
   onStart,
   onBack,
   busy,
+  hasCurrentGame,
+  onContinue,
 }: IdleScreenProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const leaderboardHref = useLeaderboardHref()
+  const canContinue = !!hasCurrentGame && !!onContinue
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-app-bg px-6 text-center">
       <BackButton label={t("common.back")} onClick={onBack} />
@@ -63,8 +73,13 @@ export function IdleScreen({
       </div>
       <p className="max-w-md text-muted">{description}</p>
       <div className="flex flex-col items-stretch gap-3">
-        <Button variant="primary" className="w-56 py-3" onClick={onStart} disabled={busy}>
-          {t("common.startCta")}
+        {canContinue && (
+          <Button variant="primary" className="w-56 py-3" onClick={onContinue} disabled={busy}>
+            {t("common.continueCta")}
+          </Button>
+        )}
+        <Button variant={canContinue ? "secondary" : "primary"} className="w-56 py-3" onClick={onStart} disabled={busy}>
+          {t(canContinue ? "common.newGameCta" : "common.startCta")}
         </Button>
         <Button variant="secondary" className="w-56 py-3" onClick={() => navigate(leaderboardHref)}>
           {t("common.leaderboards")}

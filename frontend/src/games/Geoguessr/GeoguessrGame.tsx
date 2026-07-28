@@ -39,17 +39,15 @@ export function GeoguessrGame({ coverUrl, hasRoundsView }: GameComponentProps) {
   const backToMenu = () => navigate("/")
 
   const [pin, setPin] = useState<Pin | null>(null)
-  const { screen, busy, game, round, phase, revealed, startGame, submitGuess, backToIdle } = useRoundGame<
-    GeoguessrRoundOut,
-    Pin
-  >({
-    gameType: GAME_TYPE,
-    mode: MODE,
-    revealHoldMs: REVEAL_HOLD_MS,
-    isRound: isGeoguessrRound,
-    playRound: (gameId, roundId, guess) => playRound(gameId, roundId, { latitude: guess.lat, longitude: guess.lng }),
-    onNewRound: () => setPin(null),
-  })
+  const { screen, busy, game, round, phase, revealed, hasCurrentGame, startGame, resumeGame, submitGuess, backToIdle } =
+    useRoundGame<GeoguessrRoundOut, Pin>({
+      gameType: GAME_TYPE,
+      mode: MODE,
+      revealHoldMs: REVEAL_HOLD_MS,
+      isRound: isGeoguessrRound,
+      playRound: (gameId, roundId, guess) => playRound(gameId, roundId, { latitude: guess.lat, longitude: guess.lng }),
+      onNewRound: () => setPin(null),
+    })
 
   if (screen === "idle") {
     return (
@@ -61,6 +59,8 @@ export function GeoguessrGame({ coverUrl, hasRoundsView }: GameComponentProps) {
         onStart={startGame}
         onBack={backToMenu}
         busy={busy}
+        hasCurrentGame={hasCurrentGame}
+        onContinue={resumeGame}
       />
     )
   }

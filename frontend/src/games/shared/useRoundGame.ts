@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 
-import { createGame } from "../../api/games"
-import type { PlayRoundOut, RoundOut } from "../../api/types"
+import { createGame, getCurrentGame } from "../../api/games"
+import type { GameOut, PlayRoundOut, RoundOut } from "../../api/types"
 import { useGuardedRequests } from "./useGuardedRequests"
 
 // Only the fields that stay live for the whole game. The full GameOut also carries `rounds`, but
@@ -41,6 +41,12 @@ interface UseRoundGameConfig<TRound extends RoundOut, TGuess> {
   // Resets the component-owned guess input whenever a fresh round becomes active (game start and
   // each auto-advance).
   onNewRound: () => void
+  // Roadmap #e - fired once, only when resumeGame() picks an in-progress game back up (never on a
+  // fresh startGame()), with the full fetched GameOut - the hook-point a caller with extra
+  // accumulated state derived from round history (e.g. WhosThatPersonGame's "N of 15 people"
+  // counter) needs to seed itself from every already-answered round, not just the resumed pending
+  // one. Games with no such state (Geoguessr, Dateguessr) simply omit it.
+  onResume?: (game: GameOut) => void
 }
 
 export function useRoundGame<TRound extends RoundOut, TGuess>({
@@ -50,6 +56,7 @@ export function useRoundGame<TRound extends RoundOut, TGuess>({
   isRound,
   playRound,
   onNewRound,
+  onResume,
 }: UseRoundGameConfig<TRound, TGuess>) {
   const [screen, setScreen] = useState<Screen>("idle")
   const [busy, setBusy] = useState(false)
@@ -57,6 +64,10 @@ export function useRoundGame<TRound extends RoundOut, TGuess>({
   const [round, setRound] = useState<TRound | null>(null)
   const [pendingNextRound, setPendingNextRound] = useState<TRound | null>(null)
   const [phase, setPhase] = useState<RoundPhase>("guessing")
+  // Roadmap #e - whether the current player has an unfinished game for this (gameType, mode);
+  // null while the idle-screen check below is still in flight, which IdleScreen treats the same
+  // as false (an accepted brief "plain layout, then Continue pops in" flash).
+  const [hasCurrentGame, setHasCurrentGame] = useState<boolean | null>(null)
 
   const { isCurrent, guarded, discardInFlight } = useGuardedRequests()
   // One in-flight ref per action - start vs guess don't need to block each other, but each needs its
@@ -67,6 +78,39 @@ export function useRoundGame<TRound extends RoundOut, TGuess>({
   // as a dependency (which would re-run the timer on every render).
   const onNewRoundRef = useRef(onNewRound)
   onNewRoundRef.current = onNewRound
+  const onResumeRef = useRef(onResume)
+  onResumeRef.current = onResume
+
+  // Re-checked every time the idle screen is (re-)shown - e.g. after backToIdle, not just on mount.
+  useEffect(() => {
+    if (screen !== "idle") return
+    let cancelled = false
+    getCurrentGame(gameType, mode)
+      .then((g) => {
+        if (!cancelled) setHasCurrentGame(g !== null)
+      })
+      .catch(() => {
+        if (!cancelled) setHasCurrentGame(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [screen, gameType, mode])
+
+  // Shared by startGame (fresh GameOut from createGame) and resumeGame (an existing one from
+  // getCurrentGame) - both hand off a GameOut whose last round is the current pending one (true by
+  // construction for a fresh game, and true for an unfinished one per games/base.py's play_round,
+  // which always appends a fresh pending round unless the game just finished).
+  function applyGame(g: GameOut): boolean {
+    const currentRound = g.rounds[g.rounds.length - 1]
+    if (!isRound(currentRound)) return false
+    setGame({ id: g.id, score: g.score, finished: g.finished, totalRounds: g.total_rounds, totalPeople: g.total_people })
+    setRound(currentRound)
+    setPendingNextRound(null)
+    setPhase("guessing")
+    setScreen("playing")
+    return true
+  }
 
   async function startGame() {
     await guarded(startInFlightRef, async (token) => {
@@ -74,17 +118,33 @@ export function useRoundGame<TRound extends RoundOut, TGuess>({
       try {
         const g = await createGame(gameType, mode)
         if (!isCurrent(token)) return
-        const firstRound = g.rounds[g.rounds.length - 1]
-        if (!isRound(firstRound)) {
+        if (!applyGame(g)) {
           setScreen("error")
           return
         }
-        setGame({ id: g.id, score: g.score, finished: g.finished, totalRounds: g.total_rounds, totalPeople: g.total_people })
-        setRound(firstRound)
-        setPendingNextRound(null)
         onNewRoundRef.current()
-        setPhase("guessing")
-        setScreen("playing")
+      } catch {
+        if (isCurrent(token)) setScreen("error")
+      } finally {
+        if (isCurrent(token)) setBusy(false)
+      }
+    })
+  }
+
+  // Roadmap #e - "Continuar" button's action: picks the player's existing unfinished game back up
+  // instead of creating a new one.
+  async function resumeGame() {
+    await guarded(startInFlightRef, async (token) => {
+      setBusy(true)
+      try {
+        const g = await getCurrentGame(gameType, mode)
+        if (!isCurrent(token) || !g) return
+        if (!applyGame(g)) {
+          setScreen("error")
+          return
+        }
+        onResumeRef.current?.(g)
+        onNewRoundRef.current()
       } catch {
         if (isCurrent(token)) setScreen("error")
       } finally {
@@ -146,7 +206,9 @@ export function useRoundGame<TRound extends RoundOut, TGuess>({
     round,
     phase,
     revealed: phase === "revealed",
+    hasCurrentGame,
     startGame,
+    resumeGame,
     submitGuess,
     backToIdle,
   }

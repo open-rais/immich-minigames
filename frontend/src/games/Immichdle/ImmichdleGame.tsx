@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 
-import { createGame, getGame, personThumbnailUrl, playRound } from "../../api/games"
+import { createGame, getCurrentGame, getGame, personThumbnailUrl, playRound } from "../../api/games"
 import { GameType, Mode } from "../../api/types"
 import type { ImmichdleRoundOut, RoundOut } from "../../api/types"
 import type { GameComponentProps } from "../catalog"
@@ -56,6 +56,10 @@ export function ImmichdleGame({ coverUrl, hasRoundsView }: GameComponentProps) {
   // consumers - SkinPicker/AdminUserRow/FaceGuessPopover - that already follow this contract).
   const guessedIds = useMemo(() => new Set(history.map((r) => r.guess_person_id!)), [history])
 
+  // Roadmap #e - whether the current player has an unfinished game for this mode; null while the
+  // idle-screen check below is still in flight (IdleScreen treats that the same as false).
+  const [hasCurrentGame, setHasCurrentGame] = useState<boolean | null>(null)
+
   const { isCurrent, guarded, discardInFlight } = useGuardedRequests()
   // One in-flight ref per action - start vs guess don't need to block each other, but each needs
   // its own re-entrancy guard against a fast double-click firing before React re-renders.
@@ -73,6 +77,51 @@ export function ImmichdleGame({ coverUrl, hasRoundsView }: GameComponentProps) {
         setGame({ id: g.id, score: g.score, finished: false, won: false, targetName: null, targetPersonId: null })
         setPendingRoundId(round.id)
         setHistory([])
+        setAnimatingRoundId(null)
+        setRowAnimationDone(false)
+        setTargetFetchDone(true)
+        setScreen("playing")
+      } catch {
+        if (isCurrent(token)) setScreen("error")
+      } finally {
+        if (isCurrent(token)) setBusy(false)
+      }
+    })
+  }
+
+  // Re-checked every time the idle screen is (re-)shown - roadmap #e's "Continuar" affordance.
+  useEffect(() => {
+    if (screen !== "idle") return
+    let cancelled = false
+    getCurrentGame(GAME_TYPE, MODE)
+      .then((g) => {
+        if (!cancelled) setHasCurrentGame(g !== null)
+      })
+      .catch(() => {
+        if (!cancelled) setHasCurrentGame(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [screen])
+
+  // Roadmap #e - "Continuar" button's action: rebuilds `history` from every already-answered round
+  // of the resumed game (all but the last, still-pending one), newest-first to match how a live
+  // game accumulates it (see handleGuess's setHistory below). No reveal animation on resume - the
+  // player just sees the table as it already stood.
+  async function resumeGame() {
+    await guarded(startInFlightRef, async (token) => {
+      setBusy(true)
+      try {
+        const g = await getCurrentGame(GAME_TYPE, MODE)
+        if (!isCurrent(token) || !g) return
+        const answered = g.rounds.slice(0, -1)
+        answered.forEach(assertImmichdle)
+        const pending = g.rounds[g.rounds.length - 1]
+        assertImmichdle(pending)
+        setGame({ id: g.id, score: g.score, finished: false, won: false, targetName: null, targetPersonId: null })
+        setPendingRoundId(pending.id)
+        setHistory([...(answered as ImmichdleRoundOut[])].reverse())
         setAnimatingRoundId(null)
         setRowAnimationDone(false)
         setTargetFetchDone(true)
@@ -163,6 +212,8 @@ export function ImmichdleGame({ coverUrl, hasRoundsView }: GameComponentProps) {
         onStart={startGame}
         onBack={backToMenu}
         busy={busy}
+        hasCurrentGame={hasCurrentGame}
+        onContinue={resumeGame}
       />
     )
   }
