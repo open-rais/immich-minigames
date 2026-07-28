@@ -9,7 +9,7 @@ wrongly-shaped guess.
 """
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from typing import Annotated, Any, Literal, Union
 from uuid import UUID
 
@@ -29,7 +29,7 @@ from games.immichdle import ImmichdleGame, ImmichdleRound
 from games.more_or_less import MoreOrLessRound
 from games.whos_that_person import WhosThatPersonGame, WhosThatPersonRound
 from services.game_settings import SettingSpec
-from services.games_service import GameRecord, LeaderboardEntry, UnsupportedGameError
+from services.games_service import GameRecord, LeaderboardEntry, RecentGame, UnsupportedGameError
 
 
 class CreateGameIn(BaseModel):
@@ -143,6 +143,49 @@ class GameOut(BaseModel):
             total_rounds=game.total_rounds if isinstance(game, AssetRoundsGame) else None,
             total_people=game.total_people if isinstance(game, WhosThatPersonGame) else None,
         )
+
+
+# -- resumable games (roadmap point #e, see GamesService.get_current_game/get_recent_games) ---
+
+
+class CurrentGameOut(BaseModel):
+    # A wrapper, not a 404 - "no active game" is the expected result on every idle-screen visit,
+    # not an error the frontend needs to distinguish from a real failure.
+    game: GameOut | None
+
+    @classmethod
+    def from_game(cls, game: BaseGame | None) -> "CurrentGameOut":
+        return cls(game=GameOut.from_game(game) if game is not None else None)
+
+
+class RecentGameOut(BaseModel):
+    id: UUID
+    game_type: str
+    mode: str
+    score: int
+    finished: bool
+    abandoned: bool
+    created_at: datetime
+
+    @classmethod
+    def from_recent_game(cls, recent: RecentGame) -> "RecentGameOut":
+        return cls(
+            id=recent.id,
+            game_type=recent.game_type,
+            mode=recent.mode,
+            score=recent.score,
+            finished=recent.finished,
+            abandoned=recent.abandoned,
+            created_at=recent.created_at,
+        )
+
+
+class RecentGamesOut(BaseModel):
+    games: list[RecentGameOut]
+
+    @classmethod
+    def from_recent_games(cls, games: list[RecentGame]) -> "RecentGamesOut":
+        return cls(games=[RecentGameOut.from_recent_game(g) for g in games])
 
 
 class PlayRoundOut(BaseModel):

@@ -35,6 +35,10 @@ class GameModel(Base):
     mode: Mapped[str]
     score: Mapped[int] = mapped_column(default=0)
     finished: Mapped[bool] = mapped_column(default=False)
+    # Roadmap #e - set when a new game of the same (owner-or-user, game_type, mode) starts while
+    # this one was still unfinished (GamesService._abandon_active_games). Never becomes True at the
+    # same time finished does, so get_personal_records/get_leaderboard need no changes.
+    abandoned: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
     rounds: Mapped[list["RoundModel"]] = relationship(

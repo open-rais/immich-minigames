@@ -5,10 +5,11 @@ persistence awareness) and this app's own DB (persistence/games.py).
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from games.base import BaseGame, BaseRound
@@ -75,6 +76,22 @@ class GameRecord:
     game_type: str
     mode: str
     best_score: int
+
+
+@dataclass(frozen=True)
+class RecentGame:
+    """One row of the profile's "Ver juegos" modal (roadmap point #e) - a logged-in account's last
+    N games that reached a final state, either by finishing naturally or by being abandoned when
+    the player started a new one of that (game_type, mode). A still-active game never appears here
+    - see GamesService.get_recent_games."""
+
+    id: UUID
+    game_type: str
+    mode: str
+    score: int
+    finished: bool
+    abandoned: bool
+    created_at: datetime
 
 
 @dataclass(frozen=True)
@@ -169,11 +186,68 @@ class GamesService:
             game = spec.game_class.start(id=uuid4(), owner=owner, **self._game_kwargs(spec, game_type, mode))
         except ValueError as e:
             raise NotEnoughContentError(str(e)) from e
+        # Roadmap #e - enforces "at most one active game per (player, mode)" server-side, so the
+        # frontend's "Nuevo juego" button needs no separate abandon step: it's the same createGame
+        # call "Jugar" always made, and this stays one atomic commit with _save_new_game below.
+        self._abandon_active_games(owner, game_type, mode, user_id)
         self._save_new_game(game, user_id=user_id)
         return game
 
     def get_game(self, game_id: UUID, owner: str, user: UserModel | None = None) -> BaseGame:
         return self._load_game(game_id, owner, user)
+
+    def get_current_game(
+        self, owner: str, game_type: str, mode: str, user_id: UUID | None
+    ) -> BaseGame | None:
+        """Idle-screen "Continuar" lookup (roadmap #e) - works anonymously too (the route uses
+        get_current_user_optional), matching "ya sea loggeado o no". Same owner-vs-user_id
+        branching as get_personal_records. `ORDER BY created_at DESC LIMIT 1` rather than
+        scalar_one() deliberately tolerates more than one matching row (a stray unfinished game
+        left over from before the `abandoned` column existed, or the documented cross-tab race in
+        _abandon_active_games) by just picking the most recent, instead of crashing."""
+        if (game_type, mode) not in _GAMES:
+            raise UnsupportedGameError(f"unsupported game/mode: {game_type}/{mode}")
+        filter_clause = GameModel.user_id == user_id if user_id is not None else GameModel.owner == owner
+        game_row = self._session.execute(
+            select(GameModel)
+            .where(
+                GameModel.game_type == game_type,
+                GameModel.mode == mode,
+                GameModel.finished.is_(False),
+                GameModel.abandoned.is_(False),
+                filter_clause,
+            )
+            .order_by(GameModel.created_at.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+        return self._row_to_game(game_row) if game_row is not None else None
+
+    def get_recent_games(self, user_id: UUID, limit: int = 5) -> list[RecentGame]:
+        """"Ver juegos" profile modal (roadmap #e) - a logged-in player's last `limit` games that
+        reached a final state (finished naturally, or abandoned by starting a new one), most recent
+        first. A game still actively in progress is intentionally excluded - it belongs on that
+        mode's idle screen as "Continuar", not in this history list."""
+        rows = self._session.execute(
+            select(GameModel)
+            .where(
+                GameModel.user_id == user_id,
+                or_(GameModel.finished.is_(True), GameModel.abandoned.is_(True)),
+            )
+            .order_by(GameModel.created_at.desc())
+            .limit(limit)
+        ).scalars().all()
+        return [
+            RecentGame(
+                id=row.id,
+                game_type=row.game_type,
+                mode=row.mode,
+                score=row.score,
+                finished=row.finished,
+                abandoned=row.abandoned,
+                created_at=row.created_at,
+            )
+            for row in rows
+        ]
 
     def get_personal_records(self, owner: str, user_id: UUID | None) -> list[GameRecord]:
         """Roadmap point E - personal-best score per (game_type, mode), shown in the main menu.
@@ -265,7 +339,13 @@ class GamesService:
             raise GameOwnershipError(f"game {game_id} does not belong to this owner")
 
         self._loaded_game_rows[game_row.id] = game_row
+        return self._row_to_game(game_row)
 
+    def _row_to_game(self, game_row: GameModel) -> BaseGame:
+        """Reconstructs a BaseGame from an already-fetched GameModel row - shared by _load_game
+        (which also does the FOR UPDATE fetch + ownership check above) and get_current_game
+        (roadmap #e), which needs the identical rounds/spec reconstruction but never locks the row
+        since it isn't about to be played within this same request."""
         spec = _GAMES[(game_row.game_type, game_row.mode)]
         rounds = [
             spec.round_class.from_payload(
@@ -286,6 +366,27 @@ class GamesService:
             finished=game_row.finished,
             **self._game_kwargs(spec, game_row.game_type, game_row.mode),
         )
+
+    def _abandon_active_games(
+        self, owner: str, game_type: str, mode: str, user_id: UUID | None
+    ) -> None:
+        """Roadmap #e - marks every currently-active game of this same (owner-or-user, game_type,
+        mode) as abandoned, right before a new one is created for it (see create_game). Marks
+        *every* matching row rather than assuming there's ever only one - self-heals any stray
+        unfinished game left over from before the `abandoned` column existed, or from the
+        documented cross-tab race (two tabs both starting a new game for the same mode)."""
+        filter_clause = GameModel.user_id == user_id if user_id is not None else GameModel.owner == owner
+        rows = self._session.execute(
+            select(GameModel).where(
+                GameModel.game_type == game_type,
+                GameModel.mode == mode,
+                GameModel.finished.is_(False),
+                GameModel.abandoned.is_(False),
+                filter_clause,
+            )
+        ).scalars().all()
+        for row in rows:
+            row.abandoned = True
 
     def _save_new_game(self, game: BaseGame, user_id: UUID | None = None) -> None:
         game_row = GameModel(

@@ -15,18 +15,20 @@ from sqlalchemy.orm import Session
 
 from api.admin_api import router as admin_router
 from api.admin_games_api import router as admin_games_router
-from api.auth_api import get_current_user_optional
+from api.auth_api import get_current_user, get_current_user_optional
 from api.auth_api import router as auth_router
 from api.deps import get_db_session, get_immich_service, get_ml_service
 from api.dto.common import (
     ConfigOut,
     CreateGameIn,
+    CurrentGameOut,
     GameOut,
     GameRecordsOut,
     LeaderboardOut,
     LeaderboardWindow,
     PersonSearchOut,
     PlayRoundOut,
+    RecentGamesOut,
     parse_guess,
 )
 from api.rate_limit import GAME_ACTION_LIMIT, SEARCH_LIMIT, THUMBNAIL_LIMIT, limiter
@@ -89,6 +91,34 @@ def get_game_records(
     # account. Leaderboards (roadmap point F) are the feature that will require auth, not this one.
     records = games_service.get_personal_records(owner, user.id if user else None)
     return GameRecordsOut.from_records(records)
+
+
+@router.get("/games/current", response_model=CurrentGameOut)
+def get_current_game(
+    game_type: str,
+    mode: str,
+    owner: Annotated[str, Depends(get_owner_id)],
+    user: Annotated[UserModel | None, Depends(get_current_user_optional)],
+    games_service: Annotated[GamesService, Depends(get_games_service)],
+) -> CurrentGameOut:
+    # Idle-screen "Continuar" lookup (roadmap #e) - anonymous-friendly like create_game/get_game
+    # above ("ya sea loggeado o no"), unlike get_recent_games below which requires an account.
+    # Declared before GET /games/{game_id} (same reason /games/records already is): a static path
+    # must precede a {game_id}: UUID catch-all or it 422s trying to parse "current" as a UUID.
+    game = games_service.get_current_game(owner, game_type, mode, user.id if user else None)
+    return CurrentGameOut.from_game(game)
+
+
+@router.get("/games/recent", response_model=RecentGamesOut)
+def get_recent_games(
+    user: Annotated[UserModel, Depends(get_current_user)],
+    games_service: Annotated[GamesService, Depends(get_games_service)],
+) -> RecentGamesOut:
+    # "Ver juegos" profile modal (roadmap #e) - login required (unlike get_current_game above),
+    # matching the roadmap's "del jugador con sesión iniciada" - there's no anonymous equivalent of
+    # a persistent game history to look up.
+    games = games_service.get_recent_games(user.id)
+    return RecentGamesOut.from_recent_games(games)
 
 
 @router.get("/games/{game_type}/{mode}/leaderboard", response_model=LeaderboardOut)
