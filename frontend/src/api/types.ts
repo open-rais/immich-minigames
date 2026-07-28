@@ -313,6 +313,7 @@ export interface GameSettingOut {
 
 export interface GameSettingsOut {
   game_type: string
+  mode: string
   settings: GameSettingOut[]
 }
 

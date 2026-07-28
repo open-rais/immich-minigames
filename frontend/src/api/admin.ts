@@ -27,12 +27,16 @@ export async function listGameSettings(): Promise<GameSettingsOut[]> {
   return data
 }
 
-export async function updateGameSettings(gameType: string, values: Record<string, number>): Promise<GameSettingsOut> {
-  const { data } = await apiClient.put<GameSettingsOut>(`/admin/games/${gameType}/settings`, values)
+export async function updateGameSettings(
+  gameType: string,
+  mode: string,
+  values: Record<string, number>,
+): Promise<GameSettingsOut> {
+  const { data } = await apiClient.put<GameSettingsOut>(`/admin/games/${gameType}/${mode}/settings`, values)
   return data
 }
 
-export async function resetGameSettings(gameType: string): Promise<GameSettingsOut> {
-  const { data } = await apiClient.post<GameSettingsOut>(`/admin/games/${gameType}/settings/reset`)
+export async function resetGameSettings(gameType: string, mode: string): Promise<GameSettingsOut> {
+  const { data } = await apiClient.post<GameSettingsOut>(`/admin/games/${gameType}/${mode}/settings/reset`)
   return data
 }

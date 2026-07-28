@@ -10,16 +10,17 @@ import { SettingAccordion } from "./SettingAccordion"
 
 interface AdminGameRowProps {
   gameType: string
+  mode: string
   title: string
   settings: GameSettingsOut
   onUpdated: (updated: GameSettingsOut) => void
 }
 
 // Admin feature (ADMIN-FEATURE.md point #4) - one numeric field per admin-configurable setting
-// (services/game_settings.py's GAME_SETTING_SPECS), plus Save/reset-to-defaults. MoreOrLess has
-// no configurable settings today, so its row just shows a "nothing to configure" message instead
-// of an empty form.
-export function AdminGameRow({ gameType, title, settings, onUpdated }: AdminGameRowProps) {
+// (services/game_settings.py's GAME_SETTING_SPECS), plus Save/reset-to-defaults. Nested under a
+// per-game accordion (roadmap #f), one row per mode. MoreOrLess's modes have no configurable
+// settings today, so their rows just show a "nothing to configure" message instead of a form.
+export function AdminGameRow({ gameType, mode, title, settings, onUpdated }: AdminGameRowProps) {
   const { t } = useTranslation()
   const [values, setValues] = useState<Record<string, number>>(
     Object.fromEntries(settings.settings.map((s) => [s.key, s.value])),
@@ -34,7 +35,7 @@ export function AdminGameRow({ gameType, title, settings, onUpdated }: AdminGame
     setError(null)
     setSaved(false)
     try {
-      const updated = await updateGameSettings(gameType, values)
+      const updated = await updateGameSettings(gameType, mode, values)
       onUpdated(updated)
       setValues(Object.fromEntries(updated.settings.map((s) => [s.key, s.value])))
       setSaved(true)
@@ -50,7 +51,7 @@ export function AdminGameRow({ gameType, title, settings, onUpdated }: AdminGame
     setError(null)
     setSaved(false)
     try {
-      const reset = await resetGameSettings(gameType)
+      const reset = await resetGameSettings(gameType, mode)
       onUpdated(reset)
       setValues(Object.fromEntries(reset.settings.map((s) => [s.key, s.value])))
     } catch (err) {
@@ -73,11 +74,11 @@ export function AdminGameRow({ gameType, title, settings, onUpdated }: AdminGame
       <form onSubmit={handleSave} className="flex flex-col gap-4">
         {settings.settings.map((setting) => (
           <div key={setting.key} className="flex flex-col gap-1.5">
-            <label htmlFor={`${gameType}-${setting.key}`} className="text-sm font-semibold text-body">
+            <label htmlFor={`${gameType}-${mode}-${setting.key}`} className="text-sm font-semibold text-body">
               {t(`admin.games.settings.${setting.key}`)}
             </label>
             <input
-              id={`${gameType}-${setting.key}`}
+              id={`${gameType}-${mode}-${setting.key}`}
               type="number"
               step={setting.value_type === "int" ? 1 : "any"}
               min={setting.min_value}

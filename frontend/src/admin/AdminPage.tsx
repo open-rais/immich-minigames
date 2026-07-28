@@ -47,9 +47,9 @@ export function AdminPage() {
           <AdminUsersSection />
         </SettingAccordion>
 
-        <SettingAccordion title={t("admin.games.title")} description={t("admin.games.description")}>
-          <AdminGamesSection />
-        </SettingAccordion>
+        {/* Roadmap #f - each game is now its own top-level accordion (AdminGamesSection renders
+            one per GAME_CATALOG entry itself), replacing the single shared "Juegos" wrapper. */}
+        <AdminGamesSection />
       </main>
     </div>
   )

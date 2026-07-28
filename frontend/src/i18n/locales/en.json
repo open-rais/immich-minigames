@@ -207,7 +207,6 @@
       "loading": "Loading users..."
     },
     "games": {
-      "title": "Games",
       "description": "Edit configuration for each game",
       "loading": "Loading games...",
       "noSettings": "This game has no configurable settings yet.",
