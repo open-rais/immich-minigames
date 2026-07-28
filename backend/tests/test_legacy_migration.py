@@ -269,6 +269,13 @@ class TestHappyPath:
             cur.execute(f"SELECT count(*) FROM {LEGACY_SCHEMA}.games WHERE user_id IS NULL")
             assert cur.fetchone()[0] == 1
 
+            # Roadmap #f - the legacy game_settings row has no `mode` column (frozen at the 0004
+            # shape), so it must be backfilled from game_type during the copy rather than crashing
+            # on the target's NOT NULL constraint (see scripts/migrate_legacy_schema.py's
+            # _copy_game_settings).
+            cur.execute(f"SELECT mode FROM {LEGACY_SCHEMA}.game_settings WHERE game_type = 'immichdle'")
+            assert cur.fetchone()[0] == "person"
+
     def test_empty_legacy_schema_still_migrates_and_drops(self, migrated_target):
         """An install that was set up but never played. Zero rows is a successful migration, not
         'nothing to do' - the schema still has to leave Immich's database."""

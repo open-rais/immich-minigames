@@ -298,12 +298,16 @@ class GameSettingOut(BaseModel):
 
 class GameSettingsOut(BaseModel):
     game_type: str
+    mode: str
     settings: list[GameSettingOut]
 
     @classmethod
-    def from_specs(cls, game_type: str, specs: list[SettingSpec], values: dict[str, float]) -> "GameSettingsOut":
+    def from_specs(
+        cls, game_type: str, mode: str, specs: list[SettingSpec], values: dict[str, float]
+    ) -> "GameSettingsOut":
         return cls(
             game_type=game_type,
+            mode=mode,
             settings=[
                 GameSettingOut(
                     key=spec.key,

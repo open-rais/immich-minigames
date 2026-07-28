@@ -162,7 +162,7 @@ class GamesService:
         since not every concrete game class exposes them - callers already have the (game_type, mode)
         key that picked this spec in scope."""
         kwargs: dict[str, Any] = {
-            "settings": self._game_settings_service.get_settings(game_type),
+            "settings": self._game_settings_service.get_settings(game_type, mode),
         }
         if spec.provider_factory is not None:
             # The provider fully replaces this game's data source, so it gets provider + mode
