@@ -18,6 +18,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from api.api import router
 from api.auth_middleware import AuthMiddleware
 from api.rate_limit import limiter
+from api.request_log_middleware import RequestLogMiddleware
 from config import get_settings
 from games.immichdle import DuplicateGuessError, InvalidGuessError
 from games.whos_that_person import IncompleteGuessError
@@ -65,6 +66,10 @@ app.add_middleware(SlowAPIMiddleware)
 # registration order) - an unauthenticated request to a protected route 401s immediately without
 # touching rate-limit state at all, rather than being rate-limited on its way to a 401 anyway.
 app.add_middleware(AuthMiddleware)
+# Added last so it's the outermost of all (docs/TODO/LOGGING.md §4.3, same reverse-registration-
+# order reasoning as above) - it measures/logs the 401s AuthMiddleware cuts too, not just what
+# makes it past it.
+app.add_middleware(RequestLogMiddleware)
 
 
 def _error_handler(status_code: int):

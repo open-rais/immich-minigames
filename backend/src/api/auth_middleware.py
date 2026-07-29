@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response
 
+from api.request_context import user_var
 from persistence.base import get_session_factory
 from services.auth_service import AuthService, UnauthorizedError
 
@@ -44,6 +45,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         token = request.cookies.get(_COOKIE_NAME)
         if token is None:
+            # Decision [G] (docs/TODO/LOGGING.md): not an audit event on its own (an expired
+            # cookie in a stale tab 401s in bursts, pure noise) - the access log's `auth_fail`
+            # field is what lets an analysis tell "session expired" apart from "token tampered
+            # with" after the fact.
+            request.state.auth_fail = "missing_cookie"
             return _unauthorized("not authenticated")
 
         # One session for the whole request, not just this validation step - api/deps.py's
@@ -60,10 +66,24 @@ class AuthMiddleware(BaseHTTPMiddleware):
             user = AuthService(session).get_user_from_token(token)
         except UnauthorizedError as exc:
             session.close()
+            request.state.auth_fail = str(exc)
             return _unauthorized(str(exc))
 
         request.state.user = user
+        # Scalars captured now, not read back off `user` later: RequestLogMiddleware (outermost,
+        # docs/TODO/LOGGING.md §4.3) logs the access record only after call_next returns here -
+        # by then this method's own `finally` has already closed `session`, and if the route did
+        # any commit in between (e.g. change_password), SQLAlchemy's default expire-on-commit
+        # makes `user.id`/`user.username` a lazy reload that DetachedInstanceErrors on a closed
+        # session. Plain strings on request.state have no such lifecycle.
+        request.state.user_id = str(user.id)
+        request.state.username = user.username
+        # Downstream app logging (docs/TODO/LOGGING.md §4.2) - the outer access log middleware
+        # reads request.state instead (see its own module docstring for why this contextvar isn't
+        # visible to it).
+        user_token = user_var.set({"id": request.state.user_id, "username": request.state.username})
         try:
             return await call_next(request)
         finally:
+            user_var.reset(user_token)
             session.close()

@@ -6,6 +6,7 @@ import logging
 import logging.config
 from datetime import UTC, datetime
 
+from api.request_context import context_fields
 from config import Settings
 
 _STANDARD_ATTRS = frozenset(vars(logging.LogRecord("", 0, "", 0, "", (), None)).keys()) | {
@@ -22,6 +23,7 @@ class JsonFormatter(logging.Formatter):
             "level": record.levelname,
             "logger": record.name,
         }
+        payload.update(context_fields())
         if "event" in record.__dict__:
             payload["event"] = record.__dict__["event"]
         else:
@@ -39,11 +41,12 @@ class ConsoleFormatter(logging.Formatter):
         ts = datetime.fromtimestamp(record.created, tz=UTC).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
         event_or_msg = record.__dict__.get("event", record.getMessage())
         line = f"{ts} {record.levelname:<8} {record.name} {event_or_msg}"
-        extras = {
-            key: value
+        extras = context_fields()
+        extras.update(
+            (key, value)
             for key, value in record.__dict__.items()
             if key not in _STANDARD_ATTRS and key != "event"
-        }
+        )
         if extras:
             line += " " + " ".join(f"{key}={value}" for key, value in extras.items())
         if record.exc_info:
@@ -79,8 +82,8 @@ def configure_logging(settings: Settings) -> None:
                 # through our single stdout handler instead.
                 "uvicorn": {"handlers": [], "propagate": True},
                 "uvicorn.error": {"handlers": [], "propagate": True},
-                # Replaced by the access-log middleware (docs/TODO/LOGGING.md §4.3, not built
-                # yet) - silenced rather than left in its default per-request-line format.
+                # Replaced by RequestLogMiddleware's "access" logger (docs/TODO/LOGGING.md §4.3) -
+                # silenced rather than left in its default per-request-line format.
                 "uvicorn.access": {"handlers": [], "propagate": False},
                 # Never filtered by LOG_LEVEL (decision [H]) - security/access events stay
                 # visible even when LOG_LEVEL=ERROR silences app noise.
