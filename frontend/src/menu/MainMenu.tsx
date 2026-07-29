@@ -11,8 +11,7 @@ import { GameSection } from "./GameSection"
 // "year -> albums", just swapping "year" for "game" and "album" for "mode".
 export function MainMenu() {
   // Personal-best badge (roadmap point E) - fetched once here rather than per-ModeCard so N
-  // modes don't mean N requests; keyed by "gameType:mode" to match GameSection's lookup. Works
-  // for anonymous visitors too (see api/games.ts's getGameRecords), so this isn't gated on auth.
+  // modes don't mean N requests; keyed by "gameType:mode" to match GameSection's lookup.
   const [records, setRecords] = useState<Map<string, number>>(new Map())
 
   useEffect(() => {

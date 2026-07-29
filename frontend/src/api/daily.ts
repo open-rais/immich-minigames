@@ -1,9 +1,8 @@
 import { apiClient } from "./client"
 import type { DailyLeaderboardOut, DailyStatusOut, GameOut } from "./types"
 
-// Roadmap #G - backend/src/api/daily_api.py. All three work anonymously (see api/ownerId.ts's
-// X-Owner-Id, attached by client.ts's request interceptor) - same as the normal leaderboard, only
-// the *entries* are restricted to logged-in players, not the routes themselves.
+// Roadmap #G - backend/src/api/daily_api.py. Login is mandatory for every route (roadmap #H), so
+// no anonymous-vs-account branching to note here anymore.
 
 export async function getDailyStatus(): Promise<DailyStatusOut> {
   const { data } = await apiClient.get<DailyStatusOut>("/daily")
