@@ -1,16 +1,26 @@
 import type { ReactNode } from "react"
+import { useState } from "react"
 import { useTranslation } from "react-i18next"
-import { useNavigate, useParams } from "react-router-dom"
+import { useLocation, useNavigate, useParams } from "react-router-dom"
 
+import { getGame } from "../../api/games"
 import { BackButton } from "./BackButton"
 import { Button } from "./Button"
+import { buildDailyShareMessage } from "./dailyShareText"
+import { ShareModal } from "./ShareModal"
 
 // Every game is always rendered under the /:gameType/:mode route (see menu/GameRoute.tsx), so
 // IdleScreen/FinishedScreen can read these directly instead of every one of the 5 game components
-// having to thread them down as new props.
+// having to thread them down as new props. Roadmap #G - a daily game is rendered under
+// /daily/:gameType/:mode instead (menu/DailyGameRoute.tsx) and needs its own leaderboard route
+// (/daily/:gameType/:mode/leaderboard, menu/DailyLeaderboardPage.tsx) - detected off the actual
+// matched path rather than threading a `daily` prop through every *Game.tsx's IdleScreen/
+// FinishedScreen call just for this.
 function useLeaderboardHref(): string {
   const { gameType, mode } = useParams<{ gameType: string; mode: string }>()
-  return `/${gameType}/${mode}/leaderboard`
+  const { pathname } = useLocation()
+  const prefix = pathname.startsWith("/daily/") ? "/daily" : ""
+  return `${prefix}/${gameType}/${mode}/leaderboard`
 }
 
 // Roadmap #10 (rounds review) - null unless the caller says this mode has a roundsComponent
@@ -44,6 +54,10 @@ interface IdleScreenProps {
   // than a loading spinner, which would be a bigger UX change than this roadmap item asks for.
   hasCurrentGame?: boolean | null
   onContinue?: () => void
+  // Roadmap #G - daily games have no "Nuevo juego" concept (one attempt only, see
+  // docs/TODO/DAILY-GAMES.md decision [C]) - hides that secondary action even when hasCurrentGame
+  // is true, leaving just "Continuar". Every normal game keeps the default (true).
+  allowNewGame?: boolean
 }
 
 export function IdleScreen({
@@ -56,6 +70,7 @@ export function IdleScreen({
   busy,
   hasCurrentGame,
   onContinue,
+  allowNewGame = true,
 }: IdleScreenProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -78,9 +93,11 @@ export function IdleScreen({
             {t("common.continueCta")}
           </Button>
         )}
-        <Button variant={canContinue ? "secondary" : "primary"} className="w-56 py-3" onClick={onStart} disabled={busy}>
-          {t(canContinue ? "common.newGameCta" : "common.startCta")}
-        </Button>
+        {(!canContinue || allowNewGame) && (
+          <Button variant={canContinue ? "secondary" : "primary"} className="w-56 py-3" onClick={onStart} disabled={busy}>
+            {t(canContinue ? "common.newGameCta" : "common.startCta")}
+          </Button>
+        )}
         <Button variant="secondary" className="w-56 py-3" onClick={() => navigate(leaderboardHref)}>
           {t("common.leaderboards")}
         </Button>
@@ -126,13 +143,51 @@ interface FinishedScreenProps {
   // Forwarded from GameComponentProps (see games/catalog.ts/GameRoute.tsx) - whether the current
   // mode has a roundsComponent registered at all.
   hasRoundsView?: boolean
+  // Roadmap #G - daily games have no replay (one attempt only) - hides "Jugar de nuevo" entirely.
+  // Every normal game keeps the default (true).
+  allowPlayAgain?: boolean
+  // Roadmap #G, F6 - shows a "Compartir" button when set (daily games only, see each *Game.tsx's
+  // FinishedScreen call). gameTitle/modeTitle are passed in already-translated (the same strings
+  // each *Game.tsx already computes for its own IdleScreen title) rather than looked up here via
+  // games/catalog.ts, which would cycle back through every *Game.tsx (see useRoundsHref above).
+  dailyShare?: { gameId: string; gameType: string; mode: string; gameTitle: string; modeTitle: string }
 }
 
-export function FinishedScreen({ score, onPlayAgain, onBack, busy, title, children, gameId, hasRoundsView }: FinishedScreenProps) {
+export function FinishedScreen({
+  score,
+  onPlayAgain,
+  onBack,
+  busy,
+  title,
+  children,
+  gameId,
+  hasRoundsView,
+  allowPlayAgain = true,
+  dailyShare,
+}: FinishedScreenProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const leaderboardHref = useLeaderboardHref()
   const roundsHref = useRoundsHref(gameId, hasRoundsView)
+  const [shareBusy, setShareBusy] = useState(false)
+  const [shareText, setShareText] = useState<string | null>(null)
+  const [shareError, setShareError] = useState(false)
+
+  async function handleShare() {
+    if (!dailyShare) return
+    setShareBusy(true)
+    setShareError(false)
+    try {
+      const g = await getGame(dailyShare.gameId)
+      const link = `${window.location.origin}/daily/${dailyShare.gameType}/${dailyShare.mode}`
+      setShareText(buildDailyShareMessage(t, g, dailyShare.gameTitle, dailyShare.modeTitle, link))
+    } catch {
+      setShareError(true)
+    } finally {
+      setShareBusy(false)
+    }
+  }
+
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-app-bg px-6 text-center">
       <BackButton label={t("common.back")} onClick={onBack} />
@@ -140,9 +195,16 @@ export function FinishedScreen({ score, onPlayAgain, onBack, busy, title, childr
       {children}
       <p className="text-xl text-muted">{t("common.finished.finalScore", { score })}</p>
       <div className="flex flex-col items-stretch gap-3">
-        <Button variant="primary" className="w-56 py-3" onClick={onPlayAgain} disabled={busy}>
-          {t("common.playAgain")}
-        </Button>
+        {allowPlayAgain && (
+          <Button variant="primary" className="w-56 py-3" onClick={onPlayAgain} disabled={busy}>
+            {t("common.playAgain")}
+          </Button>
+        )}
+        {dailyShare && (
+          <Button variant="primary" className="w-56 py-3" onClick={handleShare} disabled={shareBusy}>
+            {t("daily.share.button")}
+          </Button>
+        )}
         {roundsHref && (
           <Button variant="secondary" className="w-56 py-3" onClick={() => navigate(roundsHref)}>
             {t("common.viewRounds")}
@@ -152,6 +214,8 @@ export function FinishedScreen({ score, onPlayAgain, onBack, busy, title, childr
           {t("common.leaderboards")}
         </Button>
       </div>
+      {shareError && <p className="text-sm font-semibold text-rose-600">{t("daily.share.error")}</p>}
+      {shareText && <ShareModal text={shareText} onClose={() => setShareText(null)} />}
     </div>
   )
 }

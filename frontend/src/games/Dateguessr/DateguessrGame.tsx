@@ -32,7 +32,7 @@ function isDateguessrRound(round: RoundOut): round is DateguessrRoundOut {
   return round.game_type === GameType.Dateguessr
 }
 
-export function DateguessrGame({ coverUrl, hasRoundsView }: GameComponentProps) {
+export function DateguessrGame({ coverUrl, hasRoundsView, daily = false }: GameComponentProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const backToMenu = () => navigate("/")
@@ -46,6 +46,7 @@ export function DateguessrGame({ coverUrl, hasRoundsView }: GameComponentProps) 
       isRound: isDateguessrRound,
       playRound: (gameId, roundId, guess) => playRound(gameId, roundId, { date: guess }),
       onNewRound: () => setSelectedDate(null),
+      daily,
     })
 
   if (screen === "idle") {
@@ -60,6 +61,7 @@ export function DateguessrGame({ coverUrl, hasRoundsView }: GameComponentProps) 
         busy={busy}
         hasCurrentGame={hasCurrentGame}
         onContinue={resumeGame}
+        allowNewGame={!daily}
       />
     )
   }
@@ -77,6 +79,18 @@ export function DateguessrGame({ coverUrl, hasRoundsView }: GameComponentProps) 
         busy={busy}
         gameId={game?.id}
         hasRoundsView={hasRoundsView}
+        allowPlayAgain={!daily}
+        dailyShare={
+          daily && game
+            ? {
+                gameId: game.id,
+                gameType: GAME_TYPE,
+                mode: MODE,
+                gameTitle: t("dateguessr.title"),
+                modeTitle: t("dateguessr.modes.daysToDate"),
+              }
+            : undefined
+        }
       />
     )
   }

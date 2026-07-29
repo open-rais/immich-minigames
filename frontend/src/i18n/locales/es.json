@@ -19,6 +19,29 @@
     "bestScore": "Mejor: {{score}}",
     "notPlayed": "Sin jugar"
   },
+  "daily": {
+    "title": "Diario",
+    "leaderboard": {
+      "previousDay": "Día anterior",
+      "nextDay": "Día siguiente"
+    },
+    "share": {
+      "button": "Compartir",
+      "copyButton": "Copiar",
+      "copied": "¡Copiado al portapapeles!",
+      "error": "No se pudo copiar - intenta de nuevo",
+      "header": "{{game}} - {{date}}",
+      "allHeader": "Resultados diarios - {{date}}",
+      "moreOrLess": "📈 racha: {{score}} 📉",
+      "roundLine": "{{color}} {{points}} pts ({{detail}})",
+      "total": "Total: {{score}} pts",
+      "immichdleWon": "🟩 adivinado en {{attempts}} intentos",
+      "immichdleLost": "🟥 No fue adivinado",
+      "whosThatPerson": "🧑‍🧑‍🧒‍🧒 {{correct}}/{{total}} personas",
+      "km": "{{value}}km",
+      "days": "{{count}} días"
+    }
+  },
   "leaderboard": {
     "title": "Clasificación",
     "empty": "Todavía nadie ha jugado este modo en este período.",
@@ -193,7 +216,8 @@
         "empty": "Aún no has terminado ninguna partida.",
         "score": "{{score}} pts",
         "finished": "Terminado",
-        "abandoned": "Abandonado"
+        "abandoned": "Abandonado",
+        "daily": "Diario"
       }
     },
     "error": {
@@ -224,6 +248,14 @@
         "asset_count_weight": "Peso de la cantidad de fotos (0 = uniforme, 1 = proporcional)",
         "total_people": "Personas totales",
         "max_hidden_faces": "Caras ocultas máximas por ronda"
+      }
+    },
+    "daily": {
+      "title": "Juego diario",
+      "enabledLabel": "Activar juego diario",
+      "settings": {
+        "no_repeat_days": "Ventana sin repetir (días)",
+        "chain_length": "Tope de la cadena"
       }
     }
   }

@@ -75,10 +75,17 @@ export function RecentGamesModal({ onClose }: RecentGamesModalProps) {
                       <div className="h-10 w-10 flex-none rounded-lg bg-primary" />
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-ink">
-                        {catalogGame && catalogMode
-                          ? `${t(catalogGame.gameTitleKey)} · ${t(catalogMode.modeTitleKey)}`
-                          : game.game_type}
+                      <p className="flex items-center gap-1.5 truncate text-sm font-semibold text-ink">
+                        <span className="truncate">
+                          {catalogGame && catalogMode
+                            ? `${t(catalogGame.gameTitleKey)} · ${t(catalogMode.modeTitleKey)}`
+                            : game.game_type}
+                        </span>
+                        {game.is_daily && (
+                          <span className="flex-none rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">
+                            {t("auth.profile.recentGames.daily")}
+                          </span>
+                        )}
                       </p>
                       <p className="text-xs text-muted">
                         {t("auth.profile.recentGames.score", { score: game.score })}

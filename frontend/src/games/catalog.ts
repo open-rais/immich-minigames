@@ -27,6 +27,10 @@ export interface GameComponentProps {
   // its "Ver rondas" button without any game-tree module importing this catalog file itself (that
   // would cycle back through the *Game.tsx components this file already imports).
   hasRoundsView?: boolean
+  // Roadmap #G - true when this instance is playing today's daily challenge (resolved by
+  // menu/DailyGameRoute.tsx from the /daily/:gameType/:mode route) instead of a normal game.
+  // Threaded into useRoundGame's `daily` config - see that hook for what changes.
+  daily?: boolean
 }
 
 // Roadmap #10 (rounds review) - every <Name>Rounds component takes the finished GameOut it reviews,

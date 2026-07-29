@@ -30,7 +30,7 @@ function isWhosThatPersonRound(round: RoundOut): round is WhosThatPersonRoundOut
   return round.game_type === GameType.WhosThatPerson
 }
 
-export function WhosThatPersonGame({ coverUrl, hasRoundsView }: GameComponentProps) {
+export function WhosThatPersonGame({ coverUrl, hasRoundsView, daily = false }: GameComponentProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const backToMenu = () => navigate("/")
@@ -62,6 +62,7 @@ export function WhosThatPersonGame({ coverUrl, hasRoundsView }: GameComponentPro
         seenRoundIdsRef.current = new Set(answered.map((r) => r.id))
         setPeopleAskedTotal(answered.reduce((sum, r) => sum + r.faces.length, 0))
       },
+      daily,
     })
 
   useEffect(() => {
@@ -92,6 +93,7 @@ export function WhosThatPersonGame({ coverUrl, hasRoundsView }: GameComponentPro
         busy={busy}
         hasCurrentGame={hasCurrentGame}
         onContinue={resumeGame}
+        allowNewGame={!daily}
       />
     )
   }
@@ -109,6 +111,18 @@ export function WhosThatPersonGame({ coverUrl, hasRoundsView }: GameComponentPro
         busy={busy}
         gameId={game?.id}
         hasRoundsView={hasRoundsView}
+        allowPlayAgain={!daily}
+        dailyShare={
+          daily && game
+            ? {
+                gameId: game.id,
+                gameType: GAME_TYPE,
+                mode: MODE,
+                gameTitle: t("whosThatPerson.title"),
+                modeTitle: t("whosThatPerson.modes.namedFaces"),
+              }
+            : undefined
+        }
       />
     )
   }

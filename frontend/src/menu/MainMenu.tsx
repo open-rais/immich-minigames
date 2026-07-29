@@ -3,6 +3,7 @@ import { useEffect, useState } from "react"
 import { getGameRecords } from "../api/games"
 import { GAME_CATALOG } from "../games/catalog"
 import { AppHeader } from "./AppHeader"
+import { DailySection } from "./DailySection"
 import { GameSection } from "./GameSection"
 
 // Modeled on Immich's own Albums view (grouped by year, collapsible): each game is a collapsible
@@ -26,6 +27,7 @@ export function MainMenu() {
     <div className="min-h-screen bg-app-bg">
       <AppHeader />
       <div className="flex flex-col gap-10 px-6 py-8 md:px-10 md:py-10">
+        <DailySection />
         {GAME_CATALOG.map((game) => (
           <GameSection key={game.gameType} game={game} records={records} />
         ))}

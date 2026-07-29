@@ -19,6 +19,29 @@
     "bestScore": "Best: {{score}}",
     "notPlayed": "Not played yet"
   },
+  "daily": {
+    "title": "Daily",
+    "leaderboard": {
+      "previousDay": "Previous day",
+      "nextDay": "Next day"
+    },
+    "share": {
+      "button": "Share",
+      "copyButton": "Copy",
+      "copied": "Copied to clipboard!",
+      "error": "Couldn't copy - try again",
+      "header": "{{game}} - {{date}}",
+      "allHeader": "Daily results - {{date}}",
+      "moreOrLess": "📈 Streak: {{score}} 📉",
+      "roundLine": "{{color}} {{points}} pts ({{detail}})",
+      "total": "Total: {{score}} pts",
+      "immichdleWon": "🟩 Guessed in {{attempts}} tries",
+      "immichdleLost": "🟥 Not guessed",
+      "whosThatPerson": "🧑‍🧑‍🧒‍🧒 {{correct}}/{{total}} people",
+      "km": "{{value}}km",
+      "days": "{{count}} days"
+    }
+  },
   "leaderboard": {
     "title": "Leaderboard",
     "empty": "No one has played this mode in this window yet.",
@@ -193,7 +216,8 @@
         "empty": "You haven't finished any games yet.",
         "score": "{{score}} pts",
         "finished": "Finished",
-        "abandoned": "Abandoned"
+        "abandoned": "Abandoned",
+        "daily": "Daily"
       }
     },
     "error": {
@@ -224,6 +248,14 @@
         "asset_count_weight": "Photo count weight (0 = uniform, 1 = proportional)",
         "total_people": "Total people",
         "max_hidden_faces": "Max hidden faces per round"
+      }
+    },
+    "daily": {
+      "title": "Daily game",
+      "enabledLabel": "Enable for the daily rotation",
+      "settings": {
+        "no_repeat_days": "No-repeat window (days)",
+        "chain_length": "Chain length cap"
       }
     }
   }

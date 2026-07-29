@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 
-import { listGameSettings } from "../api/admin"
+import { listDailySettings, listGameSettings } from "../api/admin"
 import { apiErrorMessage } from "../api/errors"
-import type { GameSettingsOut } from "../api/types"
+import type { DailySettingsOut, GameSettingsOut } from "../api/types"
 import { GAME_CATALOG } from "../games/catalog"
 import { AdminGameRow } from "./AdminGameRow"
 import { SettingAccordion } from "./SettingAccordion"
@@ -18,15 +18,21 @@ function settingsKey(gameType: string, mode: string): string {
 // of the old one-row-per-game_type. Fetches every (game_type, mode)'s settings in one request,
 // then renders a nested row per GAME_CATALOG mode (the same source of truth already used
 // elsewhere for game/mode titles) so a mode with no persisted override yet still gets a row
-// showing its defaults.
+// showing its defaults. Roadmap #G - also fetches the daily config for every mode alongside the
+// normal settings (one extra request, same shape) and threads it into each AdminGameRow, which
+// renders the "Activar juego diario" toggle + daily-only settings inline below the normal ones.
 export function AdminGamesSection() {
   const { t } = useTranslation()
   const [settingsByKey, setSettingsByKey] = useState<Record<string, GameSettingsOut> | null>(null)
+  const [dailyByKey, setDailyByKey] = useState<Record<string, DailySettingsOut> | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    listGameSettings()
-      .then((list) => setSettingsByKey(Object.fromEntries(list.map((s) => [settingsKey(s.game_type, s.mode), s]))))
+    Promise.all([listGameSettings(), listDailySettings()])
+      .then(([settings, daily]) => {
+        setSettingsByKey(Object.fromEntries(settings.map((s) => [settingsKey(s.game_type, s.mode), s])))
+        setDailyByKey(Object.fromEntries(daily.map((d) => [settingsKey(d.game_type, d.mode), d])))
+      })
       .catch((err) => setError(apiErrorMessage(err) ?? t("auth.error.generic")))
   }, [t])
 
@@ -34,8 +40,12 @@ export function AdminGamesSection() {
     setSettingsByKey((prev) => (prev ? { ...prev, [settingsKey(updated.game_type, updated.mode)]: updated } : prev))
   }
 
+  function handleDailyUpdated(updated: DailySettingsOut) {
+    setDailyByKey((prev) => (prev ? { ...prev, [settingsKey(updated.game_type, updated.mode)]: updated } : prev))
+  }
+
   if (error) return <p className="text-sm font-semibold text-rose-600">{error}</p>
-  if (!settingsByKey) return <p className="text-sm text-faint">{t("admin.games.loading")}</p>
+  if (!settingsByKey || !dailyByKey) return <p className="text-sm text-faint">{t("admin.games.loading")}</p>
 
   return (
     <>
@@ -43,7 +53,8 @@ export function AdminGamesSection() {
         <SettingAccordion key={game.gameType} title={t(game.gameTitleKey)} description={t("admin.games.description")}>
           {game.modes.map((mode) => {
             const settings = settingsByKey[settingsKey(game.gameType, mode.mode)]
-            if (!settings) return null
+            const daily = dailyByKey[settingsKey(game.gameType, mode.mode)]
+            if (!settings || !daily) return null
             return (
               <AdminGameRow
                 key={mode.mode}
@@ -52,6 +63,8 @@ export function AdminGamesSection() {
                 title={t(mode.modeTitleKey)}
                 settings={settings}
                 onUpdated={handleUpdated}
+                dailySettings={daily}
+                onDailyUpdated={handleDailyUpdated}
               />
             )
           })}

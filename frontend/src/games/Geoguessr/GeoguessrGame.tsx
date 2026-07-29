@@ -33,7 +33,7 @@ function isGeoguessrRound(round: RoundOut): round is GeoguessrRoundOut {
 
 type Pin = { lat: number; lng: number }
 
-export function GeoguessrGame({ coverUrl, hasRoundsView }: GameComponentProps) {
+export function GeoguessrGame({ coverUrl, hasRoundsView, daily = false }: GameComponentProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const backToMenu = () => navigate("/")
@@ -47,6 +47,7 @@ export function GeoguessrGame({ coverUrl, hasRoundsView }: GameComponentProps) {
       isRound: isGeoguessrRound,
       playRound: (gameId, roundId, guess) => playRound(gameId, roundId, { latitude: guess.lat, longitude: guess.lng }),
       onNewRound: () => setPin(null),
+      daily,
     })
 
   if (screen === "idle") {
@@ -61,6 +62,7 @@ export function GeoguessrGame({ coverUrl, hasRoundsView }: GameComponentProps) {
         busy={busy}
         hasCurrentGame={hasCurrentGame}
         onContinue={resumeGame}
+        allowNewGame={!daily}
       />
     )
   }
@@ -78,6 +80,18 @@ export function GeoguessrGame({ coverUrl, hasRoundsView }: GameComponentProps) {
         busy={busy}
         gameId={game?.id}
         hasRoundsView={hasRoundsView}
+        allowPlayAgain={!daily}
+        dailyShare={
+          daily && game
+            ? {
+                gameId: game.id,
+                gameType: GAME_TYPE,
+                mode: MODE,
+                gameTitle: t("geoguessr.title"),
+                modeTitle: t("geoguessr.modes.distanceBetweenGuess"),
+              }
+            : undefined
+        }
       />
     )
   }

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react"
 
-import { createGame, getCurrentGame } from "../../api/games"
+import { createDailyGame, getDailyStatus } from "../../api/daily"
+import { apiErrorStatus } from "../../api/errors"
+import { createGame, getCurrentGame, getGame } from "../../api/games"
 import type { GameOut, PlayRoundOut, RoundOut } from "../../api/types"
 import { useGuardedRequests } from "./useGuardedRequests"
 
@@ -47,6 +49,13 @@ interface UseRoundGameConfig<TRound extends RoundOut, TGuess> {
   // counter) needs to seed itself from every already-answered round, not just the resumed pending
   // one. Games with no such state (Geoguessr, Dateguessr) simply omit it.
   onResume?: (game: GameOut) => void
+  // Roadmap #G - true when this instance is playing today's daily challenge (menu/
+  // DailyGameRoute.tsx) instead of a normal game. Changes only the wiring below: which endpoint
+  // creates a game, where the idle-screen "has an active game" check reads from (GET /daily's
+  // status instead of get_current_game, which excludes daily games by design - see
+  // docs/TODO/DAILY-GAMES.md §4.5), and that an already-finished daily jumps straight to the
+  // finished screen instead of ever offering "Jugar" again.
+  daily?: boolean
 }
 
 export function useRoundGame<TRound extends RoundOut, TGuess>({
@@ -57,6 +66,7 @@ export function useRoundGame<TRound extends RoundOut, TGuess>({
   playRound,
   onNewRound,
   onResume,
+  daily = false,
 }: UseRoundGameConfig<TRound, TGuess>) {
   const [screen, setScreen] = useState<Screen>("idle")
   const [busy, setBusy] = useState(false)
@@ -68,6 +78,13 @@ export function useRoundGame<TRound extends RoundOut, TGuess>({
   // null while the idle-screen check below is still in flight, which IdleScreen treats the same
   // as false (an accepted brief "plain layout, then Continue pops in" flash).
   const [hasCurrentGame, setHasCurrentGame] = useState<boolean | null>(null)
+  // Roadmap #G - the daily game's id, known from GET /daily's status before the player has done
+  // anything - resumeGame() reads this instead of calling getCurrentGame (which never returns a
+  // daily game).
+  const dailyGameIdRef = useRef<string | null>(null)
+  // Bumped when the idle-screen status needs re-fetching while the screen is already "idle" -
+  // today only the daily 409 fallback in startGame below (docs/TODO/DAILY-GAMES.md §4.7).
+  const [idleRefresh, setIdleRefresh] = useState(0)
 
   const { isCurrent, guarded, discardInFlight } = useGuardedRequests()
   // One in-flight ref per action - start vs guess don't need to block each other, but each needs its
@@ -85,6 +102,43 @@ export function useRoundGame<TRound extends RoundOut, TGuess>({
   useEffect(() => {
     if (screen !== "idle") return
     let cancelled = false
+
+    if (daily) {
+      getDailyStatus()
+        .then((status) => {
+          if (cancelled) return
+          const modeStatus = status.modes.find((m) => m.game_type === gameType && m.mode === mode)
+          dailyGameIdRef.current = modeStatus?.game_id ?? null
+
+          if (modeStatus?.status === "finished" && modeStatus.game_id) {
+            setHasCurrentGame(false)
+            getGame(modeStatus.game_id)
+              .then((g) => {
+                if (cancelled) return
+                setGame({
+                  id: g.id,
+                  score: g.score,
+                  finished: true,
+                  totalRounds: g.total_rounds,
+                  totalPeople: g.total_people,
+                })
+                setScreen("finished")
+              })
+              .catch(() => {
+                if (!cancelled) setScreen("error")
+              })
+            return
+          }
+          setHasCurrentGame(modeStatus?.status === "in_progress")
+        })
+        .catch(() => {
+          if (!cancelled) setHasCurrentGame(false)
+        })
+      return () => {
+        cancelled = true
+      }
+    }
+
     getCurrentGame(gameType, mode)
       .then((g) => {
         if (!cancelled) setHasCurrentGame(g !== null)
@@ -95,7 +149,7 @@ export function useRoundGame<TRound extends RoundOut, TGuess>({
     return () => {
       cancelled = true
     }
-  }, [screen, gameType, mode])
+  }, [screen, gameType, mode, daily, idleRefresh])
 
   // Shared by startGame (fresh GameOut from createGame) and resumeGame (an existing one from
   // getCurrentGame) - both hand off a GameOut whose last round is the current pending one (true by
@@ -116,15 +170,24 @@ export function useRoundGame<TRound extends RoundOut, TGuess>({
     await guarded(startInFlightRef, async (token) => {
       setBusy(true)
       try {
-        const g = await createGame(gameType, mode)
+        const g = daily ? await createDailyGame(gameType, mode) : await createGame(gameType, mode)
         if (!isCurrent(token)) return
         if (!applyGame(g)) {
           setScreen("error")
           return
         }
         onNewRoundRef.current()
-      } catch {
-        if (isCurrent(token)) setScreen("error")
+      } catch (err) {
+        if (!isCurrent(token)) return
+        if (daily && apiErrorStatus(err) === 409) {
+          // Today's attempt was consumed between the idle status check and this create (another
+          // tab/device) - re-run the status check instead of showing a generic error; it lands on
+          // the finished (or in-progress) state, the "ya jugado" behavior of DAILY-GAMES.md §4.7.
+          setHasCurrentGame(null)
+          setIdleRefresh((n) => n + 1)
+          return
+        }
+        setScreen("error")
       } finally {
         if (isCurrent(token)) setBusy(false)
       }
@@ -137,7 +200,11 @@ export function useRoundGame<TRound extends RoundOut, TGuess>({
     await guarded(startInFlightRef, async (token) => {
       setBusy(true)
       try {
-        const g = await getCurrentGame(gameType, mode)
+        const g = daily
+          ? dailyGameIdRef.current
+            ? await getGame(dailyGameIdRef.current)
+            : null
+          : await getCurrentGame(gameType, mode)
         if (!isCurrent(token) || !g) return
         if (!applyGame(g)) {
           setScreen("error")
