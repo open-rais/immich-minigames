@@ -19,6 +19,8 @@ from games.immichdle.settings import SETTING_SPECS as IMMICHDLE_SETTING_SPECS
 from games.more_or_less import GAME_TYPE as MORE_OR_LESS_TYPE
 from games.more_or_less.settings import SETTING_SPECS as MORE_OR_LESS_SETTING_SPECS
 from games.settings_spec import SettingSpec, ValueType  # noqa: F401 (ValueType re-exported for callers)
+from games.timeline import GAME_TYPE as TIMELINE_TYPE
+from games.timeline.settings import SETTING_SPECS as TIMELINE_SETTING_SPECS
 from games.whos_that_person import GAME_TYPE as WHOS_THAT_PERSON_TYPE
 from games.whos_that_person.settings import SETTING_SPECS as WHOS_THAT_PERSON_SETTING_SPECS
 from persistence.game_settings import GameSettingsModel
@@ -34,6 +36,7 @@ GAME_SETTING_SPECS: dict[tuple[str, str], list[SettingSpec]] = {
     **_flatten(IMMICHDLE_TYPE, IMMICHDLE_SETTING_SPECS),
     **_flatten(WHOS_THAT_PERSON_TYPE, WHOS_THAT_PERSON_SETTING_SPECS),
     **_flatten(MORE_OR_LESS_TYPE, MORE_OR_LESS_SETTING_SPECS),
+    **_flatten(TIMELINE_TYPE, TIMELINE_SETTING_SPECS),
 }
 
 
