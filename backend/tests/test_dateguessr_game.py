@@ -3,9 +3,9 @@ from uuid import uuid4
 
 import pytest
 
-from games.asset_rounds import MAX_EXTRA_ASSETS
 from games.dateguessr import (
     DECAY_DAYS,
+    MAX_EXTRA_ASSETS,
     MAX_SCORE,
     TOTAL_ROUNDS,
     AssetSnapshot,
@@ -65,7 +65,7 @@ class TestDateguessrGame:
 
 
 class TestDateguessrExtras:
-    """Extras are purely decorative (see games/asset_rounds.py's MAX_EXTRA_ASSETS) - never forced to
+    """Extras are purely decorative (see games/dateguessr/game.py's MAX_EXTRA_ASSETS) - never forced to
     5, but whatever is picked must be from the exact same local day as the round's main asset, and
     never repeat."""
 

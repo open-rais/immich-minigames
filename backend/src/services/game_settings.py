@@ -2,10 +2,11 @@
 hardcoded constants (games/*.py) are exposed as admin-editable settings, plus the service that
 reads/writes per-game_type overrides (persistence/game_settings.py). Scope deliberately limited to
 knobs that affect visible scoring/difficulty (confirmed with the project owner) - internal
-sampling/variety parameters (e.g. asset_rounds.py's _CANDIDATE_SAMPLE_SIZE) stay pure module
-constants, never exposed here. Geoguessr and Dateguessr get independent entries below even though
-they share the same asset_rounds.py defaults today (also confirmed with the project owner) - each
-game_type is looked up/persisted separately.
+sampling/variety parameters (e.g. games/geoguessr/game.py's _CANDIDATE_SAMPLE_SIZE) stay pure
+module constants, never exposed here. Geoguessr and Dateguessr get independent entries below even
+though they share the same defaults today (also confirmed with the project owner) - each
+game_type is looked up/persisted separately, and each owns its own copy of these constants (see
+docs/TODO/DECOUPLING.md).
 """
 
 import math
@@ -14,11 +15,16 @@ from typing import Literal
 
 from sqlalchemy.orm import Session
 
-from games.asset_rounds import MAX_EXTRA_ASSETS, MAX_SCORE, TOTAL_ROUNDS
 from games.dateguessr import DECAY_DAYS, FLAT_SCORE_DAYS, MODE_DAYS_TO_DATE
 from games.dateguessr import GAME_TYPE as DATEGUESSR_TYPE
+from games.dateguessr import MAX_EXTRA_ASSETS as DATEGUESSR_MAX_EXTRA_ASSETS
+from games.dateguessr import MAX_SCORE as DATEGUESSR_MAX_SCORE
+from games.dateguessr import TOTAL_ROUNDS as DATEGUESSR_TOTAL_ROUNDS
 from games.geoguessr import DECAY_KM, FLAT_SCORE_RADIUS_KM, MODE_DISTANCE_BETWEEN_GUESS
 from games.geoguessr import GAME_TYPE as GEOGUESSR_TYPE
+from games.geoguessr import MAX_EXTRA_ASSETS as GEOGUESSR_MAX_EXTRA_ASSETS
+from games.geoguessr import MAX_SCORE as GEOGUESSR_MAX_SCORE
+from games.geoguessr import TOTAL_ROUNDS as GEOGUESSR_TOTAL_ROUNDS
 from games.immichdle import GAME_TYPE as IMMICHDLE_TYPE
 from games.immichdle import ASSET_COUNT_WEIGHT_EXPONENT, MODE_PERSON, STARTING_SCORE, WRONG_GUESS_PENALTY
 from games.more_or_less import GAME_TYPE as MORE_OR_LESS_TYPE
@@ -45,16 +51,16 @@ class SettingSpec:
 
 GAME_SETTING_SPECS: dict[tuple[str, str], list[SettingSpec]] = {
     (GEOGUESSR_TYPE, MODE_DISTANCE_BETWEEN_GUESS): [
-        SettingSpec("total_rounds", TOTAL_ROUNDS, "int", 1, 50),
-        SettingSpec("max_score", MAX_SCORE, "int", 1, 100000),
-        SettingSpec("max_extra_assets", MAX_EXTRA_ASSETS, "int", 0, 20),
+        SettingSpec("total_rounds", GEOGUESSR_TOTAL_ROUNDS, "int", 1, 50),
+        SettingSpec("max_score", GEOGUESSR_MAX_SCORE, "int", 1, 100000),
+        SettingSpec("max_extra_assets", GEOGUESSR_MAX_EXTRA_ASSETS, "int", 0, 20),
         SettingSpec("flat_score_radius_km", FLAT_SCORE_RADIUS_KM, "float", 0, 20000),
         SettingSpec("decay_km", DECAY_KM, "float", 0.01, 20000),
     ],
     (DATEGUESSR_TYPE, MODE_DAYS_TO_DATE): [
-        SettingSpec("total_rounds", TOTAL_ROUNDS, "int", 1, 50),
-        SettingSpec("max_score", MAX_SCORE, "int", 1, 100000),
-        SettingSpec("max_extra_assets", MAX_EXTRA_ASSETS, "int", 0, 20),
+        SettingSpec("total_rounds", DATEGUESSR_TOTAL_ROUNDS, "int", 1, 50),
+        SettingSpec("max_score", DATEGUESSR_MAX_SCORE, "int", 1, 100000),
+        SettingSpec("max_extra_assets", DATEGUESSR_MAX_EXTRA_ASSETS, "int", 0, 20),
         SettingSpec("flat_score_days", FLAT_SCORE_DAYS, "int", 0, 36500),
         SettingSpec("decay_days", DECAY_DAYS, "float", 0.01, 36500),
     ],

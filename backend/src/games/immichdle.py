@@ -19,7 +19,7 @@ from uuid import UUID, uuid4
 
 from domain.person import Person
 from games.base import BaseGame, BaseRound, PlayRoundResult
-from games.serialization import DictCodec
+from games.shared.serialization import DictCodec
 from services.immich_service import ImmichService
 from services.ml_service import MLService
 

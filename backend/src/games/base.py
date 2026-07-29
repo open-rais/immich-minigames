@@ -93,6 +93,21 @@ class BaseGame(ABC):
     def current_round(self) -> BaseRound:
         return self.rounds[-1]
 
+    @property
+    def total_rounds(self) -> int | None:
+        """Live fixed round count (ADMIN-FEATURE.md point #4), for games that have one
+        (Geoguessr/Dateguessr) - None for every other game. Overridden by whoever has it; see
+        api/dto/common.py's GameOut for why this is public. Living here (rather than an
+        `isinstance` check in the DTO layer) is what lets each game define this independently
+        without the DTO layer knowing which games happen to share the concept."""
+        return None
+
+    @property
+    def total_people(self) -> int | None:
+        """Live target headcount (ADMIN-FEATURE.md point #4) for WhosThatPerson - None for every
+        other game. Same rationale as total_rounds above."""
+        return None
+
     def play_round(self, guess: Any) -> PlayRoundResult:
         if self.finished:
             raise ValueError("game is already finished")

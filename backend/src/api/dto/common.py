@@ -21,13 +21,12 @@ from api.dto.immichdle import ImmichdlePlayRoundIn, ImmichdleRoundOut
 from api.dto.more_or_less import MoreOrLessPlayRoundIn, MoreOrLessRoundOut
 from api.dto.whos_that_person import WhosThatPersonPlayRoundIn, WhosThatPersonRoundOut
 from domain.person import Person
-from games.asset_rounds import AssetRoundsGame
 from games.base import BaseGame, BaseRound
 from games.dateguessr import DateguessrRound
 from games.geoguessr import GeoguessrRound
 from games.immichdle import ImmichdleGame, ImmichdleRound
 from games.more_or_less import MoreOrLessRound
-from games.whos_that_person import WhosThatPersonGame, WhosThatPersonRound
+from games.whos_that_person import WhosThatPersonRound
 from services.game_settings import SettingSpec
 from services.games_service import DailyModeStatus, GameRecord, LeaderboardEntry, RecentGame, UnsupportedGameError
 
@@ -109,9 +108,10 @@ class GameOut(BaseModel):
     target_birth_date: date | None = None
     target_first_asset_date: date | None = None
     # Admin feature (ADMIN-FEATURE.md point #4) - the *live* configured total for this game
-    # instance (AssetRoundsGame.total_rounds / WhosThatPersonGame.total_people), so the frontend's
-    # round counter (e.g. "Round 2 of 5") reflects an admin override instead of a hardcoded
-    # display-only constant. Null for every other game, which has no such fixed/counted total.
+    # instance (BaseGame.total_rounds/total_people, overridden by Geoguessr/Dateguessr and
+    # WhosThatPerson respectively), so the frontend's round counter (e.g. "Round 2 of 5") reflects
+    # an admin override instead of a hardcoded display-only constant. Null for every other game,
+    # which has no such fixed/counted total.
     total_rounds: int | None = None
     total_people: int | None = None
     # Roadmap #G - set only for a daily-challenge game (see games/base.py's BaseGame.
@@ -145,8 +145,8 @@ class GameOut(BaseModel):
             target_asset_count=target_asset_count,
             target_birth_date=target_birth_date,
             target_first_asset_date=target_first_asset_date,
-            total_rounds=game.total_rounds if isinstance(game, AssetRoundsGame) else None,
-            total_people=game.total_people if isinstance(game, WhosThatPersonGame) else None,
+            total_rounds=game.total_rounds,
+            total_people=game.total_people,
             daily_challenge_date=game.daily_challenge_date,
         )
 

@@ -2,10 +2,10 @@ from uuid import uuid4
 
 import pytest
 
-from games.asset_rounds import MAX_EXTRA_ASSETS
 from games.geoguessr import (
     DECAY_KM,
     FLAT_SCORE_RADIUS_KM,
+    MAX_EXTRA_ASSETS,
     MAX_SCORE,
     TOTAL_ROUNDS,
     AssetSnapshot,
@@ -70,7 +70,7 @@ class TestGeoguessrGame:
 
 
 class TestGeoguessrExtras:
-    """Extras are purely decorative (see games/asset_rounds.py's MAX_EXTRA_ASSETS) - never forced to
+    """Extras are purely decorative (see games/geoguessr/game.py's MAX_EXTRA_ASSETS) - never forced to
     5, but whatever is picked must stay within 500m of the round's main asset and never repeat.
     (The same-month rule is enforced in SQL by _query_extra_assets and isn't observable from
     AssetSnapshot, which only keeps id/lat/lon - so it isn't asserted here.)"""

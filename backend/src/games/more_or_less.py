@@ -20,7 +20,7 @@ from typing import Any, Literal
 from uuid import UUID, uuid4
 
 from games.base import BaseGame, BaseRound
-from games.serialization import DictCodec
+from games.shared.serialization import DictCodec
 from services.immich_service import ImmichService
 
 Guess = Literal["more", "less"]

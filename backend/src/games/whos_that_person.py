@@ -26,7 +26,7 @@ from uuid import UUID, uuid4
 
 from domain.face import Face
 from games.base import BaseGame, BaseRound, PlayRoundResult
-from games.serialization import DictCodec
+from games.shared.serialization import DictCodec
 from services.immich_service import ImmichService
 
 GAME_TYPE = "whos-that-person"

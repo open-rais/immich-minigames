@@ -4,9 +4,10 @@ point on a map guessing where it was taken. 5 rounds are always played (unlike M
 guess doesn't end the game early), and the final score is the sum of all 5 rounds' scores. See
 docs/GAMES/GEOGUESSR.md.
 
-The fixed-rounds game loop (round count, candidate picking, next-round creation, exponential-decay
-scoring) lives in games/asset_rounds.py and is shared with Dateguessr - only the location metric
-and per-round snapshot are Geoguessr-specific and live here.
+Owns its entire game loop (round count, candidate picking, next-round creation, exponential-decay
+scoring) - previously factored out into a shared base class with Dateguessr
+(games/asset_rounds.py), deliberately un-shared per docs/TODO/DECOUPLING.md so a change to this
+game's loop never requires touching Dateguessr's.
 """
 
 import math
@@ -16,24 +17,43 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from domain.asset import Asset
-from games.asset_rounds import MAX_SCORE, TOTAL_ROUNDS, AssetRoundsGame, exp_decay_score  # noqa: F401 (MAX_SCORE/TOTAL_ROUNDS re-exported for tests)
-from games.base import BaseRound
-from games.serialization import DictCodec
+from games.base import BaseGame, BaseRound
+from games.shared.picking import pick_spread_asset
+from games.shared.scoring import exp_decay_score
+from games.shared.serialization import DictCodec
+from services.immich_service import ImmichService
 
 GAME_TYPE = "geoguessr"
 MODE_DISTANCE_BETWEEN_GUESS = "distanceBetweenGuess"
 
+TOTAL_ROUNDS = 5
+MAX_SCORE = 5000
 FLAT_SCORE_RADIUS_KM = 1.0
 DECAY_KM = 1500.0
 EARTH_RADIUS_KM = 6371.0
 
+# How many random photos to sample when looking for one far enough from every previous round's
+# answer - see games/shared/picking.py's pick_spread_asset. Not required for correctness (falls
+# back to the first candidate if none qualifies) - just keeps rounds spread out instead of
+# clustering on near-duplicate answers.
+_CANDIDATE_SAMPLE_SIZE = 10
+
+# Up to this many additional photos are shown alongside a round's main asset (purely decorative -
+# the round's answer/score always stay tied to the main asset only). Fewer are shown if fewer
+# qualify - a round is never forced to have exactly 5.
+MAX_EXTRA_ASSETS = 4
+# How many random candidates to sample when looking for extras - mirrors _CANDIDATE_SAMPLE_SIZE's
+# rationale, just sized a bit larger since up to MAX_EXTRA_ASSETS of them are kept at once instead
+# of just one.
+_EXTRA_CANDIDATE_SAMPLE_SIZE = 10
+
 # Minimum great-circle distance a new round's asset should keep from every previous round's true
 # location, so rounds don't cluster on the same spot (the dev library has clusters of 15-24 photos
-# at a single location). Best-effort - see games/asset_rounds.py's pick_spread_asset.
+# at a single location). Best-effort - see games/shared/picking.py's pick_spread_asset.
 _MIN_CANDIDATE_SEPARATION_KM = 50.0
 
 # How close (great-circle) an extra photo must be to the round's main asset to be shown alongside
-# it - see games/asset_rounds.py's MAX_EXTRA_ASSETS.
+# it - see MAX_EXTRA_ASSETS.
 _EXTRA_RADIUS_KM = 0.5
 
 
@@ -121,11 +141,47 @@ class GeoguessrRound(BaseRound):
         return round_
 
 
-class GeoguessrGame(AssetRoundsGame):
+class GeoguessrGame(BaseGame):
     game_type = GAME_TYPE
     mode = MODE_DISTANCE_BETWEEN_GUESS
-    _min_separation = _MIN_CANDIDATE_SEPARATION_KM
     _not_enough_assets_message = "not enough located photos in Immich to start a Geoguessr game"
+
+    def __init__(
+        self,
+        id: UUID,
+        owner: str,
+        rounds: list[BaseRound],
+        immich_service: ImmichService,
+        score: int = 0,
+        finished: bool = False,
+        settings: Mapping[str, float] | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            owner=owner,
+            game_type=self.game_type,
+            mode=self.mode,
+            rounds=rounds,
+            score=score,
+            finished=finished,
+            settings=settings,
+        )
+        self._immich_service = immich_service
+
+    # -- admin-configurable (ADMIN-FEATURE.md point #4, see services/game_settings.py) ----------
+
+    @property
+    def total_rounds(self) -> int:
+        # Public (no leading underscore) - api/dto/common.py's GameOut reads this to show the
+        # frontend the *live* round count instead of the hardcoded display-only constant it used to
+        # mirror.
+        return int(self._settings.get("total_rounds", TOTAL_ROUNDS))
+
+    @property
+    def _max_extra_assets(self) -> int:
+        return int(self._settings.get("max_extra_assets", MAX_EXTRA_ASSETS))
+
+    # -- content (this game's own Immich queries) ----------------------------
 
     def _query_assets(self, exclude_ids: frozenset[UUID], *, limit: int, randomize: bool) -> list[Asset]:
         return self._immich_service.get_assets(
@@ -167,3 +223,47 @@ class GeoguessrGame(AssetRoundsGame):
 
     def _previous_answers(self) -> list[tuple[float, float]]:
         return [(round_.asset.latitude, round_.asset.longitude) for round_ in self.rounds]
+
+    # -- game loop ------------------------------------------------------------
+
+    @property
+    def _shown_asset_ids(self) -> frozenset[UUID]:
+        # Flattens every round's shown_entities (main asset + its extras), so an asset already shown
+        # this game - whether as a main asset or just as an extra - is never picked again as either.
+        return frozenset(id_ for round_ in self.rounds for id_ in round_.shown_entities)
+
+    def _pick_asset(self, exclude_ids: frozenset[UUID]) -> Asset | None:
+        candidates = self._query_assets(exclude_ids, limit=_CANDIDATE_SAMPLE_SIZE, randomize=True)
+        return pick_spread_asset(candidates, self._previous_answers(), self._separation, _MIN_CANDIDATE_SEPARATION_KM)
+
+    def _pick_extras(self, main: Asset, exclude_ids: frozenset[UUID]) -> list[Asset]:
+        candidates = self._query_extra_assets(main, exclude_ids, limit=_EXTRA_CANDIDATE_SAMPLE_SIZE)
+        return candidates[: self._max_extra_assets]
+
+    @classmethod
+    def start(
+        cls, id: UUID, owner: str, immich_service: ImmichService, settings: Mapping[str, float] | None = None
+    ) -> "GeoguessrGame":
+        game = cls(id=id, owner=owner, rounds=[], immich_service=immich_service, settings=settings)
+        asset = game._pick_asset(exclude_ids=frozenset())
+        if asset is None:
+            raise ValueError(cls._not_enough_assets_message)
+        extras = game._pick_extras(asset, exclude_ids=frozenset({asset.id}))
+        game.rounds.append(game._make_round(round_index=1, asset=asset, extras=extras))
+        return game
+
+    def has_next_round(self) -> bool:
+        if self.current_round.round_index >= self.total_rounds:
+            return False
+        # Cheap existence check - create_next_round()'s separation-aware pick always succeeds as long
+        # as the candidate pool isn't empty (see pick_spread_asset's fallback), so this is consistent
+        # with it without needing to sample _CANDIDATE_SAMPLE_SIZE rows twice.
+        remaining = self._query_assets(self._shown_asset_ids, limit=1, randomize=False)
+        return bool(remaining)
+
+    def create_next_round(self) -> BaseRound:
+        asset = self._pick_asset(self._shown_asset_ids)
+        if asset is None:
+            raise ValueError("no more eligible assets left - has_next_round() should have returned False")
+        extras = self._pick_extras(asset, exclude_ids=self._shown_asset_ids | {asset.id})
+        return self._make_round(round_index=self.current_round.round_index + 1, asset=asset, extras=extras)
