@@ -11,6 +11,7 @@ clears the cookie client-side, a token copied before logout stays valid until it
 if real revocation is ever needed.
 """
 
+from calendar import timegm
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
@@ -126,8 +127,9 @@ class AuthService:
         return user
 
     def create_access_token(self, user: UserModel) -> str:
-        expires_at = datetime.now(UTC) + timedelta(days=self._settings.jwt_expire_days)
-        payload = {"sub": str(user.id), "exp": expires_at}
+        now = datetime.now(UTC)
+        expires_at = now + timedelta(days=self._settings.jwt_expire_days)
+        payload = {"sub": str(user.id), "iat": now, "exp": expires_at}
         return jwt.encode(payload, self._settings.jwt_secret, algorithm=_JWT_ALGORITHM)
 
     def get_user_from_token(self, token: str) -> UserModel:
@@ -140,4 +142,36 @@ class AuthService:
         user = self._session.get(UserModel, user_id)
         if user is None:
             raise UnauthorizedError("invalid or expired session")
+
+        # Session revocation (roadmap #H, F0): a token minted before the last password change is
+        # stale even if it hasn't expired yet - reject it so "change password" really does log out
+        # every other device. `iat` is read with .get, not [], because tokens issued before this
+        # code shipped have no `iat` claim at all - treating that as "nothing to compare, don't
+        # reject" avoids a mass forced-logout the moment this deploys; those old tokens just don't
+        # get revocation coverage until they naturally expire. Strict `<` with `password_changed_at`
+        # truncated to whole seconds: PATCH /auth/me/password re-issues the cookie in the same
+        # request that sets password_changed_at, so an iat equal to it (truncated) must still pass.
+        issued_at = payload.get("iat")
+        if user.password_changed_at is not None and issued_at is not None:
+            # timegm(...utctimetuple()), not .timestamp() - password_changed_at round-trips through
+            # a plain (non-timezone) DB column, same convention as every other timestamp column in
+            # this app (see persistence/users.py), so it can come back tz-naive. .timestamp() on a
+            # naive datetime interprets it in the *local* system timezone, silently corrupting this
+            # comparison by however many hours the host is offset from UTC. utctimetuple() treats a
+            # naive value as already-UTC (a no-op) and correctly converts an aware one - exactly what
+            # every value assigned to this column actually is (datetime.now(UTC), always) - and
+            # matches how PyJWT itself encodes the iat/exp claims being compared against.
+            changed_at = timegm(user.password_changed_at.utctimetuple())
+            if issued_at < changed_at:
+                raise UnauthorizedError("invalid or expired session")
+        return user
+
+    def change_password(self, user: UserModel, current_password: str, new_password: str) -> UserModel:
+        try:
+            _hasher.verify(user.password_hash, current_password)
+        except VerifyMismatchError as exc:
+            raise InvalidCredentialsError("current password is incorrect") from exc
+        user.password_hash = _hasher.hash(new_password)
+        user.password_changed_at = datetime.now(UTC)
+        self._session.commit()
         return user

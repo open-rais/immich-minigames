@@ -8,7 +8,7 @@ from typing import Annotated
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
 
-from api.auth_schemas import LoginIn, RegisterIn, UpdateProfileIn, UpdateSkinIn, UserOut
+from api.auth_schemas import ChangePasswordIn, LoginIn, RegisterIn, UpdateProfileIn, UpdateSkinIn, UserOut
 from api.deps import get_db_session, get_immich_service
 from api.rate_limit import limiter
 from config import get_settings
@@ -123,6 +123,22 @@ def update_me(
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> UserOut:
     updated = auth_service.update_profile(user, username=body.username, full_name=body.full_name)
+    return UserOut.from_user(updated)
+
+
+@router.patch("/me/password", response_model=UserOut)
+@limiter.limit("5/minute")
+def change_password(
+    request: Request,
+    body: ChangePasswordIn,
+    response: Response,
+    user: Annotated[UserModel, Depends(get_current_user)],
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
+) -> UserOut:
+    updated = auth_service.change_password(user, body.current_password, body.new_password)
+    # Re-issue the cookie: change_password() just set password_changed_at, which would otherwise
+    # revoke the caller's own current session on its very next request.
+    _set_session_cookie(response, auth_service.create_access_token(updated))
     return UserOut.from_user(updated)
 
 

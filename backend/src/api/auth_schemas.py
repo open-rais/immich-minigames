@@ -28,6 +28,11 @@ class UpdateProfileIn(BaseModel):
     full_name: str | None = Field(default=None, min_length=1, max_length=100)
 
 
+class ChangePasswordIn(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8, max_length=128)
+
+
 class UpdateSkinIn(BaseModel):
     # None clears the cosmetic skin (see AuthService.set_skin) - a Person id from the Immich
     # library otherwise, validated against Immich in the route handler before being saved.

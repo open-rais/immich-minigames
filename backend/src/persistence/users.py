@@ -33,3 +33,9 @@ class UserModel(Base):
     # (see services/admin_bootstrap.py), never set through a registration/profile endpoint.
     is_admin: Mapped[bool] = mapped_column(default=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    # Session revocation (roadmap #H, F0) - set on every password change (AuthService.change_password
+    # and, later, the reset-password flow); services/auth_service.py rejects any JWT whose `iat`
+    # predates this, which is the only way to invalidate other devices' sessions without a
+    # server-side session table. NULL for every pre-existing account until its first password
+    # change - see the migration (0010) and get_user_from_token for how that NULL is handled.
+    password_changed_at: Mapped[datetime | None] = mapped_column(default=None)
