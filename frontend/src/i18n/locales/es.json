@@ -195,7 +195,8 @@
     "signup": {
       "title": "Registrarse",
       "cta": "Registrarse",
-      "hasAccount": "¿Ya tienes una cuenta?"
+      "hasAccount": "¿Ya tienes una cuenta?",
+      "inviteCode": "Código de invitación"
     },
     "profile": {
       "title": "Perfil",
@@ -264,6 +265,22 @@
         "no_repeat_days": "Ventana sin repetir (días)",
         "chain_length": "Tope de la cadena"
       }
+    },
+    "invites": {
+      "title": "Invitaciones",
+      "description": "Genera links de registro",
+      "loading": "Cargando invitaciones...",
+      "empty": "Todavía no hay invitaciones.",
+      "generate": "Generar invitación",
+      "revoke": "Revocar",
+      "status": {
+        "pending": "Pendiente",
+        "used": "Usada",
+        "expired": "Expirada"
+      },
+      "createdAt": "Creada {{date}}",
+      "expiresAt": "Expira {{date}}",
+      "usedAt": "Usada {{date}}"
     }
   }
 }

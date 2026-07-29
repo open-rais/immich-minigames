@@ -250,6 +250,9 @@ export interface RegisterIn {
   username: string
   full_name: string
   password: string
+  // Roadmap #H, F1 - required except for the very first account (see backend/src/services/
+  // auth_service.py's _authorize_registration decision [H] bootstrap).
+  invite_code?: string
 }
 
 export interface LoginIn {
@@ -389,4 +392,24 @@ export interface DailyStatusOut {
 export interface DailyLeaderboardOut {
   date: string
   entries: LeaderboardEntryOut[]
+}
+
+// Roadmap #H, F1 - mirrors backend/src/api/dto/admin.py's InviteOut/CreateInviteOut.
+export type InviteStatus = "pending" | "used" | "expired"
+
+export interface InviteOut {
+  id: string
+  kind: string
+  status: InviteStatus
+  expires_at: string
+  used_at: string | null
+  created_at: string
+}
+
+export interface CreateInviteOut {
+  id: string
+  // The only time the plain token is ever available - shown once via ShareModal, see
+  // admin/AdminInvitesSection.tsx.
+  token: string
+  expires_at: string
 }

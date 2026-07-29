@@ -3,6 +3,7 @@ import { Link, Navigate } from "react-router-dom"
 
 import { useAuth } from "../auth/useAuth"
 import { AdminGamesSection } from "./AdminGamesSection"
+import { AdminInvitesSection } from "./AdminInvitesSection"
 import { AdminUsersSection } from "./AdminUsersSection"
 import { SettingAccordion } from "./SettingAccordion"
 
@@ -45,6 +46,10 @@ export function AdminPage() {
       <main className="mx-auto max-w-3xl px-6 py-8 md:px-10">
         <SettingAccordion title={t("admin.users.title")} description={t("admin.users.description")}>
           <AdminUsersSection />
+        </SettingAccordion>
+
+        <SettingAccordion title={t("admin.invites.title")} description={t("admin.invites.description")}>
+          <AdminInvitesSection />
         </SettingAccordion>
 
         {/* Roadmap #f - each game is now its own top-level accordion (AdminGamesSection renders

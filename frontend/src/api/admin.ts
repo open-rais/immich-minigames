@@ -1,5 +1,13 @@
 import { apiClient } from "./client"
-import type { DailySettingsOut, GameSettingsOut, UpdateDailySettingsIn, UpdateProfileIn, User } from "./types"
+import type {
+  CreateInviteOut,
+  DailySettingsOut,
+  GameSettingsOut,
+  InviteOut,
+  UpdateDailySettingsIn,
+  UpdateProfileIn,
+  User,
+} from "./types"
 
 // Admin feature (ADMIN-FEATURE.md point #3) - same request shapes as api/auth.ts's self-service
 // updateProfile/updateSkin, applied to an arbitrary userId instead of the caller's own account.
@@ -60,4 +68,20 @@ export async function updateDailySettings(
 export async function resetDailySettings(gameType: string, mode: string): Promise<DailySettingsOut> {
   const { data } = await apiClient.post<DailySettingsOut>(`/admin/daily/${gameType}/${mode}/reset`)
   return data
+}
+
+// Roadmap #H, F1 - backend/src/api/admin_invites_api.py.
+
+export async function createInvite(): Promise<CreateInviteOut> {
+  const { data } = await apiClient.post<CreateInviteOut>("/admin/invites")
+  return data
+}
+
+export async function listInvites(): Promise<InviteOut[]> {
+  const { data } = await apiClient.get<InviteOut[]>("/admin/invites")
+  return data
+}
+
+export async function revokeInvite(inviteId: string): Promise<void> {
+  await apiClient.delete(`/admin/invites/${inviteId}`)
 }
