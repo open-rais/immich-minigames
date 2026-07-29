@@ -81,7 +81,12 @@ def game_kwargs(
     ml_service: MLService,
 ) -> dict[str, Any]:
     chain = [EntitySnapshot.from_dict(e) for e in spec["chain"]]
-    # start() consumes chain[0] (reference) + chain[1] (first candidate); each further round played
-    # consumes one more - see ScriptedCandidateProvider.
-    next_index = rounds_played + 1
+    # start() consumes chain[0] (reference) *and* chain[1] (first candidate) in one shot - the only
+    # round that draws two entries at once, since every later round only needs one new candidate
+    # (its reference is just the previous round's candidate, already known). So the "next fresh
+    # index" jumps from 0 straight to 2 after round 1, not 1 - rounds_played + 1 only holds once at
+    # least one round has actually been played (rounds_played >= 1); before that (starting fresh),
+    # it must be 0, or start() would skip chain[0] and re-draw chain[1] as if it were still fresh -
+    # the round that was actually shown becomes a false "tie" against itself.
+    next_index = rounds_played + 1 if rounds_played > 0 else 0
     return {"provider": ScriptedCandidateProvider(chain, next_index), "mode": mode, "settings": settings}

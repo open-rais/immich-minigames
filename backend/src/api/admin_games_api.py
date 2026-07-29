@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from api.admin_api import get_current_admin_user
 from api.deps import get_db_session
-from api.dto.common import GameSettingsOut
+from api.dto.admin import GameSettingsOut
 from persistence.users import UserModel
 from services.game_settings import GAME_SETTING_SPECS, GameSettingsService
 

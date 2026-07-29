@@ -19,19 +19,11 @@ from api.auth_api import get_current_user, get_current_user_optional
 from api.auth_api import router as auth_router
 from api.daily_api import router as daily_router
 from api.deps import get_games_service, get_immich_service, get_owner_id
-from api.dto.common import (
-    ConfigOut,
-    CreateGameIn,
-    CurrentGameOut,
-    GameOut,
-    GameRecordsOut,
-    LeaderboardOut,
-    LeaderboardWindow,
-    PersonSearchOut,
-    PlayRoundOut,
-    RecentGamesOut,
-    parse_guess,
-)
+from api.dto.common import CreateGameIn, CurrentGameOut, GameOut, PlayRoundOut, RecentGamesOut, parse_guess
+from api.dto.config import ConfigOut
+from api.dto.leaderboard import LeaderboardOut, LeaderboardWindow
+from api.dto.persons import PersonSearchOut
+from api.dto.records import GameRecordsOut
 from api.rate_limit import GAME_ACTION_LIMIT, SEARCH_LIMIT, THUMBNAIL_LIMIT, limiter
 from config import Settings, get_settings
 from persistence.users import UserModel

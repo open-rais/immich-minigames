@@ -6,11 +6,16 @@ already fixes a round's game/mode server-side (see api/api.py), so asking the cl
 back `game_type` in the guess body would be redundant - and worse, if it disagreed with the game's
 actual type, nothing would catch the mismatch before it reached the domain layer as a
 wrongly-shaped guess.
+
+Everything that doesn't spread across every game/mode lives in a sibling module instead
+(api/dto/persons.py, records.py, leaderboard.py, daily.py, admin.py, config.py) - this file used to
+hold all of it, split apart since each section had nothing to do with the others beyond living in
+the same file.
 """
 
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Annotated, Any, Literal, Union
+from typing import Annotated, Any, Union
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -20,15 +25,13 @@ from api.dto.geoguessr import GeoguessrPlayRoundIn, GeoguessrRoundOut
 from api.dto.immichdle import ImmichdlePlayRoundIn, ImmichdleRoundOut
 from api.dto.more_or_less import MoreOrLessPlayRoundIn, MoreOrLessRoundOut
 from api.dto.whos_that_person import WhosThatPersonPlayRoundIn, WhosThatPersonRoundOut
-from domain.person import Person
 from games.base import BaseGame, BaseRound
 from games.dateguessr import DateguessrRound
 from games.geoguessr import GeoguessrRound
 from games.immichdle import ImmichdleGame, ImmichdleRound
 from games.more_or_less import MoreOrLessRound
 from games.whos_that_person import WhosThatPersonRound
-from services.game_settings import SettingSpec
-from services.games_service import DailyModeStatus, GameRecord, LeaderboardEntry, RecentGame, UnsupportedGameError
+from services.games_service import RecentGame, UnsupportedGameError
 
 
 class CreateGameIn(BaseModel):
@@ -220,213 +223,3 @@ class PlayRoundOut(BaseModel):
             answered_round=round_out_from_round(answered_round),
             next_round=next_round,
         )
-
-
-# -- person search (reusable across features - not game-specific, see api.py's /persons/search) ---
-
-
-class PersonSearchResultOut(BaseModel):
-    id: UUID
-    name: str
-
-    @classmethod
-    def from_person(cls, person: Person) -> "PersonSearchResultOut":
-        return cls(id=person.id, name=person.name)
-
-
-class PersonSearchOut(BaseModel):
-    results: list[PersonSearchResultOut]
-
-    @classmethod
-    def from_persons(cls, persons: list[Person]) -> "PersonSearchOut":
-        return cls(results=[PersonSearchResultOut.from_person(p) for p in persons])
-
-
-# -- personal records (roadmap point E, see GamesService.get_personal_records) ---
-
-
-class GameRecordOut(BaseModel):
-    game_type: str
-    mode: str
-    best_score: int
-
-    @classmethod
-    def from_record(cls, record: GameRecord) -> "GameRecordOut":
-        return cls(game_type=record.game_type, mode=record.mode, best_score=record.best_score)
-
-
-class GameRecordsOut(BaseModel):
-    records: list[GameRecordOut]
-
-    @classmethod
-    def from_records(cls, records: list[GameRecord]) -> "GameRecordsOut":
-        return cls(records=[GameRecordOut.from_record(r) for r in records])
-
-
-# -- leaderboard (roadmap point F, see GamesService.get_leaderboard) ---
-
-LeaderboardWindow = Literal["all", "weekly", "daily"]
-
-
-class LeaderboardEntryOut(BaseModel):
-    rank: int
-    username: str
-    skin_person_id: UUID | None
-    best_score: int
-
-    @classmethod
-    def from_entry(cls, entry: LeaderboardEntry) -> "LeaderboardEntryOut":
-        return cls(
-            rank=entry.rank,
-            username=entry.username,
-            skin_person_id=entry.skin_person_id,
-            best_score=entry.best_score,
-        )
-
-
-class LeaderboardOut(BaseModel):
-    window: LeaderboardWindow
-    entries: list[LeaderboardEntryOut]
-
-    @classmethod
-    def from_entries(cls, window: LeaderboardWindow, entries: list[LeaderboardEntry]) -> "LeaderboardOut":
-        return cls(window=window, entries=[LeaderboardEntryOut.from_entry(e) for e in entries])
-
-
-# -- daily leaderboard (roadmap point #G, F5 - see GamesService.get_daily_leaderboard) ---
-
-
-class DailyLeaderboardOut(BaseModel):
-    date: date
-    entries: list[LeaderboardEntryOut]
-
-    @classmethod
-    def from_entries(cls, challenge_date: date, entries: list[LeaderboardEntry]) -> "DailyLeaderboardOut":
-        return cls(date=challenge_date, entries=[LeaderboardEntryOut.from_entry(e) for e in entries])
-
-
-# -- admin game settings (ADMIN-FEATURE.md point #4, see services/game_settings.py) ---
-
-
-class GameSettingOut(BaseModel):
-    key: str
-    value: float
-    default: float
-    value_type: Literal["int", "float"]
-    min_value: float
-    max_value: float
-
-
-class GameSettingsOut(BaseModel):
-    game_type: str
-    mode: str
-    settings: list[GameSettingOut]
-
-    @classmethod
-    def from_specs(
-        cls, game_type: str, mode: str, specs: list[SettingSpec], values: dict[str, float]
-    ) -> "GameSettingsOut":
-        return cls(
-            game_type=game_type,
-            mode=mode,
-            settings=[
-                GameSettingOut(
-                    key=spec.key,
-                    value=values[spec.key],
-                    default=spec.default,
-                    value_type=spec.value_type,
-                    min_value=spec.min_value,
-                    max_value=spec.max_value,
-                )
-                for spec in specs
-            ],
-        )
-
-
-# -- daily games admin config (roadmap point #G, see services/daily_settings.py) ---
-
-
-class DailySettingsOut(BaseModel):
-    game_type: str
-    mode: str
-    # The "Activar juego diario" checkbox from roadmap #f - whether this mode is offered in the
-    # daily rotation at all.
-    enabled: bool
-    settings: list[GameSettingOut]
-
-    @classmethod
-    def from_specs(
-        cls, game_type: str, mode: str, enabled: bool, specs: list[SettingSpec], values: dict[str, float]
-    ) -> "DailySettingsOut":
-        return cls(
-            game_type=game_type,
-            mode=mode,
-            enabled=enabled,
-            settings=[
-                GameSettingOut(
-                    key=spec.key,
-                    value=values[spec.key],
-                    default=spec.default,
-                    value_type=spec.value_type,
-                    min_value=spec.min_value,
-                    max_value=spec.max_value,
-                )
-                for spec in specs
-            ],
-        )
-
-
-class UpdateDailySettingsIn(BaseModel):
-    # PATCH semantics - omit a field to leave it unchanged (mirrors auth_schemas.py's
-    # UpdateProfileIn), so toggling "enabled" from the admin UI doesn't require also restating
-    # every setting value, and saving settings doesn't require also restating "enabled".
-    enabled: bool | None = None
-    values: dict[str, float] | None = None
-
-
-# -- daily games player-facing status (roadmap point #G, see services/games_service.py's
-# GamesService.get_daily_status/create_daily_game) ---
-
-DailyModeStatusValue = Literal["not_played", "in_progress", "finished"]
-
-
-class DailyModeStatusOut(BaseModel):
-    game_type: str
-    mode: str
-    status: DailyModeStatusValue
-    game_id: UUID | None
-    score: int | None
-
-    @classmethod
-    def from_status(cls, status: DailyModeStatus) -> "DailyModeStatusOut":
-        return cls(
-            game_type=status.game_type,
-            mode=status.mode,
-            status=status.status,
-            game_id=status.game_id,
-            score=status.score,
-        )
-
-
-class DailyStatusOut(BaseModel):
-    # ISO datetimes (server time, decision [G]) - the frontend's countdown ticks off the offset
-    # between these two rather than trusting its own clock alone (docs/TODO/DAILY-GAMES.md §4.7).
-    resets_at: datetime
-    server_now: datetime
-    modes: list[DailyModeStatusOut]
-
-    @classmethod
-    def from_statuses(cls, resets_at: datetime, server_now: datetime, statuses: list[DailyModeStatus]) -> "DailyStatusOut":
-        return cls(
-            resets_at=resets_at, server_now=server_now, modes=[DailyModeStatusOut.from_status(s) for s in statuses]
-        )
-
-
-# -- public runtime config (ROUNDS-VIEW.md roadmap point #10, see Settings.immich_public_url) ---
-
-
-class ConfigOut(BaseModel):
-    # Settings.immich_public_url, already resolved (IMMICH_EXTERNAL_URL or a fallback to
-    # IMMICH_SERVER_URL) - optional because immich_server_url is a plain str field with no
-    # guarantee against being blanked out, not because callers are expected to see null in practice.
-    immich_external_url: str | None

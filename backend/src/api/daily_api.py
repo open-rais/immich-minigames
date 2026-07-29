@@ -13,7 +13,9 @@ from fastapi import APIRouter, Depends, Query, Request
 
 from api.auth_api import get_current_user_optional
 from api.deps import get_games_service, get_owner_id
-from api.dto.common import DailyLeaderboardOut, DailyStatusOut, GameOut
+from api.dto.common import GameOut
+from api.dto.daily import DailyStatusOut
+from api.dto.leaderboard import DailyLeaderboardOut
 from api.rate_limit import GAME_ACTION_LIMIT, limiter
 from persistence.users import UserModel
 from services.games_service import GamesService

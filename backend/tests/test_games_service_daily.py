@@ -135,6 +135,11 @@ class TestMoreOrLessDailyChainExhaustion:
 
         while not game.finished:
             round_ = game.current_round
+            # Regression guard: a bug in the scripted provider's resume index once made round 2
+            # replay the same chain entry as both reference and candidate (reported as "el segundo
+            # y tercer personajes están repetidos") - a self-tie that the score assertion below
+            # alone wouldn't catch, since a tie still scores 1 like a real win.
+            assert round_.reference.id != round_.candidate.id
             guess = "more" if round_.candidate.value > round_.reference.value else "less"
             game = games_service.play_round(game_id, owner, round_.id, guess)
 
