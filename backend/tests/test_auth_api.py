@@ -1,6 +1,8 @@
 import time
 import uuid
 
+from conftest import mint_invite_code
+
 
 def _unique(prefix: str) -> str:
     return f"{prefix}-{uuid.uuid4().hex[:8]}"
@@ -12,6 +14,7 @@ def _register(client, **overrides) -> dict:
         "username": _unique("user"),
         "full_name": "Test User",
         "password": "correct-horse-battery-staple",
+        "invite_code": mint_invite_code(),
     }
     body.update(overrides)
     response = client.post("/api/v1/auth/register", json=body)
@@ -20,6 +23,19 @@ def _register(client, **overrides) -> dict:
 
 
 class TestRegister:
+    def test_without_an_invite_code_returns_400(self, client):
+        response = client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": f"{_unique('user')}@example.com",
+                "username": _unique("user"),
+                "full_name": "Test User",
+                "password": "correct-horse-battery-staple",
+            },
+        )
+
+        assert response.status_code == 400
+
     def test_sets_a_session_cookie_and_returns_the_user(self, client):
         body = _register(client)
 
@@ -35,7 +51,9 @@ class TestRegister:
 
         response = client.post(
             "/api/v1/auth/register",
-            json={**body, "username": _unique("other")},
+            # Fresh invite_code - body's own was already burned by the _register() call above,
+            # and this test wants to hit the email-uniqueness check, not an already-used invite.
+            json={**body, "username": _unique("other"), "invite_code": mint_invite_code()},
         )
 
         assert response.status_code == 409
@@ -45,7 +63,7 @@ class TestRegister:
 
         response = client.post(
             "/api/v1/auth/register",
-            json={**body, "email": f"{_unique('other')}@example.com"},
+            json={**body, "email": f"{_unique('other')}@example.com", "invite_code": mint_invite_code()},
         )
 
         assert response.status_code == 409
@@ -211,6 +229,7 @@ class TestRateLimit:
                     "username": _unique("user"),
                     "full_name": "Test User",
                     "password": "correct-horse-battery-staple",
+                    "invite_code": mint_invite_code(),
                 },
             )
             for _ in range(4)

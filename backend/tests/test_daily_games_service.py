@@ -11,6 +11,7 @@ from datetime import date, timedelta
 
 import pytest
 
+from conftest import mint_invite_code
 from persistence.daily import DailyChallengeModel
 from persistence.games import GameModel
 from services.games_service import UnsupportedGameError
@@ -65,6 +66,7 @@ class TestDailyGamesExcludedFromLeaderboard:
             username=f"user-{uuid.uuid4().hex[:8]}",
             full_name="Test User",
             password="correct-horse-battery-staple",
+            invite_code=mint_invite_code(),
         )
         game, _ = _make_daily_game(
             games_service, db_session, owner="owner-a", user_id=user.id, game_type="dateguessr", mode="daysToDate"
@@ -108,6 +110,7 @@ class TestGetRecentGamesFlagsDaily:
             username=f"user-{uuid.uuid4().hex[:8]}",
             full_name="Test User",
             password="correct-horse-battery-staple",
+            invite_code=mint_invite_code(),
         )
         daily_game, _ = _make_daily_game(games_service, db_session, owner="owner-a", user_id=user.id)
         db_session.get(GameModel, daily_game.id).finished = True

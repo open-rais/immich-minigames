@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
+from conftest import mint_invite_code
 from persistence.base import get_session_factory
 from persistence.games import GameModel
 from services.games_service import (
@@ -25,6 +26,7 @@ def _register_user(auth_service):
         username=f"user-{unique}",
         full_name="Test User",
         password="correct-horse-battery-staple",
+        invite_code=mint_invite_code(),
     )
 
 

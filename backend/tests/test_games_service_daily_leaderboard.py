@@ -7,6 +7,7 @@ from datetime import date, timedelta
 
 import pytest
 
+from conftest import mint_invite_code
 from games.immichdle import GAME_TYPE as IMMICHDLE_TYPE
 from games.immichdle import MODE_PERSON
 from persistence.daily import DailyConfigModel
@@ -39,6 +40,7 @@ def _register(auth_service):
         username=f"user-{unique}",
         full_name="Test User",
         password="correct-horse-battery-staple",
+        invite_code=mint_invite_code(),
     )
 
 

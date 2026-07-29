@@ -3,6 +3,7 @@ from uuid import UUID
 
 import pytest
 
+from conftest import mint_invite_code
 from games.geoguessr import GAME_TYPE as GEOGUESSR_TYPE
 from games.geoguessr import MODE_DISTANCE_BETWEEN_GUESS
 from persistence.daily import DailyConfigModel
@@ -30,6 +31,7 @@ def _register(client, **overrides) -> dict:
         "username": _unique("user"),
         "full_name": "Test User",
         "password": "correct-horse-battery-staple",
+        "invite_code": mint_invite_code(),
     }
     body.update(overrides)
     response = client.post("/api/v1/auth/register", json=body)

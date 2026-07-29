@@ -1,5 +1,7 @@
 from uuid import uuid4
 
+from conftest import mint_invite_code
+
 
 def _create_game(client, owner: str) -> dict:
     response = client.post(
@@ -18,6 +20,7 @@ def _register(client) -> None:
         "username": f"user-{unique}",
         "full_name": "Test User",
         "password": "correct-horse-battery-staple",
+        "invite_code": mint_invite_code(),
     }
     response = client.post("/api/v1/auth/register", json=body)
     assert response.status_code == 201
