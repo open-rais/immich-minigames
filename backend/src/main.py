@@ -17,10 +17,13 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from api.api import router
 from api.auth_middleware import AuthMiddleware
-from api.rate_limit import limiter
+from api.rate_limit import limiter, session_or_ip_key
+from api.request_log_middleware import RequestLogMiddleware
+from audit import audit
 from config import get_settings
 from games.immichdle import DuplicateGuessError, InvalidGuessError
 from games.whos_that_person import IncompleteGuessError
+from logging_setup import configure_logging
 from persistence.base import get_session_factory
 from services.admin_bootstrap import ensure_admin
 from services.auth_service import (
@@ -55,6 +58,8 @@ async def _lifespan(_: FastAPI) -> AsyncIterator[None]:
     yield
 
 
+configure_logging(get_settings())
+
 app = FastAPI(title="Immich Minigames", lifespan=_lifespan)
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
@@ -62,6 +67,10 @@ app.add_middleware(SlowAPIMiddleware)
 # registration order) - an unauthenticated request to a protected route 401s immediately without
 # touching rate-limit state at all, rather than being rate-limited on its way to a 401 anyway.
 app.add_middleware(AuthMiddleware)
+# Added last so it's the outermost of all (docs/TODO/LOGGING.md §4.3, same reverse-registration-
+# order reasoning as above) - it measures/logs the 401s AuthMiddleware cuts too, not just what
+# makes it past it.
+app.add_middleware(RequestLogMiddleware)
 
 
 def _error_handler(status_code: int):
@@ -72,6 +81,7 @@ def _error_handler(status_code: int):
 
 
 async def _rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+    audit("rate_limited", path=request.url.path, scope="route", key=session_or_ip_key(request))
     response = JSONResponse(status_code=429, content={"detail": f"rate limit exceeded: {exc.detail}"})
     return limiter._inject_headers(response, request.state.view_rate_limit)
 

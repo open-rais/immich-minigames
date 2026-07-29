@@ -5,6 +5,7 @@ from datetime import timedelta
 import pytest
 
 from persistence.base import get_session_factory
+from persistence.users import UserModel
 from services.invite_service import InvalidInviteError, InviteNotFoundError, InviteService
 
 
@@ -148,3 +149,45 @@ class TestRevokeInvite:
 
         with pytest.raises(InviteNotFoundError):
             service.revoke_invite(invite.id)
+
+
+class TestAuditEvents:
+    """docs/TODO/LOGGING.md §4.4, phase F2."""
+
+    def test_create_invite_emits_invite_created_for_either_kind(self, db_session, audit_log):
+        service = InviteService(db_session)
+
+        invite, _ = service.create_invite(kind="invite")
+
+        record = next(r for r in audit_log.records if r.event == "invite_created")
+        assert record.invite_id == str(invite.id)
+        assert record.kind == "invite"
+        assert record.expires_at == invite.expires_at.isoformat()
+
+    def test_create_invite_emits_invite_created_for_password_reset_too(self, db_session, audit_log):
+        user = UserModel(
+            email=f"invite-audit-{uuid.uuid4().hex[:8]}@example.com",
+            username=f"invite-audit-{uuid.uuid4().hex[:8]}",
+            full_name="Invite Audit Target",
+            password_hash="irrelevant",
+        )
+        db_session.add(user)
+        db_session.commit()
+        service = InviteService(db_session)
+
+        invite, _ = service.create_invite(kind="password_reset", user_id=user.id)
+
+        record = next(r for r in audit_log.records if r.event == "invite_created")
+        assert record.kind == "password_reset"
+
+    def test_revoke_invite_emits_invite_revoked(self, db_session, audit_log):
+        service = InviteService(db_session)
+        kind = _unique_kind()
+        invite, _ = service.create_invite(kind=kind)
+        audit_log.clear()
+
+        service.revoke_invite(invite.id)
+
+        record = next(r for r in audit_log.records if r.event == "invite_revoked")
+        assert record.invite_id == str(invite.id)
+        assert record.kind == kind

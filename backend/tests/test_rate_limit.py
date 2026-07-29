@@ -10,7 +10,7 @@ from fastapi import HTTPException
 from starlette.requests import Request
 from starlette.testclient import TestClient
 
-from api.rate_limit import _session_or_ip_key, enforce_login_email_limit
+from api.rate_limit import enforce_login_email_limit, session_or_ip_key
 from config import get_settings
 from conftest import mint_invite_code
 from main import app
@@ -26,7 +26,7 @@ def _fake_request(*, client_host: str = "1.2.3.4", token: str | None = None, ext
 
 def _make_token(user_id: uuid.UUID | None = None) -> str:
     # Mirrors AuthService.create_access_token exactly, but skips the DB round-trip a real
-    # registration would need - _session_or_ip_key decodes locally and never looks the user up, so
+    # registration would need - session_or_ip_key decodes locally and never looks the user up, so
     # a token for an id that was never actually registered is a legitimate test of that fact.
     now = datetime.now(UTC)
     payload = {"sub": str(user_id or uuid.uuid4()), "iat": now, "exp": now + timedelta(days=1)}
@@ -37,31 +37,31 @@ class TestSessionOrIpKey:
     def test_no_cookie_falls_back_to_client_ip(self):
         request = _fake_request(client_host="1.2.3.4")
 
-        assert _session_or_ip_key(request) == "1.2.3.4"
+        assert session_or_ip_key(request) == "1.2.3.4"
 
     def test_valid_cookie_keys_by_account_not_ip(self):
         user_id = uuid.uuid4()
         request = _fake_request(client_host="1.2.3.4", token=_make_token(user_id))
 
-        assert _session_or_ip_key(request) == f"user:{user_id}"
+        assert session_or_ip_key(request) == f"user:{user_id}"
 
     def test_same_account_from_different_ips_shares_one_key(self):
         token = _make_token()
         a = _fake_request(client_host="1.1.1.1", token=token)
         b = _fake_request(client_host="2.2.2.2", token=token)
 
-        assert _session_or_ip_key(a) == _session_or_ip_key(b)
+        assert session_or_ip_key(a) == session_or_ip_key(b)
 
     def test_different_accounts_behind_the_same_ip_get_different_keys(self):
         a = _fake_request(client_host="1.1.1.1", token=_make_token())
         b = _fake_request(client_host="1.1.1.1", token=_make_token())
 
-        assert _session_or_ip_key(a) != _session_or_ip_key(b)
+        assert session_or_ip_key(a) != session_or_ip_key(b)
 
     def test_garbage_cookie_falls_back_to_client_ip(self):
         request = _fake_request(client_host="9.9.9.9", token="not-a-real-jwt")
 
-        assert _session_or_ip_key(request) == "9.9.9.9"
+        assert session_or_ip_key(request) == "9.9.9.9"
 
     def test_does_not_trust_x_real_ip_or_x_forwarded_for(self):
         # Decision [A] (docs/TODO/NEW-AUTH.md) - this app assumes nothing about what's in front of
@@ -72,17 +72,20 @@ class TestSessionOrIpKey:
             extra_headers=[(b"x-real-ip", b"6.6.6.6"), (b"x-forwarded-for", b"7.7.7.7")],
         )
 
-        assert _session_or_ip_key(request) == "1.2.3.4"
+        assert session_or_ip_key(request) == "1.2.3.4"
+
+
+_LOGIN_PATH = "/api/v1/auth/login"
 
 
 class TestLoginEmailLimit:
     def test_allows_five_then_blocks_the_sixth(self):
         email = f"{uuid.uuid4().hex}@example.com"
         for _ in range(5):
-            enforce_login_email_limit(email)  # must not raise
+            enforce_login_email_limit(email, _LOGIN_PATH)  # must not raise
 
         with pytest.raises(HTTPException) as exc_info:
-            enforce_login_email_limit(email)
+            enforce_login_email_limit(email, _LOGIN_PATH)
         assert exc_info.value.status_code == 429
         assert "Retry-After" in exc_info.value.headers
 
@@ -90,11 +93,11 @@ class TestLoginEmailLimit:
         exhausted = f"{uuid.uuid4().hex}@example.com"
         other = f"{uuid.uuid4().hex}@example.com"
         for _ in range(5):
-            enforce_login_email_limit(exhausted)
+            enforce_login_email_limit(exhausted, _LOGIN_PATH)
         with pytest.raises(HTTPException):
-            enforce_login_email_limit(exhausted)
+            enforce_login_email_limit(exhausted, _LOGIN_PATH)
 
-        enforce_login_email_limit(other)  # must not raise
+        enforce_login_email_limit(other, _LOGIN_PATH)  # must not raise
 
 
 class TestLoginRateLimitEndToEnd:
@@ -154,3 +157,42 @@ class TestLoginRateLimitEndToEnd:
             )
 
         assert response.status_code == 401
+
+
+class TestAuditEvents:
+    """docs/TODO/LOGGING.md §4.4, phase F2 - both 429 paths (main._rate_limit_handler's global one
+    and enforce_login_email_limit's per-email one) audit rate_limited, distinguished by `scope`."""
+
+    def test_login_email_limit_emits_rate_limited_with_login_email_scope(self, audit_log):
+        email = f"{uuid.uuid4().hex}@example.com"
+        for _ in range(5):
+            enforce_login_email_limit(email, _LOGIN_PATH)
+        audit_log.clear()
+
+        with pytest.raises(HTTPException):
+            enforce_login_email_limit(email, _LOGIN_PATH)
+
+        record = next(r for r in audit_log.records if r.event == "rate_limited")
+        assert record.scope == "login_email"
+        assert record.key == email
+        assert record.path == _LOGIN_PATH
+
+    def test_global_route_limit_emits_rate_limited_with_route_scope(self, client, audit_log):
+        response = None
+        for i in range(4):
+            unique = uuid.uuid4().hex[:8]
+            response = client.post(
+                "/api/v1/auth/register",
+                json={
+                    "email": f"routelimit-{i}-{unique}@example.com",
+                    "username": f"routelimit-{i}-{unique}",
+                    "full_name": "Route Limit Test",
+                    "password": "correct-horse-battery-staple",
+                    "invite_code": mint_invite_code(),
+                },
+            )
+
+        assert response.status_code == 429
+        record = next(r for r in audit_log.records if r.event == "rate_limited")
+        assert record.scope == "route"
+        assert record.path == "/api/v1/auth/register"

@@ -13,6 +13,7 @@ from api.auth_api import get_auth_service, get_current_user
 from api.auth_schemas import UpdateProfileIn, UpdateSkinIn, UserOut
 from api.deps import get_immich_service, get_invite_service
 from api.dto.admin import CreateInviteOut
+from audit import audit
 from persistence.users import UserModel
 from services.auth_service import AuthService
 from services.immich_service import ImmichService
@@ -65,6 +66,14 @@ def create_password_reset(
 ) -> CreateInviteOut:
     target = _get_target_user(auth_service, user_id)
     invite, token = invite_service.create_invite(kind="password_reset", user_id=target.id)
+    # In addition to invite_service's own generic invite_created (LOGGING.md §4.4) - this one
+    # carries target_user_id, which invite_service has no reason to know about.
+    audit(
+        "password_reset_created",
+        target_user_id=str(target.id),
+        invite_id=str(invite.id),
+        expires_at=invite.expires_at.isoformat(),
+    )
     return CreateInviteOut(id=invite.id, token=token, expires_at=invite.expires_at)
 
 

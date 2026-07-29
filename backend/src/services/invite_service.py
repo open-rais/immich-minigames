@@ -12,6 +12,7 @@ from uuid import UUID
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
 
+from audit import audit
 from persistence.invites import InviteModel
 
 _DEFAULT_TTL = timedelta(days=7)
@@ -47,6 +48,7 @@ class InviteService:
         )
         self._session.add(invite)
         self._session.commit()
+        audit("invite_created", invite_id=str(invite.id), kind=kind, expires_at=invite.expires_at.isoformat())
         return invite, token
 
     def consume_invite(self, token: str, kind: str) -> InviteModel:
@@ -93,5 +95,10 @@ class InviteService:
         invite = self._session.get(InviteModel, invite_id)
         if invite is None or invite.used_at is not None:
             raise InviteNotFoundError(f"invite {invite_id} not found or already used")
+        # Captured before delete()/commit(): the ORM object is expired once the transaction that
+        # deleted it commits, so reading these off `invite` afterward would trigger a reload of a
+        # row that no longer exists.
+        kind, expires_at = invite.kind, invite.expires_at
         self._session.delete(invite)
         self._session.commit()
+        audit("invite_revoked", invite_id=str(invite_id), kind=kind, expires_at=expires_at.isoformat())

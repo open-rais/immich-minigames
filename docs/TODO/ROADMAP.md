@@ -61,22 +61,71 @@ Cuando se complete un item, marcar su checkbox.
   - El admin puede decir qué juegos están en el daily y cuales no, además de sus parámetros para el daily
   - Se podrá compartir un link a cada juego daily
   - No se debe repetir ningun asset/persona de los últimos N (default 30) días (excepto en more-or-less, ahi solo debe ser otra seed)
+- [x] H. Cambio de sistema de usuarios (login obligatorio, invitaciones, reset de contraseña,
+      rate limiting sesión-o-IP - ver `docs/TODO/NEW-AUTH.md`).
+- [X] I. Agregar Logging (para auditoría).
 - [ ] 11. API y frontend para Timeline
-- [ ] 12. Agregar sistema de pistas a Immichdle
-- [x] 13. MoreOrLess: nueva modalidad `album-asset-count`
-- [ ] H. Code-Review humano completo.
+- [x] 12. MoreOrLess: nueva modalidad `album-asset-count`
+- [ ] J. Code-Review humano completo.
   - Revisión completa del código
   - Búsqueda de optimizaciones
   - Limpieza de comentarios IA inutiles
-  - Búsqueda de potenciales refactors, o des-refactorizaciones en caso de que la IA se haya sobre-complejizado
-- [ ] I. Agregar Logging (para auditoría)
-- [ ] 14. MoreOrLess: nueva modalidad `person-birth-date`
-- [ ] 15. Immichdle: nueva modalidad `albumdle`
-- [ ] 16. Geoguessr: nueva modalidad `Country`
-- [ ] 17. Geoguessr: nueva modalidad `City`
-- [ ] 18. Dateguessr: nueva modalidad `Year`
-- [ ] 19. Dateguessr: nueva modalidad `Month`
-- [ ] 20. Timeline: nueva modalidad `Level`
+  - Búsqueda de potenciales refactors, o des-refactorizaciones en caso de que la IA se haya sobre-complejizado:
+    - en backend/src/games/, a cada juego, dividir game.py en game.py y round.py
+    - games_service es muy grande:
+      - Evaluar dividir en games (relacionado a juegos), score (relacionado a puntajes, leaderboard, etc) y daily (relacionado a creación de dailies y status) services
+    - immich_service es muy largo
+      - Ver si dividir en person/album/asset services
+      - Evaluar otra opción de división lógica
+    - en services/ está daily_settings, game_settings, game_registry.py y errors. No se si cuentan como services tal cual. Evaluar moverlos a otra parte:
+      - Podría ser los settings y registry a games/ y errors a domain/
+      - Evaluar por si hay otras maneras más lógicas
+  - Refactorizar tests/:
+    - Comenzar por pasar todo a subcarpetas ordenadas de manera lógica
+    - Intentar dividir archivos grandes en más archivos pero más pequeños
+- [ ] g. Config page:
+  - En el header, hacer que ya no aparezcan los cambios de tema/idioma.
+  - En su lugar, agregar otro botón más como los de arriba, para ir a página de configuración
+  - Hacer los botónes consistentes con la recomendación de botónes para pantallas táctiles
+  - En el panel de admin, poner las configuraciones de tema/idioma
+    - Esto permite que después pueda haber más idiomas y se siga viendo con un buen UI/UX
+    - Esto permite que después se pueda agregar una configuración de accesibilidad para reducir movimiento, que permita eliminar las animaciones de los juegos
+- [ ] 13. MoreOrLess: nueva modalidad `person-birth-date` (probablemente sea muy fácil)
+  - El juego no mostrará more/less en los botónes, ya que será esta persona nació antes/después. Eso serán los botónes (before/after, antes/después)
+- [ ] 14. Immichdle: nueva modalidad `albumdle`
+- [ ] 15. Admin Workers: Hacer que en el panel de admin haya un botón para procesar vectores de personas faltanes/reprocesar todos
+  - Hacer que sea con workers
+- [ ] h. Añadir script de desinstalación limpia (una manera segura de eliminar rastros de esta app, sin tocar nada de immich)
+  - Si es posible y simple, que el script cree un snapshot de la db en caso de que después se quiera restaurar la app
+    - En este caso, evaluar alguna de estas opciones
+      - Crear un sistema de backup para toda la app (backups periodicos, manera de restaurar), de esta forma se aprovecha este sistema para volver a tener la app
+      - Usar un script al inicio que restaure una instalación anterior
+      - Otra opción
+- [ ] i. Traducir al francés y alemán
+<!-- 🎉 v1.0.0 🎉 -->
+- [ ] K. Sistema de reporte
+  - En ver juego, en botón de ..., agregar un botón para reportar que abre un modal para enviar reporte
+    - Si se reporta una persona, las opciones para seleccionar:
+      - Fecha de nacimiento mala
+      - Nombre y cara no hacen match
+      - Nombre mal escrito
+    - Si se reporta un album, las opciones para seleccionar
+      - Portada y album no hacen match
+      - Nombre mal escrito
+    - Si se reporta un asset:
+      - Ubicación mal ingresada
+      - Fecha mal ingresada
+      - Cara en asset no hace match
+  - desde el panel de admin, agregar una opción para ir a la página de reportes:
+    - 3 listas, 1 para cada tipo (asset, person, album)
+    - cada lista con Infinite scroll
+    - tendrá botón de ver en immich, además de botón para marcar como resuelto
+- [ ] 16. Agregar sistema de pistas a Immichdle
+- [ ] 17. Geoguessr: nueva modalidad `Country`
+- [ ] 18. Geoguessr: nueva modalidad `City`
+- [ ] 19. Dateguessr: nueva modalidad `Year`
+- [ ] 20. Dateguessr: nueva modalidad `Month`
+- [ ] 21. Timeline: nueva modalidad `Level`
 
 ## Features condicionales (sin posición fija todavía)
 
@@ -86,8 +135,6 @@ avanzando el proyecto. Sí tienen restricciones de orden ya decididas:
 | Feature | Debe ir después de | Debe ir antes de | Notas |
 |---|---|---|---|
 | **Redis** | 10 | - | Crucial para el proyecto, pero aún no entiendo cómo se usa ni cuales son sus casos de uso (soy principiante). Se prefiere ver el proyecto funcionando correctamente primero (al menos hasta el item 9) antes de meterlo. Nota: el caché simple en proceso de `get_immich_service()`/`Settings` (`functools.lru_cache`, sin estado compartido entre procesos) ya se resolvió en el punto 4 sin Redis - esta fila es sobre un caché real (compartido/distribuido), no sobre eso. | <!-- potencial v1.0.0 según lo demás que haya implementado -->
-| **Daily game** | 15 | - | Depende de tener login. Momento exacto sin definir, se decidirá según avance el proyecto. | <!-- v0.+1.0 -->
-| **Report incorrect** | 11 | - | Agrega una tabla de reportes: no corrige metadata directamente, pero saca esos assets de los juegos y permite verlos en Immich para corregirlos ahí. Probablemente vaya después del 19 también, ya que no es el foco principal del proyecto. | 
 | **Script de desinstalación** | A | - | `backend/src/scripts/teardown_db_role.py`, simétrico a `bootstrap_db_role.py`: `DROP SCHEMA minigames CASCADE` + revoca los grants de `DB_APP_USERNAME` sobre `public` (incluye el `ALTER DEFAULT PRIVILEGES` que el bootstrap dejó ahí) + `DROP ROLE` - nunca toca datos ni objetos propios de Immich. Requiere confirmación explícita (`--yes`/dry-run), no debe correr automático como `db-init`. Pendiente decidir si también debe revertir el `REVOKE CREATE ON SCHEMA public FROM PUBLIC` del bootstrap - ese sí es un cambio al ACL del propio `public` de Immich, no algo scoped solo al rol de minigames.
 | **Testing E2E de frontend (Playwright)** | e | - | Surgió al verificar el punto e: no había manera de comprobar visualmente el flujo Continuar/Nuevo juego sin instalar Playwright (headless Chromium) en el sandbox, y se decidió no instalarlo puntualmente para eso. Queda como tarea propia: agregar Playwright (`@playwright/test` o `pytest-playwright`) como dependencia de test E2E real, con specs versionados, corriendo en CI (github workflows, ver punto A). Momento exacto sin definir. |
 

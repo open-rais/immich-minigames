@@ -25,6 +25,15 @@
 
 name: immich-minigames-app
 
+x-logging: &default-logging
+  # json-file's default driver has no rotation - these containers' logs would otherwise grow
+  # unbounded (docs/TODO/LOGGING.md §4.6). ~50MB/container, enough for weeks of a dev/family-sized
+  # instance.
+  driver: json-file
+  options:
+    max-size: '10m'
+    max-file: '5'
+
 services:
   db-init:
     image: ghcr.io/open-rais/immich-minigames-backend:${MINIGAMES_VERSION:-edge}
@@ -72,9 +81,16 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       INITIAL_INVITE_TOKEN: ${INITIAL_INVITE_TOKEN}
       RATE_LIMIT_STORAGE_URI: ${RATE_LIMIT_STORAGE_URI:-memory://}
+      # The default below (json) just restates the image's own Dockerfile ENV - listed explicitly
+      # so LOG_FORMAT/LOG_LEVEL can be overridden from .env (e.g. LOG_FORMAT=console for more
+      # readable ad-hoc `docker logs` reading); this allow-list is the only way anything set in
+      # .env actually reaches this container (no env_file: .env here, see the comment above).
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     restart: unless-stopped
+    logging: *default-logging
 
   frontend:
     image: ghcr.io/open-rais/immich-minigames-frontend:${MINIGAMES_VERSION:-edge}
@@ -86,3 +102,4 @@ services:
     ports:
       - '${FRONTEND_PORT:-3000}:80'
     restart: unless-stopped
+    logging: *default-logging
