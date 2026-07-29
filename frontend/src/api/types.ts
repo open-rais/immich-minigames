@@ -273,6 +273,12 @@ export interface ChangePasswordIn {
   new_password: string
 }
 
+// Roadmap #H, F2 - mirrors backend/src/api/auth_schemas.py's ResetPasswordIn.
+export interface ResetPasswordIn {
+  token: string
+  new_password: string
+}
+
 // Reusable across features (not just Immichdle's guess input) - see backend/src/api/api.py's
 // /persons/search.
 export interface PersonSearchResultOut {

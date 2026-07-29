@@ -32,6 +32,14 @@ export async function updateUserSkin(userId: string, personId: string | null): P
   return data
 }
 
+// Roadmap #H, F2 - backend/src/api/admin_api.py's create_password_reset. Same response shape as
+// F1's createInvite (id/token/expires_at) - the token is only ever available here, shown once via
+// ShareModal (see admin/AdminUserRow.tsx).
+export async function createPasswordReset(userId: string): Promise<CreateInviteOut> {
+  const { data } = await apiClient.post<CreateInviteOut>(`/admin/users/${userId}/password-reset`)
+  return data
+}
+
 // Admin feature (ADMIN-FEATURE.md point #4) - backend/src/api/admin_games_api.py.
 
 export async function listGameSettings(): Promise<GameSettingsOut[]> {

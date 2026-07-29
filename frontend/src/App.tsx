@@ -6,6 +6,7 @@ import { ChangePasswordPage } from './auth/ChangePasswordPage'
 import { EditProfilePage } from './auth/EditProfilePage'
 import { LoginPage } from './auth/LoginPage'
 import { ProfilePage } from './auth/ProfilePage'
+import { ResetPasswordPage } from './auth/ResetPasswordPage'
 import { SignupPage } from './auth/SignupPage'
 import { RoundsPage } from './games/rounds/RoundsPage'
 import { DailyGameRoute } from './menu/DailyGameRoute'
@@ -24,6 +25,7 @@ function App() {
             <Route path="/" element={<MainMenu />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/profile/edit" element={<EditProfilePage />} />
             <Route path="/profile/password" element={<ChangePasswordPage />} />

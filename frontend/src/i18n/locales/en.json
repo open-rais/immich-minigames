@@ -198,6 +198,12 @@
       "hasAccount": "Already have an account?",
       "inviteCode": "Invite code"
     },
+    "resetPassword": {
+      "title": "Reset password",
+      "token": "Reset token",
+      "newPassword": "New password",
+      "submit": "Reset password"
+    },
     "profile": {
       "title": "Profile",
       "memberSince": "Member since {{date}}",
@@ -206,6 +212,7 @@
       "save": "Save changes",
       "saved": "Profile updated",
       "viewGames": "View games",
+      "resetPassword": "Reset password",
       "changePassword": {
         "title": "Change password",
         "currentPassword": "Current password",

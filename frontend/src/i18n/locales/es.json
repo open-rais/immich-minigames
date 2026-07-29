@@ -198,6 +198,12 @@
       "hasAccount": "¿Ya tienes una cuenta?",
       "inviteCode": "Código de invitación"
     },
+    "resetPassword": {
+      "title": "Restablecer contraseña",
+      "token": "Código de restablecimiento",
+      "newPassword": "Nueva contraseña",
+      "submit": "Restablecer contraseña"
+    },
     "profile": {
       "title": "Perfil",
       "memberSince": "Miembro desde {{date}}",
@@ -206,6 +212,7 @@
       "save": "Guardar cambios",
       "saved": "Perfil actualizado",
       "viewGames": "Ver juegos",
+      "resetPassword": "Restablecer contraseña",
       "changePassword": {
         "title": "Cambiar contraseña",
         "currentPassword": "Contraseña actual",

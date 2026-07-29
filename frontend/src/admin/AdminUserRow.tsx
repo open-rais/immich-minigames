@@ -2,7 +2,7 @@ import { useMemo, useState } from "react"
 import type { FormEvent } from "react"
 import { useTranslation } from "react-i18next"
 
-import { updateUser, updateUserSkin } from "../api/admin"
+import { createPasswordReset, updateUser, updateUserSkin } from "../api/admin"
 import { apiErrorMessage } from "../api/errors"
 import { personThumbnailUrl } from "../api/games"
 import type { User } from "../api/types"
@@ -10,6 +10,7 @@ import { AuthField } from "../auth/AuthField"
 import { Button } from "../games/shared/Button"
 import { PersonAvatar } from "../games/shared/PersonAvatar"
 import { PersonSearchInput } from "../games/shared/PersonSearchInput"
+import { ShareModal } from "../games/shared/ShareModal"
 import { SettingAccordion } from "./SettingAccordion"
 
 interface AdminUserRowProps {
@@ -30,6 +31,7 @@ export function AdminUserRow({ user, onUpdated }: AdminUserRowProps) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+  const [resetLink, setResetLink] = useState<string | null>(null)
 
   const excludeIds = useMemo(
     () => (user.skin_person_id ? new Set([user.skin_person_id]) : new Set<string>()),
@@ -57,6 +59,19 @@ export function AdminUserRow({ user, onUpdated }: AdminUserRowProps) {
     setError(null)
     try {
       onUpdated(await updateUserSkin(user.id, personId))
+    } catch (err) {
+      setError(apiErrorMessage(err) ?? t("auth.error.generic"))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleResetPassword() {
+    setBusy(true)
+    setError(null)
+    try {
+      const created = await createPasswordReset(user.id)
+      setResetLink(`${window.location.origin}/reset-password?token=${created.token}`)
     } catch (err) {
       setError(apiErrorMessage(err) ?? t("auth.error.generic"))
     } finally {
@@ -97,6 +112,10 @@ export function AdminUserRow({ user, onUpdated }: AdminUserRowProps) {
         </Button>
       </form>
 
+      <Button variant="secondary" className="mt-3 w-full py-2.5" onClick={handleResetPassword} disabled={busy}>
+        {t("auth.profile.resetPassword")}
+      </Button>
+
       <div className="my-6 border-t border-line" />
 
       <div className="flex flex-col gap-3">
@@ -120,6 +139,8 @@ export function AdminUserRow({ user, onUpdated }: AdminUserRowProps) {
 
       {error && <p className="mt-4 text-sm font-semibold text-rose-600">{error}</p>}
       {saved && !error && <p className="mt-4 text-sm font-semibold text-emerald-600">{t("auth.profile.saved")}</p>}
+
+      {resetLink && <ShareModal text={resetLink} onClose={() => setResetLink(null)} />}
     </SettingAccordion>
   )
 }
