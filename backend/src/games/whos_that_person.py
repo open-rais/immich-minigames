@@ -213,24 +213,33 @@ class WhosThatPersonGame(BaseGame):
         # photos - the named-people pool is much smaller than 15).
         return frozenset(round_.asset_id for round_ in self.rounds)
 
+    def _pick_round_content(
+        self, max_faces: int, exclude_asset_ids: frozenset[UUID]
+    ) -> tuple[UUID, list[HiddenFace]] | None:
+        """The next round's photo + which of its named faces to hide - the single point of
+        variation the daily flow overrides (roadmap #G, games/daily_scripted.py's
+        DailyWhosThatPersonGame) to replay a pre-generated sequence instead of querying Immich
+        live. None when no eligible photo exists."""
+        faces = self._immich_service.get_random_asset_with_named_faces(
+            max_faces=max_faces, exclude_asset_ids=exclude_asset_ids
+        )
+        if not faces:
+            return None
+        return faces[0].asset_id, [HiddenFace.of(f) for f in faces]
+
     @classmethod
     def start(
         cls, id: UUID, owner: str, immich_service: ImmichService, settings: Mapping[str, float] | None = None
     ) -> "WhosThatPersonGame":
-        total_people = int((settings or {}).get("total_people", TOTAL_PEOPLE))
-        max_hidden_faces = int((settings or {}).get("max_hidden_faces", MAX_HIDDEN_FACES))
-        faces = immich_service.get_random_asset_with_named_faces(max_faces=min(max_hidden_faces, total_people))
-        if not faces:
+        game = cls(id=id, owner=owner, rounds=[], immich_service=immich_service, settings=settings)
+        picked = game._pick_round_content(min(game._max_hidden_faces, game.total_people), frozenset())
+        if picked is None:
             raise ValueError("not enough named faces in Immich to start a Who'sThatPerson game")
 
-        first_round = WhosThatPersonRound(
-            id=uuid4(),
-            game_id=id,
-            round_index=1,
-            asset_id=faces[0].asset_id,
-            faces=[HiddenFace.of(f) for f in faces],
-        )
-        return cls(id=id, owner=owner, rounds=[first_round], immich_service=immich_service, settings=settings)
+        asset_id, faces = picked
+        first_round = WhosThatPersonRound(id=uuid4(), game_id=id, round_index=1, asset_id=asset_id, faces=faces)
+        game.rounds.append(first_round)
+        return game
 
     def play_round(self, guess: dict[UUID, UUID]) -> PlayRoundResult:
         if self.finished:
@@ -253,19 +262,15 @@ class WhosThatPersonGame(BaseGame):
         max_faces = min(self._max_hidden_faces, self.total_people - self._people_asked)
         # Cheap-ish existence check, discarded - create_next_round() samples again, same
         # double-sample pattern MoreOrLessGame/AssetRoundsGame already use.
-        candidate = self._immich_service.get_random_asset_with_named_faces(
-            max_faces=max_faces, exclude_asset_ids=self._shown_asset_ids
-        )
-        return bool(candidate)
+        return self._pick_round_content(max_faces, self._shown_asset_ids) is not None
 
     def create_next_round(self) -> WhosThatPersonRound:
         previous = self.current_round
         max_faces = min(self._max_hidden_faces, self.total_people - self._people_asked)
-        faces = self._immich_service.get_random_asset_with_named_faces(
-            max_faces=max_faces, exclude_asset_ids=self._shown_asset_ids
-        )
-        if not faces:
+        picked = self._pick_round_content(max_faces, self._shown_asset_ids)
+        if picked is None:
             raise ValueError("no more eligible photos left - has_next_round() should have returned False")
+        asset_id, faces = picked
 
         if previous.ending_streak is None:
             raise RuntimeError("create_next_round() called before calculate_score() set ending_streak")
@@ -273,7 +278,7 @@ class WhosThatPersonGame(BaseGame):
             id=uuid4(),
             game_id=self.id,
             round_index=previous.round_index + 1,
-            asset_id=faces[0].asset_id,
-            faces=[HiddenFace.of(f) for f in faces],
+            asset_id=asset_id,
+            faces=faces,
             incoming_streak=previous.ending_streak,
         )

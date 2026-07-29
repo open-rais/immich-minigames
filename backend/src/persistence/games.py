@@ -8,11 +8,18 @@ Shared Base/engine/session plumbing lives in persistence/base.py so other own-da
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import ForeignKey, Index, UniqueConstraint, func
+from sqlalchemy import ForeignKey, Index, UniqueConstraint, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from persistence.base import SCHEMA, Base
+
+# Roadmap #G (daily games) - GameModel.daily_challenge_id below is a real FK to this table, which
+# must already be registered in Base.metadata by the time tests' reset_db()/create_all() (or a
+# real `alembic upgrade`) runs. Nothing else in this module's own import chain pulls
+# persistence.daily in on its own (unlike UserModel, which every request path already imports via
+# services/auth_service.py) - see persistence/daily.py.
+from persistence.daily import DailyChallengeModel  # noqa: F401
 
 
 class GameModel(Base):
@@ -22,6 +29,27 @@ class GameModel(Base):
     __table_args__ = (
         Index("ix_games_owner_type_mode", "owner", "game_type", "mode"),
         Index("ix_games_user_type_mode", "user_id", "game_type", "mode"),
+        # Roadmap #G - "one daily attempt per (challenge, player)" enforced at the DB level, not
+        # just in GamesService.create_daily_game. Two partial indexes (mirroring the
+        # owner-vs-user_id branching every other per-player query in this file already does)
+        # rather than one plain UNIQUE(daily_challenge_id, user_id): Postgres never treats two NULLs
+        # as equal, so a plain unique constraint on that pair would let unlimited anonymous
+        # (user_id IS NULL) games through for the same challenge - the owner-keyed index below is
+        # what actually catches those.
+        Index(
+            "uq_games_daily_user",
+            "daily_challenge_id",
+            "user_id",
+            unique=True,
+            postgresql_where=text("daily_challenge_id IS NOT NULL AND user_id IS NOT NULL"),
+        ),
+        Index(
+            "uq_games_daily_owner",
+            "daily_challenge_id",
+            "owner",
+            unique=True,
+            postgresql_where=text("daily_challenge_id IS NOT NULL AND user_id IS NULL"),
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
@@ -39,6 +67,14 @@ class GameModel(Base):
     # this one was still unfinished (GamesService._abandon_active_games). Never becomes True at the
     # same time finished does, so get_personal_records/get_leaderboard need no changes.
     abandoned: Mapped[bool] = mapped_column(default=False)
+    # Roadmap #G - set only for a game created through the daily flow (GamesService.
+    # create_daily_game), pointing at the shared challenge content it was instantiated from. NULL
+    # for every normal game, exactly as before this column existed - see GamesService's
+    # daily_challenge_id IS NULL filters on get_personal_records/get_leaderboard/get_current_game/
+    # _abandon_active_games (daily games live in a separate "world", docs/TODO/DAILY-GAMES.md §4.5).
+    daily_challenge_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey(f"{SCHEMA}.daily_challenges.id"), default=None
+    )
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
     rounds: Mapped[list["RoundModel"]] = relationship(

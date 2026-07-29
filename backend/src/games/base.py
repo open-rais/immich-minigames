@@ -8,6 +8,7 @@ persistence/games.py.
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import date
 from typing import Any
 from uuid import UUID
 
@@ -83,6 +84,10 @@ class BaseGame(ABC):
         # request (see GamesService._game_kwargs), never snapshotted onto a round, so a change
         # takes effect on the very next round played rather than only on new games.
         self._settings: Mapping[str, float] = settings or {}
+        # Roadmap #G - set by GamesService (never a constructor param - it's pure persistence
+        # metadata this domain layer doesn't otherwise care about) right after building a daily
+        # game, to the challenge's date. None for every normal game.
+        self.daily_challenge_date: date | None = None
 
     @property
     def current_round(self) -> BaseRound:

@@ -29,7 +29,7 @@ from games.immichdle import ImmichdleGame, ImmichdleRound
 from games.more_or_less import MoreOrLessRound
 from games.whos_that_person import WhosThatPersonGame, WhosThatPersonRound
 from services.game_settings import SettingSpec
-from services.games_service import GameRecord, LeaderboardEntry, RecentGame, UnsupportedGameError
+from services.games_service import DailyModeStatus, GameRecord, LeaderboardEntry, RecentGame, UnsupportedGameError
 
 
 class CreateGameIn(BaseModel):
@@ -114,6 +114,11 @@ class GameOut(BaseModel):
     # display-only constant. Null for every other game, which has no such fixed/counted total.
     total_rounds: int | None = None
     total_people: int | None = None
+    # Roadmap #G - set only for a daily-challenge game (see games/base.py's BaseGame.
+    # daily_challenge_date), null for every normal game. Lets the frontend tell a resumed/loaded
+    # game is a daily one on a fresh page load (no separate "Nuevo juego" affordance, no re-offer
+    # to play) and titles the rounds-review page (docs/TODO/DAILY-GAMES.md §5).
+    daily_challenge_date: date | None = None
 
     @classmethod
     def from_game(cls, game: BaseGame) -> "GameOut":
@@ -142,6 +147,7 @@ class GameOut(BaseModel):
             target_first_asset_date=target_first_asset_date,
             total_rounds=game.total_rounds if isinstance(game, AssetRoundsGame) else None,
             total_people=game.total_people if isinstance(game, WhosThatPersonGame) else None,
+            daily_challenge_date=game.daily_challenge_date,
         )
 
 
@@ -166,6 +172,8 @@ class RecentGameOut(BaseModel):
     finished: bool
     abandoned: bool
     created_at: datetime
+    # Roadmap #G - whether this was a daily-challenge game (see GamesService.get_recent_games).
+    is_daily: bool
 
     @classmethod
     def from_recent_game(cls, recent: RecentGame) -> "RecentGameOut":
@@ -177,6 +185,7 @@ class RecentGameOut(BaseModel):
             finished=recent.finished,
             abandoned=recent.abandoned,
             created_at=recent.created_at,
+            is_daily=recent.is_daily,
         )
 
 
@@ -284,6 +293,18 @@ class LeaderboardOut(BaseModel):
         return cls(window=window, entries=[LeaderboardEntryOut.from_entry(e) for e in entries])
 
 
+# -- daily leaderboard (roadmap point #G, F5 - see GamesService.get_daily_leaderboard) ---
+
+
+class DailyLeaderboardOut(BaseModel):
+    date: date
+    entries: list[LeaderboardEntryOut]
+
+    @classmethod
+    def from_entries(cls, challenge_date: date, entries: list[LeaderboardEntry]) -> "DailyLeaderboardOut":
+        return cls(date=challenge_date, entries=[LeaderboardEntryOut.from_entry(e) for e in entries])
+
+
 # -- admin game settings (ADMIN-FEATURE.md point #4, see services/game_settings.py) ---
 
 
@@ -319,6 +340,85 @@ class GameSettingsOut(BaseModel):
                 )
                 for spec in specs
             ],
+        )
+
+
+# -- daily games admin config (roadmap point #G, see services/daily_settings.py) ---
+
+
+class DailySettingsOut(BaseModel):
+    game_type: str
+    mode: str
+    # The "Activar juego diario" checkbox from roadmap #f - whether this mode is offered in the
+    # daily rotation at all.
+    enabled: bool
+    settings: list[GameSettingOut]
+
+    @classmethod
+    def from_specs(
+        cls, game_type: str, mode: str, enabled: bool, specs: list[SettingSpec], values: dict[str, float]
+    ) -> "DailySettingsOut":
+        return cls(
+            game_type=game_type,
+            mode=mode,
+            enabled=enabled,
+            settings=[
+                GameSettingOut(
+                    key=spec.key,
+                    value=values[spec.key],
+                    default=spec.default,
+                    value_type=spec.value_type,
+                    min_value=spec.min_value,
+                    max_value=spec.max_value,
+                )
+                for spec in specs
+            ],
+        )
+
+
+class UpdateDailySettingsIn(BaseModel):
+    # PATCH semantics - omit a field to leave it unchanged (mirrors auth_schemas.py's
+    # UpdateProfileIn), so toggling "enabled" from the admin UI doesn't require also restating
+    # every setting value, and saving settings doesn't require also restating "enabled".
+    enabled: bool | None = None
+    values: dict[str, float] | None = None
+
+
+# -- daily games player-facing status (roadmap point #G, see services/games_service.py's
+# GamesService.get_daily_status/create_daily_game) ---
+
+DailyModeStatusValue = Literal["not_played", "in_progress", "finished"]
+
+
+class DailyModeStatusOut(BaseModel):
+    game_type: str
+    mode: str
+    status: DailyModeStatusValue
+    game_id: UUID | None
+    score: int | None
+
+    @classmethod
+    def from_status(cls, status: DailyModeStatus) -> "DailyModeStatusOut":
+        return cls(
+            game_type=status.game_type,
+            mode=status.mode,
+            status=status.status,
+            game_id=status.game_id,
+            score=status.score,
+        )
+
+
+class DailyStatusOut(BaseModel):
+    # ISO datetimes (server time, decision [G]) - the frontend's countdown ticks off the offset
+    # between these two rather than trusting its own clock alone (docs/TODO/DAILY-GAMES.md §4.7).
+    resets_at: datetime
+    server_now: datetime
+    modes: list[DailyModeStatusOut]
+
+    @classmethod
+    def from_statuses(cls, resets_at: datetime, server_now: datetime, statuses: list[DailyModeStatus]) -> "DailyStatusOut":
+        return cls(
+            resets_at=resets_at, server_now=server_now, modes=[DailyModeStatusOut.from_status(s) for s in statuses]
         )
 
 

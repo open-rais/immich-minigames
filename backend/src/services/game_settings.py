@@ -87,6 +87,22 @@ class InvalidGameSettingValueError(Exception):
     pass
 
 
+def validate_setting_value(spec: SettingSpec, value: float) -> None:
+    """Shared by GameSettingsService.update_settings and DailySettingsService.update_settings
+    (services/daily_settings.py) - same SettingSpec shape, same admin-input validation rules."""
+    # Checked first, before any arithmetic on value - Python's JSON parser accepts the
+    # NaN/Infinity literals, and NaN compares False to everything (so it'd sail past min/max
+    # below) while int(nan) raises a raw ValueError instead of the typed error here.
+    if not math.isfinite(value):
+        raise InvalidGameSettingValueError(f"{spec.key} must be a finite number")
+    if value < spec.min_value:
+        raise InvalidGameSettingValueError(f"{spec.key} must be >= {spec.min_value}")
+    if value > spec.max_value:
+        raise InvalidGameSettingValueError(f"{spec.key} must be <= {spec.max_value}")
+    if spec.value_type == "int" and value != int(value):
+        raise InvalidGameSettingValueError(f"{spec.key} must be a whole number")
+
+
 class GameSettingsService:
     def __init__(self, session: Session) -> None:
         self._session = session
@@ -112,17 +128,7 @@ class GameSettingsService:
             spec = specs.get(key)
             if spec is None:
                 raise UnknownGameSettingError(f"{game_type}/{mode} has no setting {key!r}")
-            # Checked first, before any arithmetic on value - Python's JSON parser accepts the
-            # NaN/Infinity literals, and NaN compares False to everything (so it'd sail past
-            # min/max below) while int(nan) raises a raw ValueError instead of the typed error here.
-            if not math.isfinite(value):
-                raise InvalidGameSettingValueError(f"{key} must be a finite number")
-            if value < spec.min_value:
-                raise InvalidGameSettingValueError(f"{key} must be >= {spec.min_value}")
-            if value > spec.max_value:
-                raise InvalidGameSettingValueError(f"{key} must be <= {spec.max_value}")
-            if spec.value_type == "int" and value != int(value):
-                raise InvalidGameSettingValueError(f"{key} must be a whole number")
+            validate_setting_value(spec, value)
 
         row = self._session.get(GameSettingsModel, (game_type, mode))
         if row is None:

@@ -254,23 +254,31 @@ class ImmichdleGame(BaseGame):
         immich_service: ImmichService,
         ml_service: MLService | None = None,
         settings: Mapping[str, float] | None = None,
+        target: PersonSnapshot | None = None,
     ) -> "ImmichdleGame":
-        asset_count_weight = float((settings or {}).get("asset_count_weight", ASSET_COUNT_WEIGHT_EXPONENT))
-        target_people = immich_service.get_persons(
-            named_only=True, randomize=True, limit=1, asset_count_weight=asset_count_weight
-        )
-        if not target_people:
-            raise ValueError("not enough named people in Immich to start an Immichdle game")
-        [target_person] = target_people
-        has_alternative = immich_service.get_persons(
-            named_only=True, limit=1, exclude_ids=frozenset({target_person.id})
-        )
-        if not has_alternative:
-            raise ValueError("not enough named people in Immich to start an Immichdle game")
+        # Roadmap #G - a daily game hands in its pre-generated target (services/daily_service.py's
+        # _build_immichdle_target) instead of sampling one here; guesses stay live either way
+        # (play_round below always queries immich_service for whatever the player types), so
+        # nothing downstream of this needs to know whether the target came from a live sample or a
+        # frozen spec.
+        if target is None:
+            asset_count_weight = float((settings or {}).get("asset_count_weight", ASSET_COUNT_WEIGHT_EXPONENT))
+            target_people = immich_service.get_persons(
+                named_only=True, randomize=True, limit=1, asset_count_weight=asset_count_weight
+            )
+            if not target_people:
+                raise ValueError("not enough named people in Immich to start an Immichdle game")
+            [target_person] = target_people
+            has_alternative = immich_service.get_persons(
+                named_only=True, limit=1, exclude_ids=frozenset({target_person.id})
+            )
+            if not has_alternative:
+                raise ValueError("not enough named people in Immich to start an Immichdle game")
 
-        target = PersonSnapshot.of(
-            target_person, first_asset_date=immich_service.get_person_first_asset_date(target_person.id)
-        )
+            target = PersonSnapshot.of(
+                target_person, first_asset_date=immich_service.get_person_first_asset_date(target_person.id)
+            )
+
         first_round = ImmichdleRound(id=uuid4(), game_id=id, round_index=1, target=target)
         starting_score = int((settings or {}).get("starting_score", STARTING_SCORE))
         return cls(

@@ -1,38 +1,52 @@
 """
 Games service - creates/loads/plays games. Bridges the game-logic layer (games/*.py, no
 persistence awareness) and this app's own DB (persistence/games.py).
+
+NotEnoughContentError/UnsupportedGameError are defined in services/errors.py, not here, and
+re-exported below - services/daily_service.py needs to raise the exact same NotEnoughContentError
+this module's own games raise, and importing it back from here would cycle (this module also
+imports DailyService). Every existing `from services.games_service import NotEnoughContentError`
+call site (main.py, api/dto/common.py, tests/*) keeps working unchanged via that re-export.
 """
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Literal
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, tuple_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from games.base import BaseGame, BaseRound
+from games.daily_scripted import DailyDateguessrGame, DailyGeoguessrGame, DailyWhosThatPersonGame
 from games.dateguessr import GAME_TYPE as DATEGUESSR_TYPE
 from games.dateguessr import MODE_DAYS_TO_DATE, DateguessrGame, DateguessrRound
 from games.geoguessr import GAME_TYPE as GEOGUESSR_TYPE
 from games.geoguessr import MODE_DISTANCE_BETWEEN_GUESS, GeoguessrGame, GeoguessrRound
 from games.immichdle import GAME_TYPE as IMMICHDLE_TYPE
-from games.immichdle import MODE_PERSON, ImmichdleGame, ImmichdleRound
+from games.immichdle import MODE_PERSON, ImmichdleGame, ImmichdleRound, PersonSnapshot
 from games.more_or_less import GAME_TYPE as MORE_OR_LESS_TYPE
 from games.more_or_less import (
     MODE_ALBUM_ASSETS,
     MODE_PERSON_ASSETS,
     AlbumAssetsProvider,
     CandidateProvider,
+    EntitySnapshot,
     MoreOrLessGame,
     MoreOrLessRound,
     PersonAssetsProvider,
+    ScriptedCandidateProvider,
 )
 from games.whos_that_person import GAME_TYPE as WHOS_THAT_PERSON_TYPE
 from games.whos_that_person import MODE_NAMED_FACES, WhosThatPersonGame, WhosThatPersonRound
+from persistence.daily import DailyChallengeModel
 from persistence.games import GameModel, RoundModel
 from persistence.users import UserModel
+from services.daily_service import DailyService
+from services.daily_settings import DailySettingsService
+from services.errors import NotEnoughContentError, UnsupportedGameError  # noqa: F401
 from services.game_settings import GameSettingsService
 from services.immich_service import ImmichService
 from services.ml_service import MLService
@@ -67,6 +81,18 @@ _GAMES: dict[tuple[str, str], _GameSpec] = {
     (WHOS_THAT_PERSON_TYPE, MODE_NAMED_FACES): _GameSpec(WhosThatPersonGame, WhosThatPersonRound),
 }
 
+# Roadmap #G - which game class a daily game of this game_type is built from instead of the normal
+# one in _GAMES above (games/daily_scripted.py's thin subclasses, which replay a frozen spec
+# instead of querying Immich). Keyed by game_type alone (not mode) since each of these three games
+# has exactly one mode; MoreOrLess and Immichdle aren't here at all - they stay their normal game
+# class, just constructed with a ScriptedCandidateProvider / a pre-picked target instead (see
+# GamesService._daily_game_kwargs).
+_DAILY_GAME_CLASSES: dict[str, type[BaseGame]] = {
+    GEOGUESSR_TYPE: DailyGeoguessrGame,
+    DATEGUESSR_TYPE: DailyDateguessrGame,
+    WHOS_THAT_PERSON_TYPE: DailyWhosThatPersonGame,
+}
+
 
 @dataclass(frozen=True)
 class GameRecord:
@@ -92,6 +118,11 @@ class RecentGame:
     finished: bool
     abandoned: bool
     created_at: datetime
+    # Roadmap #G - whether this was a daily-challenge game rather than a normal one. Unlike every
+    # other per-player query in this file, get_recent_games doesn't filter daily games out (it's
+    # personal history, not a score comparison) - it just flags them so the "Ver juegos" modal can
+    # label them (see docs/TODO/DAILY-GAMES.md §4.5).
+    is_daily: bool
 
 
 @dataclass(frozen=True)
@@ -106,8 +137,17 @@ class LeaderboardEntry:
     best_score: int
 
 
-class UnsupportedGameError(Exception):
-    pass
+@dataclass(frozen=True)
+class DailyModeStatus:
+    """One entry of the `GET /daily` menu listing (roadmap #G, docs/TODO/DAILY-GAMES.md §4.6) - the
+    caller's (owner-or-user) status for one enabled daily mode, without generating a challenge just
+    to list it (see GamesService.get_daily_status)."""
+
+    game_type: str
+    mode: str
+    status: Literal["not_played", "in_progress", "finished"]
+    game_id: UUID | None
+    score: int | None
 
 
 class GameNotFoundError(Exception):
@@ -122,11 +162,16 @@ class RoundNotPendingError(Exception):
     pass
 
 
-class NotEnoughContentError(Exception):
-    """Raised when the Immich library doesn't have enough named people/faces/located assets to
-    start a game - the friendly ValueError each game's start() already raises for that case (see
-    games/more_or_less.py, games/immichdle.py, games/whos_that_person.py, games/asset_rounds.py),
-    re-raised here so main.py can map it to a 422 instead of it reaching the client as a bare 500."""
+class DailyNotEnabledError(Exception):
+    """Roadmap #G - raised by create_daily_game when the (game_type, mode) isn't in today's daily
+    rotation (either genuinely unsupported, or a real mode the admin hasn't enabled) - main.py maps
+    this to a 404, matching docs/TODO/DAILY-GAMES.md §4.6."""
+
+
+class DailyAlreadyPlayedError(Exception):
+    """Roadmap #G - raised by create_daily_game when the caller (owner-or-user) already has a game
+    for today's challenge of this (game_type, mode) - "1 intento por día" (decision [C]). main.py
+    maps this to a 409."""
 
 
 class GamesService:
@@ -136,6 +181,8 @@ class GamesService:
         immich_service: ImmichService,
         ml_service: MLService | None = None,
         game_settings_service: GameSettingsService | None = None,
+        daily_settings_service: DailySettingsService | None = None,
+        daily_service: DailyService | None = None,
     ) -> None:
         self._session = session
         # Populated by _load_game() and consulted by _save_played_round() so playing a round never
@@ -151,6 +198,9 @@ class GamesService:
         self._ml_service = ml_service or MLService()
         # Admin feature (ADMIN-FEATURE.md point #4) - same optional/self-constructing pattern.
         self._game_settings_service = game_settings_service or GameSettingsService(session)
+        # Roadmap #G - same optional/self-constructing pattern as above.
+        self._daily_settings_service = daily_settings_service or DailySettingsService(session)
+        self._daily_service = daily_service or DailyService(session, immich_service)
 
     def _game_kwargs(self, spec: _GameSpec, game_type: str, mode: str) -> dict[str, Any]:
         """Constructor/`start()` kwargs every game needs, plus whichever extra ones a specific game
@@ -175,6 +225,41 @@ class GamesService:
             kwargs["ml_service"] = self._ml_service
         return kwargs
 
+    def _daily_game_kwargs(
+        self, game_type: str, mode: str, challenge: DailyChallengeModel, *, rounds_played: int
+    ) -> dict[str, Any]:
+        """Kwargs for a daily game's class - mirrors _game_kwargs's role but sources content from
+        the frozen challenge spec/settings snapshot (docs/TODO/DAILY-GAMES.md §4.2, §4.4) instead
+        of live Immich queries or admin-configured live settings. `rounds_played` is how many
+        rounds already exist (0 right before calling .start(), or len(persisted rounds) when
+        reconstructing an in-progress game in _row_to_game) - only MoreOrLess's scripted provider
+        needs it, to resume mid-chain at the right index; Immichdle only needs the target on the
+        very first round (rounds_played == 0), since ImmichdleRound.from_payload already carries it
+        for every later reconstruction."""
+        settings = challenge.settings
+        if game_type == MORE_OR_LESS_TYPE:
+            chain = [EntitySnapshot.from_dict(e) for e in challenge.spec["chain"]]
+            # start() consumes chain[0] (reference) + chain[1] (first candidate); each further
+            # round played consumes one more - see games/more_or_less.py's ScriptedCandidateProvider.
+            next_index = rounds_played + 1
+            return {"provider": ScriptedCandidateProvider(chain, next_index), "mode": mode, "settings": settings}
+        if game_type in (GEOGUESSR_TYPE, DATEGUESSR_TYPE, WHOS_THAT_PERSON_TYPE):
+            return {
+                "immich_service": self._immich_service,  # unused for content, still a required param
+                "settings": settings,
+                "rounds_spec": challenge.spec["rounds"],
+            }
+        if game_type == IMMICHDLE_TYPE:
+            kwargs: dict[str, Any] = {
+                "immich_service": self._immich_service,
+                "ml_service": self._ml_service,
+                "settings": settings,
+            }
+            if rounds_played == 0:
+                kwargs["target"] = PersonSnapshot.from_dict(challenge.spec["target"])
+            return kwargs
+        raise UnsupportedGameError(f"unsupported daily game/mode: {game_type}/{mode}")
+
     def create_game(
         self, owner: str, game_type: str, mode: str, user_id: UUID | None = None
     ) -> BaseGame:
@@ -192,6 +277,92 @@ class GamesService:
         self._abandon_active_games(owner, game_type, mode, user_id)
         self._save_new_game(game, user_id=user_id)
         return game
+
+    def create_daily_game(
+        self, owner: str, game_type: str, mode: str, user_id: UUID | None = None, today: date | None = None
+    ) -> BaseGame:
+        """Roadmap #G, F3 - creates (and consumes) the caller's single daily attempt for today's
+        challenge of this (game_type, mode). Never calls _abandon_active_games - a daily game
+        neither abandons a normal game of the same mode nor a previous daily one (a challenge only
+        ever gets one game per player at all, enforced below + by the DB's partial unique indexes -
+        see docs/TODO/DAILY-GAMES.md §4.5). `today` is only ever overridden by tests; real callers
+        always mean the server's actual today (decision [G])."""
+        if (game_type, mode) not in _GAMES:
+            raise UnsupportedGameError(f"unsupported game/mode: {game_type}/{mode}")
+        if not self._daily_settings_service.is_enabled(game_type, mode):
+            raise DailyNotEnabledError(f"{game_type}/{mode} is not enabled for the daily rotation")
+
+        challenge = self._daily_service.get_or_create_challenge(today or date.today(), game_type, mode)
+
+        filter_clause = GameModel.user_id == user_id if user_id is not None else GameModel.owner == owner
+        already_played = self._session.execute(
+            select(GameModel.id).where(GameModel.daily_challenge_id == challenge.id, filter_clause)
+        ).scalar_one_or_none()
+        if already_played is not None:
+            raise DailyAlreadyPlayedError(f"already played today's {game_type}/{mode} challenge")
+
+        game_class = _DAILY_GAME_CLASSES.get(game_type, _GAMES[(game_type, mode)].game_class)
+        kwargs = self._daily_game_kwargs(game_type, mode, challenge, rounds_played=0)
+        try:
+            game = game_class.start(id=uuid4(), owner=owner, **kwargs)
+        except ValueError as e:
+            raise NotEnoughContentError(str(e)) from e
+        game.daily_challenge_date = challenge.challenge_date
+
+        try:
+            self._save_new_game(game, user_id=user_id, daily_challenge_id=challenge.id)
+        except IntegrityError as exc:
+            # Backstop against the race two simultaneous requests (e.g. two tabs) could hit - the
+            # pre-check above already covers the common case, this covers the window between it and
+            # the commit (see the partial unique indexes on persistence/games.py's GameModel).
+            self._session.rollback()
+            raise DailyAlreadyPlayedError(f"already played today's {game_type}/{mode} challenge") from exc
+        return game
+
+    def get_daily_status(self, owner: str, user_id: UUID | None, today: date | None = None) -> list[DailyModeStatus]:
+        """`GET /daily` menu listing (roadmap #G, §4.6) - every enabled mode's status for the
+        caller, without generating a challenge just to list it (a mode nobody's played yet today
+        simply has no challenge row, and reads as "not_played")."""
+        today = today or date.today()
+        enabled_modes = self._daily_settings_service.list_enabled()
+        if not enabled_modes:
+            return []
+        filter_clause = GameModel.user_id == user_id if user_id is not None else GameModel.owner == owner
+
+        # Two queries total (today's challenges for every enabled mode, then the caller's games for
+        # those challenges) rather than two per mode - same results, keyed back to each mode below.
+        challenge_by_mode = {
+            (challenge.game_type, challenge.mode): challenge
+            for challenge in self._session.execute(
+                select(DailyChallengeModel).where(
+                    DailyChallengeModel.challenge_date == today,
+                    tuple_(DailyChallengeModel.game_type, DailyChallengeModel.mode).in_(enabled_modes),
+                )
+            ).scalars()
+        }
+        game_by_challenge_id: dict[UUID, GameModel] = {}
+        if challenge_by_mode:
+            game_by_challenge_id = {
+                row.daily_challenge_id: row
+                for row in self._session.execute(
+                    select(GameModel).where(
+                        GameModel.daily_challenge_id.in_([c.id for c in challenge_by_mode.values()]),
+                        filter_clause,
+                    )
+                ).scalars()
+            }
+
+        statuses = []
+        for game_type, mode in enabled_modes:
+            challenge = challenge_by_mode.get((game_type, mode))
+            game_row = game_by_challenge_id.get(challenge.id) if challenge is not None else None
+            if game_row is None:
+                statuses.append(DailyModeStatus(game_type, mode, "not_played", None, None))
+            elif game_row.finished:
+                statuses.append(DailyModeStatus(game_type, mode, "finished", game_row.id, game_row.score))
+            else:
+                statuses.append(DailyModeStatus(game_type, mode, "in_progress", game_row.id, None))
+        return statuses
 
     def get_game(self, game_id: UUID, owner: str, user: UserModel | None = None) -> BaseGame:
         return self._load_game(game_id, owner, user)
@@ -215,6 +386,10 @@ class GamesService:
                 GameModel.mode == mode,
                 GameModel.finished.is_(False),
                 GameModel.abandoned.is_(False),
+                # Roadmap #G - the normal idle screen's "Continuar" must never surface a daily
+                # game (those live in their own world, resumed only through /daily's own status -
+                # see docs/TODO/DAILY-GAMES.md §4.5).
+                GameModel.daily_challenge_id.is_(None),
                 filter_clause,
             )
             .order_by(GameModel.created_at.desc())
@@ -245,6 +420,7 @@ class GamesService:
                 finished=row.finished,
                 abandoned=row.abandoned,
                 created_at=row.created_at,
+                is_daily=row.daily_challenge_id is not None,
             )
             for row in rows
         ]
@@ -258,7 +434,13 @@ class GamesService:
         filter_clause = GameModel.user_id == user_id if user_id is not None else GameModel.owner == owner
         rows = self._session.execute(
             select(GameModel.game_type, GameModel.mode, func.max(GameModel.score))
-            .where(GameModel.finished.is_(True), filter_clause)
+            .where(
+                GameModel.finished.is_(True),
+                # Roadmap #G - daily scores aren't comparable to normal play (different settings,
+                # separate leaderboard - docs/TODO/DAILY-GAMES.md §4.5 [D]).
+                GameModel.daily_challenge_id.is_(None),
+                filter_clause,
+            )
             .group_by(GameModel.game_type, GameModel.mode)
         ).all()
         return [GameRecord(game_type=gt, mode=m, best_score=best) for gt, m, best in rows]
@@ -279,7 +461,15 @@ class GamesService:
         stmt = (
             select(UserModel.username, UserModel.skin_person_id, best_score)
             .join(UserModel, UserModel.id == GameModel.user_id)
-            .where(GameModel.game_type == game_type, GameModel.mode == mode, GameModel.finished.is_(True))
+            .where(
+                GameModel.game_type == game_type,
+                GameModel.mode == mode,
+                GameModel.finished.is_(True),
+                # Roadmap #G - the normal leaderboard never mixes in daily scores; the daily
+                # leaderboard is its own query scoped to one challenge (see
+                # GamesService.get_daily_leaderboard, added in F5).
+                GameModel.daily_challenge_id.is_(None),
+            )
             .group_by(UserModel.id, UserModel.username, UserModel.skin_person_id)
             .order_by(best_score.desc())
             .limit(15)
@@ -290,6 +480,38 @@ class GamesService:
             trunc_unit = "day" if window == "daily" else "week"
             stmt = stmt.where(GameModel.created_at >= func.date_trunc(trunc_unit, func.now()))
 
+        rows = self._session.execute(stmt).all()
+        return [
+            LeaderboardEntry(rank=rank, username=username, skin_person_id=skin_person_id, best_score=score)
+            for rank, (username, skin_person_id, score) in enumerate(rows, start=1)
+        ]
+
+    def get_daily_leaderboard(self, game_type: str, mode: str, challenge_date: date) -> list[LeaderboardEntry]:
+        """Roadmap #G, F5 - top 15 accounts by score for *one specific day's* challenge, not a
+        rolling window like get_leaderboard's all/weekly/daily - a date with no challenge for this
+        (game_type, mode) simply has no entries, not an error (docs/TODO/DAILY-GAMES.md §4.6)."""
+        if (game_type, mode) not in _GAMES:
+            raise UnsupportedGameError(f"unsupported game/mode: {game_type}/{mode}")
+
+        challenge_id = self._session.execute(
+            select(DailyChallengeModel.id).where(
+                DailyChallengeModel.challenge_date == challenge_date,
+                DailyChallengeModel.game_type == game_type,
+                DailyChallengeModel.mode == mode,
+            )
+        ).scalar_one_or_none()
+        if challenge_id is None:
+            return []
+
+        best_score = func.max(GameModel.score).label("best_score")
+        stmt = (
+            select(UserModel.username, UserModel.skin_person_id, best_score)
+            .join(UserModel, UserModel.id == GameModel.user_id)
+            .where(GameModel.daily_challenge_id == challenge_id, GameModel.finished.is_(True))
+            .group_by(UserModel.id, UserModel.username, UserModel.skin_person_id)
+            .order_by(best_score.desc())
+            .limit(15)
+        )
         rows = self._session.execute(stmt).all()
         return [
             LeaderboardEntry(rank=rank, username=username, skin_person_id=skin_person_id, best_score=score)
@@ -358,6 +580,24 @@ class GamesService:
             for row in game_row.rounds
         ]
 
+        if game_row.daily_challenge_id is not None:
+            # Roadmap #G - a daily game's class/kwargs come from its frozen challenge, not the live
+            # settings/Immich queries every normal game uses (see _daily_game_kwargs).
+            challenge = self._session.get(DailyChallengeModel, game_row.daily_challenge_id)
+            if challenge is None:
+                raise RuntimeError(f"game {game_row.id} references a missing daily challenge")
+            game_class = _DAILY_GAME_CLASSES.get(game_row.game_type, spec.game_class)
+            game = game_class(
+                id=game_row.id,
+                owner=game_row.owner,
+                rounds=rounds,
+                score=game_row.score,
+                finished=game_row.finished,
+                **self._daily_game_kwargs(game_row.game_type, game_row.mode, challenge, rounds_played=len(rounds)),
+            )
+            game.daily_challenge_date = challenge.challenge_date
+            return game
+
         return spec.game_class(
             id=game_row.id,
             owner=game_row.owner,
@@ -382,13 +622,20 @@ class GamesService:
                 GameModel.mode == mode,
                 GameModel.finished.is_(False),
                 GameModel.abandoned.is_(False),
+                # Roadmap #G - critical: starting a normal game must never abandon an in-progress
+                # daily of the same mode, and (create_daily_game, added in F3) creating a daily
+                # must never abandon a normal game either - a daily challenge only ever gets one
+                # game per player in the first place (docs/TODO/DAILY-GAMES.md §4.5).
+                GameModel.daily_challenge_id.is_(None),
                 filter_clause,
             )
         ).scalars().all()
         for row in rows:
             row.abandoned = True
 
-    def _save_new_game(self, game: BaseGame, user_id: UUID | None = None) -> None:
+    def _save_new_game(
+        self, game: BaseGame, user_id: UUID | None = None, daily_challenge_id: UUID | None = None
+    ) -> None:
         game_row = GameModel(
             id=game.id,
             owner=game.owner,
@@ -397,6 +644,7 @@ class GamesService:
             mode=game.mode,
             score=game.score,
             finished=game.finished,
+            daily_challenge_id=daily_challenge_id,
         )
         game_row.rounds.append(self._round_to_row(game.rounds[0]))
         self._session.add(game_row)

@@ -30,6 +30,8 @@ from services.auth_service import (
 )
 from services.game_settings import InvalidGameSettingValueError, UnknownGameSettingError
 from services.games_service import (
+    DailyAlreadyPlayedError,
+    DailyNotEnabledError,
     GameNotFoundError,
     GameOwnershipError,
     NotEnoughContentError,
@@ -83,5 +85,7 @@ app.add_exception_handler(EmailAlreadyExistsError, _error_handler(409))
 app.add_exception_handler(UsernameAlreadyExistsError, _error_handler(409))
 app.add_exception_handler(UnknownGameSettingError, _error_handler(400))
 app.add_exception_handler(InvalidGameSettingValueError, _error_handler(400))
+app.add_exception_handler(DailyNotEnabledError, _error_handler(404))
+app.add_exception_handler(DailyAlreadyPlayedError, _error_handler(409))
 
 app.include_router(router)

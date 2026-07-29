@@ -9,15 +9,16 @@ from typing import Annotated, Any
 from uuid import UUID
 
 import httpx
-from fastapi import APIRouter, Body, Depends, Header, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response
 from pydantic import ValidationError
-from sqlalchemy.orm import Session
 
 from api.admin_api import router as admin_router
+from api.admin_daily_api import router as admin_daily_router
 from api.admin_games_api import router as admin_games_router
 from api.auth_api import get_current_user, get_current_user_optional
 from api.auth_api import router as auth_router
-from api.deps import get_db_session, get_immich_service, get_ml_service
+from api.daily_api import router as daily_router
+from api.deps import get_games_service, get_immich_service, get_owner_id
 from api.dto.common import (
     ConfigOut,
     CreateGameIn,
@@ -36,24 +37,13 @@ from config import Settings, get_settings
 from persistence.users import UserModel
 from services.games_service import GamesService
 from services.immich_service import ImmichService
-from services.ml_service import MLService
 
 router = APIRouter(prefix="/api/v1")
 router.include_router(auth_router)
 router.include_router(admin_router)
 router.include_router(admin_games_router)
-
-
-def get_games_service(
-    session: Annotated[Session, Depends(get_db_session)],
-    immich_service: Annotated[ImmichService, Depends(get_immich_service)],
-    ml_service: Annotated[MLService, Depends(get_ml_service)],
-) -> GamesService:
-    return GamesService(session, immich_service, ml_service)
-
-
-def get_owner_id(x_owner_id: Annotated[str, Header()]) -> str:
-    return x_owner_id
+router.include_router(admin_daily_router)
+router.include_router(daily_router)
 
 
 @router.get("/config", response_model=ConfigOut)
