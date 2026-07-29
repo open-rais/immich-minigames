@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Navigate, useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 
 import { personThumbnailUrl } from "../api/games"
@@ -35,11 +35,13 @@ function ProfileAvatarPlaceholder() {
 export function ProfilePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { user, loading, logout } = useAuth()
+  const { user, logout } = useAuth()
   const [busy, setBusy] = useState(false)
   const [showRecentGames, setShowRecentGames] = useState(false)
 
-  if (!loading && !user) return <Navigate to="/login" replace />
+  // Roadmap #H, F3 - RequireAuth (App.tsx) already guarantees a session before this page ever
+  // mounts; this is just a TypeScript narrowing helper (user: User | null), not reachable at
+  // runtime.
   if (!user) return null
 
   async function handleLogout() {

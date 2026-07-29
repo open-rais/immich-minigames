@@ -1,7 +1,7 @@
 import { useState } from "react"
 import type { FormEvent } from "react"
 import { useTranslation } from "react-i18next"
-import { Navigate, useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 
 import { apiErrorMessage } from "../api/errors"
 import { Button } from "../games/shared/Button"
@@ -16,15 +16,15 @@ import { useAuth } from "./useAuth"
 export function ChangePasswordPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { user, loading, changePassword } = useAuth()
+  // Roadmap #H, F3 - no more session guard here at all: RequireAuth (App.tsx) already guarantees
+  // one before this page mounts, and unlike ProfilePage/EditProfilePage this page never reads
+  // `user` itself, so there's nothing left needing a TypeScript narrowing check either.
+  const { changePassword } = useAuth()
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
-
-  if (!loading && !user) return <Navigate to="/login" replace />
-  if (!user) return null
 
   async function handleSave(e: FormEvent) {
     e.preventDefault()

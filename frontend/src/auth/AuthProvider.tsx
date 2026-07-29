@@ -1,7 +1,6 @@
 import axios from "axios"
 import { useEffect, useState } from "react"
 import type { ReactNode } from "react"
-import { useNavigate } from "react-router-dom"
 
 import {
   changePassword as apiChangePassword,
@@ -20,7 +19,6 @@ import { setPendingRedirectFrom } from "./pendingRedirect"
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-  const navigate = useNavigate()
 
   useEffect(() => {
     // A 401 here just means "no one is logged in" - not an error to surface.
@@ -30,16 +28,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false))
   }, [])
 
-  // Roadmap #H, F0 - a session that dies mid-use (expired, or revoked by a password change on
-  // another device) surfaces as a 401 on whatever request happens to be in flight next; catch it
-  // globally here rather than in every screen that calls the API. login/getMe opt out via
+  // Roadmap #H, F0 (updated F3) - a session that dies mid-use (expired, or revoked by a password
+  // change on another device) surfaces as a 401 on whatever request happens to be in flight next;
+  // catch it globally here rather than in every screen that calls the API. login/getMe opt out via
   // skipAuthRedirect (see client.ts) - their 401s are normal control flow, handled locally.
   // window.location.pathname (not a captured useLocation() value) since this effect only runs
-  // once, so a captured location would go stale on every navigation after the first. The
-  // destination is stashed via setPendingRedirectFrom (pendingRedirect.ts), not navigate's own
-  // `state` - see that file for why: every already-mounted protected page's own
-  // `!user -> Navigate to /login` guard also fires once setUser(null) below takes effect, and its
-  // state-less navigate call would otherwise clobber this one's.
+  // once, so a captured location would go stale on every navigation after the first. No navigate()
+  // call needed here anymore (unlike pre-F3): RequireAuth (App.tsx) is now the *only* place that
+  // reacts to `user` going null by redirecting to /login, so setting it here is enough - its own
+  // re-render picks this up and does the actual navigation, reading the same
+  // setPendingRedirectFrom (pendingRedirect.ts) destination this sets.
   useEffect(() => {
     const id = apiClient.interceptors.response.use(
       (response) => response,
@@ -47,13 +45,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (axios.isAxiosError(error) && error.response?.status === 401 && !error.config?.skipAuthRedirect) {
           setPendingRedirectFrom(window.location.pathname)
           setUser(null)
-          navigate("/login", { replace: true })
         }
         return Promise.reject(error)
       },
     )
     return () => apiClient.interceptors.response.eject(id)
-  }, [navigate])
+  }, [])
 
   async function login(body: LoginIn) {
     const loggedInUser = await apiLogin(body)

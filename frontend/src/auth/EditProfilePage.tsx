@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import type { FormEvent } from "react"
 import { useTranslation } from "react-i18next"
-import { Navigate, useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 
 import { apiErrorMessage } from "../api/errors"
 import { Button } from "../games/shared/Button"
@@ -17,25 +17,25 @@ import { useAuth } from "./useAuth"
 export function EditProfilePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { user, loading, updateProfile } = useAuth()
+  const { user, updateProfile } = useAuth()
   const [username, setUsername] = useState("")
   const [fullName, setFullName] = useState("")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
 
-  // Synced from `user` rather than a plain useState(user?.username) initializer - user arrives
-  // asynchronously (AuthProvider's getMe() on mount), so the very first render (before loading
-  // finishes) would otherwise permanently lock these fields to "".
+  // No session guard here (unlike ProfilePage.tsx) - RequireAuth (App.tsx) already guarantees one
+  // before this page mounts, and `user` is only ever read below inside its own null check, so
+  // there's nothing left needing a redundant one. Synced from `user` rather than a plain
+  // useState(user?.username) initializer - user arrives asynchronously (AuthProvider's getMe() on
+  // mount), so the very first render (before loading finishes) would otherwise permanently lock
+  // these fields to "".
   useEffect(() => {
     if (user) {
       setUsername(user.username)
       setFullName(user.full_name)
     }
   }, [user])
-
-  if (!loading && !user) return <Navigate to="/login" replace />
-  if (!user) return null
 
   async function handleSave(e: FormEvent) {
     e.preventDefault()

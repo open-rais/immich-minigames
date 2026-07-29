@@ -1,10 +1,12 @@
-// Roadmap #H, F0 - carries "where to go back to after logging in" between AuthProvider's global
-// 401 interceptor and LoginPage. Deliberately a plain module variable, not react-router's
-// navigate(path, { state }): every existing protected page still has its own
-// `if (!loading && !user) return <Navigate to="/login" replace />` guard (pre-F3's centralized
-// RequireAuth), which also fires once the interceptor clears `user` and re-navigates to /login
-// itself, without state - overwriting whatever state the interceptor's own navigate call set.
-// A module variable survives that race since it isn't tied to a specific history entry.
+// Roadmap #H, F0 (still used post-F3) - carries "where to go back to after logging in" between
+// whichever of AuthProvider's global 401 interceptor / RequireAuth.tsx (App.tsx's centralized
+// route guard) triggers the redirect to /login, and LoginPage, which consumes it after a
+// successful login. Originally a plain module variable rather than react-router's own
+// navigate(path, { state }) because F0-through-F2 had every protected page carrying its own
+// `!user -> Navigate to /login` guard, and those raced with the interceptor's - RequireAuth (F3)
+// replaced all of those with itself, removing the race, but this stayed the simpler mechanism
+// (both places that redirect just call setPendingRedirectFrom first) rather than switching to
+// state for no real benefit now.
 let pendingFrom: string | null = null
 
 export function setPendingRedirectFrom(path: string): void {
