@@ -172,3 +172,47 @@ class TestUpdateUserSkin:
         response = client.put(f"/api/v1/admin/users/{uuid.uuid4()}/skin", json={"person_id": None})
 
         assert response.status_code == 404
+
+
+class TestCreatePasswordReset:
+    def test_anonymous_returns_401(self, client):
+        target = _register(client)
+        client.cookies.clear()
+
+        response = client.post(f"/api/v1/admin/users/{target['id']}/password-reset")
+
+        assert response.status_code == 401
+
+    def test_non_admin_returns_403(self, client):
+        target = _register(client)
+        _register(client)
+
+        response = client.post(f"/api/v1/admin/users/{target['id']}/password-reset")
+
+        assert response.status_code == 403
+
+    def test_unknown_user_id_returns_404(self, client, db_session):
+        admin = _register(client)
+        _promote_to_admin(db_session, admin["id"])
+
+        response = client.post(f"/api/v1/admin/users/{uuid.uuid4()}/password-reset")
+
+        assert response.status_code == 404
+
+    def test_admin_generates_a_usable_reset_token(self, client, db_session):
+        target = _register(client)
+        admin = _register(client)
+        _promote_to_admin(db_session, admin["id"])
+
+        response = client.post(f"/api/v1/admin/users/{target['id']}/password-reset")
+
+        assert response.status_code == 201
+        body = response.json()
+        assert "token" in body and body["token"]
+        assert "id" in body
+        assert "expires_at" in body
+
+        reset_response = client.post(
+            "/api/v1/auth/reset-password", json={"token": body["token"], "new_password": "new-password-123"}
+        )
+        assert reset_response.status_code == 204

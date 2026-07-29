@@ -1,11 +1,19 @@
 import time
 import uuid
+from uuid import UUID
 
 from conftest import mint_invite_code
+from persistence.users import UserModel
 
 
 def _unique(prefix: str) -> str:
     return f"{prefix}-{uuid.uuid4().hex[:8]}"
+
+
+def _promote_to_admin(db_session, user_id: str) -> None:
+    user = db_session.get(UserModel, UUID(user_id))
+    user.is_admin = True
+    db_session.commit()
 
 
 def _register(client, **overrides) -> dict:
@@ -217,6 +225,70 @@ class TestChangePassword:
         )
 
         assert response.status_code == 401
+
+
+def _register_with_id(client, **overrides) -> dict:
+    # _register() above returns just the request body (no id) - other tests in this file rely on
+    # that exact shape for **body spreading, so this is a local addition rather than a change to
+    # the shared helper. Registering logs the client in as that user, so /auth/me reads its id.
+    body = _register(client, **overrides)
+    return {**body, "id": client.get("/api/v1/auth/me").json()["id"]}
+
+
+class TestResetPassword:
+    def test_full_flow_admin_generates_target_resets_old_password_stops_working(self, client, db_session):
+        target = _register_with_id(client)
+        admin = _register_with_id(client)
+        _promote_to_admin(db_session, admin["id"])
+
+        created = client.post(f"/api/v1/admin/users/{target['id']}/password-reset")
+        assert created.status_code == 201
+        token = created.json()["token"]
+
+        client.cookies.clear()
+        reset_response = client.post(
+            "/api/v1/auth/reset-password", json={"token": token, "new_password": "new-password-123"}
+        )
+        assert reset_response.status_code == 204
+        assert "access_token" not in reset_response.cookies  # no auto-login, see plan/AuthService.reset_password
+
+        old_login = client.post("/api/v1/auth/login", json={"email": target["email"], "password": target["password"]})
+        assert old_login.status_code == 401
+
+        new_login = client.post(
+            "/api/v1/auth/login", json={"email": target["email"], "password": "new-password-123"}
+        )
+        assert new_login.status_code == 200
+
+    def test_reusing_the_same_token_returns_400(self, client, db_session):
+        target = _register_with_id(client)
+        admin = _register_with_id(client)
+        _promote_to_admin(db_session, admin["id"])
+        token = client.post(f"/api/v1/admin/users/{target['id']}/password-reset").json()["token"]
+        client.post("/api/v1/auth/reset-password", json={"token": token, "new_password": "new-password-123"})
+
+        response = client.post(
+            "/api/v1/auth/reset-password", json={"token": token, "new_password": "another-password-456"}
+        )
+
+        assert response.status_code == 400
+
+    def test_unknown_token_returns_400(self, client):
+        response = client.post(
+            "/api/v1/auth/reset-password", json={"token": "not-a-real-token", "new_password": "new-password-123"}
+        )
+
+        assert response.status_code == 400
+
+    def test_short_new_password_returns_422(self, client, db_session):
+        target = _register_with_id(client)
+        admin = _register_with_id(client)
+        _promote_to_admin(db_session, admin["id"])
+        token = client.post(f"/api/v1/admin/users/{target['id']}/password-reset").json()["token"]
+
+        response = client.post("/api/v1/auth/reset-password", json={"token": token, "new_password": "short"})
+
+        assert response.status_code == 422
 
 
 class TestRateLimit:
