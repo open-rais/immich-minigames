@@ -162,8 +162,7 @@ export const GAME_CATALOG: CatalogGame[] = [
         mode: Mode.Arcade,
         modeTitleKey: "timeline.modes.arcade",
         component: TimelineGame,
-        // No cover art shipped yet (docs/TODO/TIMELINE.md F3) - IdleScreen/ModeCard both tolerate
-        // an absent coverUrl.
+        coverUrl: "/covers/timeline.webp",
       },
     ],
   },

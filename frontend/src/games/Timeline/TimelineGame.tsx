@@ -11,7 +11,6 @@ import { Button } from "../shared/Button"
 import { ErrorScreen, FinishedScreen, IdleScreen } from "../shared/GameScreens"
 import { GuardedBackButton } from "../shared/GuardedBackButton"
 import { RevealResultCard } from "../shared/RevealResultCard"
-import { RoundBadge } from "../shared/RoundBadge"
 import { ScoreBadge } from "../shared/ScoreBadge"
 import { useRoundGame } from "../shared/useRoundGame"
 import { TimelineCard } from "./TimelineCard"
@@ -28,10 +27,10 @@ const FLY_TRANSITION_MS = 500
 // other so a height change is a single edit (same "pixel coupling" convention as Dateguessr/
 // TimelineRuler.tsx's RULER_HEIGHT_CLASS/RULER_BOTTOM_CLASS, though nothing here reuses that file
 // per docs/TODO/TIMELINE.md decision [K]).
-const TRACK_HEIGHT_CLASS = "h-36 md:h-44"
-const TRACK_BOTTOM_CLASS = "bottom-36 md:bottom-44"
+const TRACK_HEIGHT_CLASS = "h-40 md:h-48"
+const TRACK_BOTTOM_CLASS = "bottom-40 md:bottom-48"
 // Track height + a breathing gap - for the confirm button / reveal card floating just above it.
-const ABOVE_TRACK_BOTTOM_CLASS = "bottom-[156px] md:bottom-[192px]"
+const ABOVE_TRACK_BOTTOM_CLASS = "bottom-[172px] md:bottom-[208px]"
 
 // This component only ever creates/plays "timeline" games (see GAME_TYPE/MODE above), so a
 // mismatched game_type means the backend returned something unexpected.
@@ -216,7 +215,7 @@ export function TimelineGame({ coverUrl, hasRoundsView, daily = false }: GameCom
 
   return (
     <div className="relative h-dvh w-full overflow-hidden bg-app-bg">
-      <div className={`fixed inset-0 ${TRACK_BOTTOM_CLASS} flex items-center justify-center px-6`}>
+      <div className={`fixed inset-0 z-30 ${TRACK_BOTTOM_CLASS} flex items-center justify-center px-6`}>
         <div
           ref={bigCardRef}
           style={{
@@ -227,6 +226,7 @@ export function TimelineGame({ coverUrl, hasRoundsView, daily = false }: GameCom
           onTransitionEnd={handleFlyTransitionEnd}
         >
           <TimelineCard
+            key={round.card_asset_id}
             assetId={round.card_asset_id}
             date={round.card_date}
             size="lg"
@@ -237,10 +237,9 @@ export function TimelineGame({ coverUrl, hasRoundsView, daily = false }: GameCom
 
       <GuardedBackButton onExit={backToIdle} />
       <ScoreBadge label={t("common.score")} score={game.score} />
-      <RoundBadge label={t("timeline.cardLabel", { count: round.round_index + 1 })} />
 
       {phase === "guessing" && (
-        <div className={`fixed ${ABOVE_TRACK_BOTTOM_CLASS} left-1/2 z-30 -translate-x-1/2`}>
+        <div className={`fixed ${ABOVE_TRACK_BOTTOM_CLASS} left-[18px] z-30 md:left-10`}>
           <Button
             variant="primary"
             className="px-6 py-3 shadow-card"
@@ -254,7 +253,7 @@ export function TimelineGame({ coverUrl, hasRoundsView, daily = false }: GameCom
 
       {revealed && round.score_delta !== null && (
         <RevealResultCard
-          positionClassName={`${ABOVE_TRACK_BOTTOM_CLASS} left-1/2 -translate-x-1/2`}
+          positionClassName={`${ABOVE_TRACK_BOTTOM_CLASS} left-[18px] md:left-10`}
           scoreDelta={round.score_delta}
           subtitle={t(round.correct ? "timeline.result.correct" : "timeline.result.wrong")}
         />

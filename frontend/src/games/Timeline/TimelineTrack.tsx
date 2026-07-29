@@ -10,9 +10,11 @@ import { TimelineCard } from "./TimelineCard"
 // scale/zoom math.
 const TRACK_GAP_CLASS = "gap-2.5 md:gap-3.5"
 // Every gap button is the same size regardless of position - the two extremes included - so no
-// slot is an easier or harder tap target than another. Matches TimelineCard's "sm" card height so
-// the row stays visually aligned.
-const GAP_SIZE_CLASS = "h-[104px] w-11 md:h-32 md:w-12"
+// slot is an easier or harder tap target than another. Height matches TimelineCard's "sm" size so
+// the row stays visually aligned; width is deliberately generous (well past the ~44px minimum
+// touch target) since this is the primary way to place a guess.
+const GAP_SIZE_CLASS = "h-[126px] w-14 md:h-[150px] md:w-16"
+const GAP_MARKER_CLASS = "h-9 w-9 rounded-xl md:h-10 md:w-10"
 
 export interface TrackCard {
   assetId: string
@@ -82,11 +84,11 @@ export function TimelineTrack({
               className="flex h-full w-full items-center justify-center disabled:cursor-default"
             >
               <span
-                className={`h-3 w-3 rounded-full border-2 transition-colors ${
+                className={`${GAP_MARKER_CLASS} border-2 transition-colors ${
                   selectedSlot === gapIndex
-                    ? "border-primary bg-primary"
+                    ? "border-primary bg-primary/20"
                     : markerSlot === gapIndex
-                      ? "border-emerald-500 bg-emerald-500"
+                      ? "border-emerald-500 bg-emerald-500/20"
                       : "border-line-strong bg-transparent"
                 }`}
               />
@@ -98,6 +100,7 @@ export function TimelineTrack({
               className={cards[gapIndex].visible === false ? "opacity-0" : ""}
             >
               <TimelineCard
+                key={cards[gapIndex].assetId}
                 assetId={cards[gapIndex].assetId}
                 date={cards[gapIndex].date}
                 size="sm"
