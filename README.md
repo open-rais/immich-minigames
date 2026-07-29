@@ -51,7 +51,8 @@ Detailed gameplay for each game, including modes and scoring rules, can be found
 - ✅ Direct Postgres access for game data, Immich REST API for images
 - ✅ Leaderboards (daily, weekly, all-time per game)
 - ✅ User profiles with cosmetic person avatar selection
-- ❌ Daily challenges (planned)
+- ✅ Daily challenges (same content for every player each day, one attempt, own leaderboard,
+  shareable results - Wordle-style)
 - ❌ Report incorrect metadata (planned)
 
 Full implementation roadmap is in [`docs/TODO/ROADMAP.md`](./docs/TODO/ROADMAP.md).

@@ -47,3 +47,11 @@ are shown from the start; progressive reveals are a future feature.
 | `album` (albumdle) | Albums—clues: FirstAssetDate, AssetCount, ThumbMLSimilarity, CommonAssets, CommonNames, Duration (span between first and last asset) | Future |
 
 See [docs/TODO/ROADMAP.md](../TODO/ROADMAP.md) for when modes are planned.
+
+## Daily
+
+The target person is pre-picked once for the day (`ImmichdleGame.start(target=...)`); guesses stay
+live otherwise - clue data (counts, ML similarity) is resolved at guess time same as a normal game,
+so two players guessing the same person on a busy library day could see a marginally different clue
+if the library changed in between (accepted, see
+[docs/TODO/DAILY-GAMES.md](../TODO/DAILY-GAMES.md) §5).

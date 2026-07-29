@@ -25,3 +25,9 @@ of the person they think is there.
   (which grows by 1 for each consecutive correct guess, starting at 1); a wrong guess resets the streak
   to 0 and adds no points that round (but doesn't subtract previously earned points). Example with 6 rounds
   (correct-correct-correct-wrong-correct-correct): +1, +2, +3, +0, +1, +2 → final score 9.
+
+## Daily
+
+The 15 people's photos/hidden faces are all pre-generated once for the day; a
+`DailyWhosThatPersonGame` subclass replays them instead of querying Immich. See
+[docs/TODO/DAILY-GAMES.md](../TODO/DAILY-GAMES.md).
