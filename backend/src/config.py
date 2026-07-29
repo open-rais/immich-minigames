@@ -53,6 +53,14 @@ class Settings(BaseSettings):
     # cookie keeps going out without the Secure flag even over HTTPS.
     cookie_secure: bool = False
 
+    # Roadmap #H, F5 - backing store for api/rate_limit.py's Limiter (and the per-email login
+    # check it shares that storage with). "memory://" (default) is a single process's own memory -
+    # fine for this app's single-backend-container deployment shape, and what every rate limit
+    # test in this suite runs against. Accepts "redis://host:port" too (the `limits` library's own
+    # URI scheme) for a multi-process deployment, where per-process in-memory counters would let
+    # each process serve its own separate budget instead of one shared one.
+    rate_limit_storage_uri: str = "memory://"
+
     # Admin feature (ADMIN-FEATURE.md point #1) - promotion only, not account creation: if a user
     # already registered (via /signup) with this email, services/admin_bootstrap.py flips their
     # is_admin flag to True on every backend startup. If no such account exists yet, it's a no-op

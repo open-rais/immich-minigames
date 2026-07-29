@@ -6,6 +6,7 @@ in main.py, same pattern as api/api.py's own routes."""
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
 from api.auth_schemas import (
@@ -18,7 +19,7 @@ from api.auth_schemas import (
     UserOut,
 )
 from api.deps import get_db_session, get_immich_service
-from api.rate_limit import limiter
+from api.rate_limit import enforce_login_email_limit, limiter
 from config import get_settings
 from persistence.users import UserModel
 from services.auth_service import AuthService, UnauthorizedError
@@ -72,7 +73,13 @@ def _set_session_cookie(response: Response, token: str) -> None:
 
 
 @router.post("/register", response_model=UserOut, status_code=201)
-@limiter.limit("3/minute")
+# Roadmap #H, F5 - IP-keyed, not the shared limiter's default session-or-IP key: this route is
+# what *mints* the session, so keying it by session would let each successful call escape into a
+# fresh, unlimited budget of its own (the very next request would carry the brand-new account's
+# cookie instead of matching against the count of registrations already made from this network
+# origin) - the register limit only means something measured against something the caller can't
+# reset by calling the route it protects.
+@limiter.limit("3/minute", key_func=get_remote_address)
 def register(
     request: Request,
     body: RegisterIn,
@@ -98,6 +105,10 @@ def login(
     response: Response,
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> UserOut:
+    # Roadmap #H, F5 - on top of the IP-keyed decorator above (a loose global cap), this bounds
+    # attempts against one specific email regardless of which IP/session they come from - see
+    # api/rate_limit.py's enforce_login_email_limit for why the decorator alone can't do this.
+    enforce_login_email_limit(body.email)
     user = auth_service.authenticate(body.email, body.password)
     _set_session_cookie(response, auth_service.create_access_token(user))
     return UserOut.from_user(user)
