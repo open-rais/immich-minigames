@@ -1,8 +1,8 @@
 # Backend
 
 FastAPI app in `backend/src/`. Run: `cd backend && uv run uvicorn main:app --app-dir src --port 8000`
-(needs `alembic upgrade head` once first). Tests: `cd backend && uv run pytest` (291 passing as of
-2026-07-27).
+(needs `alembic upgrade head` once first). Tests: `cd backend && uv run pytest` (401 passing as of
+2026-07-29).
 
 ## Layering
 
@@ -35,8 +35,8 @@ Routes **do not** try/except their own domain exceptions. Each service raises a 
 | `UnsupportedGameError`, `DuplicateGuessError`, `InvalidGuessError`, `UnknownGameSettingError`, `InvalidGameSettingValueError` | 400 |
 | `InvalidCredentialsError`, `UnauthorizedError` | 401 |
 | `GameOwnershipError` | 403 |
-| `GameNotFoundError` | 404 |
-| `RoundNotPendingError` | 409 |
+| `GameNotFoundError`, `DailyNotEnabledError` | 404 |
+| `RoundNotPendingError`, `DailyAlreadyPlayedError` | 409 |
 | `IncompleteGuessError` | 422 |
 | `RateLimitExceeded` (slowapi) | 429 |
 
@@ -82,11 +82,19 @@ scored: **Immichdle** (the guess is a person id that must be validated and turne
 | Dateguessr | 5 rounds | Same curve on days: flat 0, decay 500 days |
 | Immichdle | Correct guess, or score hits 0 | Starts at 100, −5 per wrong guess |
 | Who'sThatPerson | 15 people asked (across variable-size rounds) | Combo streak by person; any miss in a round zeroes the incoming streak *before* scoring |
-| Timeline | — | Not implemented; `games/timeline.py` is a design stub |
+| Timeline | — | Not implemented; `games/timeline/game.py` is a design stub |
 
-**Geoguessr and Dateguessr share `games/asset_rounds.py`** — fixed N rounds, one asset per round,
-decay scoring, spread-out candidate picking. They differ only in the metric (great-circle km vs
-calendar days), the snapshot type, and asset eligibility (Geoguessr requires GPS).
+**Geoguessr and Dateguessr each own their whole loop** (`games/geoguessr/game.py` /
+`games/dateguessr/game.py`) — fixed N rounds, one asset per round, decay scoring, spread-out
+candidate picking. They used to share a `games/asset_rounds.py` base class; that base class is
+gone (see `docs/TODO/DECOUPLING.md`) precisely so a bug in one game's loop never requires touching
+the other's file — the two implementations are near-identical by construction, not by import. The
+only genuinely shared code is `games/shared/`'s pure functions (`exp_decay_score`,
+`pick_spread_asset`) and `games/base.py`'s contract. Each still differs only in the metric
+(great-circle km vs calendar days), the snapshot type, and asset eligibility (Geoguessr requires
+GPS) — plus, since the daily-games work, in a `<Name>Content` protocol (`LiveContent` for normal
+play, `ScriptedContent` for the daily replay, see below) that factors out *which* asset a round
+gets from the loop that plays it.
 
 ### Snapshots, not live lookups
 
@@ -123,6 +131,8 @@ so the tables end up owned by the role that later has to `ALTER` them. `init_db`
 | `game_settings` | `game_type` PK, `values` JSONB. One row per game type; a missing row or key falls back to the module constant. |
 | `legacy_import` | Marker written by the one-time move out of Immich's database. Its presence means that copy committed — see below. |
 | `person_face_embedding_cache` | `person_id` PK, `embedding vector(512)`, `face_count`, `computed_at`. Caches Immichdle's `MLSimilarity` clue's per-person representative embedding (average across that person's visible faces) - see `docs/ARCHITECTURE/IMMICH.md`'s "Face similarity" section. The only own table with a non-JSON/UUID/text column type, hence `persistence/ml_cache.py`'s hand-rolled `Vector` SQLAlchemy type instead of a plain `mapped_column`. |
+| `daily_configs` | Roadmap #G. `(game_type, mode)` PK, `enabled` bool, `values` JSONB - whether a mode is in the daily rotation plus its daily-only setting overrides. |
+| `daily_challenges` | Roadmap #G. `id` PK, unique `(challenge_date, game_type, mode)`, `spec` JSONB (the pre-generated shared content), `settings` JSONB (frozen effective settings for that day). `games.daily_challenge_id` (nullable FK, two partial unique indexes for "one attempt per player") points into this. |
 
 **Generic rounds table + JSONB payload** is the core persistence decision: adding a game never
 requires a migration, only a `to_payload`/`from_payload` pair.
@@ -200,12 +210,18 @@ Four pieces, referenced in comments as points #1–#4:
 4. **Game settings** (`api/admin_games_api.py`, `services/game_settings.py`) — per-`game_type`
    overrides of the scoring/difficulty constants each game module defines.
 
-`GAME_SETTING_SPECS` is the registry of what is configurable: each `SettingSpec` has a key, the
-module constant as its default, a value type (`int`/`float`) and a `min_value`. Only knobs that
-affect *visible scoring/difficulty* are exposed — internal sampling parameters like
-`_CANDIDATE_SAMPLE_SIZE` stay private module constants. Geoguessr and Dateguessr get independent
-entries even though they share `asset_rounds.py` defaults. MoreOrLess has an explicit empty list so
-it still appears in `GET /admin/games/settings`.
+`GAME_SETTING_SPECS` (`services/game_settings.py`) is the registry of what is configurable, but it
+only *assembles* it - each game declares its own knobs in its own `games/<name>/settings.py`
+(`SETTING_SPECS: dict[mode, list[SettingSpec]]`), and `game_settings.py` flattens all of them into
+one `(game_type, mode)`-keyed dict. `SettingSpec`/`ValueType` themselves live in
+`games/settings_spec.py` (contract-only, no logic) so a game's `settings.py` doesn't have to depend
+on `services/` to declare its specs. Each `SettingSpec` has a key, the module constant as its
+default, a value type (`int`/`float`) and a `min_value`. Only knobs that affect *visible
+scoring/difficulty* are exposed — internal sampling parameters like `_CANDIDATE_SAMPLE_SIZE` stay
+private module constants. Geoguessr and Dateguessr get independent entries and, since the
+`asset_rounds.py` split, independent copies of the underlying constants too - they're no longer
+"sharing a default", just happening to default to the same numbers. MoreOrLess has an explicit
+empty list so it still appears in `GET /admin/games/settings`.
 
 Effective values are read **live on every game start/load** (`GamesService._game_kwargs`), never
 cached and never snapshotted onto a round, so an admin change takes effect on the very next round
@@ -261,6 +277,65 @@ frontend's only way to build a "Ver en Immich" deep link. It's `Settings.immich_
 (`IMMICH_EXTERNAL_URL`, falling back to `IMMICH_SERVER_URL` if unset — see the Configuration table
 below), never `IMMICH_SERVER_URL` directly: that variable is how the *backend* reaches Immich (often
 an internal Docker host in `docker-compose.app.yml`), not a URL a browser can open.
+
+## Daily games (roadmap #G)
+
+Wordle-style: the same content for every player each day, one attempt, its own leaderboard. Full
+design in `docs/TODO/DAILY-GAMES.md`; summary here.
+
+Each game implements the daily side of itself as its own `games/<name>/daily.py`, conforming to
+`games/daily.py`'s `DailySupport` contract (a Protocol three top-level functions satisfy structurally -
+the module itself is the "instance", not a class): `build_spec(mode, immich_service, settings)`,
+`exclusion_ids(spec)`, `game_kwargs(mode, spec, settings, *, rounds_played, immich_service,
+ml_service)`. `services/game_registry.py`'s `GAMES` registry maps `(game_type, mode)` to a
+`GameSpec` with a `daily` field pointing at that game's `daily.py` module - the single dispatch
+point both `services/games_service.py` and `services/daily_service.py` read (it can't live inside
+either of those two modules, since `games_service.py` already depends on `daily_service.py` to
+delegate challenge generation, and the reverse import would cycle).
+
+A **challenge** (`daily_challenges`) is content, shared and immutable - generated lazily by
+`DailyService.get_or_create_challenge` on the first "Jugar daily" of the day for a mode, via
+`INSERT ... ON CONFLICT DO NOTHING` + re-`SELECT` (no locking - whichever request's insert lands
+first wins, the other just reads it back). Each game's `build_spec()` drives a real, throwaway
+instance of that mode's own game class through its own `start()`/`create_next_round()` - the same
+picking logic a normal game uses - rather than reimplementing it; only the content
+(`EntitySnapshot`/`AssetSnapshot`/`PersonSnapshot`/`HiddenFace`) is kept. A `no_repeat_days` window
+(every mode except MoreOrLess) excludes ids from recent challenges' specs - each game's own
+`exclusion_ids()` decides which ids from a spec count, and `DailyService` unions them across the
+window via a small `_ExcludingImmichService` wrapper; if exclusion leaves nothing, generation
+retries once without it. MoreOrLess's `exclusion_ids()` always returns an empty set - it
+deliberately never gets cross-day exclusion (decision [F] in `docs/TODO/DAILY-GAMES.md`), which
+this makes automatic rather than a special case in `DailyService` itself.
+
+A **daily game** (`games.daily_challenge_id` set) is state, per player, instantiated from a
+challenge by `GamesService.create_daily_game` - checked against `daily_configs.enabled`
+(`DailyNotEnabledError`) and the caller's existing game for that challenge
+(`DailyAlreadyPlayedError`, backed by two partial unique indexes on `games` since Postgres never
+treats two NULLs as equal). A daily game is the *exact same game class* a normal game uses (no
+`Daily*Game` subclasses - that used to be `games/daily_scripted.py`, since deleted) - only its
+content source differs, via each game's own `game_kwargs()`: MoreOrLess's `ScriptedCandidateProvider`
+replays a pre-generated chain (mirroring its normal `CandidateProvider` seam); Geoguessr/Dateguessr/
+WhosThatPerson each get a `ScriptedContent` implementing that game's own `<Name>Content` protocol
+(mirroring their normal `LiveContent`); `ImmichdleGame.start()` takes an optional `target` (no
+content protocol needed - Immichdle's only precomputed content *is* the target, guesses stay live
+either way). Everything else - scoring, streaks, `play_round`, persistence - is the exact same
+machinery every game already uses; `GamesService._row_to_game` just branches on
+`daily_challenge_id` and, if set, resolves that game's `daily.py::game_kwargs()` through the
+`game_registry.GAMES` lookup instead of the normal live-settings path.
+
+**World separation**: daily games are filtered out of `get_personal_records`, `get_leaderboard`,
+`get_current_game`, and `_abandon_active_games` (`daily_challenge_id IS NULL` on each) - a daily
+never competes with normal play and never abandons/is abandoned by a normal game of the same mode.
+`get_recent_games` is the one exception (personal history, not a comparison) - it flags daily rows
+with `is_daily` instead of filtering them.
+
+Endpoints (`api/daily_api.py`, mounted at `/daily`): `GET /daily` (status per enabled mode, never
+generates a challenge), `POST /daily/{type}/{mode}/games` (create/consume today's attempt),
+`GET /daily/{type}/{mode}/leaderboard?date=` (one specific day, not a rolling window - see
+`GamesService.get_daily_leaderboard`). Admin config (`api/admin_daily_api.py`, mounted at
+`/admin/daily`): per-mode `enabled` + daily-only settings (`services/daily_settings.py`'s
+`DAILY_SETTING_SPECS` - the normal `GAME_SETTING_SPECS` plus `no_repeat_days`, or `chain_length` for
+MoreOrLess). `reset` clears only the value overrides; `enabled` is untouched.
 
 ## Configuration
 

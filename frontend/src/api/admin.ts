@@ -1,5 +1,5 @@
 import { apiClient } from "./client"
-import type { GameSettingsOut, UpdateProfileIn, User } from "./types"
+import type { DailySettingsOut, GameSettingsOut, UpdateDailySettingsIn, UpdateProfileIn, User } from "./types"
 
 // Admin feature (ADMIN-FEATURE.md point #3) - same request shapes as api/auth.ts's self-service
 // updateProfile/updateSkin, applied to an arbitrary userId instead of the caller's own account.
@@ -27,12 +27,37 @@ export async function listGameSettings(): Promise<GameSettingsOut[]> {
   return data
 }
 
-export async function updateGameSettings(gameType: string, values: Record<string, number>): Promise<GameSettingsOut> {
-  const { data } = await apiClient.put<GameSettingsOut>(`/admin/games/${gameType}/settings`, values)
+export async function updateGameSettings(
+  gameType: string,
+  mode: string,
+  values: Record<string, number>,
+): Promise<GameSettingsOut> {
+  const { data } = await apiClient.put<GameSettingsOut>(`/admin/games/${gameType}/${mode}/settings`, values)
   return data
 }
 
-export async function resetGameSettings(gameType: string): Promise<GameSettingsOut> {
-  const { data } = await apiClient.post<GameSettingsOut>(`/admin/games/${gameType}/settings/reset`)
+export async function resetGameSettings(gameType: string, mode: string): Promise<GameSettingsOut> {
+  const { data } = await apiClient.post<GameSettingsOut>(`/admin/games/${gameType}/${mode}/settings/reset`)
+  return data
+}
+
+// Roadmap #G - backend/src/api/admin_daily_api.py.
+
+export async function listDailySettings(): Promise<DailySettingsOut[]> {
+  const { data } = await apiClient.get<DailySettingsOut[]>("/admin/daily/settings")
+  return data
+}
+
+export async function updateDailySettings(
+  gameType: string,
+  mode: string,
+  body: UpdateDailySettingsIn,
+): Promise<DailySettingsOut> {
+  const { data } = await apiClient.put<DailySettingsOut>(`/admin/daily/${gameType}/${mode}`, body)
+  return data
+}
+
+export async function resetDailySettings(gameType: string, mode: string): Promise<DailySettingsOut> {
+  const { data } = await apiClient.post<DailySettingsOut>(`/admin/daily/${gameType}/${mode}/reset`)
   return data
 }

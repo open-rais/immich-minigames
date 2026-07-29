@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next"
 import { personThumbnailUrl } from "../api/games"
 import { Button } from "../games/shared/Button"
 import { AuthCard } from "./AuthCard"
+import { RecentGamesModal } from "./RecentGamesModal"
 import { useAuth } from "./useAuth"
 
 // Same img+onError fallback convention as menu/UserMenu.tsx's SkinAvatar / games/shared/
@@ -36,6 +37,7 @@ export function ProfilePage() {
   const navigate = useNavigate()
   const { user, loading, logout } = useAuth()
   const [busy, setBusy] = useState(false)
+  const [showRecentGames, setShowRecentGames] = useState(false)
 
   if (!loading && !user) return <Navigate to="/login" replace />
   if (!user) return null
@@ -82,9 +84,14 @@ export function ProfilePage() {
       <Button variant="primary" className="mt-6 w-full py-2.5" onClick={() => navigate("/profile/edit")}>
         {t("auth.profile.edit")}
       </Button>
+      <Button variant="secondary" className="mt-3 w-full py-2.5" onClick={() => setShowRecentGames(true)}>
+        {t("auth.profile.viewGames")}
+      </Button>
       <Button variant="secondary" className="mt-3 w-full py-2.5" onClick={handleLogout} disabled={busy}>
         {t("auth.profile.logout")}
       </Button>
+
+      {showRecentGames && <RecentGamesModal onClose={() => setShowRecentGames(false)} />}
     </AuthCard>
   )
 }

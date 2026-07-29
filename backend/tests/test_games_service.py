@@ -76,6 +76,75 @@ class TestCreateGame:
         assert row.user_id is None
 
 
+class TestCreateGameAbandonsPreviousActiveGame:
+    """Roadmap #e - creating a new game marks any other still-active game of the same
+    (owner-or-user, game_type, mode) as abandoned, so the idle screen's "Continuar" lookup
+    (get_current_game) only ever finds the most recently started one."""
+
+    def test_abandons_the_previous_unfinished_game_of_the_same_mode(self, games_service, db_session):
+        owner = f"owner-{uuid.uuid4().hex[:8]}"
+        first = games_service.create_game(owner=owner, game_type="more-or-less", mode="personAssets")
+
+        games_service.create_game(owner=owner, game_type="more-or-less", mode="personAssets")
+
+        row = db_session.get(GameModel, first.id)
+        assert row.abandoned is True
+        assert row.finished is False  # abandoned is orthogonal to finished, not a substitute for it
+
+    def test_does_not_touch_a_different_mode(self, games_service, db_session):
+        owner = f"owner-{uuid.uuid4().hex[:8]}"
+        first = games_service.create_game(owner=owner, game_type="more-or-less", mode="personAssets")
+
+        games_service.create_game(owner=owner, game_type="more-or-less", mode="albumAssets")
+
+        row = db_session.get(GameModel, first.id)
+        assert row.abandoned is False
+
+    def test_does_not_touch_an_already_finished_game(self, games_service, db_session):
+        owner = f"owner-{uuid.uuid4().hex[:8]}"
+        first = games_service.create_game(owner=owner, game_type="more-or-less", mode="personAssets")
+        row = db_session.get(GameModel, first.id)
+        row.finished = True
+        db_session.commit()
+
+        games_service.create_game(owner=owner, game_type="more-or-less", mode="personAssets")
+
+        db_session.refresh(row)
+        assert row.abandoned is False
+
+    def test_scopes_by_user_id_when_logged_in_even_with_a_mismatched_owner_header(
+        self, games_service, db_session, auth_service
+    ):
+        alice = _register_user(auth_service)
+        first = games_service.create_game(
+            owner="owner-a", game_type="more-or-less", mode="personAssets", user_id=alice.id
+        )
+
+        # Same account, different X-Owner-Id header (e.g. a second device) - must still find and
+        # abandon alice's game by user_id, not miss it because the owner header differs.
+        games_service.create_game(
+            owner="owner-b", game_type="more-or-less", mode="personAssets", user_id=alice.id
+        )
+
+        row = db_session.get(GameModel, first.id)
+        assert row.abandoned is True
+
+    def test_a_legacy_stray_unfinished_game_also_gets_abandoned(self, games_service, db_session):
+        # Simulates a game created before the `abandoned` column existed - self-heals rather than
+        # assuming there's ever only one active row to find.
+        owner = f"owner-{uuid.uuid4().hex[:8]}"
+        first = games_service.create_game(owner=owner, game_type="more-or-less", mode="personAssets")
+        second = games_service.create_game(owner=owner, game_type="more-or-less", mode="personAssets")
+        # Undo the abandon the second create_game just did, to simulate two stray active rows.
+        db_session.get(GameModel, first.id).abandoned = False
+        db_session.commit()
+
+        games_service.create_game(owner=owner, game_type="more-or-less", mode="personAssets")
+
+        assert db_session.get(GameModel, first.id).abandoned is True
+        assert db_session.get(GameModel, second.id).abandoned is True
+
+
 class TestGetGame:
     def test_wrong_owner_raises(self, games_service):
         game = games_service.create_game(owner="owner-a", game_type="more-or-less", mode="personAssets")
@@ -414,3 +483,106 @@ class TestLeaderboard:
         entries = games_service.get_leaderboard("whos-that-person", "namedFaces", "all")
 
         assert entries == []
+
+
+class TestGetCurrentGame:
+    """Roadmap #e - the idle screen's "Continuar" lookup."""
+
+    def test_no_active_game_returns_none(self, games_service):
+        owner = f"owner-{uuid.uuid4().hex[:8]}"
+
+        assert games_service.get_current_game(owner, "more-or-less", "personAssets", user_id=None) is None
+
+    def test_returns_the_active_game(self, games_service):
+        owner = f"owner-{uuid.uuid4().hex[:8]}"
+        game = games_service.create_game(owner=owner, game_type="more-or-less", mode="personAssets")
+
+        current = games_service.get_current_game(owner, "more-or-less", "personAssets", user_id=None)
+
+        assert current is not None
+        assert current.id == game.id
+
+    def test_ignores_a_finished_game(self, games_service, db_session):
+        owner = f"owner-{uuid.uuid4().hex[:8]}"
+        game = games_service.create_game(owner=owner, game_type="more-or-less", mode="personAssets")
+        row = db_session.get(GameModel, game.id)
+        row.finished = True
+        db_session.commit()
+
+        assert games_service.get_current_game(owner, "more-or-less", "personAssets", user_id=None) is None
+
+    def test_ignores_an_abandoned_game(self, games_service, db_session):
+        owner = f"owner-{uuid.uuid4().hex[:8]}"
+        game = games_service.create_game(owner=owner, game_type="more-or-less", mode="personAssets")
+        row = db_session.get(GameModel, game.id)
+        row.abandoned = True
+        db_session.commit()
+
+        assert games_service.get_current_game(owner, "more-or-less", "personAssets", user_id=None) is None
+
+    def test_scopes_by_user_id_when_logged_in(self, games_service, auth_service):
+        alice = _register_user(auth_service)
+        bob = _register_user(auth_service)
+        games_service.create_game(
+            owner="owner-a", game_type="more-or-less", mode="personAssets", user_id=alice.id
+        )
+
+        assert games_service.get_current_game("owner-a", "more-or-less", "personAssets", user_id=bob.id) is None
+
+    def test_unsupported_game_type_raises(self, games_service):
+        with pytest.raises(UnsupportedGameError):
+            games_service.get_current_game("owner-a", "geoguessr", "not-a-real-mode", user_id=None)
+
+
+class TestGetRecentGames:
+    """Roadmap #e - the profile "Ver juegos" modal's last-5 list."""
+
+    def _seed_game(self, games_service, db_session, *, user_id, finished=True, abandoned=False, created_at=None):
+        game = games_service.create_game(
+            owner=f"owner-{uuid.uuid4().hex[:8]}", game_type="more-or-less", mode="personAssets", user_id=user_id
+        )
+        row = db_session.get(GameModel, game.id)
+        row.finished = finished
+        row.abandoned = abandoned
+        if created_at is not None:
+            row.created_at = created_at
+        db_session.commit()
+        return game
+
+    def test_includes_finished_and_abandoned_games(self, games_service, db_session, auth_service):
+        user = _register_user(auth_service)
+        finished = self._seed_game(games_service, db_session, user_id=user.id, finished=True, abandoned=False)
+        abandoned = self._seed_game(games_service, db_session, user_id=user.id, finished=False, abandoned=True)
+
+        recent = games_service.get_recent_games(user.id)
+
+        assert {g.id for g in recent} == {finished.id, abandoned.id}
+
+    def test_excludes_a_still_active_game(self, games_service, db_session, auth_service):
+        user = _register_user(auth_service)
+        self._seed_game(games_service, db_session, user_id=user.id, finished=False, abandoned=False)
+
+        recent = games_service.get_recent_games(user.id)
+
+        assert recent == []
+
+    def test_orders_newest_first_and_caps_at_the_limit(self, games_service, db_session, auth_service):
+        user = _register_user(auth_service)
+        games = [
+            self._seed_game(
+                games_service, db_session, user_id=user.id, created_at=datetime.now() - timedelta(days=i)
+            )
+            for i in range(7)
+        ]
+
+        recent = games_service.get_recent_games(user.id, limit=5)
+
+        assert len(recent) == 5
+        assert [g.id for g in recent] == [g.id for g in games[:5]]
+
+    def test_only_returns_this_users_games(self, games_service, db_session, auth_service):
+        alice = _register_user(auth_service)
+        bob = _register_user(auth_service)
+        self._seed_game(games_service, db_session, user_id=bob.id)
+
+        assert games_service.get_recent_games(alice.id) == []

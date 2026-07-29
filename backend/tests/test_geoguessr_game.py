@@ -2,16 +2,17 @@ from uuid import uuid4
 
 import pytest
 
-from games.asset_rounds import MAX_EXTRA_ASSETS
 from games.geoguessr import (
     DECAY_KM,
     FLAT_SCORE_RADIUS_KM,
+    MAX_EXTRA_ASSETS,
     MAX_SCORE,
     TOTAL_ROUNDS,
     AssetSnapshot,
     GeoguessrGame,
     GeoguessrRound,
     LatLng,
+    LiveContent,
     haversine_km,
 )
 
@@ -29,7 +30,7 @@ def _guess_far(round_: GeoguessrRound) -> LatLng:
 
 class TestGeoguessrGame:
     def test_has_five_rounds_then_finishes(self, immich_service):
-        game = GeoguessrGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        game = GeoguessrGame.start(id=uuid4(), owner="owner", content=LiveContent(immich_service))
 
         rounds_played = 0
         while not game.finished and rounds_played < TOTAL_ROUNDS + 5:
@@ -41,7 +42,7 @@ class TestGeoguessrGame:
         assert rounds_played == TOTAL_ROUNDS
 
     def test_a_bad_guess_does_not_end_the_game_early(self, immich_service):
-        game = GeoguessrGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        game = GeoguessrGame.start(id=uuid4(), owner="owner", content=LiveContent(immich_service))
 
         game.play_round(_guess_far(game.current_round))
 
@@ -49,7 +50,7 @@ class TestGeoguessrGame:
         assert len(game.rounds) == 2
 
     def test_does_not_repeat_a_shown_asset_within_the_same_game(self, immich_service):
-        game = GeoguessrGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        game = GeoguessrGame.start(id=uuid4(), owner="owner", content=LiveContent(immich_service))
         shown = [game.current_round.asset.id]
 
         while not game.finished:
@@ -61,7 +62,7 @@ class TestGeoguessrGame:
             shown.append(new_id)
 
     def test_playing_an_already_finished_game_raises(self, immich_service):
-        game = GeoguessrGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        game = GeoguessrGame.start(id=uuid4(), owner="owner", content=LiveContent(immich_service))
         while not game.finished:
             game.play_round(_guess_near(game.current_round))
 
@@ -70,13 +71,13 @@ class TestGeoguessrGame:
 
 
 class TestGeoguessrExtras:
-    """Extras are purely decorative (see games/asset_rounds.py's MAX_EXTRA_ASSETS) - never forced to
+    """Extras are purely decorative (see games/geoguessr/game.py's MAX_EXTRA_ASSETS) - never forced to
     5, but whatever is picked must stay within 500m of the round's main asset and never repeat.
     (The same-month rule is enforced in SQL by _query_extra_assets and isn't observable from
     AssetSnapshot, which only keeps id/lat/lon - so it isn't asserted here.)"""
 
     def test_extras_are_capped_and_within_500m(self, immich_service):
-        game = GeoguessrGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        game = GeoguessrGame.start(id=uuid4(), owner="owner", content=LiveContent(immich_service))
 
         for round_ in game.rounds:
             assert len(round_.extras) <= MAX_EXTRA_ASSETS
@@ -84,7 +85,7 @@ class TestGeoguessrExtras:
                 assert haversine_km(round_.asset.latitude, round_.asset.longitude, extra.latitude, extra.longitude) <= 0.5
 
     def test_no_asset_is_ever_shown_twice_within_the_same_game(self, immich_service):
-        game = GeoguessrGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        game = GeoguessrGame.start(id=uuid4(), owner="owner", content=LiveContent(immich_service))
         shown = list(game.current_round.shown_entities)
 
         while not game.finished:
@@ -142,7 +143,7 @@ class TestGeoguessrAdminSettings:
 
     def test_total_rounds_override_changes_how_many_rounds_are_played(self, immich_service):
         game = GeoguessrGame.start(
-            id=uuid4(), owner="owner", immich_service=immich_service, settings={"total_rounds": 2}
+            id=uuid4(), owner="owner", content=LiveContent(immich_service), settings={"total_rounds": 2}
         )
 
         rounds_played = 0

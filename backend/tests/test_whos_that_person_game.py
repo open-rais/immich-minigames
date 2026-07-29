@@ -2,7 +2,7 @@ from uuid import uuid4
 
 import pytest
 
-from games.whos_that_person import HiddenFace, IncompleteGuessError, WhosThatPersonGame, WhosThatPersonRound
+from games.whos_that_person import HiddenFace, IncompleteGuessError, LiveContent, WhosThatPersonGame, WhosThatPersonRound
 
 
 def _correct_guess(round_: WhosThatPersonRound) -> dict:
@@ -16,7 +16,9 @@ def _play_correctly_to_completion(game: WhosThatPersonGame) -> None:
 
 class TestWhosThatPersonGame:
     def test_starts_with_one_to_five_pending_faces(self, immich_service):
-        game = WhosThatPersonGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        game = WhosThatPersonGame.start(
+            id=uuid4(), owner="owner", immich_service=immich_service, content=LiveContent(immich_service)
+        )
 
         assert game.finished is False
         assert len(game.rounds) == 1
@@ -25,7 +27,9 @@ class TestWhosThatPersonGame:
         assert all(face.person_name for face in game.current_round.faces)
 
     def test_correct_guess_reveals_answers_and_scores_the_streak(self, immich_service):
-        game = WhosThatPersonGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        game = WhosThatPersonGame.start(
+            id=uuid4(), owner="owner", immich_service=immich_service, content=LiveContent(immich_service)
+        )
         first_round = game.current_round
         n = len(first_round.faces)
 
@@ -40,7 +44,9 @@ class TestWhosThatPersonGame:
         # A single round's faces never reach the 15-person budget on their own (max 5 < 15), so a
         # wrong guess here should never finish the game - unlike MoreOrLess, correctness doesn't
         # gate has_next_round() at all for this game.
-        game = WhosThatPersonGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        game = WhosThatPersonGame.start(
+            id=uuid4(), owner="owner", immich_service=immich_service, content=LiveContent(immich_service)
+        )
         first_round = game.current_round
         guess = _correct_guess(first_round)
         [some_face] = first_round.faces[:1]
@@ -53,7 +59,9 @@ class TestWhosThatPersonGame:
         assert result.finished is False
 
     def test_incomplete_guess_raises(self, immich_service):
-        game = WhosThatPersonGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        game = WhosThatPersonGame.start(
+            id=uuid4(), owner="owner", immich_service=immich_service, content=LiveContent(immich_service)
+        )
         guess = _correct_guess(game.current_round)
         guess.popitem()
 
@@ -61,7 +69,9 @@ class TestWhosThatPersonGame:
             game.play_round(guess)
 
     def test_guess_with_an_extra_unknown_face_id_raises(self, immich_service):
-        game = WhosThatPersonGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        game = WhosThatPersonGame.start(
+            id=uuid4(), owner="owner", immich_service=immich_service, content=LiveContent(immich_service)
+        )
         guess = _correct_guess(game.current_round)
         guess[uuid4()] = uuid4()
 
@@ -69,7 +79,9 @@ class TestWhosThatPersonGame:
             game.play_round(guess)
 
     def test_game_ends_after_exactly_15_people_asked(self, immich_service):
-        game = WhosThatPersonGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        game = WhosThatPersonGame.start(
+            id=uuid4(), owner="owner", immich_service=immich_service, content=LiveContent(immich_service)
+        )
 
         _play_correctly_to_completion(game)
 
@@ -77,7 +89,9 @@ class TestWhosThatPersonGame:
         assert sum(len(r.faces) for r in game.rounds) == 15
 
     def test_never_repeats_a_photo_within_a_game(self, immich_service):
-        game = WhosThatPersonGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        game = WhosThatPersonGame.start(
+            id=uuid4(), owner="owner", immich_service=immich_service, content=LiveContent(immich_service)
+        )
 
         _play_correctly_to_completion(game)
 
@@ -85,7 +99,9 @@ class TestWhosThatPersonGame:
         assert len(asset_ids) == len(set(asset_ids))
 
     def test_playing_an_already_finished_game_raises(self, immich_service):
-        game = WhosThatPersonGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        game = WhosThatPersonGame.start(
+            id=uuid4(), owner="owner", immich_service=immich_service, content=LiveContent(immich_service)
+        )
         _play_correctly_to_completion(game)
 
         with pytest.raises(ValueError):
@@ -94,7 +110,9 @@ class TestWhosThatPersonGame:
     def test_correct_guess_freezes_the_guessed_names(self, immich_service):
         # Roadmap #10 (rounds review, ROUNDS-VIEW.md §4.3) - names are resolved in one query and
         # stored on the round itself, not looked up again whenever it's displayed later.
-        game = WhosThatPersonGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        game = WhosThatPersonGame.start(
+            id=uuid4(), owner="owner", immich_service=immich_service, content=LiveContent(immich_service)
+        )
         first_round = game.current_round
         guess = _correct_guess(first_round)
 
@@ -104,7 +122,9 @@ class TestWhosThatPersonGame:
             assert first_round.guess_names[guess[face.face_id]] == face.person_name
 
     def test_a_guess_that_does_not_resolve_to_a_real_person_is_left_unnamed(self, immich_service):
-        game = WhosThatPersonGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        game = WhosThatPersonGame.start(
+            id=uuid4(), owner="owner", immich_service=immich_service, content=LiveContent(immich_service)
+        )
         first_round = game.current_round
         bogus_guess = {face.face_id: uuid4() for face in first_round.faces}
 
@@ -117,7 +137,9 @@ class TestWhosThatPersonRoundPayloadCompatibility:
     def test_from_payload_tolerates_a_payload_with_no_guess_names(self, immich_service):
         # A round persisted before this field existed has no "guess_names" key at all - from_payload
         # must not KeyError on that, just fall back to an empty dict (ROUNDS-VIEW.md §4.3).
-        game = WhosThatPersonGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        game = WhosThatPersonGame.start(
+            id=uuid4(), owner="owner", immich_service=immich_service, content=LiveContent(immich_service)
+        )
         round_ = game.current_round
         game.play_round(_correct_guess(round_))
 
@@ -141,7 +163,11 @@ class TestWhosThatPersonAdminSettings:
 
     def test_total_people_override_changes_how_many_are_asked(self, immich_service):
         game = WhosThatPersonGame.start(
-            id=uuid4(), owner="owner", immich_service=immich_service, settings={"total_people": 3}
+            id=uuid4(),
+            owner="owner",
+            immich_service=immich_service,
+            content=LiveContent(immich_service),
+            settings={"total_people": 3},
         )
 
         _play_correctly_to_completion(game)

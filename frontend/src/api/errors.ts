@@ -10,3 +10,10 @@ export function apiErrorMessage(err: unknown): string | undefined {
   }
   return undefined
 }
+
+// The HTTP status of a failed request, when the failure was an HTTP response at all - for callers
+// that branch on a specific status (e.g. the daily flow treating 409 "already played" as a state,
+// not an error) rather than on the human-readable detail above.
+export function apiErrorStatus(err: unknown): number | undefined {
+  return axios.isAxiosError(err) ? err.response?.status : undefined
+}

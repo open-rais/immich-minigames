@@ -172,6 +172,16 @@ export interface GameOut {
   // games/shared/useRoundGame.ts's GameState).
   total_rounds?: number | null
   total_people?: number | null
+  // Roadmap #G - set only for a daily-challenge game, null for every normal game. Lets the
+  // frontend recognize a resumed/loaded game as a daily one after a page reload (see
+  // games/shared/useRoundGame.ts).
+  daily_challenge_date?: string | null
+}
+
+// Roadmap #e - idle-screen "Continuar" lookup. A wrapper (not a bare nullable GameOut/404) so "no
+// active game" - the expected result on every idle-screen visit - is never mistaken for an error.
+export interface CurrentGameOut {
+  game: GameOut | null
 }
 
 // No game_type here (unlike RoundOut) - game_id already fixes a round's game/mode server-side, so
@@ -277,6 +287,24 @@ export interface GameRecordsOut {
   records: GameRecordOut[]
 }
 
+// Roadmap #e - profile "Ver juegos" modal - mirrors backend/src/api/dto/common.py's
+// RecentGameOut/RecentGamesOut. Only ever finished or abandoned games (never a still-active one).
+export interface RecentGameOut {
+  id: string
+  game_type: string
+  mode: string
+  score: number
+  finished: boolean
+  abandoned: boolean
+  created_at: string
+  // Roadmap #G - whether this was a daily-challenge game (see menu/DailySection.tsx).
+  is_daily: boolean
+}
+
+export interface RecentGamesOut {
+  games: RecentGameOut[]
+}
+
 // Admin feature (ADMIN-FEATURE.md point #4) - mirrors backend/src/api/dto/common.py's
 // GameSettingOut/GameSettingsOut. `key` names match services/game_settings.py's SettingSpec keys
 // (e.g. "decay_km", "total_rounds") - see admin/AdminGameRow.tsx for how they're labeled.
@@ -291,7 +319,22 @@ export interface GameSettingOut {
 
 export interface GameSettingsOut {
   game_type: string
+  mode: string
   settings: GameSettingOut[]
+}
+
+// Roadmap #G - mirrors backend/src/api/dto/common.py's DailySettingsOut/UpdateDailySettingsIn.
+export interface DailySettingsOut {
+  game_type: string
+  mode: string
+  // The "Activar juego diario" checkbox from roadmap #f.
+  enabled: boolean
+  settings: GameSettingOut[]
+}
+
+export interface UpdateDailySettingsIn {
+  enabled?: boolean
+  values?: Record<string, number>
 }
 
 // Roadmap point F - leaderboards (requires login, unlike the personal records above) - mirrors
@@ -313,4 +356,31 @@ export interface LeaderboardOut {
 // Roadmap point #10 (rounds review) - mirrors backend/src/api/dto/common.py's ConfigOut.
 export interface ConfigOut {
   immich_external_url: string | null
+}
+
+// Roadmap #G - daily games. Mirrors backend/src/api/dto/common.py's DailyModeStatusOut/
+// DailyStatusOut (see services/games_service.py's GamesService.get_daily_status).
+export type DailyModeStatusValue = "not_played" | "in_progress" | "finished"
+
+export interface DailyModeStatusOut {
+  game_type: string
+  mode: string
+  status: DailyModeStatusValue
+  game_id: string | null
+  score: number | null
+}
+
+export interface DailyStatusOut {
+  // ISO datetimes (server time) - the countdown ticks off their offset rather than trusting the
+  // client's own clock alone (see menu/DailyCountdown.tsx).
+  resets_at: string
+  server_now: string
+  modes: DailyModeStatusOut[]
+}
+
+// Roadmap #G, F5 - mirrors backend/src/api/dto/common.py's DailyLeaderboardOut. Same entry shape
+// as the normal LeaderboardOut, scoped to one specific day's challenge instead of a rolling window.
+export interface DailyLeaderboardOut {
+  date: string
+  entries: LeaderboardEntryOut[]
 }

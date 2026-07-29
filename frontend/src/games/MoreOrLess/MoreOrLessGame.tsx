@@ -3,7 +3,9 @@ import type { TransitionEvent } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate, useParams } from "react-router-dom"
 
-import { createGame, playRound } from "../../api/games"
+import { createDailyGame, getDailyStatus } from "../../api/daily"
+import { apiErrorStatus } from "../../api/errors"
+import { createGame, getCurrentGame, getGame, playRound } from "../../api/games"
 import { GameType, Mode } from "../../api/types"
 import type { GameOut, MoreOrLessGuess, MoreOrLessRoundOut, RoundOut } from "../../api/types"
 import type { GameComponentProps } from "../catalog"
@@ -37,7 +39,7 @@ function assertMoreOrLess(round: RoundOut): asserts round is MoreOrLessRoundOut 
   if (round.game_type !== GameType.MoreOrLess) throw new Error(`expected a more-or-less round, got ${round.game_type}`)
 }
 
-export function MoreOrLessGame({ coverUrl, hasRoundsView }: GameComponentProps) {
+export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameComponentProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const backToMenu = () => navigate("/")
@@ -66,6 +68,17 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView }: GameComponentProps) 
   const [transitionEnabled, setTransitionEnabled] = useState(true)
   const [slideOffset, setSlideOffset] = useState({ x: 0, y: 0 })
   const slidingCardRef = useRef<HTMLDivElement>(null)
+
+  // Roadmap #e - whether the current player has an unfinished game for this mode; null while the
+  // idle-screen check below is still in flight (IdleScreen treats that the same as false).
+  const [hasCurrentGame, setHasCurrentGame] = useState<boolean | null>(null)
+  // Roadmap #G - the daily game's id, known from GET /daily's status before the player has done
+  // anything - resumeGame() reads this instead of calling getCurrentGame (which never returns a
+  // daily game, see docs/TODO/DAILY-GAMES.md §4.5).
+  const dailyGameIdRef = useRef<string | null>(null)
+  // Bumped when the idle-screen status needs re-fetching while the screen is already "idle" -
+  // today only the daily 409 fallback in startGame below (docs/TODO/DAILY-GAMES.md §4.7).
+  const [idleRefresh, setIdleRefresh] = useState(0)
 
   const { isCurrent, guarded, discardInFlight } = useGuardedRequests()
   // One in-flight ref per action - start vs guess don't need to block each other, but each needs its
@@ -109,22 +122,105 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView }: GameComponentProps) 
     return () => cancelAnimationFrame(raf)
   }, [transitionEnabled])
 
+  // Re-checked every time the idle screen is (re-)shown - roadmap #e's "Continuar" affordance.
+  useEffect(() => {
+    if (screen !== "idle") return
+    let cancelled = false
+
+    if (daily) {
+      getDailyStatus()
+        .then((status) => {
+          if (cancelled) return
+          const modeStatus = status.modes.find((m) => m.game_type === GAME_TYPE && m.mode === mode)
+          dailyGameIdRef.current = modeStatus?.game_id ?? null
+
+          if (modeStatus?.status === "finished" && modeStatus.game_id) {
+            setHasCurrentGame(false)
+            getGame(modeStatus.game_id)
+              .then((g) => {
+                if (!cancelled) {
+                  setGame(g)
+                  setScreen("finished")
+                }
+              })
+              .catch(() => {
+                if (!cancelled) setScreen("error")
+              })
+            return
+          }
+          setHasCurrentGame(modeStatus?.status === "in_progress")
+        })
+        .catch(() => {
+          if (!cancelled) setHasCurrentGame(false)
+        })
+      return () => {
+        cancelled = true
+      }
+    }
+
+    getCurrentGame(GAME_TYPE, mode)
+      .then((g) => {
+        if (!cancelled) setHasCurrentGame(g !== null)
+      })
+      .catch(() => {
+        if (!cancelled) setHasCurrentGame(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [screen, mode, daily, idleRefresh])
+
+  // Shared by startGame (fresh GameOut from createGame) and resumeGame (an existing one from
+  // getCurrentGame) - both hand off a GameOut whose last round is the current pending one.
+  function applyGame(g: GameOut) {
+    const round = g.rounds[g.rounds.length - 1]
+    assertMoreOrLess(round)
+    setGame(g)
+    setReference({ id: round.reference_id, name: round.reference_name, assetCount: round.reference_asset_count })
+    setCandidate({ id: round.candidate_id, name: round.candidate_name, roundId: round.id })
+    setCandidatePhase("guessing")
+    setCountTarget(null)
+    setRevealResult(null)
+    setSliding(false)
+    setScreen("playing")
+  }
+
   async function startGame() {
     await guarded(startInFlightRef, async (token) => {
       setBusy(true)
       try {
-        const g = await createGame(GAME_TYPE, mode)
+        const g = daily ? await createDailyGame(GAME_TYPE, mode) : await createGame(GAME_TYPE, mode)
         if (!isCurrent(token)) return
-        const round = g.rounds[g.rounds.length - 1]
-        assertMoreOrLess(round)
-        setGame(g)
-        setReference({ id: round.reference_id, name: round.reference_name, assetCount: round.reference_asset_count })
-        setCandidate({ id: round.candidate_id, name: round.candidate_name, roundId: round.id })
-        setCandidatePhase("guessing")
-        setCountTarget(null)
-        setRevealResult(null)
-        setSliding(false)
-        setScreen("playing")
+        applyGame(g)
+      } catch (err) {
+        if (!isCurrent(token)) return
+        if (daily && apiErrorStatus(err) === 409) {
+          // Today's attempt was consumed between the idle status check and this create (another
+          // tab/device) - re-run the status check instead of showing a generic error; it lands on
+          // the finished (or in-progress) state, the "ya jugado" behavior of DAILY-GAMES.md §4.7.
+          setHasCurrentGame(null)
+          setIdleRefresh((n) => n + 1)
+          return
+        }
+        setScreen("error")
+      } finally {
+        if (isCurrent(token)) setBusy(false)
+      }
+    })
+  }
+
+  // Roadmap #e - "Continuar" button's action: picks the player's existing unfinished game back up.
+  async function resumeGame() {
+    await guarded(startInFlightRef, async (token) => {
+      setBusy(true)
+      try {
+        const g = daily
+          ? dailyGameIdRef.current
+            ? await getGame(dailyGameIdRef.current)
+            : null
+          : await getCurrentGame(GAME_TYPE, mode)
+        if (!isCurrent(token) || !g) return
+        applyGame(g)
       } catch {
         if (isCurrent(token)) setScreen("error")
       } finally {
@@ -180,6 +276,9 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView }: GameComponentProps) 
         onStart={startGame}
         onBack={backToMenu}
         busy={busy}
+        hasCurrentGame={hasCurrentGame}
+        onContinue={resumeGame}
+        allowNewGame={!daily}
       />
     )
   }
@@ -197,6 +296,12 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView }: GameComponentProps) 
         busy={busy}
         gameId={game?.id}
         hasRoundsView={hasRoundsView}
+        allowPlayAgain={!daily}
+        dailyShare={
+          daily && game
+            ? { gameId: game.id, gameType: GAME_TYPE, mode, gameTitle: t("moreOrLess.title"), modeTitle: t(config.modeTitleKey) }
+            : undefined
+        }
       />
     )
   }

@@ -19,6 +19,29 @@
     "bestScore": "Mejor: {{score}}",
     "notPlayed": "Sin jugar"
   },
+  "daily": {
+    "title": "Diario",
+    "leaderboard": {
+      "previousDay": "Día anterior",
+      "nextDay": "Día siguiente"
+    },
+    "share": {
+      "button": "Compartir",
+      "copyButton": "Copiar",
+      "copied": "¡Copiado al portapapeles!",
+      "error": "No se pudo copiar - intenta de nuevo",
+      "header": "{{game}} - {{date}}",
+      "allHeader": "Resultados diarios - {{date}}",
+      "moreOrLess": "📈 racha: {{score}} 📉",
+      "roundLine": "{{color}} {{points}} pts ({{detail}})",
+      "total": "Total: {{score}} pts",
+      "immichdleWon": "🟩 adivinado en {{attempts}} intentos",
+      "immichdleLost": "🟥 No fue adivinado",
+      "whosThatPerson": "🧑‍🧑‍🧒‍🧒 {{correct}}/{{total}} personas",
+      "km": "{{value}}km",
+      "days": "{{count}} días"
+    }
+  },
   "leaderboard": {
     "title": "Clasificación",
     "empty": "Todavía nadie ha jugado este modo en este período.",
@@ -32,6 +55,8 @@
     "back": "Volver",
     "score": "Puntaje",
     "startCta": "Comenzar juego",
+    "continueCta": "Continuar",
+    "newGameCta": "Nuevo juego",
     "confirmGuess": "Confirmar respuesta",
     "roundOf": "Ronda {{current}} de {{total}}",
     "points": "+{{score}} pts",
@@ -58,7 +83,7 @@
     },
     "exitConfirm": {
       "title": "¿Seguro que quieres salir?",
-      "message": "No podrás continuar el juego.",
+      "message": "Esta ronda quedará sin responder, pero podrás continuar esta partida más tarde desde su menú.",
       "confirm": "Salir",
       "cancel": "Cancelar"
     }
@@ -179,10 +204,20 @@
       "edit": "Editar perfil",
       "save": "Guardar cambios",
       "saved": "Perfil actualizado",
+      "viewGames": "Ver juegos",
       "skin": {
         "label": "Piel",
         "none": "Ninguna",
         "clear": "Quitar"
+      },
+      "recentGames": {
+        "title": "Juegos recientes",
+        "loading": "Cargando juegos...",
+        "empty": "Aún no has terminado ninguna partida.",
+        "score": "{{score}} pts",
+        "finished": "Terminado",
+        "abandoned": "Abandonado",
+        "daily": "Diario"
       }
     },
     "error": {
@@ -196,7 +231,6 @@
       "loading": "Cargando usuarios..."
     },
     "games": {
-      "title": "Juegos",
       "description": "Edita la configuración de cada juego",
       "loading": "Cargando juegos...",
       "noSettings": "Este juego todavía no tiene configuración disponible.",
@@ -214,6 +248,14 @@
         "asset_count_weight": "Peso de la cantidad de fotos (0 = uniforme, 1 = proporcional)",
         "total_people": "Personas totales",
         "max_hidden_faces": "Caras ocultas máximas por ronda"
+      }
+    },
+    "daily": {
+      "title": "Juego diario",
+      "enabledLabel": "Activar juego diario",
+      "settings": {
+        "no_repeat_days": "Ventana sin repetir (días)",
+        "chain_length": "Tope de la cadena"
       }
     }
   }

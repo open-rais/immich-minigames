@@ -20,6 +20,8 @@ from main import app
 from persistence.base import get_app_engine, get_session_factory, reset_db
 from persistence.immich_db import get_immich_engine
 from services.auth_service import AuthService
+from services.daily_service import DailyService
+from services.daily_settings import DailySettingsService
 from services.game_settings import GameSettingsService
 from services.games_service import GamesService
 from services.immich_service import ImmichService
@@ -74,6 +76,16 @@ def auth_service(db_session):
 @pytest.fixture
 def game_settings_service(db_session):
     return GameSettingsService(db_session)
+
+
+@pytest.fixture
+def daily_settings_service(db_session):
+    return DailySettingsService(db_session)
+
+
+@pytest.fixture
+def daily_service(db_session, immich_service):
+    return DailyService(db_session, immich_service)
 
 
 @pytest.fixture(autouse=True)

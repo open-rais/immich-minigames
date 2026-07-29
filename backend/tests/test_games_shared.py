@@ -1,10 +1,11 @@
 """
-Pure-logic tests for the shared fixed-rounds game skeleton (games/asset_rounds.py). No DB - the
-candidate-picking and scoring helpers are pure functions. Each concrete game's own metric/snapshot
-is covered in test_geoguessr_game.py / test_dateguessr_game.py.
+Pure-logic tests for games/shared/ (games/shared/scoring.py, games/shared/picking.py) - no DB, no
+game-specific knowledge. Each concrete game's own metric/snapshot is covered in
+test_geoguessr_game.py / test_dateguessr_game.py.
 """
 
-from games.asset_rounds import exp_decay_score, pick_spread_asset
+from games.shared.picking import pick_spread_asset
+from games.shared.scoring import exp_decay_score
 
 
 class _Item:

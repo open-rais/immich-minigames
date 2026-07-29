@@ -48,7 +48,14 @@ Cuando se complete un item, marcar su checkbox.
   - Agregar un nuevo docs/INSTALL.md con distintas maneras de instalar el código o problemas comúnes
   - Actualizar otros archivos de documentación para cumplor con el estado actual
 - [x] 10. Vista "Ver rounds": muestra cada asset mostrado en las rondas de un juego finalizado, con botón "ver en Immich"
-- [ ] G. Daily games (misma seed para cada usuario, solo se juega 1 vez al día, se puede ver la partida si ya se jugó, se puede compartir un link para invitar a jugar (Tipo wordle, etc)):
+- [x] e. Cambiar manera de guardar juegos antes de pasar a #G, para evitar que al actualizar la página se pierda el juego:
+  - Hacer que al apretar un juego, en la ventana que dice "Jugar" o "leaderboard", si no hay ningún juego sin terminar asociado al jugador actual (ya sea loggeado o no) que la pantalla se vea igual. En caso de que haya una partida no terminada asociado aparecerá un botón extra "Continuar", si se presiona continuar se seguirá jugando el juego que ya estaba comenzado, el botón "Jugar" pasará a llamarse "Nuevo juego" y si se presiona ese, el juego anteriormente sin terminar se marca como terminado y se crea uno nuevo.
+  - Agregar al perfil un botón de "ver juegos" en el que al presionarlo aparezca un modal con una targeta con una lista de los últimos 5 juegos del jugador con sesión iniciada, estos tendrán un link para ir a ver los rounds (#10).
+- [x] f. Cambios a admin antes de pasar a daily:
+  - [x] En lugar de tener una casilla "games" con todos los juegos, habrá una casilla para cada juego, y dentro estarán los modos así como ahora aparecen los juegos (implementado - los settings de cada juego también pasaron a ser por modo, no solo la UI)
+  - [x] cada modo tendrá una casilla "Activar juego diario" para indicar que ese modo si estará en los daily (implementado junto con #G - ver `admin/AdminGameRow.tsx`'s "Juego diario" toggle)
+  
+- [x] G. Daily games (misma seed para cada usuario, solo se juega 1 vez al día, se puede ver la partida si ya se jugó, se puede compartir un link para invitar a jugar (Tipo wordle, etc)):
   - Se creará una nueva sección en menu principal, como si fuera un juego pero con el nombre "daily". Tendrá los mismos modos de juegos de abajo
   - Leaderboard de dailyGame (Se puede mover hacia atras en los días para ver los leaderboard de los dailies pasados)
   - El admin puede decir qué juegos están en el daily y cuales no, además de sus parámetros para el daily
@@ -82,6 +89,7 @@ avanzando el proyecto. Sí tienen restricciones de orden ya decididas:
 | **Daily game** | 15 | - | Depende de tener login. Momento exacto sin definir, se decidirá según avance el proyecto. | <!-- v0.+1.0 -->
 | **Report incorrect** | 11 | - | Agrega una tabla de reportes: no corrige metadata directamente, pero saca esos assets de los juegos y permite verlos en Immich para corregirlos ahí. Probablemente vaya después del 19 también, ya que no es el foco principal del proyecto. | 
 | **Script de desinstalación** | A | - | `backend/src/scripts/teardown_db_role.py`, simétrico a `bootstrap_db_role.py`: `DROP SCHEMA minigames CASCADE` + revoca los grants de `DB_APP_USERNAME` sobre `public` (incluye el `ALTER DEFAULT PRIVILEGES` que el bootstrap dejó ahí) + `DROP ROLE` - nunca toca datos ni objetos propios de Immich. Requiere confirmación explícita (`--yes`/dry-run), no debe correr automático como `db-init`. Pendiente decidir si también debe revertir el `REVOKE CREATE ON SCHEMA public FROM PUBLIC` del bootstrap - ese sí es un cambio al ACL del propio `public` de Immich, no algo scoped solo al rol de minigames.
+| **Testing E2E de frontend (Playwright)** | e | - | Surgió al verificar el punto e: no había manera de comprobar visualmente el flujo Continuar/Nuevo juego sin instalar Playwright (headless Chromium) en el sandbox, y se decidió no instalarlo puntualmente para eso. Queda como tarea propia: agregar Playwright (`@playwright/test` o `pytest-playwright`) como dependencia de test E2E real, con specs versionados, corriendo en CI (github workflows, ver punto A). Momento exacto sin definir. |
 
 ## Limitaciones conocidas (menores, no bloquean nada)
 
@@ -97,3 +105,30 @@ avanzando el proyecto. Sí tienen restricciones de orden ya decididas:
 **RepairMetadata** no tiene lugar en esta lista a propósito - es la prioridad más baja de todas,
 un "quizás" a futuro, no una tarea planeada. Ya está anotada como tal en la sección "Extra
 Features" de `README.md`; no se le asigna posición aquí ni se agrega a la tabla de condicionales.
+
+## Copy-Paste de daily
+
+```
+# Por juego:
+## MoL:
+📈 racha: {N} 📉
+
+## *guessr (0-39% rojo, 40%-79% amarillo, >80% verde):
+🟩 4363 pts ({"2.4km"or"25 dias"})
+🟨 2643 pts (*agregar distancia)
+🟩 X pts (*agregar distancia)
+🟥 340 pts (*agregar distancia)
+🟨 X pts (*agregar distancia)
+Total: N pts
+
+## Immichdle:
+🟩 adivinado en {N} intentos / 🟥 No fue adivinado
+Total: N pts
+
+## WTP:
+🧑‍🧑‍🧒‍🧒 X/15 personas
+Total: N pts
+
+# Si se comparte total:
+Todos resumidos a una linea
+```

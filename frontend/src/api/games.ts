@@ -1,6 +1,7 @@
 import { apiClient } from "./client"
 import type {
   CreateGameIn,
+  CurrentGameOut,
   GameOut,
   GameRecordsOut,
   LeaderboardOut,
@@ -8,6 +9,7 @@ import type {
   PersonSearchOut,
   PlayRoundIn,
   PlayRoundOut,
+  RecentGamesOut,
 } from "./types"
 
 export async function createGame(type: string, mode: string): Promise<GameOut> {
@@ -19,6 +21,23 @@ export async function createGame(type: string, mode: string): Promise<GameOut> {
 export async function getGame(id: string): Promise<GameOut> {
   const { data } = await apiClient.get<GameOut>(`/games/${id}`)
   return data
+}
+
+// Idle-screen "Continuar" lookup (roadmap #e) - null when the current player (owner or account)
+// has no unfinished game for this (gameType, mode). Works for anonymous visitors too, same as
+// createGame/getGame - see backend/src/api/api.py's get_current_game.
+export async function getCurrentGame(gameType: string, mode: string): Promise<GameOut | null> {
+  const { data } = await apiClient.get<CurrentGameOut>("/games/current", {
+    params: { game_type: gameType, mode },
+  })
+  return data.game
+}
+
+// Profile "Ver juegos" modal (roadmap #e) - login-only, unlike getCurrentGame (the backend 401s an
+// anonymous request - see api/api.py's get_recent_games).
+export async function getRecentGames(): Promise<RecentGamesOut["games"]> {
+  const { data } = await apiClient.get<RecentGamesOut>("/games/recent")
+  return data.games
 }
 
 // Personal-best score per (game_type, mode) - shown in the main menu (roadmap point E). Works

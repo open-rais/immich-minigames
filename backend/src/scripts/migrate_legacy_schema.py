@@ -141,6 +141,69 @@ def _copy_table(
                 writer.write(block)
 
 
+# Roadmap #f - game_settings gained a NOT NULL `mode` column (composite PK with game_type) after
+# the split; a legacy (pre-split) schema can never have it, since no pre-split install runs
+# post-split migrations. _copy_columns's normal intersection already excludes it for exactly that
+# reason, which means the generic _copy_table binary COPY would try to insert rows with no value
+# for a NOT NULL column. This derives the missing mode in Python instead, per row - a plain
+# SELECT/INSERT rather than streamed COPY, since this table has at most a handful of rows (no
+# performance reason to stream it like the games/rounds/users tables do). The four
+# (game_type -> mode) pairs mirror 0008_add_game_settings_mode_column.py - hardcoded here too, for
+# the same reason that migration hardcodes them: this script must keep working against a source
+# frozen at whatever revision predates the split, independent of current model code. MoreOrLess
+# never has a legacy row to migrate (see that migration's docstring), so it needs no entry here.
+_GAME_SETTINGS_MODE_BY_TYPE = {
+    "geoguessr": "distanceBetweenGuess",
+    "dateguessr": "daysToDate",
+    "immichdle": "person",
+    "whos-that-person": "namedFaces",
+}
+
+
+def _copy_game_settings(
+    source: psycopg.Connection,
+    target: psycopg.Connection,
+    *,
+    source_schema: str,
+    target_schema: str,
+    columns: list[str],
+) -> None:
+    if "mode" in columns:
+        # Source already has it (e.g. this script re-run after another split-like event) -
+        # nothing special needed.
+        _copy_table(
+            source,
+            target,
+            source_schema=source_schema,
+            target_schema=target_schema,
+            table="game_settings",
+            columns=columns,
+        )
+        return
+
+    with source.cursor() as src_cur:
+        src_cur.execute(
+            sql.SQL("SELECT game_type, values FROM {}.game_settings").format(sql.Identifier(source_schema))
+        )
+        rows = src_cur.fetchall()
+
+    with target.cursor() as dst_cur:
+        for game_type, values in rows:
+            mode = _GAME_SETTINGS_MODE_BY_TYPE.get(game_type)
+            if mode is None:
+                raise LegacyMigrationError(
+                    f"Refusing to migrate: legacy game_settings row for unrecognised game_type "
+                    f"{game_type!r} has no known mode to backfill into the new (game_type, mode) "
+                    "primary key. Nothing was changed - resolve by hand and re-run db-init."
+                )
+            dst_cur.execute(
+                sql.SQL("INSERT INTO {}.game_settings (game_type, mode, values) VALUES (%s, %s, %s)").format(
+                    sql.Identifier(target_schema)
+                ),
+                (game_type, mode, Jsonb(values)),
+            )
+
+
 def _copy_columns(
     source: psycopg.Connection,
     target: psycopg.Connection,
@@ -280,6 +343,15 @@ def _copy_legacy_data(
                 target_schema=target_schema,
                 table=table,
             )
+            if table == "game_settings":
+                _copy_game_settings(
+                    source,
+                    target,
+                    source_schema=source_schema,
+                    target_schema=target_schema,
+                    columns=columns,
+                )
+                continue
             _copy_table(
                 source,
                 target,

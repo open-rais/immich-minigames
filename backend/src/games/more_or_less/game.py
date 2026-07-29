@@ -8,9 +8,9 @@ The game engine here is entity-agnostic: a round compares two "countable entitie
 comparable `value`), and everything - chaining, streak scoring, tie handling, the recent-repeat
 window, the payload - is independent of *what* the entity is. The only thing that varies between
 modes is where those entities come from, encapsulated in a `CandidateProvider` (personAssets ->
-people, albumAssets -> albums). `value` is a comparable JSON scalar (int for the asset-count modes
-today; an ISO date string would slot in for a future date-comparing mode - ISO dates compare
-chronologically as strings - without changing this engine).
+people, in person_assets.py; albumAssets -> albums, in album_assets.py). `value` is a comparable
+JSON scalar (int for the asset-count modes today; an ISO date string would slot in for a future
+date-comparing mode - ISO dates compare chronologically as strings - without changing this engine).
 """
 
 from abc import ABC, abstractmethod
@@ -20,8 +20,7 @@ from typing import Any, Literal
 from uuid import UUID, uuid4
 
 from games.base import BaseGame, BaseRound
-from games.serialization import DictCodec
-from services.immich_service import ImmichService
+from games.shared.serialization import DictCodec
 
 Guess = Literal["more", "less"]
 
@@ -56,8 +55,9 @@ class EntitySnapshot(DictCodec):
 
 class CandidateProvider(ABC):
     """Supplies the entities a MoreOrLess mode compares. This is the single point of variation
-    between modes: personAssets samples named people, albumAssets samples albums, a future
-    date-based mode would sample something else - the game engine below never knows which."""
+    between modes: person_assets.py's PersonAssetsProvider samples named people, album_assets.py's
+    AlbumAssetsProvider samples albums, a future date-based mode would sample something else - the
+    game engine below never knows which."""
 
     @abstractmethod
     def sample(self, *, limit: int, exclude_ids: frozenset[UUID]) -> list[EntitySnapshot]:
@@ -69,32 +69,6 @@ class CandidateProvider(ABC):
         """Whether the pool has at least one entity at all - guards against an empty library. The
         game never ends merely because the *recently shown* ones are excluded (see
         create_next_round's fallback), so this ignores any recent-window exclusion."""
-
-
-class PersonAssetsProvider(CandidateProvider):
-    def __init__(self, immich_service: ImmichService) -> None:
-        self._immich_service = immich_service
-
-    def sample(self, *, limit: int, exclude_ids: frozenset[UUID]) -> list[EntitySnapshot]:
-        people = self._immich_service.get_persons(
-            named_only=True, randomize=True, limit=limit, exclude_ids=exclude_ids
-        )
-        return [EntitySnapshot(id=p.id, name=p.name, value=p.asset_count) for p in people]
-
-    def any_exist(self) -> bool:
-        return bool(self._immich_service.get_persons(named_only=True, limit=1))
-
-
-class AlbumAssetsProvider(CandidateProvider):
-    def __init__(self, immich_service: ImmichService) -> None:
-        self._immich_service = immich_service
-
-    def sample(self, *, limit: int, exclude_ids: frozenset[UUID]) -> list[EntitySnapshot]:
-        albums = self._immich_service.get_albums(randomize=True, limit=limit, exclude_ids=exclude_ids)
-        return [EntitySnapshot(id=a.id, name=a.name, value=a.asset_count) for a in albums]
-
-    def any_exist(self) -> bool:
-        return bool(self._immich_service.get_albums(limit=1))
 
 
 def _pick_non_tied_candidate(

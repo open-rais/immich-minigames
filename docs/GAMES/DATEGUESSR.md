@@ -30,3 +30,9 @@ This repeats 5 times with photos from different dates each time, and scores from
 | `months` | Month only | Future (lowest priority) |
 
 See [docs/TODO/ROADMAP.md](../TODO/ROADMAP.md) for when future modes are planned.
+
+## Daily
+
+The daily challenge's 5 rounds are all pre-generated once for the day; a `DailyDateguessrGame`
+subclass replays them instead of querying Immich. See
+[docs/TODO/DAILY-GAMES.md](../TODO/DAILY-GAMES.md).
