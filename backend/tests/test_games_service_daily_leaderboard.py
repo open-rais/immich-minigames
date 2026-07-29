@@ -7,6 +7,7 @@ from datetime import date, timedelta
 
 import pytest
 
+from conftest import mint_invite_code
 from games.immichdle import GAME_TYPE as IMMICHDLE_TYPE
 from games.immichdle import MODE_PERSON
 from persistence.daily import DailyConfigModel
@@ -39,6 +40,7 @@ def _register(auth_service):
         username=f"user-{unique}",
         full_name="Test User",
         password="correct-horse-battery-staple",
+        invite_code=mint_invite_code(),
     )
 
 
@@ -56,8 +58,8 @@ class TestGetDailyLeaderboard:
         alice = _register(auth_service)
         bob = _register(auth_service)
 
-        alice_game = games_service.create_daily_game(owner="owner-a", game_type=IMMICHDLE_TYPE, mode=MODE_PERSON, user_id=alice.id, today=d)
-        bob_game = games_service.create_daily_game(owner="owner-b", game_type=IMMICHDLE_TYPE, mode=MODE_PERSON, user_id=bob.id, today=d)
+        alice_game = games_service.create_daily_game(game_type=IMMICHDLE_TYPE, mode=MODE_PERSON, user_id=alice.id, today=d)
+        bob_game = games_service.create_daily_game(game_type=IMMICHDLE_TYPE, mode=MODE_PERSON, user_id=bob.id, today=d)
         db_session.get(GameModel, alice_game.id).finished = True
         db_session.get(GameModel, alice_game.id).score = 90
         db_session.get(GameModel, bob_game.id).finished = True
@@ -73,7 +75,7 @@ class TestGetDailyLeaderboard:
         daily_settings_service.update_settings(IMMICHDLE_TYPE, MODE_PERSON, enabled=True)
         d = _next_date()
         user = _register(auth_service)
-        games_service.create_daily_game(owner="owner-a", game_type=IMMICHDLE_TYPE, mode=MODE_PERSON, user_id=user.id, today=d)
+        games_service.create_daily_game(game_type=IMMICHDLE_TYPE, mode=MODE_PERSON, user_id=user.id, today=d)
 
         assert games_service.get_daily_leaderboard(IMMICHDLE_TYPE, MODE_PERSON, d) == []
 
@@ -82,7 +84,7 @@ class TestGetDailyLeaderboard:
         day1 = _next_date()
         day2 = day1 + timedelta(days=1)
         user = _register(auth_service)
-        game1 = games_service.create_daily_game(owner="owner-a", game_type=IMMICHDLE_TYPE, mode=MODE_PERSON, user_id=user.id, today=day1)
+        game1 = games_service.create_daily_game(game_type=IMMICHDLE_TYPE, mode=MODE_PERSON, user_id=user.id, today=day1)
         db_session.get(GameModel, game1.id).finished = True
         db_session.get(GameModel, game1.id).score = 77
         db_session.commit()
@@ -90,14 +92,3 @@ class TestGetDailyLeaderboard:
         assert games_service.get_daily_leaderboard(IMMICHDLE_TYPE, MODE_PERSON, day2) == []
         day1_entries = games_service.get_daily_leaderboard(IMMICHDLE_TYPE, MODE_PERSON, day1)
         assert [e.best_score for e in day1_entries] == [77]
-
-    def test_anonymous_games_are_excluded(self, games_service, daily_settings_service, db_session):
-        daily_settings_service.update_settings(IMMICHDLE_TYPE, MODE_PERSON, enabled=True)
-        d = _next_date()
-        game = games_service.create_daily_game(owner="owner-a", game_type=IMMICHDLE_TYPE, mode=MODE_PERSON, today=d)
-        row = db_session.get(GameModel, game.id)
-        row.finished = True
-        row.score = 999
-        db_session.commit()
-
-        assert games_service.get_daily_leaderboard(IMMICHDLE_TYPE, MODE_PERSON, d) == []

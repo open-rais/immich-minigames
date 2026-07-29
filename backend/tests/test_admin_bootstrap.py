@@ -1,6 +1,7 @@
 import uuid
 
 from config import Settings, get_settings
+from conftest import mint_invite_code
 from services.admin_bootstrap import ensure_admin
 
 
@@ -14,6 +15,7 @@ def _register(auth_service, **overrides):
         "username": _unique("user"),
         "full_name": "Test User",
         "password": "correct-horse-battery-staple",
+        "invite_code": mint_invite_code(),
     }
     defaults.update(overrides)
     return auth_service.register(**defaults)

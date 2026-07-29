@@ -5,18 +5,32 @@ from collections.abc import Iterator
 from functools import lru_cache
 from typing import Annotated
 
-from fastapi import Depends, Header
+from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
 from persistence.base import get_session_factory
 from services.games_service import GamesService
 from services.immich_service import ImmichService
+from services.invite_service import InviteService
 from services.ml_service import MLService
 
 _session_factory = get_session_factory()
 
 
-def get_db_session() -> Iterator[Session]:
+def get_db_session(request: Request) -> Iterator[Session]:
+    # Roadmap #H, F3 - api/auth_middleware.py resolves request.state.user via its own session
+    # *before* routing even happens, and stashes that same session on request.state.db_session.
+    # Reusing it here (rather than opening a second one) isn't just an optimization: state.user is
+    # a UserModel loaded on that session, and a route that mutates it (e.g. change_password) needs
+    # it attached to the *same* session it calls session.commit() on, or the mutation is silently
+    # lost on a detached object nothing ever flushes. The middleware owns closing this one (after
+    # the whole request finishes, in its own finally) - only open+close a fresh session here for
+    # the few allow-listed routes the middleware never touches at all (login/register/etc).
+    existing = getattr(request.state, "db_session", None)
+    if existing is not None:
+        yield existing
+        return
+
     session = _session_factory()
     try:
         yield session
@@ -37,8 +51,12 @@ def get_ml_service() -> MLService:
     return MLService()
 
 
-def get_owner_id(x_owner_id: Annotated[str, Header()]) -> str:
-    return x_owner_id
+# Roadmap #H, F1/F2 - moved here (from api/admin_invites_api.py, where it started) so
+# api/admin_api.py can also depend on it (the new password-reset endpoint, F2) without
+# admin_api.py <-> admin_invites_api.py becoming a circular import (admin_invites_api.py already
+# imports get_current_admin_user *from* admin_api.py).
+def get_invite_service(session: Annotated[Session, Depends(get_db_session)]) -> InviteService:
+    return InviteService(session)
 
 
 # Roadmap #G - moved here (rather than staying private to api/api.py, as it originally was) so

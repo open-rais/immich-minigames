@@ -13,7 +13,7 @@ class TestImmichdleGameWithTarget:
             id=uuid4(), name="Target Person", asset_count=10, birth_date=None, first_asset_date=None
         )
 
-        game = ImmichdleGame.start(id=uuid4(), owner="owner", immich_service=None, target=target)  # type: ignore[arg-type]
+        game = ImmichdleGame.start(id=uuid4(), immich_service=None, target=target)  # type: ignore[arg-type]
 
         assert game.target == target
         assert len(game.rounds) == 1

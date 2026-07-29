@@ -8,7 +8,6 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from domain.asset import Asset
-from games.daily import GENERATOR_OWNER
 from games.geoguessr.game import AssetSnapshot, GeoguessrGame, LiveContent
 from services.immich_service import ImmichService
 from services.ml_service import MLService
@@ -71,9 +70,7 @@ def build_spec(mode: str, immich_service: ImmichService, settings: dict[str, flo
     # GeoguessrGame.has_next_round() never looks at the previous round's guess - it's already
     # guess-independent, so the real has_next_round()/create_next_round() pair can drive this loop
     # as-is, on a throwaway game built from live content.
-    game = GeoguessrGame.start(
-        id=uuid4(), owner=GENERATOR_OWNER, content=LiveContent(immich_service), settings=settings
-    )
+    game = GeoguessrGame.start(id=uuid4(), content=LiveContent(immich_service), settings=settings)
     total_rounds = game.total_rounds
     while len(game.rounds) < total_rounds:
         if not game.has_next_round():

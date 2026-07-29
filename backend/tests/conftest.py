@@ -12,19 +12,25 @@ That database has to exist before any of this works. Provision it once with:
     docker compose -f docker-compose.app.yml run --rm db-init
 """
 
+import uuid
+
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 from api.rate_limit import limiter
+from config import get_settings
 from main import app
 from persistence.base import get_app_engine, get_session_factory, reset_db
 from persistence.immich_db import get_immich_engine
+from persistence.users import UserModel
 from services.auth_service import AuthService
 from services.daily_service import DailyService
 from services.daily_settings import DailySettingsService
 from services.game_settings import GameSettingsService
 from services.games_service import GamesService
 from services.immich_service import ImmichService
+from services.invite_service import InviteService
 from services.ml_service import MLService
 
 
@@ -100,3 +106,52 @@ def _reset_rate_limiter():
 def client():
     with TestClient(app) as test_client:
         yield test_client
+
+
+@pytest.fixture
+def logged_client(client):
+    """Roadmap #H, F3 - the default-deny middleware (api/auth_middleware.py) now rejects every
+    request without a valid session cookie, so any test hitting a real endpoint (not calling a
+    service directly) needs one - this is the "cut over the whole suite" fixture the doc's own
+    risk section calls for. Registers a disposable throwaway account and returns the same `client`,
+    now carrying its session cookie."""
+    unique = uuid.uuid4().hex[:8]
+    response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": f"logged-{unique}@example.com",
+            "username": f"logged-{unique}",
+            "full_name": "Logged In User",
+            "password": "correct-horse-battery-staple",
+            "invite_code": mint_invite_code(),
+        },
+    )
+    assert response.status_code == 201
+    return client
+
+
+def mint_invite_code(kind: str = "invite") -> str:
+    """Roadmap #H, F1 - registration now requires a valid invite_code (except for the very first
+    account). A plain function, not a fixture: every test file's own `_register()` helper stays a
+    plain function too, and this lets it mint a real, valid invite with a one-line change to its
+    default body dict rather than threading an invite_service fixture through every one of the
+    ~70 existing `_register(client, ...)` call sites across the suite. Opens its own throwaway
+    session (not the `db_session` fixture, which isn't available outside a test/fixture function)
+    and commits immediately (InviteService.create_invite always does) so the token is visible to
+    the `client` fixture's own, separate request-scoped session right after.
+
+    Bootstrap-aware: if `users` is currently empty, the *next* registration hits AuthService's
+    bootstrap branch (decision [H]), which never checks the `invites` table at all - it only
+    accepts INITIAL_INVITE_TOKEN (or, if that's unset, anything). A freshly-minted real invite
+    would be silently ignored there, which is harmless when INITIAL_INVITE_TOKEN is unset, but
+    wrong when a developer's own .env has it set (as this one does) - so return that value
+    instead in exactly that case."""
+    session = get_session_factory()()
+    try:
+        if kind == "invite" and session.scalar(select(UserModel.id).limit(1)) is None:
+            token = get_settings().initial_invite_token
+            if token is not None:
+                return token
+        return InviteService(session).create_invite(kind=kind)[1]
+    finally:
+        session.close()

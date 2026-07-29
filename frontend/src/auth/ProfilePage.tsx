@@ -1,33 +1,12 @@
 import { useState } from "react"
-import { Navigate, useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 
-import { personThumbnailUrl } from "../api/games"
 import { Button } from "../games/shared/Button"
 import { AuthCard } from "./AuthCard"
+import { ProfileAvatar, ProfileAvatarPlaceholder } from "./ProfileAvatar"
 import { RecentGamesModal } from "./RecentGamesModal"
 import { useAuth } from "./useAuth"
-
-// Same img+onError fallback convention as menu/UserMenu.tsx's SkinAvatar / games/shared/
-// PersonAvatar.tsx, just sized as a page hero avatar instead of a small circle. Rendered with
-// `key={personId}` by the caller so switching skins resets `failed` instead of keeping a stale
-// placeholder around.
-function ProfileAvatar({ personId }: { personId: string }) {
-  const [failed, setFailed] = useState(false)
-  if (failed) return <ProfileAvatarPlaceholder />
-  return (
-    <img
-      src={personThumbnailUrl(personId)}
-      alt=""
-      onError={() => setFailed(true)}
-      className="h-24 w-24 rounded-full object-cover shadow-card"
-    />
-  )
-}
-
-function ProfileAvatarPlaceholder() {
-  return <div className="h-24 w-24 rounded-full border border-dashed border-line-strong" />
-}
 
 // Read-only account view (roadmap point B's "lo básico", plus the skin avatar from roadmap point
 // E) - actual editing (username/full name/skin) lives on its own page, reached via "Edit profile"
@@ -35,11 +14,13 @@ function ProfileAvatarPlaceholder() {
 export function ProfilePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { user, loading, logout } = useAuth()
+  const { user, logout } = useAuth()
   const [busy, setBusy] = useState(false)
   const [showRecentGames, setShowRecentGames] = useState(false)
 
-  if (!loading && !user) return <Navigate to="/login" replace />
+  // Roadmap #H, F3 - RequireAuth (App.tsx) already guarantees a session before this page ever
+  // mounts; this is just a TypeScript narrowing helper (user: User | null), not reachable at
+  // runtime.
   if (!user) return null
 
   async function handleLogout() {
@@ -83,6 +64,9 @@ export function ProfilePage() {
 
       <Button variant="primary" className="mt-6 w-full py-2.5" onClick={() => navigate("/profile/edit")}>
         {t("auth.profile.edit")}
+      </Button>
+      <Button variant="secondary" className="mt-3 w-full py-2.5" onClick={() => navigate("/profile/password")}>
+        {t("auth.profile.changePassword.title")}
       </Button>
       <Button variant="secondary" className="mt-3 w-full py-2.5" onClick={() => setShowRecentGames(true)}>
         {t("auth.profile.viewGames")}

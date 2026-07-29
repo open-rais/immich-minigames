@@ -11,6 +11,7 @@ from datetime import date, timedelta
 
 import pytest
 
+from conftest import mint_invite_code
 from persistence.daily import DailyChallengeModel
 from persistence.games import GameModel
 from services.games_service import UnsupportedGameError
@@ -21,6 +22,17 @@ from services.games_service import UnsupportedGameError
 # decreasing fake date per call keeps every seeded challenge unique without each test having to
 # invent its own game_type/mode just to dodge the constraint.
 _date_counter = itertools.count()
+
+
+def _register_user(auth_service):
+    unique = uuid.uuid4().hex[:8]
+    return auth_service.register(
+        email=f"user-{unique}@example.com",
+        username=f"user-{unique}",
+        full_name="Test User",
+        password="correct-horse-battery-staple",
+        invite_code=mint_invite_code(),
+    )
 
 
 def _seed_challenge(db_session, *, game_type="more-or-less", mode="personAssets", challenge_date=None):
@@ -37,9 +49,9 @@ def _seed_challenge(db_session, *, game_type="more-or-less", mode="personAssets"
     return challenge
 
 
-def _make_daily_game(games_service, db_session, *, owner, user_id=None, game_type="more-or-less", mode="personAssets"):
+def _make_daily_game(games_service, db_session, *, user_id, game_type="more-or-less", mode="personAssets"):
     challenge = _seed_challenge(db_session, game_type=game_type, mode=mode)
-    game = games_service.create_game(owner=owner, game_type=game_type, mode=mode, user_id=user_id)
+    game = games_service.create_game(game_type=game_type, mode=mode, user_id=user_id)
     row = db_session.get(GameModel, game.id)
     row.daily_challenge_id = challenge.id
     db_session.commit()
@@ -47,28 +59,21 @@ def _make_daily_game(games_service, db_session, *, owner, user_id=None, game_typ
 
 
 class TestDailyGamesExcludedFromPersonalRecords:
-    def test_a_finished_daily_game_does_not_produce_a_record(self, games_service, db_session):
-        owner = f"owner-{uuid.uuid4().hex[:8]}"
-        game, _ = _make_daily_game(games_service, db_session, owner=owner)
+    def test_a_finished_daily_game_does_not_produce_a_record(self, games_service, db_session, auth_service):
+        user = _register_user(auth_service)
+        game, _ = _make_daily_game(games_service, db_session, user_id=user.id)
         row = db_session.get(GameModel, game.id)
         row.finished = True
         row.score = 999
         db_session.commit()
 
-        assert games_service.get_personal_records(owner, user_id=None) == []
+        assert games_service.get_personal_records(user.id) == []
 
 
 class TestDailyGamesExcludedFromLeaderboard:
     def test_a_finished_daily_game_does_not_appear(self, games_service, db_session, auth_service):
-        user = auth_service.register(
-            email=f"user-{uuid.uuid4().hex[:8]}@example.com",
-            username=f"user-{uuid.uuid4().hex[:8]}",
-            full_name="Test User",
-            password="correct-horse-battery-staple",
-        )
-        game, _ = _make_daily_game(
-            games_service, db_session, owner="owner-a", user_id=user.id, game_type="dateguessr", mode="daysToDate"
-        )
+        user = _register_user(auth_service)
+        game, _ = _make_daily_game(games_service, db_session, user_id=user.id, game_type="dateguessr", mode="daysToDate")
         row = db_session.get(GameModel, game.id)
         row.finished = True
         row.score = 999
@@ -80,19 +85,19 @@ class TestDailyGamesExcludedFromLeaderboard:
 
 
 class TestDailyGamesExcludedFromCurrentGame:
-    def test_an_in_progress_daily_game_is_not_offered_as_continuar(self, games_service, db_session):
-        owner = f"owner-{uuid.uuid4().hex[:8]}"
-        _make_daily_game(games_service, db_session, owner=owner)
+    def test_an_in_progress_daily_game_is_not_offered_as_continuar(self, games_service, db_session, auth_service):
+        user = _register_user(auth_service)
+        _make_daily_game(games_service, db_session, user_id=user.id)
 
-        assert games_service.get_current_game(owner, "more-or-less", "personAssets", user_id=None) is None
+        assert games_service.get_current_game("more-or-less", "personAssets", user.id) is None
 
 
 class TestDailyGamesDoNotInteractWithAbandon:
-    def test_starting_a_normal_game_does_not_abandon_an_in_progress_daily(self, games_service, db_session):
-        owner = f"owner-{uuid.uuid4().hex[:8]}"
-        daily_game, _ = _make_daily_game(games_service, db_session, owner=owner)
+    def test_starting_a_normal_game_does_not_abandon_an_in_progress_daily(self, games_service, db_session, auth_service):
+        user = _register_user(auth_service)
+        daily_game, _ = _make_daily_game(games_service, db_session, user_id=user.id)
 
-        games_service.create_game(owner=owner, game_type="more-or-less", mode="personAssets")
+        games_service.create_game(game_type="more-or-less", mode="personAssets", user_id=user.id)
 
         row = db_session.get(GameModel, daily_game.id)
         assert row.abandoned is False
@@ -103,17 +108,10 @@ class TestDailyGamesDoNotInteractWithAbandon:
 
 class TestGetRecentGamesFlagsDaily:
     def test_is_daily_flag_reflects_daily_challenge_id(self, games_service, db_session, auth_service):
-        user = auth_service.register(
-            email=f"user-{uuid.uuid4().hex[:8]}@example.com",
-            username=f"user-{uuid.uuid4().hex[:8]}",
-            full_name="Test User",
-            password="correct-horse-battery-staple",
-        )
-        daily_game, _ = _make_daily_game(games_service, db_session, owner="owner-a", user_id=user.id)
+        user = _register_user(auth_service)
+        daily_game, _ = _make_daily_game(games_service, db_session, user_id=user.id)
         db_session.get(GameModel, daily_game.id).finished = True
-        normal_game = games_service.create_game(
-            owner="owner-a", game_type="more-or-less", mode="albumAssets", user_id=user.id
-        )
+        normal_game = games_service.create_game(game_type="more-or-less", mode="albumAssets", user_id=user.id)
         db_session.get(GameModel, normal_game.id).finished = True
         db_session.commit()
 
@@ -125,18 +123,19 @@ class TestGetRecentGamesFlagsDaily:
 
 
 class TestGamesDailyChallengeIdRoundTrips:
-    def test_partial_unique_index_rejects_a_second_anonymous_attempt(self, games_service, db_session):
-        owner = f"owner-{uuid.uuid4().hex[:8]}"
+    def test_partial_unique_index_rejects_a_second_attempt_by_the_same_user(self, games_service, db_session, auth_service):
+        user = _register_user(auth_service)
         challenge = _seed_challenge(db_session)
-        first = games_service.create_game(owner=owner, game_type="more-or-less", mode="personAssets")
+        first = games_service.create_game(game_type="more-or-less", mode="personAssets", user_id=user.id)
         db_session.get(GameModel, first.id).daily_challenge_id = challenge.id
         db_session.commit()
 
-        second = games_service.create_game(owner=owner, game_type="more-or-less", mode="personAssets")
+        second = games_service.create_game(game_type="more-or-less", mode="personAssets", user_id=user.id)
         row = db_session.get(GameModel, second.id)
         row.daily_challenge_id = challenge.id
-        # Same (challenge, owner), user_id NULL both times - the partial unique index on
-        # (daily_challenge_id, owner) WHERE user_id IS NULL must reject this at flush time.
+        # Same (challenge, user_id) twice - the partial unique index on
+        # (daily_challenge_id, user_id) WHERE daily_challenge_id IS NOT NULL must reject this at
+        # flush time.
         with pytest.raises(Exception):
             db_session.commit()
         db_session.rollback()

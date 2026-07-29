@@ -185,7 +185,8 @@
       "email": "Correo electrónico",
       "username": "Nombre de usuario",
       "fullName": "Nombre completo",
-      "password": "Contraseña"
+      "password": "Contraseña",
+      "person": "Persona"
     },
     "login": {
       "title": "Iniciar sesión",
@@ -195,7 +196,14 @@
     "signup": {
       "title": "Registrarse",
       "cta": "Registrarse",
-      "hasAccount": "¿Ya tienes una cuenta?"
+      "hasAccount": "¿Ya tienes una cuenta?",
+      "inviteCode": "Código de invitación"
+    },
+    "resetPassword": {
+      "title": "Restablecer contraseña",
+      "token": "Código de restablecimiento",
+      "newPassword": "Nueva contraseña",
+      "submit": "Restablecer contraseña"
     },
     "profile": {
       "title": "Perfil",
@@ -205,6 +213,14 @@
       "save": "Guardar cambios",
       "saved": "Perfil actualizado",
       "viewGames": "Ver juegos",
+      "resetPassword": "Restablecer contraseña",
+      "changePassword": {
+        "title": "Cambiar contraseña",
+        "currentPassword": "Contraseña actual",
+        "newPassword": "Nueva contraseña",
+        "save": "Cambiar contraseña",
+        "saved": "Contraseña cambiada"
+      },
       "skin": {
         "label": "Piel",
         "none": "Ninguna",
@@ -257,6 +273,22 @@
         "no_repeat_days": "Ventana sin repetir (días)",
         "chain_length": "Tope de la cadena"
       }
+    },
+    "invites": {
+      "title": "Invitaciones",
+      "description": "Genera links de registro",
+      "loading": "Cargando invitaciones...",
+      "empty": "Todavía no hay invitaciones.",
+      "generate": "Generar invitación",
+      "revoke": "Revocar",
+      "status": {
+        "pending": "Pendiente",
+        "used": "Usada",
+        "expired": "Expirada"
+      },
+      "createdAt": "Creada {{date}}",
+      "expiresAt": "Expira {{date}}",
+      "usedAt": "Usada {{date}}"
     }
   }
 }

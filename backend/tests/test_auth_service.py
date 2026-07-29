@@ -1,9 +1,12 @@
 import threading
 import uuid
+from datetime import UTC, datetime, timedelta
 
 import jwt
 import pytest
 
+from config import Settings, get_settings
+from conftest import mint_invite_code
 from persistence.base import get_session_factory
 from persistence.users import UserModel
 from services.auth_service import (
@@ -13,6 +16,7 @@ from services.auth_service import (
     UnauthorizedError,
     UsernameAlreadyExistsError,
 )
+from services.invite_service import InvalidInviteError, InviteService
 
 
 def _unique(prefix: str) -> str:
@@ -25,6 +29,7 @@ def _register(auth_service, **overrides):
         "username": _unique("user"),
         "full_name": "Test User",
         "password": "correct-horse-battery-staple",
+        "invite_code": mint_invite_code(),
     }
     defaults.update(overrides)
     return auth_service.register(**defaults)
@@ -52,6 +57,99 @@ class TestRegister:
             _register(auth_service, username=username)
 
 
+class TestRegisterInvite:
+    # auth_service (conftest.py) uses real get_settings() - by the time any of these run, other
+    # tests have already registered users, so _is_first_user() is naturally False without needing
+    # to monkeypatch it (unlike TestRegisterBootstrap below, which explicitly forces it True).
+
+    def test_without_an_invite_code_raises(self, auth_service):
+        with pytest.raises(InvalidInviteError):
+            _register(auth_service, invite_code=None)
+
+    def test_unknown_invite_code_raises(self, auth_service):
+        with pytest.raises(InvalidInviteError):
+            _register(auth_service, invite_code="not-a-real-code")
+
+    def test_valid_invite_code_succeeds_and_burns_it(self, auth_service, db_session):
+        code = InviteService(db_session).create_invite(kind="invite")[1]
+        db_session.commit()
+
+        user = _register(auth_service, invite_code=code)
+
+        assert user.id is not None
+        with pytest.raises(InvalidInviteError):
+            _register(auth_service, invite_code=code)
+
+    def test_a_failed_registration_does_not_burn_the_invite(self, auth_service, db_session):
+        code = InviteService(db_session).create_invite(kind="invite")[1]
+        db_session.commit()
+        email = f"{_unique('dup')}@example.com"
+        _register(auth_service, email=email)  # takes the email with a different (fresh) invite
+
+        with pytest.raises(EmailAlreadyExistsError):
+            _register(auth_service, email=email, invite_code=code)
+
+        # The invite from the failed attempt above is still good.
+        user = _register(auth_service, invite_code=code)
+        assert user.id is not None
+
+
+class TestRegisterBootstrap:
+    # _is_first_user() is monkeypatched to True throughout - the shared test DB is never actually
+    # empty by the time these run (other tests register users first), so this is the only way to
+    # exercise the bootstrap branch deterministically (see conftest.py's mint_invite_code
+    # docstring for the same concern from the other direction).
+
+    def test_matching_initial_token_succeeds(self, db_session, monkeypatch):
+        settings = Settings(initial_invite_token="bootstrap-secret")
+        service = AuthService(db_session, settings=settings)
+        monkeypatch.setattr(service, "_is_first_user", lambda: True)
+
+        user = _register(service, invite_code="bootstrap-secret")
+
+        assert user.id is not None
+
+    def test_wrong_initial_token_raises(self, db_session, monkeypatch):
+        settings = Settings(initial_invite_token="bootstrap-secret")
+        service = AuthService(db_session, settings=settings)
+        monkeypatch.setattr(service, "_is_first_user", lambda: True)
+
+        with pytest.raises(InvalidInviteError):
+            _register(service, invite_code="wrong")
+
+    def test_missing_invite_code_with_a_configured_token_raises(self, db_session, monkeypatch):
+        settings = Settings(initial_invite_token="bootstrap-secret")
+        service = AuthService(db_session, settings=settings)
+        monkeypatch.setattr(service, "_is_first_user", lambda: True)
+
+        with pytest.raises(InvalidInviteError):
+            _register(service, invite_code=None)
+
+    def test_unset_initial_token_allows_free_registration(self, db_session, monkeypatch):
+        settings = Settings(initial_invite_token=None)
+        service = AuthService(db_session, settings=settings)
+        monkeypatch.setattr(service, "_is_first_user", lambda: True)
+
+        user = _register(service, invite_code=None)
+
+        assert user.id is not None
+
+    def test_blank_initial_token_also_allows_free_registration(self, db_session, monkeypatch):
+        # Roadmap #H, F6 - "" (not None) is exactly what INITIAL_INVITE_TOKEN parses to whenever
+        # it's left blank rather than fully absent: .env.example's own documented default
+        # (`INITIAL_INVITE_TOKEN=`) and Docker Compose's `${INITIAL_INVITE_TOKEN}` interpolation
+        # with no var defined (verified via `docker compose config`) both produce "", never None.
+        # Must behave exactly like None (free first registration), not like a configured token
+        # nothing could ever match.
+        settings = Settings(initial_invite_token="")
+        service = AuthService(db_session, settings=settings)
+        monkeypatch.setattr(service, "_is_first_user", lambda: True)
+
+        user = _register(service, invite_code=None)
+
+        assert user.id is not None
+
+
 class TestRegisterConcurrency:
     def test_losing_a_registration_race_raises_the_typed_error(self, db_session):
         # docs/TODO/CODE-REVIEW.md #8: two registrations for the same email can both pass the
@@ -74,7 +172,13 @@ class TestRegisterConcurrency:
 
             def run_b():
                 try:
-                    service_b.register(email=email, username=_unique("race-b"), full_name="B", password="pw")
+                    service_b.register(
+                        email=email,
+                        username=_unique("race-b"),
+                        full_name="B",
+                        password="pw",
+                        invite_code=mint_invite_code(),
+                    )
                 except Exception as exc:
                     b_result["error"] = exc
 
@@ -143,6 +247,54 @@ class TestAccessToken:
 
         with pytest.raises(UnauthorizedError):
             auth_service.get_user_from_token(token)
+
+    def test_token_issued_before_a_password_change_is_revoked(self, auth_service):
+        # iat is built by hand with a few seconds of slack rather than via create_access_token()'s
+        # "now" - JWT's iat/exp are integer-second NumericDates (RFC 7519), so a token minted and a
+        # password changed within the same real-world second would truncate to equal timestamps and
+        # not trigger the strict `<` rejection this test exists to check - flaky depending on
+        # execution speed rather than a real bug. See get_user_from_token's own comment for why the
+        # comparison is strict `<` in the first place (the re-issued-cookie-in-the-same-request case
+        # needs iat == password_changed_at, truncated, to still pass).
+        user = _register(auth_service)
+        stale_token = jwt.encode(
+            {
+                "sub": str(user.id),
+                "iat": datetime.now(UTC) - timedelta(seconds=5),
+                "exp": datetime.now(UTC) + timedelta(days=1),
+            },
+            auth_service._settings.jwt_secret,
+            algorithm="HS256",
+        )
+
+        auth_service.change_password(user, "correct-horse-battery-staple", "new-password-123")
+
+        with pytest.raises(UnauthorizedError):
+            auth_service.get_user_from_token(stale_token)
+
+    def test_token_issued_after_a_password_change_is_accepted(self, auth_service):
+        user = _register(auth_service)
+        auth_service.change_password(user, "correct-horse-battery-staple", "new-password-123")
+
+        token = auth_service.create_access_token(user)
+        resolved = auth_service.get_user_from_token(token)
+
+        assert resolved.id == user.id
+
+    def test_token_without_an_iat_claim_is_not_revoked_by_a_password_change(self, auth_service):
+        # Simulates a session that was already active when this code shipped - no `iat` to compare
+        # against password_changed_at, so it must keep working rather than force a mass logout.
+        user = _register(auth_service)
+        token = jwt.encode(
+            {"sub": str(user.id), "exp": datetime.now(UTC) + timedelta(days=1)},
+            auth_service._settings.jwt_secret,
+            algorithm="HS256",
+        )
+
+        auth_service.change_password(user, "correct-horse-battery-staple", "new-password-123")
+
+        resolved = auth_service.get_user_from_token(token)
+        assert resolved.id == user.id
 
 
 class TestUpdateProfile:
@@ -217,6 +369,91 @@ class TestUpdateProfileConcurrency:
             session_b.close()
 
         assert isinstance(b_result.get("error"), UsernameAlreadyExistsError)
+
+
+class TestChangePassword:
+    def test_wrong_current_password_raises(self, auth_service):
+        user = _register(auth_service, password="correct-horse-battery-staple")
+
+        with pytest.raises(InvalidCredentialsError):
+            auth_service.change_password(user, "wrong-password", "new-password-123")
+
+    def test_correct_current_password_updates_the_hash_and_timestamp(self, auth_service):
+        user = _register(auth_service, password="correct-horse-battery-staple")
+        assert user.password_changed_at is None
+        old_hash = user.password_hash
+
+        updated = auth_service.change_password(user, "correct-horse-battery-staple", "new-password-123")
+
+        assert updated.password_hash != old_hash
+        assert updated.password_changed_at is not None
+        assert auth_service.authenticate(user.email, "new-password-123").id == user.id
+
+
+class TestResetPassword:
+    def test_unknown_token_raises(self, auth_service):
+        with pytest.raises(InvalidInviteError):
+            auth_service.reset_password("not-a-real-token", "new-password-123")
+
+    def test_an_invite_kind_token_does_not_work_for_reset(self, auth_service, db_session):
+        # consume_invite is kind-scoped (services/invite_service.py) - a registration invite must
+        # not double as a password-reset token.
+        code = InviteService(db_session).create_invite(kind="invite")[1]
+        db_session.commit()
+
+        with pytest.raises(InvalidInviteError):
+            auth_service.reset_password(code, "new-password-123")
+
+    def test_valid_token_updates_the_password_and_authenticates(self, auth_service, db_session):
+        user = _register(auth_service, password="correct-horse-battery-staple")
+        token = InviteService(db_session).create_invite(kind="password_reset", user_id=user.id)[1]
+        db_session.commit()
+        old_hash = user.password_hash
+
+        updated = auth_service.reset_password(token, "new-password-123")
+
+        assert updated.id == user.id
+        assert updated.password_hash != old_hash
+        assert updated.password_changed_at is not None
+        assert auth_service.authenticate(user.email, "new-password-123").id == user.id
+
+    def test_reusing_the_same_token_raises(self, auth_service, db_session):
+        user = _register(auth_service, password="correct-horse-battery-staple")
+        token = InviteService(db_session).create_invite(kind="password_reset", user_id=user.id)[1]
+        db_session.commit()
+        auth_service.reset_password(token, "new-password-123")
+
+        with pytest.raises(InvalidInviteError):
+            auth_service.reset_password(token, "another-password-456")
+
+    def test_only_affects_the_targeted_user(self, auth_service, db_session):
+        target = _register(auth_service, password="correct-horse-battery-staple")
+        other = _register(auth_service, password="correct-horse-battery-staple")
+        token = InviteService(db_session).create_invite(kind="password_reset", user_id=target.id)[1]
+        db_session.commit()
+
+        auth_service.reset_password(token, "new-password-123")
+
+        assert auth_service.authenticate(other.email, "correct-horse-battery-staple").id == other.id
+
+    def test_revokes_a_session_issued_before_the_reset(self, auth_service, db_session):
+        user = _register(auth_service, password="correct-horse-battery-staple")
+        stale_token = jwt.encode(
+            {
+                "sub": str(user.id),
+                "iat": datetime.now(UTC) - timedelta(seconds=5),
+                "exp": datetime.now(UTC) + timedelta(days=1),
+            },
+            auth_service._settings.jwt_secret,
+            algorithm="HS256",
+        )
+        reset_token = InviteService(db_session).create_invite(kind="password_reset", user_id=user.id)[1]
+        db_session.commit()
+
+        auth_service.reset_password(reset_token, "new-password-123")
+
+        with pytest.raises(UnauthorizedError):
+            auth_service.get_user_from_token(stale_token)
 
 
 class TestSetSkin:

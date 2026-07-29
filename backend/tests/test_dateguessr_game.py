@@ -25,7 +25,7 @@ def _guess_far(round_: DateguessrRound) -> date:
 
 class TestDateguessrGame:
     def test_has_five_rounds_then_finishes(self, immich_service):
-        game = DateguessrGame.start(id=uuid4(), owner="owner", content=LiveContent(immich_service))
+        game = DateguessrGame.start(id=uuid4(), content=LiveContent(immich_service))
 
         rounds_played = 0
         while not game.finished and rounds_played < TOTAL_ROUNDS + 5:
@@ -37,7 +37,7 @@ class TestDateguessrGame:
         assert rounds_played == TOTAL_ROUNDS
 
     def test_a_bad_guess_does_not_end_the_game_early(self, immich_service):
-        game = DateguessrGame.start(id=uuid4(), owner="owner", content=LiveContent(immich_service))
+        game = DateguessrGame.start(id=uuid4(), content=LiveContent(immich_service))
 
         game.play_round(_guess_far(game.current_round))
 
@@ -45,7 +45,7 @@ class TestDateguessrGame:
         assert len(game.rounds) == 2
 
     def test_does_not_repeat_a_shown_asset_within_the_same_game(self, immich_service):
-        game = DateguessrGame.start(id=uuid4(), owner="owner", content=LiveContent(immich_service))
+        game = DateguessrGame.start(id=uuid4(), content=LiveContent(immich_service))
         shown = [game.current_round.asset.id]
 
         while not game.finished:
@@ -57,7 +57,7 @@ class TestDateguessrGame:
             shown.append(new_id)
 
     def test_playing_an_already_finished_game_raises(self, immich_service):
-        game = DateguessrGame.start(id=uuid4(), owner="owner", content=LiveContent(immich_service))
+        game = DateguessrGame.start(id=uuid4(), content=LiveContent(immich_service))
         while not game.finished:
             game.play_round(_guess_near(game.current_round))
 
@@ -71,7 +71,7 @@ class TestDateguessrExtras:
     never repeat."""
 
     def test_extras_are_capped_and_from_the_same_day(self, immich_service):
-        game = DateguessrGame.start(id=uuid4(), owner="owner", content=LiveContent(immich_service))
+        game = DateguessrGame.start(id=uuid4(), content=LiveContent(immich_service))
 
         for round_ in game.rounds:
             assert len(round_.extras) <= MAX_EXTRA_ASSETS
@@ -79,7 +79,7 @@ class TestDateguessrExtras:
                 assert extra.date == round_.asset.date
 
     def test_no_asset_is_ever_shown_twice_within_the_same_game(self, immich_service):
-        game = DateguessrGame.start(id=uuid4(), owner="owner", content=LiveContent(immich_service))
+        game = DateguessrGame.start(id=uuid4(), content=LiveContent(immich_service))
         shown = list(game.current_round.shown_entities)
 
         while not game.finished:
@@ -134,7 +134,7 @@ class TestDateguessrAdminSettings:
 
     def test_total_rounds_override_changes_how_many_rounds_are_played(self, immich_service):
         game = DateguessrGame.start(
-            id=uuid4(), owner="owner", content=LiveContent(immich_service), settings={"total_rounds": 2}
+            id=uuid4(), content=LiveContent(immich_service), settings={"total_rounds": 2}
         )
 
         rounds_played = 0

@@ -136,7 +136,6 @@ class MoreOrLessGame(BaseGame):
     def __init__(
         self,
         id: UUID,
-        owner: str,
         mode: str,
         rounds: list[MoreOrLessRound],
         provider: CandidateProvider,
@@ -146,7 +145,6 @@ class MoreOrLessGame(BaseGame):
     ) -> None:
         super().__init__(
             id=id,
-            owner=owner,
             game_type=GAME_TYPE,
             mode=mode,
             rounds=rounds,
@@ -160,7 +158,6 @@ class MoreOrLessGame(BaseGame):
     def start(
         cls,
         id: UUID,
-        owner: str,
         mode: str,
         provider: CandidateProvider,
         settings: Mapping[str, float] | None = None,
@@ -180,7 +177,7 @@ class MoreOrLessGame(BaseGame):
             reference=reference,
             candidate=candidate,
         )
-        return cls(id=id, owner=owner, mode=mode, rounds=[first_round], provider=provider, settings=settings)
+        return cls(id=id, mode=mode, rounds=[first_round], provider=provider, settings=settings)
 
     def _recent_shown_ids(self) -> frozenset[UUID]:
         """The most-recently-shown entities (deduplicated, capped at _RECENT_EXCLUDE_WINDOW) - see

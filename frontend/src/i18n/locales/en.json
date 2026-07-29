@@ -185,7 +185,8 @@
       "email": "Email",
       "username": "Username",
       "fullName": "Full name",
-      "password": "Password"
+      "password": "Password",
+      "person": "Person"
     },
     "login": {
       "title": "Log in",
@@ -195,7 +196,14 @@
     "signup": {
       "title": "Sign up",
       "cta": "Sign up",
-      "hasAccount": "Already have an account?"
+      "hasAccount": "Already have an account?",
+      "inviteCode": "Invite code"
+    },
+    "resetPassword": {
+      "title": "Reset password",
+      "token": "Reset token",
+      "newPassword": "New password",
+      "submit": "Reset password"
     },
     "profile": {
       "title": "Profile",
@@ -205,6 +213,14 @@
       "save": "Save changes",
       "saved": "Profile updated",
       "viewGames": "View games",
+      "resetPassword": "Reset password",
+      "changePassword": {
+        "title": "Change password",
+        "currentPassword": "Current password",
+        "newPassword": "New password",
+        "save": "Change password",
+        "saved": "Password changed"
+      },
       "skin": {
         "label": "Skin",
         "none": "None",
@@ -257,6 +273,22 @@
         "no_repeat_days": "No-repeat window (days)",
         "chain_length": "Chain length cap"
       }
+    },
+    "invites": {
+      "title": "Invitations",
+      "description": "Generate registration links",
+      "loading": "Loading invitations...",
+      "empty": "No invitations yet.",
+      "generate": "Generate invite",
+      "revoke": "Revoke",
+      "status": {
+        "pending": "Pending",
+        "used": "Used",
+        "expired": "Expired"
+      },
+      "createdAt": "Created {{date}}",
+      "expiresAt": "Expires {{date}}",
+      "usedAt": "Used {{date}}"
     }
   }
 }

@@ -230,7 +230,7 @@ export interface PlayRoundOut {
 }
 
 // Mirrors backend/src/api/auth_schemas.py - own accounts (roadmap point B), unrelated to Immich's
-// own users and, for now, to the anonymous X-Owner-Id used by games (see api/ownerId.ts).
+// own users.
 export interface User {
   id: string
   email: string
@@ -250,6 +250,9 @@ export interface RegisterIn {
   username: string
   full_name: string
   password: string
+  // Roadmap #H, F1 - required except for the very first account (see backend/src/services/
+  // auth_service.py's _authorize_registration decision [H] bootstrap).
+  invite_code?: string
 }
 
 export interface LoginIn {
@@ -262,6 +265,18 @@ export interface LoginIn {
 export interface UpdateProfileIn {
   username?: string
   full_name?: string
+}
+
+// Roadmap #H, F0 - mirrors backend/src/api/auth_schemas.py's ChangePasswordIn.
+export interface ChangePasswordIn {
+  current_password: string
+  new_password: string
+}
+
+// Roadmap #H, F2 - mirrors backend/src/api/auth_schemas.py's ResetPasswordIn.
+export interface ResetPasswordIn {
+  token: string
+  new_password: string
 }
 
 // Reusable across features (not just Immichdle's guess input) - see backend/src/api/api.py's
@@ -383,4 +398,24 @@ export interface DailyStatusOut {
 export interface DailyLeaderboardOut {
   date: string
   entries: LeaderboardEntryOut[]
+}
+
+// Roadmap #H, F1 - mirrors backend/src/api/dto/admin.py's InviteOut/CreateInviteOut.
+export type InviteStatus = "pending" | "used" | "expired"
+
+export interface InviteOut {
+  id: string
+  kind: string
+  status: InviteStatus
+  expires_at: string
+  used_at: string | null
+  created_at: string
+}
+
+export interface CreateInviteOut {
+  id: string
+  // The only time the plain token is ever available - shown once via ShareModal, see
+  // admin/AdminInvitesSection.tsx.
+  token: string
+  expires_at: string
 }

@@ -4,8 +4,7 @@ interface ModeCardProps {
   title: string
   coverUrl?: string
   // Personal-best score for this mode (roadmap point E, see menu/MainMenu.tsx's records fetch) -
-  // undefined renders "not played yet" instead of a score. Always shown, for anonymous visitors
-  // (scoped to their browser) and logged-in accounts alike - not gated behind login.
+  // undefined renders "not played yet" instead of a score.
   bestScore?: number
   // Roadmap #G - overrides the bestScore-derived subtitle entirely when set (menu/DailySection.tsx's
   // status-driven "Continuar"/score/"no jugado" text) - undefined keeps the normal bestScore

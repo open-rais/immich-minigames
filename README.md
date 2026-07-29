@@ -123,6 +123,12 @@ No manual database setup step is needed.
 
 Open `http://localhost:${FRONTEND_PORT:-3000}` (3000 by default).
 
+Registration is invite-only, except the very first account — set `INITIAL_INVITE_TOKEN` in `.env`
+(also `openssl rand -hex 32`) and use it as that account's "invite code" on the signup page, or
+leave it unset to let the first registration through with no code at all. Either way, the door
+closes itself the moment any account exists — further accounts always need a real invite, minted
+from the Admin panel by an existing admin (see "Creating an admin account" below).
+
 If you later rotate `DB_APP_PASSWORD` in `.env`, re-run just the role step:
 
 ```bash

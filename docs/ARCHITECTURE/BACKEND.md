@@ -118,21 +118,22 @@ base de datos separada" below. Inside it they sit in a `minigames` schema rather
 with the app owning the whole database that's cosmetic, but it keeps every already-applied
 migration (which hardcodes `schema=`) valid and untouched.
 
-Alembic owns the schema (`backend/alembic/versions/`, currently 0001–0006); `docker-entrypoint.sh`
+Alembic owns the schema (`backend/alembic/versions/`, currently 0001–0011); `docker-entrypoint.sh`
 runs `alembic upgrade head` on every container start, and `db-init` runs it too — as the app role,
 so the tables end up owned by the role that later has to `ALTER` them. `init_db`/`reset_db` in
 `persistence/base.py` exist only for tests.
 
 | Table | Notes |
 |---|---|
-| `games` | `owner` (anonymous id), `user_id` (nullable FK → `users`), `game_type`, `mode`, `score`, `finished`, `created_at`. Indexed on `(owner, game_type, mode)` and `(user_id, game_type, mode)` — one per personal-records filter branch. |
+| `games` | `user_id` (**NOT NULL** FK → `users`, since roadmap #H, F4 — login is mandatory, so every game has an owning account; the earlier anonymous `owner` string column is gone), `game_type`, `mode`, `score`, `finished`, `abandoned`, `daily_challenge_id`, `created_at`. Indexed on `(user_id, game_type, mode)`. |
 | `rounds` | `game_id` FK, `round_index`, `score_delta` (null until answered), `payload` JSONB. Unique on `(game_id, round_index)`, which also provides the FK index Postgres doesn't create automatically. |
-| `users` | `email`/`username` unique, `password_hash` (argon2), `skin_person_id` (deliberately **not** a FK — it points into Immich's database, which foreign keys cannot span), `is_admin`, `created_at`. |
-| `game_settings` | `game_type` PK, `values` JSONB. One row per game type; a missing row or key falls back to the module constant. |
+| `users` | `email`/`username` unique, `password_hash` (argon2), `skin_person_id` (deliberately **not** a FK — it points into Immich's database, which foreign keys cannot span), `is_admin`, `password_changed_at` (session-revocation marker, see § Auth), `created_at`. |
+| `invites` | Roadmap #H, F1. `token_hash` (SHA-256, never the raw token), `kind` (`'invite'` \| `'password_reset'`, one table for both), `used_at`, `expires_at`, `user_id` (nullable — set once consumed, or always for a password-reset invite). Consumed via a single atomic `UPDATE ... RETURNING`. |
+| `game_settings` | `(game_type, mode)` PK, `values` JSONB. One row per (game type, mode); a missing row or key falls back to the module constant. |
 | `legacy_import` | Marker written by the one-time move out of Immich's database. Its presence means that copy committed — see below. |
 | `person_face_embedding_cache` | `person_id` PK, `embedding vector(512)`, `face_count`, `computed_at`. Caches Immichdle's `MLSimilarity` clue's per-person representative embedding (average across that person's visible faces) - see `docs/ARCHITECTURE/IMMICH.md`'s "Face similarity" section. The only own table with a non-JSON/UUID/text column type, hence `persistence/ml_cache.py`'s hand-rolled `Vector` SQLAlchemy type instead of a plain `mapped_column`. |
 | `daily_configs` | Roadmap #G. `(game_type, mode)` PK, `enabled` bool, `values` JSONB - whether a mode is in the daily rotation plus its daily-only setting overrides. |
-| `daily_challenges` | Roadmap #G. `id` PK, unique `(challenge_date, game_type, mode)`, `spec` JSONB (the pre-generated shared content), `settings` JSONB (frozen effective settings for that day). `games.daily_challenge_id` (nullable FK, two partial unique indexes for "one attempt per player") points into this. |
+| `daily_challenges` | Roadmap #G. `id` PK, unique `(challenge_date, game_type, mode)`, `spec` JSONB (the pre-generated shared content), `settings` JSONB (frozen effective settings for that day). `games.daily_challenge_id` (nullable FK, one partial unique index on `(daily_challenge_id, user_id)` for "one attempt per player") points into this. |
 
 **Generic rounds table + JSONB payload** is the core persistence decision: adding a game never
 requires a migration, only a `to_payload`/`from_payload` pair.
@@ -177,22 +178,49 @@ dropea nada y falla ruidosamente. **Tras restaurar un backup de Immich anterior 
 
 ## Auth
 
-This app's own accounts, entirely separate from Immich's users.
+This app's own accounts, entirely separate from Immich's users. Login is mandatory (roadmap #H) —
+there is no anonymous play; every game, record and leaderboard entry belongs to a real account.
 
 - **Passwords**: argon2 (`argon2-cffi`'s `PasswordHasher`).
-- **Session**: stateless JWT (HS256, `sub` = user id, `exp` = now + `JWT_EXPIRE_DAYS`), in an
-  httpOnly `access_token` cookie, `SameSite=Lax`, `Secure=False`.
-- **Logout** clears the cookie. There is no server-side session table, so a token copied before
-  logout stays valid until it expires. Accepted tradeoff for "lo básico"; rotating `JWT_SECRET`
-  invalidates everything.
-- **Rate limiting**: slowapi, keyed by client IP, in-memory. Only `register` (3/min) and `login`
-  (5/min) are limited.
+- **Session**: stateless JWT (HS256, `sub` = user id, `iat`/`exp` = now / now + `JWT_EXPIRE_DAYS`),
+  in an httpOnly `access_token` cookie, `SameSite=Lax`, `Secure` from `settings.cookie_secure`
+  (`false` by default — the dev stack and `docker-compose.app.yml` both serve plain HTTP; set to
+  `true` behind a TLS-terminating reverse proxy).
+- **Revocation without a session table**: `users.password_changed_at` + the JWT's `iat` claim.
+  `AuthService.get_user_from_token` rejects any token whose `iat` predates the account's last
+  password change, so changing a password logs out every other device without needing
+  server-side session storage. `PATCH /auth/me/password` (self-service, requires the current
+  password) and admin-initiated password reset (`POST /admin/users/{id}/password-reset` +
+  `POST /auth/reset-password`, single-use token) both set it.
+- **Logout** clears the cookie. A token copied before logout stays valid until it expires (the
+  revocation mechanism above only fires on a password change, not on logout). Rotating
+  `JWT_SECRET` invalidates every session at once.
+- **Registration is invite-only** (`invites` table, `kind` discriminates `'invite'` vs
+  `'password_reset'`, SHA-256-hashed tokens, consumed via one atomic `UPDATE ... RETURNING`) —
+  except the very first account on a fresh install, which can register freely unless
+  `INITIAL_INVITE_TOKEN` is set (then that token stands in for an invite, once).
+- **Default-deny middleware** (`api/auth_middleware.py`): every request needs a valid session
+  cookie except an exact allow-list (`/auth/login`, `/auth/register`, `/auth/reset-password`,
+  `/auth/logout`). A middleware rather than a per-route dependency, so a route added later and
+  forgotten stays protected by construction. It resolves `request.state.user` once per request and
+  shares its DB session (`request.state.db_session`) with the rest of the request via
+  `api/deps.py::get_db_session`, so a route mutating the user (e.g. changing the password) commits
+  on the same session the middleware already loaded it on.
+- **Rate limiting** (`api/rate_limit.py`, slowapi + the `limits` library it wraps, in-memory by
+  default — `RATE_LIMIT_STORAGE_URI` for a shared store across more than one backend process):
+  keyed by session-or-IP, not a trusted proxy header (`X-Real-IP`/`X-Forwarded-For` are never
+  read) — a logged-in request's budget follows the account (decoded from the JWT locally, no DB
+  round-trip), an unauthenticated one falls back to the raw socket peer. `register` and
+  `change_password` (3/min, 5/min) use this default key. `login` additionally enforces a 5/min
+  limit keyed by the submitted *email* specifically (checked inside the handler, since slowapi's
+  decorator can't read the request body) — an IP/session-only limit alone can't bound "many guesses
+  against one account", since an attacker can trivially vary either. `register` itself is the one
+  route that overrides the key back to plain IP: it's what *mints* a session, so keying its own
+  limit by session would let every successful call escape into a fresh, unlimited budget.
 
-Two dependencies read the cookie: `get_current_user` (raises `UnauthorizedError`) and
-`get_current_user_optional` (returns `None`, used where a route serves both anonymous and logged-in
-callers, e.g. `create_game`).
-
-There is **no password-change or password-reset endpoint** — see finding #10.
+`get_current_user` (`api/auth_api.py`) reads the already-resolved `request.state.user` — routes
+still declare `Depends(get_current_user)`, only where the identity comes from changed once the
+middleware started resolving it up front.
 
 ## Admin feature
 
@@ -349,6 +377,9 @@ because constructing `Settings()` re-reads the file from disk.
 | `DB_DATABASE_NAME` | Immich's own database — **read-only** for this app. |
 | `DB_APP_DATABASE_NAME` | This app's own database (default `minigames`), created by `db-init`. Read/write. |
 | `IMMICH_SERVER_URL` / `IMMICH_API_KEY` | Immich's REST API, for image bytes. |
-| `IMMICH_EXTERNAL_URL` | Public URL the *browser* opens for "Ver en Immich" (roadmap #10) — served via `GET /config`. Optional; falls back to `IMMICH_SERVER_URL` if unset. |
-| `JWT_SECRET` / `JWT_EXPIRE_DAYS` | This app's own sessions. |
+| `IMMICH_EXTERNAL_URL` | Public URL the *browser* opens for "Ver en Immich" (roadmap #10) — served via `GET /config`. Falls back to `IMMICH_SERVER_URL` only when genuinely **unset** (`None`); set to an explicit empty string to get `null` back instead (no link, no leak of an internal-only `IMMICH_SERVER_URL` to the browser) — see `Settings.immich_public_url`. |
+| `JWT_SECRET` / `JWT_EXPIRE_DAYS` | This app's own sessions (see § Auth). `JWT_SECRET` is the real perimeter now that login is mandatory — generate it with `openssl rand -hex 32`. |
+| `COOKIE_SECURE` | Marks the session cookie `Secure` (HTTPS-only). `false` by default (dev stack / `docker-compose.app.yml` both plain HTTP) — set `true` behind a TLS-terminating reverse proxy. |
 | `ADMIN_EMAIL` | Account to promote to admin on startup. |
+| `INITIAL_INVITE_TOKEN` | Roadmap #H, F1. Stands in for an invite code for the very first account on a fresh install (registration is otherwise invite-only, see § Auth). Unset means the first registration is free — a one-shot door that closes itself the moment any account exists, regardless of this setting. |
+| `RATE_LIMIT_STORAGE_URI` | Roadmap #H, F5. Backing store for `api/rate_limit.py`'s counters. `memory://` (default) — fine for this app's single-backend-container deployment; `redis://host:port` only matters if more than one backend process shares the same traffic. |

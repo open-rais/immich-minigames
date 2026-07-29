@@ -1,7 +1,7 @@
 import { useState } from "react"
 import type { FormEvent } from "react"
 import { useTranslation } from "react-i18next"
-import { Link, Navigate, useNavigate } from "react-router-dom"
+import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom"
 
 import { apiErrorMessage } from "../api/errors"
 import { Button } from "../games/shared/Button"
@@ -13,10 +13,15 @@ export function SignupPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { user, loading, register } = useAuth()
+  const [searchParams] = useSearchParams()
   const [email, setEmail] = useState("")
   const [username, setUsername] = useState("")
   const [fullName, setFullName] = useState("")
   const [password, setPassword] = useState("")
+  // Pre-filled from the admin-generated link's ?invite= query param (see
+  // admin/AdminInvitesSection.tsx) - still editable, so a code shared out-of-band (not via the
+  // link itself) can be pasted in directly too.
+  const [inviteCode, setInviteCode] = useState(searchParams.get("invite") ?? "")
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -27,7 +32,7 @@ export function SignupPage() {
     setBusy(true)
     setError(null)
     try {
-      await register({ email, username, full_name: fullName, password })
+      await register({ email, username, full_name: fullName, password, invite_code: inviteCode || undefined })
       navigate("/profile")
     } catch (err) {
       setError(apiErrorMessage(err) ?? t("auth.error.generic"))
@@ -90,6 +95,16 @@ export function SignupPage() {
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+        />
+        <AuthField
+          id="inviteCode"
+          type="text"
+          label={t("auth.signup.inviteCode")}
+          // Not `required` - the very first account on a fresh install registers without one
+          // (roadmap #H decision [H]); the backend is the source of truth and rejects a missing/
+          // invalid code with a normal inline error either way.
+          value={inviteCode}
+          onChange={(e) => setInviteCode(e.target.value)}
         />
         {error && <p className="text-sm font-semibold text-rose-600">{error}</p>}
         <Button type="submit" variant="primary" className="mt-2 w-full py-2.5" disabled={busy}>

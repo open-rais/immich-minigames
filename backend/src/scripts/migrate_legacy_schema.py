@@ -52,6 +52,11 @@ class Report:
     rows_copied: dict[str, int] = field(default_factory=dict)
     dropped: bool = False
     messages: list[str] = field(default_factory=list)
+    # Roadmap #H, F4/decision [I] - legacy games with no user_id (no account to attribute them
+    # to) cannot be copied into the target's games table (user_id is NOT NULL there now), so
+    # they're dropped instead of migrated - same policy Alembic migration 0011 applies to the
+    # app's own database. Their rounds go with them (FK). Zero on every non-"migrated" report.
+    anonymous_games_dropped: int = 0
 
 
 def _log(report: Report, message: str) -> None:
@@ -204,6 +209,102 @@ def _copy_game_settings(
             )
 
 
+def _games_has_user_id(source: psycopg.Connection, source_schema: str) -> bool:
+    with source.cursor() as cur:
+        cur.execute(
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_schema = %s AND table_name = 'games' AND column_name = 'user_id'",
+            (source_schema,),
+        )
+        return cur.fetchone() is not None
+
+
+def _migratable_rounds_count(source: psycopg.Connection, source_schema: str) -> int:
+    """Mirrors _copy_rounds_of_migrated_games's own filter, for the pre-copy verification count -
+    a round only migrates if the game it belongs to does."""
+    if not _games_has_user_id(source, source_schema):
+        return 0
+    with source.cursor() as cur:
+        cur.execute(
+            sql.SQL(
+                "SELECT count(*) FROM {schema}.rounds r JOIN {schema}.games g ON g.id = r.game_id "
+                "WHERE g.user_id IS NOT NULL"
+            ).format(schema=sql.Identifier(source_schema))
+        )
+        return cur.fetchone()[0]
+
+
+def _copy_games(
+    source: psycopg.Connection,
+    target: psycopg.Connection,
+    *,
+    source_schema: str,
+    target_schema: str,
+    columns: list[str],
+) -> int:
+    """Copies games, dropping any row with no user_id - the target's games.user_id has been
+    NOT NULL since roadmap #H, F4 (decision [I]: an anonymous game has no account to attribute
+    it to, so it's deleted rather than migrated - same policy Alembic migration 0011 applies to
+    the app's own database). An install that predates accounts entirely (pre-0002, no user_id
+    column in the legacy schema at all) has nothing migratable in this table - every row is
+    anonymous by definition. Returns the number of rows dropped, for the caller's report/log."""
+    if "user_id" not in columns:
+        with source.cursor() as cur:
+            cur.execute(sql.SQL("SELECT count(*) FROM {}.games").format(sql.Identifier(source_schema)))
+            return cur.fetchone()[0]
+
+    with source.cursor() as cur:
+        cur.execute(
+            sql.SQL("SELECT count(*) FROM {}.games WHERE user_id IS NULL").format(sql.Identifier(source_schema))
+        )
+        dropped = cur.fetchone()[0]
+
+    col_list = sql.SQL(", ").join(sql.Identifier(c) for c in columns)
+    read_sql = sql.SQL(
+        "COPY (SELECT {cols} FROM {schema}.games WHERE user_id IS NOT NULL) TO STDOUT (FORMAT BINARY)"
+    ).format(cols=col_list, schema=sql.Identifier(source_schema))
+    write_sql = sql.SQL("COPY {schema}.games ({cols}) FROM STDIN (FORMAT BINARY)").format(
+        schema=sql.Identifier(target_schema), cols=col_list
+    )
+    with source.cursor() as src_cur, target.cursor() as dst_cur:
+        with src_cur.copy(read_sql) as reader, dst_cur.copy(write_sql) as writer:
+            for block in reader:
+                writer.write(block)
+
+    return dropped
+
+
+def _copy_rounds_of_migrated_games(
+    source: psycopg.Connection,
+    target: psycopg.Connection,
+    *,
+    source_schema: str,
+    target_schema: str,
+    columns: list[str],
+) -> None:
+    """A round whose game _copy_games dropped (no user_id) must be dropped too, or the target's
+    FK (rounds.game_id -> games.id) would point at a row that was never copied. Re-derives the
+    same filter by joining back to the source's own games table (cheaper and simpler than having
+    _copy_games hand back a set of surviving ids) - if the legacy games table has no user_id
+    column at all, every game was dropped, so this copies nothing."""
+    if not _games_has_user_id(source, source_schema):
+        return
+
+    write_cols = sql.SQL(", ").join(sql.Identifier(c) for c in columns)
+    read_cols = sql.SQL(", ").join(sql.SQL("r.") + sql.Identifier(c) for c in columns)
+    read_sql = sql.SQL(
+        "COPY (SELECT {cols} FROM {schema}.rounds r JOIN {schema}.games g ON g.id = r.game_id "
+        "WHERE g.user_id IS NOT NULL) TO STDOUT (FORMAT BINARY)"
+    ).format(cols=read_cols, schema=sql.Identifier(source_schema))
+    write_sql = sql.SQL("COPY {schema}.rounds ({cols}) FROM STDIN (FORMAT BINARY)").format(
+        schema=sql.Identifier(target_schema), cols=write_cols
+    )
+    with source.cursor() as src_cur, target.cursor() as dst_cur:
+        with src_cur.copy(read_sql) as reader, dst_cur.copy(write_sql) as writer:
+            for block in reader:
+                writer.write(block)
+
+
 def _copy_columns(
     source: psycopg.Connection,
     target: psycopg.Connection,
@@ -329,6 +430,10 @@ def _copy_legacy_data(
         if _table_exists(source, source_schema, table)
     }
     _log(report, f"legacy rows to copy: {source_counts}")
+    # What's actually expected to land in the target, per table - equal to source_counts except
+    # for games/rounds, which _copy_games/_copy_rounds_of_migrated_games below may filter down
+    # (decision [I]) - overwritten with the real, filtered expectation as each is copied.
+    migratable_counts = dict(source_counts)
 
     try:
         for table in LEGACY_TABLES:
@@ -352,6 +457,25 @@ def _copy_legacy_data(
                     columns=columns,
                 )
                 continue
+            if table == "games":
+                dropped = _copy_games(
+                    source, target, source_schema=source_schema, target_schema=target_schema, columns=columns
+                )
+                migratable_counts["games"] = source_counts["games"] - dropped
+                report.anonymous_games_dropped = dropped
+                if dropped:
+                    _log(
+                        report,
+                        f"{dropped} anonymous legacy game(s) have no account to migrate to "
+                        "(roadmap #H, decision [I]) - dropped, not copied.",
+                    )
+                continue
+            if table == "rounds":
+                _copy_rounds_of_migrated_games(
+                    source, target, source_schema=source_schema, target_schema=target_schema, columns=columns
+                )
+                migratable_counts["rounds"] = _migratable_rounds_count(source, source_schema)
+                continue
             _copy_table(
                 source,
                 target,
@@ -364,9 +488,9 @@ def _copy_legacy_data(
         # Verified inside the still-open target transaction, so a mismatch rolls back the copy.
         copied = {table: _count(target, target_schema, table) for table in source_counts}
         mismatched = {
-            table: (source_counts[table], copied[table])
+            table: (migratable_counts[table], copied[table])
             for table in source_counts
-            if source_counts[table] != copied[table]
+            if migratable_counts[table] != copied[table]
         }
         if mismatched:
             raise LegacyMigrationError(

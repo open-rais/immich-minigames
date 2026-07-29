@@ -23,9 +23,8 @@ export async function getGame(id: string): Promise<GameOut> {
   return data
 }
 
-// Idle-screen "Continuar" lookup (roadmap #e) - null when the current player (owner or account)
-// has no unfinished game for this (gameType, mode). Works for anonymous visitors too, same as
-// createGame/getGame - see backend/src/api/api.py's get_current_game.
+// Idle-screen "Continuar" lookup (roadmap #e) - null when the logged-in account has no unfinished
+// game for this (gameType, mode). See backend/src/api/api.py's get_current_game.
 export async function getCurrentGame(gameType: string, mode: string): Promise<GameOut | null> {
   const { data } = await apiClient.get<CurrentGameOut>("/games/current", {
     params: { game_type: gameType, mode },
@@ -33,23 +32,20 @@ export async function getCurrentGame(gameType: string, mode: string): Promise<Ga
   return data.game
 }
 
-// Profile "Ver juegos" modal (roadmap #e) - login-only, unlike getCurrentGame (the backend 401s an
-// anonymous request - see api/api.py's get_recent_games).
+// Profile "Ver juegos" modal (roadmap #e) - see api/api.py's get_recent_games.
 export async function getRecentGames(): Promise<RecentGamesOut["games"]> {
   const { data } = await apiClient.get<RecentGamesOut>("/games/recent")
   return data.games
 }
 
-// Personal-best score per (game_type, mode) - shown in the main menu (roadmap point E). Works
-// for anonymous visitors too (scoped to their browser's X-Owner-Id, see api/client.ts) as well as
-// logged-in accounts - see backend/src/api/api.py's get_game_records.
+// Personal-best score per (game_type, mode) - shown in the main menu (roadmap point E) - see
+// backend/src/api/api.py's get_game_records.
 export async function getGameRecords(): Promise<GameRecordsOut> {
   const { data } = await apiClient.get<GameRecordsOut>("/games/records")
   return data
 }
 
-// Top-15 leaderboard for a (game_type, mode) (roadmap point F) - unlike getGameRecords, this
-// requires login (the backend 401s an anonymous request) - see backend/src/api/api.py's
+// Top-15 leaderboard for a (game_type, mode) (roadmap point F) - see backend/src/api/api.py's
 // get_leaderboard.
 export async function getLeaderboard(
   gameType: string,

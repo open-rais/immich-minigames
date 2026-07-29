@@ -214,7 +214,6 @@ class WhosThatPersonGame(BaseGame):
     def __init__(
         self,
         id: UUID,
-        owner: str,
         rounds: list[WhosThatPersonRound],
         immich_service: ImmichService,
         content: WhosThatPersonContent,
@@ -224,7 +223,6 @@ class WhosThatPersonGame(BaseGame):
     ) -> None:
         super().__init__(
             id=id,
-            owner=owner,
             game_type=GAME_TYPE,
             mode=MODE_NAMED_FACES,
             rounds=rounds,
@@ -265,12 +263,11 @@ class WhosThatPersonGame(BaseGame):
     def start(
         cls,
         id: UUID,
-        owner: str,
         immich_service: ImmichService,
         content: WhosThatPersonContent,
         settings: Mapping[str, float] | None = None,
     ) -> "WhosThatPersonGame":
-        game = cls(id=id, owner=owner, rounds=[], immich_service=immich_service, content=content, settings=settings)
+        game = cls(id=id, rounds=[], immich_service=immich_service, content=content, settings=settings)
         picked = game._content.pick_round(min(game._max_hidden_faces, game.total_people), frozenset())
         if picked is None:
             raise ValueError("not enough named faces in Immich to start a Who'sThatPerson game")

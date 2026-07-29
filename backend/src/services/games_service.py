@@ -38,7 +38,7 @@ from services.ml_service import MLService
 
 @dataclass(frozen=True)
 class GameRecord:
-    """One personal-best entry (roadmap point E) - a mode the owner/user has at least one finished
+    """One personal-best entry (roadmap point E) - a mode the account has at least one finished
     game for, with their highest score in it."""
 
     game_type: str
@@ -70,8 +70,7 @@ class RecentGame:
 @dataclass(frozen=True)
 class LeaderboardEntry:
     """One leaderboard row (roadmap point F) - a distinct account's best score for a (game_type,
-    mode) within a time window, 1-indexed by rank. Anonymous games never produce a row (see
-    get_leaderboard's join) - there's no account to show a name/photo for."""
+    mode) within a time window, 1-indexed by rank."""
 
     rank: int
     username: str
@@ -82,8 +81,8 @@ class LeaderboardEntry:
 @dataclass(frozen=True)
 class DailyModeStatus:
     """One entry of the `GET /daily` menu listing (roadmap #G, docs/TODO/DAILY-GAMES.md §4.6) - the
-    caller's (owner-or-user) status for one enabled daily mode, without generating a challenge just
-    to list it (see GamesService.get_daily_status)."""
+    caller's status for one enabled daily mode, without generating a challenge just to list it (see
+    GamesService.get_daily_status)."""
 
     game_type: str
     mode: str
@@ -111,9 +110,9 @@ class DailyNotEnabledError(Exception):
 
 
 class DailyAlreadyPlayedError(Exception):
-    """Roadmap #G - raised by create_daily_game when the caller (owner-or-user) already has a game
-    for today's challenge of this (game_type, mode) - "1 intento por día" (decision [C]). main.py
-    maps this to a 409."""
+    """Roadmap #G - raised by create_daily_game when the caller already has a game for today's
+    challenge of this (game_type, mode) - "1 intento por día" (decision [C]). main.py maps this to
+    a 409."""
 
 
 class GamesService:
@@ -196,26 +195,24 @@ class GamesService:
             ml_service=self._ml_service,
         )
 
-    def create_game(
-        self, owner: str, game_type: str, mode: str, user_id: UUID | None = None
-    ) -> BaseGame:
+    def create_game(self, game_type: str, mode: str, user_id: UUID) -> BaseGame:
         spec = _GAMES.get((game_type, mode))
         if spec is None:
             raise UnsupportedGameError(f"unsupported game/mode: {game_type}/{mode}")
 
         try:
-            game = spec.game_class.start(id=uuid4(), owner=owner, **self._game_kwargs(spec, game_type, mode))
+            game = spec.game_class.start(id=uuid4(), **self._game_kwargs(spec, game_type, mode))
         except ValueError as e:
             raise NotEnoughContentError(str(e)) from e
         # Roadmap #e - enforces "at most one active game per (player, mode)" server-side, so the
         # frontend's "Nuevo juego" button needs no separate abandon step: it's the same createGame
         # call "Jugar" always made, and this stays one atomic commit with _save_new_game below.
-        self._abandon_active_games(owner, game_type, mode, user_id)
+        self._abandon_active_games(game_type, mode, user_id)
         self._save_new_game(game, user_id=user_id)
         return game
 
     def create_daily_game(
-        self, owner: str, game_type: str, mode: str, user_id: UUID | None = None, today: date | None = None
+        self, game_type: str, mode: str, user_id: UUID, today: date | None = None
     ) -> BaseGame:
         """Roadmap #G, F3 - creates (and consumes) the caller's single daily attempt for today's
         challenge of this (game_type, mode). Never calls _abandon_active_games - a daily game
@@ -230,9 +227,10 @@ class GamesService:
 
         challenge = self._daily_service.get_or_create_challenge(today or date.today(), game_type, mode)
 
-        filter_clause = GameModel.user_id == user_id if user_id is not None else GameModel.owner == owner
         already_played = self._session.execute(
-            select(GameModel.id).where(GameModel.daily_challenge_id == challenge.id, filter_clause)
+            select(GameModel.id).where(
+                GameModel.daily_challenge_id == challenge.id, GameModel.user_id == user_id
+            )
         ).scalar_one_or_none()
         if already_played is not None:
             raise DailyAlreadyPlayedError(f"already played today's {game_type}/{mode} challenge")
@@ -241,7 +239,7 @@ class GamesService:
         # only the content source differs, via _daily_game_kwargs above.
         kwargs = self._daily_game_kwargs(game_type, mode, challenge, rounds_played=0)
         try:
-            game = _GAMES[(game_type, mode)].game_class.start(id=uuid4(), owner=owner, **kwargs)
+            game = _GAMES[(game_type, mode)].game_class.start(id=uuid4(), **kwargs)
         except ValueError as e:
             raise NotEnoughContentError(str(e)) from e
         game.daily_challenge_date = challenge.challenge_date
@@ -256,7 +254,7 @@ class GamesService:
             raise DailyAlreadyPlayedError(f"already played today's {game_type}/{mode} challenge") from exc
         return game
 
-    def get_daily_status(self, owner: str, user_id: UUID | None, today: date | None = None) -> list[DailyModeStatus]:
+    def get_daily_status(self, user_id: UUID, today: date | None = None) -> list[DailyModeStatus]:
         """`GET /daily` menu listing (roadmap #G, §4.6) - every enabled mode's status for the
         caller, without generating a challenge just to list it (a mode nobody's played yet today
         simply has no challenge row, and reads as "not_played")."""
@@ -264,7 +262,6 @@ class GamesService:
         enabled_modes = self._daily_settings_service.list_enabled()
         if not enabled_modes:
             return []
-        filter_clause = GameModel.user_id == user_id if user_id is not None else GameModel.owner == owner
 
         # Two queries total (today's challenges for every enabled mode, then the caller's games for
         # those challenges) rather than two per mode - same results, keyed back to each mode below.
@@ -284,7 +281,7 @@ class GamesService:
                 for row in self._session.execute(
                     select(GameModel).where(
                         GameModel.daily_challenge_id.in_([c.id for c in challenge_by_mode.values()]),
-                        filter_clause,
+                        GameModel.user_id == user_id,
                     )
                 ).scalars()
             }
@@ -301,21 +298,16 @@ class GamesService:
                 statuses.append(DailyModeStatus(game_type, mode, "in_progress", game_row.id, None))
         return statuses
 
-    def get_game(self, game_id: UUID, owner: str, user: UserModel | None = None) -> BaseGame:
-        return self._load_game(game_id, owner, user)
+    def get_game(self, game_id: UUID, user: UserModel) -> BaseGame:
+        return self._load_game(game_id, user)
 
-    def get_current_game(
-        self, owner: str, game_type: str, mode: str, user_id: UUID | None
-    ) -> BaseGame | None:
-        """Idle-screen "Continuar" lookup (roadmap #e) - works anonymously too (the route uses
-        get_current_user_optional), matching "ya sea loggeado o no". Same owner-vs-user_id
-        branching as get_personal_records. `ORDER BY created_at DESC LIMIT 1` rather than
-        scalar_one() deliberately tolerates more than one matching row (a stray unfinished game
-        left over from before the `abandoned` column existed, or the documented cross-tab race in
-        _abandon_active_games) by just picking the most recent, instead of crashing."""
+    def get_current_game(self, game_type: str, mode: str, user_id: UUID) -> BaseGame | None:
+        """Idle-screen "Continuar" lookup (roadmap #e). `ORDER BY created_at DESC LIMIT 1` rather
+        than scalar_one() deliberately tolerates more than one matching row (a stray unfinished
+        game left over from before the `abandoned` column existed, or the documented cross-tab
+        race in _abandon_active_games) by just picking the most recent, instead of crashing."""
         if (game_type, mode) not in _GAMES:
             raise UnsupportedGameError(f"unsupported game/mode: {game_type}/{mode}")
-        filter_clause = GameModel.user_id == user_id if user_id is not None else GameModel.owner == owner
         game_row = self._session.execute(
             select(GameModel)
             .where(
@@ -327,7 +319,7 @@ class GamesService:
                 # game (those live in their own world, resumed only through /daily's own status -
                 # see docs/TODO/DAILY-GAMES.md §4.5).
                 GameModel.daily_challenge_id.is_(None),
-                filter_clause,
+                GameModel.user_id == user_id,
             )
             .order_by(GameModel.created_at.desc())
             .limit(1)
@@ -362,13 +354,11 @@ class GamesService:
             for row in rows
         ]
 
-    def get_personal_records(self, owner: str, user_id: UUID | None) -> list[GameRecord]:
-        """Roadmap point E - personal-best score per (game_type, mode), shown in the main menu.
-        Filters by the account's user_id when logged in, otherwise by the anonymous browser's
-        owner id - every game's score is higher-is-better (see games/shared/scoring.py's
-        exp_decay_score and each game's win/streak-based deltas), so MAX(score) among finished
-        games is a valid "best" for every existing game/mode."""
-        filter_clause = GameModel.user_id == user_id if user_id is not None else GameModel.owner == owner
+    def get_personal_records(self, user_id: UUID) -> list[GameRecord]:
+        """Roadmap point E - personal-best score per (game_type, mode), shown in the main menu -
+        every game's score is higher-is-better (see games/shared/scoring.py's exp_decay_score and
+        each game's win/streak-based deltas), so MAX(score) among finished games is a valid "best"
+        for every existing game/mode."""
         rows = self._session.execute(
             select(GameModel.game_type, GameModel.mode, func.max(GameModel.score))
             .where(
@@ -376,7 +366,7 @@ class GamesService:
                 # Roadmap #G - daily scores aren't comparable to normal play (different settings,
                 # separate leaderboard - docs/TODO/DAILY-GAMES.md §4.5 [D]).
                 GameModel.daily_challenge_id.is_(None),
-                filter_clause,
+                GameModel.user_id == user_id,
             )
             .group_by(GameModel.game_type, GameModel.mode)
         ).all()
@@ -389,8 +379,7 @@ class GamesService:
         mode), optionally restricted to games created since this week's/today's midnight (server
         time - see date_trunc below, computed in Postgres rather than Python so the cutoff is
         never skewed by a client/server clock or timezone mismatch, and lines up with how
-        GameModel.created_at itself was written via server_default=func.now()). The inner join to
-        UserModel is what excludes anonymous games (user_id is null there, so they never match)."""
+        GameModel.created_at itself was written via server_default=func.now())."""
         if (game_type, mode) not in _GAMES:
             raise UnsupportedGameError(f"unsupported game/mode: {game_type}/{mode}")
 
@@ -455,12 +444,10 @@ class GamesService:
             for rank, (username, skin_person_id, score) in enumerate(rows, start=1)
         ]
 
-    def play_round(
-        self, game_id: UUID, owner: str, round_id: UUID, guess: Any, user: UserModel | None = None
-    ) -> BaseGame:
+    def play_round(self, game_id: UUID, user: UserModel, round_id: UUID, guess: Any) -> BaseGame:
         """Plays the given round and returns the game with its updated state (the answered round
         is still in game.rounds, and game.current_round is the new pending round, if any)."""
-        game = self._load_game(game_id, owner, user)
+        game = self._load_game(game_id, user)
         return self.play_loaded_round(game, round_id, guess)
 
     def play_loaded_round(self, game: BaseGame, round_id: UUID, guess: Any) -> BaseGame:
@@ -476,7 +463,7 @@ class GamesService:
 
     # -- persistence glue ---------------------------------------------------
 
-    def _load_game(self, game_id: UUID, owner: str, user: UserModel | None = None) -> BaseGame:
+    def _load_game(self, game_id: UUID, user: UserModel) -> BaseGame:
         # SELECT ... FOR UPDATE - this is the single load point for both viewing a game (get_game)
         # and loading it right before playing a round, so locking it here closes the race where two
         # simultaneous plays of the same round both pass play_loaded_round's current_round.id check
@@ -485,17 +472,8 @@ class GamesService:
         game_row = self._session.get(GameModel, game_id, with_for_update=True)
         if game_row is None:
             raise GameNotFoundError(f"game {game_id} not found")
-        # A game created while logged in (user_id set) is owned by that account forever - the
-        # X-Owner-Id header alone is no longer proof of ownership for it, even if it happens to
-        # match (leaked via logs/Referer, or a shared browser/localStorage - see #3 in
-        # docs/TODO/CODE-REVIEW.md). A game created anonymously (user_id NULL) stays owner-only,
-        # even for a request that's since logged in - user_id is fixed at creation and never
-        # backfilled, so "logged in" alone doesn't grant access to someone's past anonymous games.
-        if game_row.user_id is not None:
-            if user is None or user.id != game_row.user_id:
-                raise GameOwnershipError(f"game {game_id} does not belong to this owner")
-        elif game_row.owner != owner:
-            raise GameOwnershipError(f"game {game_id} does not belong to this owner")
+        if user.id != game_row.user_id:
+            raise GameOwnershipError(f"game {game_id} does not belong to this user")
 
         self._loaded_game_rows[game_row.id] = game_row
         return self._row_to_game(game_row)
@@ -527,7 +505,6 @@ class GamesService:
             # C) - only the content source differs, via _daily_game_kwargs above.
             game = spec.game_class(
                 id=game_row.id,
-                owner=game_row.owner,
                 rounds=rounds,
                 score=game_row.score,
                 finished=game_row.finished,
@@ -538,22 +515,18 @@ class GamesService:
 
         return spec.game_class(
             id=game_row.id,
-            owner=game_row.owner,
             rounds=rounds,
             score=game_row.score,
             finished=game_row.finished,
             **self._game_kwargs(spec, game_row.game_type, game_row.mode),
         )
 
-    def _abandon_active_games(
-        self, owner: str, game_type: str, mode: str, user_id: UUID | None
-    ) -> None:
-        """Roadmap #e - marks every currently-active game of this same (owner-or-user, game_type,
-        mode) as abandoned, right before a new one is created for it (see create_game). Marks
-        *every* matching row rather than assuming there's ever only one - self-heals any stray
-        unfinished game left over from before the `abandoned` column existed, or from the
-        documented cross-tab race (two tabs both starting a new game for the same mode)."""
-        filter_clause = GameModel.user_id == user_id if user_id is not None else GameModel.owner == owner
+    def _abandon_active_games(self, game_type: str, mode: str, user_id: UUID) -> None:
+        """Roadmap #e - marks every currently-active game of this same (user, game_type, mode) as
+        abandoned, right before a new one is created for it (see create_game). Marks *every*
+        matching row rather than assuming there's ever only one - self-heals any stray unfinished
+        game left over from before the `abandoned` column existed, or from the documented
+        cross-tab race (two tabs both starting a new game for the same mode)."""
         rows = self._session.execute(
             select(GameModel).where(
                 GameModel.game_type == game_type,
@@ -565,18 +538,17 @@ class GamesService:
                 # must never abandon a normal game either - a daily challenge only ever gets one
                 # game per player in the first place (docs/TODO/DAILY-GAMES.md §4.5).
                 GameModel.daily_challenge_id.is_(None),
-                filter_clause,
+                GameModel.user_id == user_id,
             )
         ).scalars().all()
         for row in rows:
             row.abandoned = True
 
     def _save_new_game(
-        self, game: BaseGame, user_id: UUID | None = None, daily_challenge_id: UUID | None = None
+        self, game: BaseGame, user_id: UUID, daily_challenge_id: UUID | None = None
     ) -> None:
         game_row = GameModel(
             id=game.id,
-            owner=game.owner,
             user_id=user_id,
             game_type=game.game_type,
             mode=game.mode,

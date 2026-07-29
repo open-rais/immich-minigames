@@ -17,7 +17,7 @@ class TestScriptedCandidateProvider:
         chain = [_entity(1), _entity(2), _entity(3), _entity(4)]
         provider = ScriptedCandidateProvider(chain, next_index=0)
 
-        game = MoreOrLessGame.start(id=uuid4(), owner="owner", mode=MODE_PERSON_ASSETS, provider=provider)
+        game = MoreOrLessGame.start(id=uuid4(), mode=MODE_PERSON_ASSETS, provider=provider)
 
         assert game.rounds[0].reference == chain[0]
         assert game.rounds[0].candidate == chain[1]
@@ -27,7 +27,7 @@ class TestScriptedCandidateProvider:
         # left at all, so even a correct guess must end the game (decision [F]).
         chain = [_entity(1), _entity(2)]
         provider = ScriptedCandidateProvider(chain, next_index=0)
-        game = MoreOrLessGame.start(id=uuid4(), owner="owner", mode=MODE_PERSON_ASSETS, provider=provider)
+        game = MoreOrLessGame.start(id=uuid4(), mode=MODE_PERSON_ASSETS, provider=provider)
         first_round = game.current_round
         guess = "more" if first_round.candidate.value > first_round.reference.value else "less"
 
@@ -39,7 +39,7 @@ class TestScriptedCandidateProvider:
     def test_continues_when_the_chain_has_more_left(self):
         chain = [_entity(1), _entity(2), _entity(3), _entity(4)]
         provider = ScriptedCandidateProvider(chain, next_index=0)
-        game = MoreOrLessGame.start(id=uuid4(), owner="owner", mode=MODE_PERSON_ASSETS, provider=provider)
+        game = MoreOrLessGame.start(id=uuid4(), mode=MODE_PERSON_ASSETS, provider=provider)
         first_round = game.current_round
         guess = "more" if first_round.candidate.value > first_round.reference.value else "less"
 

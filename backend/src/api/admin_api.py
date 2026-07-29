@@ -7,14 +7,16 @@ an arbitrary user_id instead of the caller's own account."""
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from api.auth_api import get_auth_service, get_current_user
 from api.auth_schemas import UpdateProfileIn, UpdateSkinIn, UserOut
-from api.deps import get_immich_service
+from api.deps import get_immich_service, get_invite_service
+from api.dto.admin import CreateInviteOut
 from persistence.users import UserModel
 from services.auth_service import AuthService
 from services.immich_service import ImmichService
+from services.invite_service import InviteService
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -36,8 +38,10 @@ def _get_target_user(auth_service: AuthService, user_id: UUID) -> UserModel:
 def list_users(
     _admin: Annotated[UserModel, Depends(get_current_admin_user)],
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=50)] = 5,
 ) -> list[UserOut]:
-    return [UserOut.from_user(u) for u in auth_service.list_users()]
+    return [UserOut.from_user(u) for u in auth_service.list_users(offset=offset, limit=limit)]
 
 
 @router.patch("/users/{user_id}", response_model=UserOut)
@@ -50,6 +54,18 @@ def update_user(
     target = _get_target_user(auth_service, user_id)
     updated = auth_service.update_profile(target, username=body.username, full_name=body.full_name)
     return UserOut.from_user(updated)
+
+
+@router.post("/users/{user_id}/password-reset", response_model=CreateInviteOut, status_code=201)
+def create_password_reset(
+    user_id: UUID,
+    _admin: Annotated[UserModel, Depends(get_current_admin_user)],
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
+    invite_service: Annotated[InviteService, Depends(get_invite_service)],
+) -> CreateInviteOut:
+    target = _get_target_user(auth_service, user_id)
+    invite, token = invite_service.create_invite(kind="password_reset", user_id=target.id)
+    return CreateInviteOut(id=invite.id, token=token, expires_at=invite.expires_at)
 
 
 @router.put("/users/{user_id}/skin", response_model=UserOut)

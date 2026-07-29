@@ -210,6 +210,12 @@ def _run_migrations(app_url: str) -> None:
     migration that adds a column fail with `must be owner of table`, and only at that future
     release. The backend's entrypoint keeps its own `alembic upgrade head`; it is a no-op after
     this, but still covers the manual/dev path where db-init isn't used.
+
+    Roadmap #H, F4 - this ordering (migrations before the legacy copy, not after) is also what
+    makes migrate_legacy_schema.py's own NOT-NULL-safe copy correct: the target's games.user_id is
+    already NOT NULL (migration 0011) by the time _copy_games/_copy_rounds_of_migrated_games run,
+    so their filtering is filtering against the real, final constraint - not a schema that's about
+    to change out from under them. Do not swap this order.
     """
     from alembic import command
     from alembic.config import Config

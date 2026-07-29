@@ -5,12 +5,21 @@ in main.py, same pattern as api/api.py's own routes."""
 
 from typing import Annotated
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
-from api.auth_schemas import LoginIn, RegisterIn, UpdateProfileIn, UpdateSkinIn, UserOut
+from api.auth_schemas import (
+    ChangePasswordIn,
+    LoginIn,
+    RegisterIn,
+    ResetPasswordIn,
+    UpdateProfileIn,
+    UpdateSkinIn,
+    UserOut,
+)
 from api.deps import get_db_session, get_immich_service
-from api.rate_limit import limiter
+from api.rate_limit import enforce_login_email_limit, limiter
 from config import get_settings
 from persistence.users import UserModel
 from services.auth_service import AuthService, UnauthorizedError
@@ -25,29 +34,17 @@ def get_auth_service(session: Annotated[Session, Depends(get_db_session)]) -> Au
     return AuthService(session)
 
 
-def get_current_user(
-    auth_service: Annotated[AuthService, Depends(get_auth_service)],
-    access_token: Annotated[str | None, Cookie()] = None,
-) -> UserModel:
-    if access_token is None:
+def get_current_user(request: Request) -> UserModel:
+    """Roadmap #H, F3 - no longer parses the cookie itself: api/auth_middleware.py already did
+    that for every request that reaches here (anything outside its allow-list), leaving the
+    resolved user on request.state. Routes still declare Depends(get_current_user) exactly as
+    before, unchanged - only where the identity comes from changed. The defensive None-check below
+    should never actually trigger (the middleware guarantees state.user is set for anything that
+    isn't allow-listed, and no allow-listed route uses this dependency), but costs nothing to keep."""
+    user = getattr(request.state, "user", None)
+    if user is None:
         raise UnauthorizedError("not authenticated")
-    return auth_service.get_user_from_token(access_token)
-
-
-def get_current_user_optional(
-    auth_service: Annotated[AuthService, Depends(get_auth_service)],
-    access_token: Annotated[str | None, Cookie()] = None,
-) -> UserModel | None:
-    """Same cookie read as get_current_user, but never raises - used where a route serves both
-    anonymous and logged-in requests (see api/api.py's create_game/get_game_records) and just
-    wants "the account if there is one", not to require auth. An invalid/expired token is treated
-    the same as no cookie at all rather than surfacing as an error."""
-    if access_token is None:
-        return None
-    try:
-        return auth_service.get_user_from_token(access_token)
-    except UnauthorizedError:
-        return None
+    return user
 
 
 def _cookie_attrs() -> dict[str, object]:
@@ -76,7 +73,13 @@ def _set_session_cookie(response: Response, token: str) -> None:
 
 
 @router.post("/register", response_model=UserOut, status_code=201)
-@limiter.limit("3/minute")
+# Roadmap #H, F5 - IP-keyed, not the shared limiter's default session-or-IP key: this route is
+# what *mints* the session, so keying it by session would let each successful call escape into a
+# fresh, unlimited budget of its own (the very next request would carry the brand-new account's
+# cookie instead of matching against the count of registrations already made from this network
+# origin) - the register limit only means something measured against something the caller can't
+# reset by calling the route it protects.
+@limiter.limit("3/minute", key_func=get_remote_address)
 def register(
     request: Request,
     body: RegisterIn,
@@ -88,6 +91,7 @@ def register(
         username=body.username,
         full_name=body.full_name,
         password=body.password,
+        invite_code=body.invite_code,
     )
     _set_session_cookie(response, auth_service.create_access_token(user))
     return UserOut.from_user(user)
@@ -101,6 +105,10 @@ def login(
     response: Response,
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> UserOut:
+    # Roadmap #H, F5 - on top of the IP-keyed decorator above (a loose global cap), this bounds
+    # attempts against one specific email regardless of which IP/session they come from - see
+    # api/rate_limit.py's enforce_login_email_limit for why the decorator alone can't do this.
+    enforce_login_email_limit(body.email)
     user = auth_service.authenticate(body.email, body.password)
     _set_session_cookie(response, auth_service.create_access_token(user))
     return UserOut.from_user(user)
@@ -109,6 +117,16 @@ def login(
 @router.post("/logout", status_code=204)
 def logout(response: Response) -> None:
     response.delete_cookie(_COOKIE_NAME, **_cookie_attrs())
+
+
+@router.post("/reset-password", status_code=204)
+@limiter.limit("5/minute")
+def reset_password(
+    request: Request,
+    body: ResetPasswordIn,
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
+) -> None:
+    auth_service.reset_password(body.token, body.new_password)
 
 
 @router.get("/me", response_model=UserOut)
@@ -123,6 +141,22 @@ def update_me(
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> UserOut:
     updated = auth_service.update_profile(user, username=body.username, full_name=body.full_name)
+    return UserOut.from_user(updated)
+
+
+@router.patch("/me/password", response_model=UserOut)
+@limiter.limit("5/minute")
+def change_password(
+    request: Request,
+    body: ChangePasswordIn,
+    response: Response,
+    user: Annotated[UserModel, Depends(get_current_user)],
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
+) -> UserOut:
+    updated = auth_service.change_password(user, body.current_password, body.new_password)
+    # Re-issue the cookie: change_password() just set password_changed_at, which would otherwise
+    # revoke the caller's own current session on its very next request.
+    _set_session_cookie(response, auth_service.create_access_token(updated))
     return UserOut.from_user(updated)
 
 

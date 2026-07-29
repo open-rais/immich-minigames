@@ -172,6 +172,12 @@ def _seed_legacy(database: str) -> dict[str, int]:
     return {"users": 1, "games": 2, "rounds": 2, "game_settings": 1}
 
 
+# What actually lands in the target after _seed_legacy: the anonymous game (and its one round)
+# has no account to attribute it to, so it's dropped rather than migrated (roadmap #H, F4/
+# decision [I] - the target's games.user_id is NOT NULL).
+_MIGRATABLE_AFTER_SEED = {"users": 1, "games": 1, "rounds": 1, "game_settings": 1}
+
+
 def _counts(database: str, schema: str = LEGACY_SCHEMA) -> dict[str, int]:
     tables = ("users", "games", "rounds", "game_settings")
     with psycopg.connect(_admin_url(database)) as conn, conn.cursor() as cur:
@@ -224,14 +230,15 @@ class TestHappyPath:
     def test_copies_every_row_and_drops_the_legacy_schema(self, migrated_target):
         source, target = migrated_target
         _create_legacy_schema(source)
-        expected = _seed_legacy(source)
+        _seed_legacy(source)
 
         report = _migrate(source, target)
 
         assert report.action == "migrated"
-        assert report.rows_copied == expected
+        assert report.rows_copied == _MIGRATABLE_AFTER_SEED
+        assert report.anonymous_games_dropped == 1
         assert report.dropped is True
-        assert _counts(target) == expected
+        assert _counts(target) == _MIGRATABLE_AFTER_SEED
         assert not _schema_exists(source), "legacy schema must be gone from Immich's database"
 
     def test_preserves_values_exactly_not_just_row_counts(self, migrated_target):
@@ -250,23 +257,19 @@ class TestHappyPath:
             assert is_admin is True
             assert created_at == datetime(2026, 3, 4, 5, 6, 7, 891011), "microseconds must survive"
 
-            cur.execute(
-                f"SELECT payload FROM {LEGACY_SCHEMA}.rounds WHERE score_delta IS NULL"
-            )
+            # The anonymous game's round (score_delta NULL) was dropped along with its game -
+            # roadmap #H, F4/decision [I] - so only the owned game's round survives.
+            cur.execute(f"SELECT payload FROM {LEGACY_SCHEMA}.rounds")
             (payload,) = cur.fetchone()
-            assert payload == {
-                "asset": {"lat": -33.45, "lon": -70.66},
-                "ciudad": "Santiago",
-                "tags": [],
-            }
+            assert payload == {"nested": {"deep": [1, 2, {"x": None}]}}
 
-            # The anonymous game's null FK, and the owned game's intact one.
+            # The owned game's FK is intact; the anonymous one never made it across at all.
             cur.execute(
                 f"SELECT count(*) FROM {LEGACY_SCHEMA}.games g "
                 f"JOIN {LEGACY_SCHEMA}.users u ON u.id = g.user_id"
             )
             assert cur.fetchone()[0] == 1
-            cur.execute(f"SELECT count(*) FROM {LEGACY_SCHEMA}.games WHERE user_id IS NULL")
+            cur.execute(f"SELECT count(*) FROM {LEGACY_SCHEMA}.games")
             assert cur.fetchone()[0] == 1
 
             # Roadmap #f - the legacy game_settings row has no `mode` column (frozen at the 0004
@@ -327,6 +330,46 @@ class TestHappyPath:
             cur.execute(f"SELECT is_admin FROM {LEGACY_SCHEMA}.users")
             assert cur.fetchone()[0] is False
 
+    def test_pre_accounts_install_drops_all_games_but_still_migrates_users(self, migrated_target):
+        """An install frozen at 0001 - the app's very first shape, before user_id (or accounts at
+        all) existed - has `games.owner` and nothing else identifying a player. Every row there is
+        anonymous by definition, not just the ones a NULL user_id would flag on a newer schema, so
+        _copy_games/_copy_rounds_of_migrated_games must drop all of them (roadmap #H, F4/decision
+        [I]: the target's games.user_id is NOT NULL) rather than crash trying to insert a column
+        that was never there to begin with. users has no such problem - it never depended on
+        accounts existing."""
+        source, target = migrated_target
+        _create_legacy_schema(source, revision="0001")
+        game_id = uuid.uuid4()
+        with psycopg.connect(_admin_url(source)) as conn, conn.cursor() as cur:
+            cur.execute(
+                f"INSERT INTO {LEGACY_SCHEMA}.users "
+                "(id, email, username, full_name, password_hash) VALUES (%s, %s, %s, %s, %s)",
+                (uuid.uuid4(), "old@example.com", "old-user", "Old User", "hash"),
+            )
+            cur.execute(
+                f"INSERT INTO {LEGACY_SCHEMA}.games "
+                "(id, owner, game_type, mode, score, finished) VALUES (%s, %s, %s, %s, %s, %s)",
+                (game_id, "some-browser-owner-id", "geoguessr", "classic", 500, True),
+            )
+            cur.execute(
+                f"INSERT INTO {LEGACY_SCHEMA}.rounds "
+                "(id, game_id, round_index, score_delta, payload) VALUES (%s, %s, %s, %s, %s)",
+                (uuid.uuid4(), game_id, 0, 500, Jsonb({"asset": "x"})),
+            )
+            conn.commit()
+
+        report = _migrate(source, target)
+
+        assert report.action == "migrated"
+        # game_settings arrived in 0004 - absent from a 0001 source, so simply skipped (same as
+        # test_older_install_missing_a_later_column_still_migrates above).
+        assert report.rows_copied == {"users": 1, "games": 0, "rounds": 0}
+        assert report.anonymous_games_dropped == 1
+        assert report.dropped is True
+        assert _counts(target) == {"users": 1, "games": 0, "rounds": 0, "game_settings": 0}
+        assert not _schema_exists(source)
+
 
 class TestRefusesToDestroy:
     def test_count_mismatch_rolls_back_and_drops_nothing(self, migrated_target, monkeypatch):
@@ -336,14 +379,10 @@ class TestRefusesToDestroy:
 
         import scripts.migrate_legacy_schema as module
 
-        real_copy = module._copy_table
+        def partial_copy(*args, **kwargs):
+            return  # simulate a copy that silently moves nothing
 
-        def partial_copy(*args, table: str, **kwargs):
-            if table == "rounds":
-                return  # simulate a copy that silently moves nothing
-            return real_copy(*args, table=table, **kwargs)
-
-        monkeypatch.setattr(module, "_copy_table", partial_copy)
+        monkeypatch.setattr(module, "_copy_rounds_of_migrated_games", partial_copy)
 
         with pytest.raises(LegacyMigrationError, match="row counts do not match"):
             _migrate(source, target)
@@ -406,20 +445,20 @@ class TestRerun:
     def test_second_run_is_a_noop(self, migrated_target):
         source, target = migrated_target
         _create_legacy_schema(source)
-        expected = _seed_legacy(source)
+        _seed_legacy(source)
         _migrate(source, target)
 
         report = _migrate(source, target)
 
         assert report.action == "noop"
-        assert _counts(target) == expected, "no duplicate import on re-run"
+        assert _counts(target) == _MIGRATABLE_AFTER_SEED, "no duplicate import on re-run"
 
     def test_resurrected_legacy_schema_is_dropped_without_reimporting(self, migrated_target):
         """An Immich backup restored after migrating brings the old schema back. Its rows are stale
         by definition - the app has written only to the new database since."""
         source, target = migrated_target
         _create_legacy_schema(source)
-        expected = _seed_legacy(source)
+        _seed_legacy(source)
         _migrate(source, target)
         # The restore brings back the schema, rows and all.
         _create_legacy_schema(source)
@@ -429,5 +468,5 @@ class TestRerun:
 
         assert report.action == "zombie"
         assert report.dropped is True
-        assert _counts(target) == expected, "stale rows must not be re-imported or duplicated"
+        assert _counts(target) == _MIGRATABLE_AFTER_SEED, "stale rows must not be re-imported or duplicated"
         assert not _schema_exists(source)

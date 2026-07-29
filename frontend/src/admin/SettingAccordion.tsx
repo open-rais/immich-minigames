@@ -61,14 +61,14 @@ export function SettingAccordion({ icon, title, description, children, nested = 
       className={`${nested ? "mt-3 rounded-xl border border-line" : "mt-4 rounded-2xl border-2 border-primary/20"} px-6 py-4 transition-all`}
     >
       <button type="button" onClick={toggle} aria-expanded={open} className="flex w-full place-items-center justify-between text-start">
-        <div>
-          <div className="flex place-items-center gap-2">
-            {icon && <span className="text-primary">{icon}</span>}
+        <div className="flex min-w-0 place-items-center gap-3">
+          {icon && <span className="flex-none text-primary">{icon}</span>}
+          <div className="min-w-0">
             <h2 className="font-medium text-primary">{title}</h2>
+            {description && <p className="mt-1 text-sm text-muted">{description}</p>}
           </div>
-          {description && <p className="mt-1 text-sm text-muted">{description}</p>}
         </div>
-        <div className="flex place-content-center place-items-center rounded-full p-3 text-muted transition-colors hover:bg-primary/10 hover:text-primary">
+        <div className="flex flex-none place-content-center place-items-center rounded-full p-3 text-muted transition-colors hover:bg-primary/10 hover:text-primary">
           <ChevronIcon open={open} />
         </div>
       </button>

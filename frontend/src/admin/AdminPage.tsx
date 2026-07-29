@@ -3,6 +3,7 @@ import { Link, Navigate } from "react-router-dom"
 
 import { useAuth } from "../auth/useAuth"
 import { AdminGamesSection } from "./AdminGamesSection"
+import { AdminInvitesSection } from "./AdminInvitesSection"
 import { AdminUsersSection } from "./AdminUsersSection"
 import { SettingAccordion } from "./SettingAccordion"
 
@@ -21,11 +22,13 @@ function BackArrowIcon() {
 // categories are both accordions on this one page, matching what the user asked for directly.
 export function AdminPage() {
   const { t } = useTranslation()
-  const { user, loading } = useAuth()
+  const { user } = useAuth()
 
-  if (!loading && !user) return <Navigate to="/login" replace />
-  if (!loading && user && !user.is_admin) return <Navigate to="/" replace />
+  // No "logged in?" check here (unlike pre-F3) - RequireAuth (App.tsx) already guarantees a
+  // session before this page mounts. is_admin is a different concern (authorization, not
+  // authentication) RequireAuth doesn't - and shouldn't - handle, so this check stays.
   if (!user) return null
+  if (!user.is_admin) return <Navigate to="/" replace />
 
   return (
     <div className="min-h-screen bg-app-bg">
@@ -45,6 +48,10 @@ export function AdminPage() {
       <main className="mx-auto max-w-3xl px-6 py-8 md:px-10">
         <SettingAccordion title={t("admin.users.title")} description={t("admin.users.description")}>
           <AdminUsersSection />
+        </SettingAccordion>
+
+        <SettingAccordion title={t("admin.invites.title")} description={t("admin.invites.description")}>
+          <AdminInvitesSection />
         </SettingAccordion>
 
         {/* Roadmap #f - each game is now its own top-level accordion (AdminGamesSection renders
