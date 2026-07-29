@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -52,6 +53,13 @@ class Settings(BaseSettings):
     # behind a TLS-terminating reverse proxy (the expected way to self-host this), or the JWT
     # cookie keeps going out without the Secure flag even over HTTPS.
     cookie_secure: bool = False
+
+    # Roadmap #I (docs/TODO/LOGGING.md, decision [H]) - LOG_LEVEL only affects app logging
+    # (getLogger(__name__) call sites); the audit/access loggers are always INFO, never filtered.
+    # LOG_FORMAT defaults to legible console output for bare `uv run uvicorn` dev; the Dockerfile
+    # sets ENV LOG_FORMAT=json so every packaged install emits JSON without touching its .env.
+    log_level: str = "INFO"
+    log_format: Literal["console", "json"] = "console"
 
     # Roadmap #H, F5 - backing store for api/rate_limit.py's Limiter (and the per-email login
     # check it shares that storage with). "memory://" (default) is a single process's own memory -

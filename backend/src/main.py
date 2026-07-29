@@ -21,6 +21,7 @@ from api.rate_limit import limiter
 from config import get_settings
 from games.immichdle import DuplicateGuessError, InvalidGuessError
 from games.whos_that_person import IncompleteGuessError
+from logging_setup import configure_logging
 from persistence.base import get_session_factory
 from services.admin_bootstrap import ensure_admin
 from services.auth_service import (
@@ -54,6 +55,8 @@ async def _lifespan(_: FastAPI) -> AsyncIterator[None]:
         session.close()
     yield
 
+
+configure_logging(get_settings())
 
 app = FastAPI(title="Immich Minigames", lifespan=_lifespan)
 app.state.limiter = limiter
