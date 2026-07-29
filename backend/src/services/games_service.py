@@ -2,14 +2,15 @@
 Games service - creates/loads/plays games. Bridges the game-logic layer (games/*.py, no
 persistence awareness) and this app's own DB (persistence/games.py).
 
-NotEnoughContentError/UnsupportedGameError are defined in services/errors.py, not here, and
-re-exported below - services/daily_service.py needs to raise the exact same NotEnoughContentError
-this module's own games raise, and importing it back from here would cycle (this module also
-imports DailyService). Every existing `from services.games_service import NotEnoughContentError`
-call site (main.py, api/dto/common.py, tests/*) keeps working unchanged via that re-export.
+The (game_type, mode) -> game/round-class registry lives in services/game_registry.py, not here -
+services/daily_service.py needs to read it too (to resolve each game's DailySupport module), and
+importing it back from here would cycle (this module also imports DailyService); same reasoning
+for why NotEnoughContentError/UnsupportedGameError live in services/errors.py and are re-exported
+below rather than defined here. Every existing `from services.games_service import
+NotEnoughContentError` call site (main.py, api/dto/common.py, tests/*) keeps working unchanged via
+that re-export.
 """
 
-from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any, Literal
@@ -20,78 +21,19 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from games.base import BaseGame, BaseRound
-from games.daily_scripted import DailyDateguessrGame, DailyGeoguessrGame, DailyWhosThatPersonGame
-from games.dateguessr import GAME_TYPE as DATEGUESSR_TYPE
-from games.dateguessr import MODE_DAYS_TO_DATE, DateguessrGame, DateguessrRound
-from games.geoguessr import GAME_TYPE as GEOGUESSR_TYPE
-from games.geoguessr import MODE_DISTANCE_BETWEEN_GUESS, GeoguessrGame, GeoguessrRound
-from games.immichdle import GAME_TYPE as IMMICHDLE_TYPE
-from games.immichdle import MODE_PERSON, ImmichdleGame, ImmichdleRound, PersonSnapshot
-from games.more_or_less import GAME_TYPE as MORE_OR_LESS_TYPE
-from games.more_or_less import (
-    MODE_ALBUM_ASSETS,
-    MODE_PERSON_ASSETS,
-    AlbumAssetsProvider,
-    CandidateProvider,
-    EntitySnapshot,
-    MoreOrLessGame,
-    MoreOrLessRound,
-    PersonAssetsProvider,
-    ScriptedCandidateProvider,
-)
-from games.whos_that_person import GAME_TYPE as WHOS_THAT_PERSON_TYPE
-from games.whos_that_person import MODE_NAMED_FACES, WhosThatPersonGame, WhosThatPersonRound
+from games.immichdle import ImmichdleGame
+from games.whos_that_person import WhosThatPersonGame
 from persistence.daily import DailyChallengeModel
 from persistence.games import GameModel, RoundModel
 from persistence.users import UserModel
 from services.daily_service import DailyService
 from services.daily_settings import DailySettingsService
 from services.errors import NotEnoughContentError, UnsupportedGameError  # noqa: F401
+from services.game_registry import GAMES as _GAMES
+from services.game_registry import GameSpec
 from services.game_settings import GameSettingsService
 from services.immich_service import ImmichService
 from services.ml_service import MLService
-
-
-@dataclass(frozen=True)
-class _GameSpec:
-    """One registry entry per (game_type, mode) - single source of truth for which game/round
-    classes a combination maps to, so adding a game only ever means adding one entry here (used to
-    be two separate dicts that had to stay in lockstep).
-
-    `provider_factory` is only set for multi-mode games whose modes differ solely in their data
-    source (MoreOrLess: personAssets vs albumAssets). When present, GamesService builds the provider
-    and hands the game `provider` + `mode` *instead of* immich_service - the provider fully replaces
-    the game's data source, so it has no other use for immich_service directly."""
-
-    game_class: type[BaseGame]
-    round_class: type[BaseRound]
-    provider_factory: Callable[[ImmichService], CandidateProvider] | None = None
-
-
-_GAMES: dict[tuple[str, str], _GameSpec] = {
-    (MORE_OR_LESS_TYPE, MODE_PERSON_ASSETS): _GameSpec(
-        MoreOrLessGame, MoreOrLessRound, provider_factory=PersonAssetsProvider
-    ),
-    (MORE_OR_LESS_TYPE, MODE_ALBUM_ASSETS): _GameSpec(
-        MoreOrLessGame, MoreOrLessRound, provider_factory=AlbumAssetsProvider
-    ),
-    (GEOGUESSR_TYPE, MODE_DISTANCE_BETWEEN_GUESS): _GameSpec(GeoguessrGame, GeoguessrRound),
-    (DATEGUESSR_TYPE, MODE_DAYS_TO_DATE): _GameSpec(DateguessrGame, DateguessrRound),
-    (IMMICHDLE_TYPE, MODE_PERSON): _GameSpec(ImmichdleGame, ImmichdleRound),
-    (WHOS_THAT_PERSON_TYPE, MODE_NAMED_FACES): _GameSpec(WhosThatPersonGame, WhosThatPersonRound),
-}
-
-# Roadmap #G - which game class a daily game of this game_type is built from instead of the normal
-# one in _GAMES above (games/daily_scripted.py's thin subclasses, which replay a frozen spec
-# instead of querying Immich). Keyed by game_type alone (not mode) since each of these three games
-# has exactly one mode; MoreOrLess and Immichdle aren't here at all - they stay their normal game
-# class, just constructed with a ScriptedCandidateProvider / a pre-picked target instead (see
-# GamesService._daily_game_kwargs).
-_DAILY_GAME_CLASSES: dict[str, type[BaseGame]] = {
-    GEOGUESSR_TYPE: DailyGeoguessrGame,
-    DATEGUESSR_TYPE: DailyDateguessrGame,
-    WHOS_THAT_PERSON_TYPE: DailyWhosThatPersonGame,
-}
 
 
 @dataclass(frozen=True)
@@ -202,63 +144,57 @@ class GamesService:
         self._daily_settings_service = daily_settings_service or DailySettingsService(session)
         self._daily_service = daily_service or DailyService(session, immich_service)
 
-    def _game_kwargs(self, spec: _GameSpec, game_type: str, mode: str) -> dict[str, Any]:
+    def _game_kwargs(self, spec: GameSpec, game_type: str, mode: str) -> dict[str, Any]:
         """Constructor/`start()` kwargs every game needs, plus whichever extra ones a specific game
-        class needs beyond that - ImmichdleGame's MLService (see games/immichdle.py), and, for a
-        provider-based multi-mode game (MoreOrLess), its per-mode `provider` + `mode`. Centralizing
-        the "which game needs what" knowledge here means a new game with its own extra dependency
-        only ever needs one line added in this one method, not a change spread across every call
-        site that builds a game. `game_type`/`mode` are plain strs (not derived from `game_class`)
-        since not every concrete game class exposes them - callers already have the (game_type, mode)
-        key that picked this spec in scope."""
+        class needs beyond that. Centralizing the "which game needs what" knowledge here means a
+        new game with its own extra dependency only ever needs one line added in this one method,
+        not a change spread across every call site that builds a game. `game_type`/`mode` are plain
+        strs (not derived from `game_class`) since not every concrete game class exposes them -
+        callers already have the (game_type, mode) key that picked this spec in scope."""
         kwargs: dict[str, Any] = {
             "settings": self._game_settings_service.get_settings(game_type, mode),
         }
         if spec.provider_factory is not None:
             # The provider fully replaces this game's data source, so it gets provider + mode
-            # instead of immich_service (see _GameSpec.provider_factory).
+            # instead of immich_service/content (see services/game_registry.py's GameSpec).
             kwargs["provider"] = spec.provider_factory(self._immich_service)
             kwargs["mode"] = mode
+        elif spec.content_factory is not None:
+            # The content object fully replaces this game's data source too (Geoguessr/Dateguessr)
+            # - except WhosThatPerson, which still needs immich_service directly below for live
+            # guess-name resolution, unrelated to content.
+            kwargs["content"] = spec.content_factory(self._immich_service)
         else:
             kwargs["immich_service"] = self._immich_service
         if spec.game_class is ImmichdleGame:
             kwargs["ml_service"] = self._ml_service
+        if spec.game_class is WhosThatPersonGame:
+            kwargs["immich_service"] = self._immich_service
         return kwargs
 
     def _daily_game_kwargs(
         self, game_type: str, mode: str, challenge: DailyChallengeModel, *, rounds_played: int
     ) -> dict[str, Any]:
-        """Kwargs for a daily game's class - mirrors _game_kwargs's role but sources content from
-        the frozen challenge spec/settings snapshot (docs/TODO/DAILY-GAMES.md §4.2, §4.4) instead
-        of live Immich queries or admin-configured live settings. `rounds_played` is how many
-        rounds already exist (0 right before calling .start(), or len(persisted rounds) when
-        reconstructing an in-progress game in _row_to_game) - only MoreOrLess's scripted provider
-        needs it, to resume mid-chain at the right index; Immichdle only needs the target on the
-        very first round (rounds_played == 0), since ImmichdleRound.from_payload already carries it
-        for every later reconstruction."""
-        settings = challenge.settings
-        if game_type == MORE_OR_LESS_TYPE:
-            chain = [EntitySnapshot.from_dict(e) for e in challenge.spec["chain"]]
-            # start() consumes chain[0] (reference) + chain[1] (first candidate); each further
-            # round played consumes one more - see games/more_or_less.py's ScriptedCandidateProvider.
-            next_index = rounds_played + 1
-            return {"provider": ScriptedCandidateProvider(chain, next_index), "mode": mode, "settings": settings}
-        if game_type in (GEOGUESSR_TYPE, DATEGUESSR_TYPE, WHOS_THAT_PERSON_TYPE):
-            return {
-                "immich_service": self._immich_service,  # unused for content, still a required param
-                "settings": settings,
-                "rounds_spec": challenge.spec["rounds"],
-            }
-        if game_type == IMMICHDLE_TYPE:
-            kwargs: dict[str, Any] = {
-                "immich_service": self._immich_service,
-                "ml_service": self._ml_service,
-                "settings": settings,
-            }
-            if rounds_played == 0:
-                kwargs["target"] = PersonSnapshot.from_dict(challenge.spec["target"])
-            return kwargs
-        raise UnsupportedGameError(f"unsupported daily game/mode: {game_type}/{mode}")
+        """Kwargs for a daily game - mirrors _game_kwargs's role but sources content from the
+        frozen challenge spec/settings snapshot (docs/TODO/DAILY-GAMES.md §4.2, §4.4) instead of
+        live Immich queries or admin-configured live settings. Delegates the actual per-game
+        decisions to that (game_type, mode)'s own `games/<game>/daily.py::game_kwargs()`
+        (docs/TODO/DECOUPLING.md decision E - this registry lookup is the single dispatch point,
+        not a second dict to keep in sync). `rounds_played` is how many rounds already exist (0
+        right before calling .start(), or len(persisted rounds) when reconstructing an
+        in-progress game in _row_to_game) - only a game whose scripted source needs to resume
+        mid-sequence actually uses it."""
+        spec = _GAMES.get((game_type, mode))
+        if spec is None or spec.daily is None:
+            raise UnsupportedGameError(f"unsupported daily game/mode: {game_type}/{mode}")
+        return spec.daily.game_kwargs(
+            mode,
+            challenge.spec,
+            challenge.settings,
+            rounds_played=rounds_played,
+            immich_service=self._immich_service,
+            ml_service=self._ml_service,
+        )
 
     def create_game(
         self, owner: str, game_type: str, mode: str, user_id: UUID | None = None
@@ -301,10 +237,11 @@ class GamesService:
         if already_played is not None:
             raise DailyAlreadyPlayedError(f"already played today's {game_type}/{mode} challenge")
 
-        game_class = _DAILY_GAME_CLASSES.get(game_type, _GAMES[(game_type, mode)].game_class)
+        # Daily games use the *same* class a normal game does (docs/TODO/DECOUPLING.md decision C) -
+        # only the content source differs, via _daily_game_kwargs above.
         kwargs = self._daily_game_kwargs(game_type, mode, challenge, rounds_played=0)
         try:
-            game = game_class.start(id=uuid4(), owner=owner, **kwargs)
+            game = _GAMES[(game_type, mode)].game_class.start(id=uuid4(), owner=owner, **kwargs)
         except ValueError as e:
             raise NotEnoughContentError(str(e)) from e
         game.daily_challenge_date = challenge.challenge_date
@@ -586,8 +523,9 @@ class GamesService:
             challenge = self._session.get(DailyChallengeModel, game_row.daily_challenge_id)
             if challenge is None:
                 raise RuntimeError(f"game {game_row.id} references a missing daily challenge")
-            game_class = _DAILY_GAME_CLASSES.get(game_row.game_type, spec.game_class)
-            game = game_class(
+            # Daily games use the *same* class a normal game does (docs/TODO/DECOUPLING.md decision
+            # C) - only the content source differs, via _daily_game_kwargs above.
+            game = spec.game_class(
                 id=game_row.id,
                 owner=game_row.owner,
                 rounds=rounds,

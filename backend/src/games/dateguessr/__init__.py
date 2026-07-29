@@ -10,8 +10,10 @@ from games.dateguessr.game import (
     MODE_DAYS_TO_DATE,
     TOTAL_ROUNDS,
     AssetSnapshot,
+    DateguessrContent,
     DateguessrGame,
     DateguessrRound,
+    LiveContent,
 )
 
 __all__ = [
@@ -23,6 +25,8 @@ __all__ = [
     "MODE_DAYS_TO_DATE",
     "TOTAL_ROUNDS",
     "AssetSnapshot",
+    "DateguessrContent",
     "DateguessrGame",
     "DateguessrRound",
+    "LiveContent",
 ]

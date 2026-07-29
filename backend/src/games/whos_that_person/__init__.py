@@ -9,6 +9,8 @@ from games.whos_that_person.game import (
     TOTAL_PEOPLE,
     HiddenFace,
     IncompleteGuessError,
+    LiveContent,
+    WhosThatPersonContent,
     WhosThatPersonGame,
     WhosThatPersonRound,
 )
@@ -20,6 +22,8 @@ __all__ = [
     "TOTAL_PEOPLE",
     "HiddenFace",
     "IncompleteGuessError",
+    "LiveContent",
+    "WhosThatPersonContent",
     "WhosThatPersonGame",
     "WhosThatPersonRound",
 ]

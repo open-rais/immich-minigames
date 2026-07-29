@@ -11,9 +11,11 @@ from games.geoguessr.game import (
     MODE_DISTANCE_BETWEEN_GUESS,
     TOTAL_ROUNDS,
     AssetSnapshot,
+    GeoguessrContent,
     GeoguessrGame,
     GeoguessrRound,
     LatLng,
+    LiveContent,
     haversine_km,
 )
 
@@ -27,8 +29,10 @@ __all__ = [
     "MODE_DISTANCE_BETWEEN_GUESS",
     "TOTAL_ROUNDS",
     "AssetSnapshot",
+    "GeoguessrContent",
     "GeoguessrGame",
     "GeoguessrRound",
     "LatLng",
+    "LiveContent",
     "haversine_km",
 ]

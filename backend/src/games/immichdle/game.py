@@ -256,8 +256,8 @@ class ImmichdleGame(BaseGame):
         settings: Mapping[str, float] | None = None,
         target: PersonSnapshot | None = None,
     ) -> "ImmichdleGame":
-        # Roadmap #G - a daily game hands in its pre-generated target (services/daily_service.py's
-        # _build_immichdle_target) instead of sampling one here; guesses stay live either way
+        # Roadmap #G - a daily game hands in its pre-generated target (games/immichdle/daily.py's
+        # build_spec) instead of sampling one here; guesses stay live either way
         # (play_round below always queries immich_service for whatever the player types), so
         # nothing downstream of this needs to know whether the target came from a live sample or a
         # frozen spec.

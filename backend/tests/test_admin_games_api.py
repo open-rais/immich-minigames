@@ -158,7 +158,7 @@ class TestUpdateGameSettings:
 
 class TestGameSettingsAffectNewGames:
     """End-to-end - an admin override actually reaches GameOut.total_rounds (see api/dto/common.py
-    and games/asset_rounds.py's total_rounds property), not just what GameSettingsService reports
+    and games/geoguessr/game.py's total_rounds property), not just what GameSettingsService reports
     in isolation (test_game_settings_service.py) or what the admin endpoint echoes back."""
 
     def test_total_rounds_override_is_reflected_in_a_newly_created_game(self, client, db_session):

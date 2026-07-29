@@ -71,30 +71,6 @@ class CandidateProvider(ABC):
         create_next_round's fallback), so this ignores any recent-window exclusion."""
 
 
-class ScriptedCandidateProvider(CandidateProvider):
-    """Roadmap #G (daily games) - plays back a pre-generated chain (a daily_challenges.spec's
-    "chain", built by daily.py's build_spec using this same engine) instead of sampling from Immich
-    live. `sample()` ignores `exclude_ids` entirely - the chain was already built repeat-free (or
-    intentionally allowing a repeat, mirroring the real game's own small-pool fallback - see
-    create_next_round's fallback) at generation time, so re-filtering it here would be redundant.
-    Once the chain is exhausted, `any_exist()` turns False, which makes MoreOrLessGame.has_next_round()
-    end the game as "perfect" (decision [F], docs/TODO/DAILY-GAMES.md) rather than as a loss."""
-
-    def __init__(self, chain: list[EntitySnapshot], next_index: int) -> None:
-        self._chain = chain
-        self._next_index = next_index
-
-    def sample(self, *, limit: int, exclude_ids: frozenset[UUID]) -> list[EntitySnapshot]:
-        if self._next_index >= len(self._chain):
-            return []
-        entity = self._chain[self._next_index]
-        self._next_index += 1
-        return [entity]
-
-    def any_exist(self) -> bool:
-        return self._next_index < len(self._chain)
-
-
 def _pick_non_tied_candidate(
     provider: CandidateProvider, reference_value: int | str, exclude_ids: frozenset[UUID]
 ) -> EntitySnapshot | None:

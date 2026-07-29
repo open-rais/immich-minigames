@@ -13,7 +13,6 @@ from games.more_or_less.game import (
     Guess,
     MoreOrLessGame,
     MoreOrLessRound,
-    ScriptedCandidateProvider,
 )
 from games.more_or_less.person_assets import PersonAssetsProvider
 
@@ -28,5 +27,4 @@ __all__ = [
     "MoreOrLessGame",
     "MoreOrLessRound",
     "PersonAssetsProvider",
-    "ScriptedCandidateProvider",
 ]

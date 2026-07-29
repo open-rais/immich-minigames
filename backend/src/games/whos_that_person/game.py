@@ -21,7 +21,7 @@ previous round (see WhosThatPersonRound.calculate_score).
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Protocol
 from uuid import UUID, uuid4
 
 from domain.face import Face
@@ -73,6 +73,49 @@ class HiddenFace(DictCodec):
             bounding_box_x2=face.bounding_box_x2,
             bounding_box_y2=face.bounding_box_y2,
         )
+
+
+class WhosThatPersonContent(Protocol):
+    """The single point of variation between a normal Who'sThatPerson game and a daily one
+    (roadmap #G) - live Immich queries (LiveContent below) vs. a frozen daily spec
+    (games/whos_that_person/daily.py's ScriptedContent). The game engine below never knows which.
+
+    `has_more` and `pick_round` are deliberately separate methods, not "call pick_round and discard
+    the result" - LiveContent's query is idempotent to repeat, but ScriptedContent's pick_round
+    advances an internal index on every successful call, so has_next_round() checking availability
+    by calling (and discarding) pick_round would silently skip a round."""
+
+    @staticmethod
+    def has_more(max_faces: int, exclude_asset_ids: frozenset[UUID]) -> bool:
+        """Whether another round's worth of content is available, without actually picking it."""
+        ...
+
+    @staticmethod
+    def pick_round(max_faces: int, exclude_asset_ids: frozenset[UUID]) -> tuple[UUID, list[HiddenFace]] | None:
+        """The next round's photo + which of its named faces to hide - None when no eligible photo
+        is left."""
+        ...
+
+
+class LiveContent:
+    """Normal-play WhosThatPersonContent - samples an eligible photo straight from Immich."""
+
+    def __init__(self, immich_service: ImmichService) -> None:
+        self._immich_service = immich_service
+
+    def pick_round(self, max_faces: int, exclude_asset_ids: frozenset[UUID]) -> tuple[UUID, list[HiddenFace]] | None:
+        faces = self._immich_service.get_random_asset_with_named_faces(
+            max_faces=max_faces, exclude_asset_ids=exclude_asset_ids
+        )
+        if not faces:
+            return None
+        return faces[0].asset_id, [HiddenFace.of(f) for f in faces]
+
+    def has_more(self, max_faces: int, exclude_asset_ids: frozenset[UUID]) -> bool:
+        # Cheap-ish existence check, discarded - create_next_round() samples again, same
+        # double-sample pattern MoreOrLessGame/GeoguessrGame already use. Safe to repeat here since
+        # a live query has no side effect (unlike ScriptedContent.has_more).
+        return self.pick_round(max_faces, exclude_asset_ids) is not None
 
 
 class WhosThatPersonRound(BaseRound):
@@ -174,6 +217,7 @@ class WhosThatPersonGame(BaseGame):
         owner: str,
         rounds: list[WhosThatPersonRound],
         immich_service: ImmichService,
+        content: WhosThatPersonContent,
         score: int = 0,
         finished: bool = False,
         settings: Mapping[str, float] | None = None,
@@ -188,7 +232,11 @@ class WhosThatPersonGame(BaseGame):
             finished=finished,
             settings=settings,
         )
+        # Always live, daily or not - unlike content (which round's photo/faces come from), guess
+        # resolution (play_round below) always needs a fresh name lookup for whatever the player
+        # actually typed, regardless of where the round's content itself came from.
         self._immich_service = immich_service
+        self._content = content
 
     @property
     def _people_asked(self) -> int:
@@ -213,26 +261,17 @@ class WhosThatPersonGame(BaseGame):
         # photos - the named-people pool is much smaller than 15).
         return frozenset(round_.asset_id for round_ in self.rounds)
 
-    def _pick_round_content(
-        self, max_faces: int, exclude_asset_ids: frozenset[UUID]
-    ) -> tuple[UUID, list[HiddenFace]] | None:
-        """The next round's photo + which of its named faces to hide - the single point of
-        variation the daily flow overrides (roadmap #G, games/daily_scripted.py's
-        DailyWhosThatPersonGame) to replay a pre-generated sequence instead of querying Immich
-        live. None when no eligible photo exists."""
-        faces = self._immich_service.get_random_asset_with_named_faces(
-            max_faces=max_faces, exclude_asset_ids=exclude_asset_ids
-        )
-        if not faces:
-            return None
-        return faces[0].asset_id, [HiddenFace.of(f) for f in faces]
-
     @classmethod
     def start(
-        cls, id: UUID, owner: str, immich_service: ImmichService, settings: Mapping[str, float] | None = None
+        cls,
+        id: UUID,
+        owner: str,
+        immich_service: ImmichService,
+        content: WhosThatPersonContent,
+        settings: Mapping[str, float] | None = None,
     ) -> "WhosThatPersonGame":
-        game = cls(id=id, owner=owner, rounds=[], immich_service=immich_service, settings=settings)
-        picked = game._pick_round_content(min(game._max_hidden_faces, game.total_people), frozenset())
+        game = cls(id=id, owner=owner, rounds=[], immich_service=immich_service, content=content, settings=settings)
+        picked = game._content.pick_round(min(game._max_hidden_faces, game.total_people), frozenset())
         if picked is None:
             raise ValueError("not enough named faces in Immich to start a Who'sThatPerson game")
 
@@ -260,14 +299,12 @@ class WhosThatPersonGame(BaseGame):
         if self._people_asked >= self.total_people:
             return False
         max_faces = min(self._max_hidden_faces, self.total_people - self._people_asked)
-        # Cheap-ish existence check, discarded - create_next_round() samples again, same
-        # double-sample pattern MoreOrLessGame/AssetRoundsGame already use.
-        return self._pick_round_content(max_faces, self._shown_asset_ids) is not None
+        return self._content.has_more(max_faces, self._shown_asset_ids)
 
     def create_next_round(self) -> WhosThatPersonRound:
         previous = self.current_round
         max_faces = min(self._max_hidden_faces, self.total_people - self._people_asked)
-        picked = self._pick_round_content(max_faces, self._shown_asset_ids)
+        picked = self._content.pick_round(max_faces, self._shown_asset_ids)
         if picked is None:
             raise ValueError("no more eligible photos left - has_next_round() should have returned False")
         asset_id, faces = picked

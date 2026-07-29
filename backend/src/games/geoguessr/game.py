@@ -4,16 +4,19 @@ point on a map guessing where it was taken. 5 rounds are always played (unlike M
 guess doesn't end the game early), and the final score is the sum of all 5 rounds' scores. See
 docs/GAMES/GEOGUESSR.md.
 
-Owns its entire game loop (round count, candidate picking, next-round creation, exponential-decay
-scoring) - previously factored out into a shared base class with Dateguessr
-(games/asset_rounds.py), deliberately un-shared per docs/TODO/DECOUPLING.md so a change to this
-game's loop never requires touching Dateguessr's.
+Owns its entire game loop (round count, next-round creation, exponential-decay scoring) -
+previously factored out into a shared base class with Dateguessr (games/asset_rounds.py),
+deliberately un-shared per docs/TODO/DECOUPLING.md so a change to this game's loop never requires
+touching Dateguessr's. *Which* asset/extras a round gets is a separate axis of variation
+(`GeoguessrContent` below) - live Immich queries normally, a frozen daily spec for the daily flow
+(games/geoguessr/daily.py's ScriptedContent) - mirroring how MoreOrLess already varies its content
+via CandidateProvider.
 """
 
 import math
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Protocol
 from uuid import UUID, uuid4
 
 from domain.asset import Asset
@@ -88,6 +91,82 @@ class AssetSnapshot(DictCodec):
         return cls(id=asset.id, latitude=asset.latitude, longitude=asset.longitude)
 
 
+class GeoguessrContent(Protocol):
+    """The single point of variation between a normal Geoguessr game and a daily one (roadmap #G) -
+    live Immich queries (LiveContent below) vs. a frozen daily spec (games/geoguessr/daily.py's
+    ScriptedContent). The game engine below never knows which."""
+
+    @staticmethod
+    def pick_asset(exclude_ids: frozenset[UUID], previous_answers: list[tuple[float, float]]) -> Asset | None:
+        """The next round's main asset, excluding `exclude_ids` and preferring one far enough from
+        every entry in `previous_answers` (see games/shared/picking.py's pick_spread_asset) - None
+        when no eligible asset is left."""
+        ...
+
+    @staticmethod
+    def pick_extras(main: Asset, exclude_ids: frozenset[UUID], *, limit: int) -> list[Asset]:
+        """Up to `limit` decorative photos to show alongside `main` this round."""
+        ...
+
+    @staticmethod
+    def has_more(exclude_ids: frozenset[UUID]) -> bool:
+        """Whether another round's worth of content is available, without actually picking it -
+        used by has_next_round() so it doesn't have to look at a guess to decide (this game's
+        rounds are guess-independent, unlike MoreOrLess's chain)."""
+        ...
+
+
+class LiveContent:
+    """Normal-play GeoguessrContent - samples eligible assets straight from Immich."""
+
+    def __init__(self, immich_service: ImmichService) -> None:
+        self._immich_service = immich_service
+
+    def _query_assets(self, exclude_ids: frozenset[UUID], *, limit: int, randomize: bool) -> list[Asset]:
+        return self._immich_service.get_assets(
+            media_type="photo", with_location=True, randomize=randomize, limit=limit, exclude_ids=exclude_ids
+        )
+
+    def _query_extra_assets(self, main: Asset, exclude_ids: frozenset[UUID], *, limit: int) -> list[Asset]:
+        assert main.latitude is not None and main.longitude is not None
+        candidates = self._immich_service.get_assets(
+            media_type="photo",
+            with_location=True,
+            near_km=(main.latitude, main.longitude, _EXTRA_RADIUS_KM),
+            local_month=main.local_date.month,
+            randomize=True,
+            limit=limit,
+            exclude_ids=exclude_ids,
+        )
+        # near_km is a coarse bounding-box prefilter (box, not circle) - keep only the ones that are
+        # truly within the radius.
+        kept = []
+        for candidate in candidates:
+            assert candidate.latitude is not None and candidate.longitude is not None  # with_location=True
+            if haversine_km(main.latitude, main.longitude, candidate.latitude, candidate.longitude) <= _EXTRA_RADIUS_KM:
+                kept.append(candidate)
+        return kept
+
+    @staticmethod
+    def _separation(candidate: Asset, answer: tuple[float, float]) -> float:
+        assert candidate.latitude is not None and candidate.longitude is not None
+        return haversine_km(candidate.latitude, candidate.longitude, answer[0], answer[1])
+
+    def pick_asset(self, exclude_ids: frozenset[UUID], previous_answers: list[tuple[float, float]]) -> Asset | None:
+        candidates = self._query_assets(exclude_ids, limit=_CANDIDATE_SAMPLE_SIZE, randomize=True)
+        return pick_spread_asset(candidates, previous_answers, self._separation, _MIN_CANDIDATE_SEPARATION_KM)
+
+    def pick_extras(self, main: Asset, exclude_ids: frozenset[UUID], *, limit: int) -> list[Asset]:
+        candidates = self._query_extra_assets(main, exclude_ids, limit=_EXTRA_CANDIDATE_SAMPLE_SIZE)
+        return candidates[:limit]
+
+    def has_more(self, exclude_ids: frozenset[UUID]) -> bool:
+        # Cheap existence check - pick_asset()'s separation-aware pick always succeeds as long as
+        # the candidate pool isn't empty (see pick_spread_asset's fallback), so this is consistent
+        # with it without needing to sample _CANDIDATE_SAMPLE_SIZE rows twice.
+        return bool(self._query_assets(exclude_ids, limit=1, randomize=False))
+
+
 class GeoguessrRound(BaseRound):
     def __init__(
         self,
@@ -151,7 +230,7 @@ class GeoguessrGame(BaseGame):
         id: UUID,
         owner: str,
         rounds: list[BaseRound],
-        immich_service: ImmichService,
+        content: GeoguessrContent,
         score: int = 0,
         finished: bool = False,
         settings: Mapping[str, float] | None = None,
@@ -166,7 +245,7 @@ class GeoguessrGame(BaseGame):
             finished=finished,
             settings=settings,
         )
-        self._immich_service = immich_service
+        self._content = content
 
     # -- admin-configurable (ADMIN-FEATURE.md point #4, see services/game_settings.py) ----------
 
@@ -181,32 +260,7 @@ class GeoguessrGame(BaseGame):
     def _max_extra_assets(self) -> int:
         return int(self._settings.get("max_extra_assets", MAX_EXTRA_ASSETS))
 
-    # -- content (this game's own Immich queries) ----------------------------
-
-    def _query_assets(self, exclude_ids: frozenset[UUID], *, limit: int, randomize: bool) -> list[Asset]:
-        return self._immich_service.get_assets(
-            media_type="photo", with_location=True, randomize=randomize, limit=limit, exclude_ids=exclude_ids
-        )
-
-    def _query_extra_assets(self, main: Asset, exclude_ids: frozenset[UUID], *, limit: int) -> list[Asset]:
-        assert main.latitude is not None and main.longitude is not None
-        candidates = self._immich_service.get_assets(
-            media_type="photo",
-            with_location=True,
-            near_km=(main.latitude, main.longitude, _EXTRA_RADIUS_KM),
-            local_month=main.local_date.month,
-            randomize=True,
-            limit=limit,
-            exclude_ids=exclude_ids,
-        )
-        # near_km is a coarse bounding-box prefilter (box, not circle) - keep only the ones that are
-        # truly within the radius.
-        kept = []
-        for candidate in candidates:
-            assert candidate.latitude is not None and candidate.longitude is not None  # with_location=True
-            if haversine_km(main.latitude, main.longitude, candidate.latitude, candidate.longitude) <= _EXTRA_RADIUS_KM:
-                kept.append(candidate)
-        return kept
+    # -- round building -------------------------------------------------------
 
     def _make_round(self, round_index: int, asset: Asset, extras: list[Asset]) -> GeoguessrRound:
         return GeoguessrRound(
@@ -216,10 +270,6 @@ class GeoguessrGame(BaseGame):
             asset=AssetSnapshot.of(asset),
             extras=[AssetSnapshot.of(extra) for extra in extras],
         )
-
-    def _separation(self, candidate: Asset, answer: tuple[float, float]) -> float:
-        assert candidate.latitude is not None and candidate.longitude is not None
-        return haversine_km(candidate.latitude, candidate.longitude, answer[0], answer[1])
 
     def _previous_answers(self) -> list[tuple[float, float]]:
         return [(round_.asset.latitude, round_.asset.longitude) for round_ in self.rounds]
@@ -233,18 +283,16 @@ class GeoguessrGame(BaseGame):
         return frozenset(id_ for round_ in self.rounds for id_ in round_.shown_entities)
 
     def _pick_asset(self, exclude_ids: frozenset[UUID]) -> Asset | None:
-        candidates = self._query_assets(exclude_ids, limit=_CANDIDATE_SAMPLE_SIZE, randomize=True)
-        return pick_spread_asset(candidates, self._previous_answers(), self._separation, _MIN_CANDIDATE_SEPARATION_KM)
+        return self._content.pick_asset(exclude_ids, self._previous_answers())
 
     def _pick_extras(self, main: Asset, exclude_ids: frozenset[UUID]) -> list[Asset]:
-        candidates = self._query_extra_assets(main, exclude_ids, limit=_EXTRA_CANDIDATE_SAMPLE_SIZE)
-        return candidates[: self._max_extra_assets]
+        return self._content.pick_extras(main, exclude_ids, limit=self._max_extra_assets)
 
     @classmethod
     def start(
-        cls, id: UUID, owner: str, immich_service: ImmichService, settings: Mapping[str, float] | None = None
+        cls, id: UUID, owner: str, content: GeoguessrContent, settings: Mapping[str, float] | None = None
     ) -> "GeoguessrGame":
-        game = cls(id=id, owner=owner, rounds=[], immich_service=immich_service, settings=settings)
+        game = cls(id=id, owner=owner, rounds=[], content=content, settings=settings)
         asset = game._pick_asset(exclude_ids=frozenset())
         if asset is None:
             raise ValueError(cls._not_enough_assets_message)
@@ -255,11 +303,7 @@ class GeoguessrGame(BaseGame):
     def has_next_round(self) -> bool:
         if self.current_round.round_index >= self.total_rounds:
             return False
-        # Cheap existence check - create_next_round()'s separation-aware pick always succeeds as long
-        # as the candidate pool isn't empty (see pick_spread_asset's fallback), so this is consistent
-        # with it without needing to sample _CANDIDATE_SAMPLE_SIZE rows twice.
-        remaining = self._query_assets(self._shown_asset_ids, limit=1, randomize=False)
-        return bool(remaining)
+        return self._content.has_more(self._shown_asset_ids)
 
     def create_next_round(self) -> BaseRound:
         asset = self._pick_asset(self._shown_asset_ids)
