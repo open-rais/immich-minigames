@@ -180,6 +180,22 @@
       "real": "Real"
     }
   },
+  "timeline": {
+    "title": "Timeline",
+    "modes": {
+      "arcade": "Arcade"
+    },
+    "start": {
+      "description": "Inserta cada foto nueva en el lugar correcto de la línea de tiempo. Un error termina la partida."
+    },
+    "cardLabel": "Carta {{count}}",
+    "confirmSlot": "Confirmar posición",
+    "selectSlotAria": "Elegir punto de inserción",
+    "result": {
+      "correct": "¡Correcto!",
+      "wrong": "Lugar equivocado"
+    }
+  },
   "auth": {
     "fields": {
       "email": "Correo electrónico",
@@ -263,7 +279,10 @@
         "wrong_guess_penalty": "Penalización por error",
         "asset_count_weight": "Peso de la cantidad de fotos (0 = uniforme, 1 = proporcional)",
         "total_people": "Personas totales",
-        "max_hidden_faces": "Caras ocultas máximas por ronda"
+        "max_hidden_faces": "Caras ocultas máximas por ronda",
+        "tolerance_days": "Tolerancia de hueco (días)",
+        "min_separation_days": "Separación mínima entre cartas (días)",
+        "max_cards": "Cartas máximas (0 = sin límite)"
       }
     },
     "daily": {

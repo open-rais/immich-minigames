@@ -10,6 +10,7 @@ import { ImmichdleGame } from "./Immichdle/ImmichdleGame"
 import { ImmichdleRounds } from "./Immichdle/ImmichdleRounds"
 import { MoreOrLessGame } from "./MoreOrLess/MoreOrLessGame"
 import { MoreOrLessRounds } from "./MoreOrLess/MoreOrLessRounds"
+import { TimelineGame } from "./Timeline/TimelineGame"
 import { WhosThatPersonGame } from "./WhosThatPerson/WhosThatPersonGame"
 import { WhosThatPersonRounds } from "./WhosThatPerson/WhosThatPersonRounds"
 
@@ -147,6 +148,22 @@ export const GAME_CATALOG: CatalogGame[] = [
         coverUrl: "/covers/whos-that-person.webp",
         roundsComponent: WhosThatPersonRounds,
         roundsLayout: "fullscreen",
+      },
+    ],
+  },
+  {
+    gameType: GameType.Timeline,
+    gameTitleKey: "timeline.title",
+    modes: [
+      {
+        // roundsComponent lands in a later phase (docs/TODO/TIMELINE.md F4) - "Ver rondas" just
+        // stays hidden on a finished Timeline game until then, same as any other mode before its
+        // rounds review exists (see roundsComponent's own doc comment above).
+        mode: Mode.Arcade,
+        modeTitleKey: "timeline.modes.arcade",
+        component: TimelineGame,
+        // No cover art shipped yet (docs/TODO/TIMELINE.md F3) - IdleScreen/ModeCard both tolerate
+        // an absent coverUrl.
       },
     ],
   },

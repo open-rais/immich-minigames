@@ -10,6 +10,7 @@ export const GameType = {
   Dateguessr: "dateguessr",
   Immichdle: "immichdle",
   WhosThatPerson: "whos-that-person",
+  Timeline: "timeline",
 } as const
 export type GameType = (typeof GameType)[keyof typeof GameType]
 
@@ -20,6 +21,7 @@ export const Mode = {
   DaysToDate: "daysToDate",
   Person: "person",
   NamedFaces: "namedFaces",
+  Arcade: "arcade",
 } as const
 export type Mode = (typeof Mode)[keyof typeof Mode]
 
@@ -144,12 +146,33 @@ export interface WhosThatPersonRoundOut {
   score_delta: number | null
 }
 
+// A card already on the board - always fully revealed (see docs/TODO/TIMELINE.md decision [H]).
+export interface TimelineCardOut {
+  asset_id: string
+  date: string
+}
+
+export interface TimelineRoundOut {
+  game_type: typeof GameType.Timeline
+  id: string
+  round_index: number
+  board: TimelineCardOut[]
+  card_asset_id: string
+  guess_slot: number | null
+  // Redacted (null) until this round has been answered - it IS the answer.
+  card_date: string | null
+  correct_slot: number | null
+  correct: boolean | null
+  score_delta: number | null
+}
+
 export type RoundOut =
   | MoreOrLessRoundOut
   | GeoguessrRoundOut
   | DateguessrRoundOut
   | ImmichdleRoundOut
   | WhosThatPersonRoundOut
+  | TimelineRoundOut
 
 export interface GameOut {
   id: string
@@ -209,7 +232,13 @@ export interface WhosThatPersonPlayRoundIn {
   guesses: Record<string, string>
 }
 
-// The five guess bodies share one endpoint (POST /games/{id}/rounds/{roundId}) - see playRound in
+// slot is the insertion index into the pending round's board (list.insert(i, x) semantics) - see
+// backend/src/api/dto/timeline.py's TimelinePlayRoundIn.
+export interface TimelinePlayRoundIn {
+  slot: number
+}
+
+// The guess bodies share one endpoint (POST /games/{id}/rounds/{roundId}) - see playRound in
 // api/games.ts. Which one is valid is fixed by the game's type/mode server-side, not restated here.
 export type PlayRoundIn =
   | MoreOrLessPlayRoundIn
@@ -217,6 +246,7 @@ export type PlayRoundIn =
   | DateguessrPlayRoundIn
   | ImmichdlePlayRoundIn
   | WhosThatPersonPlayRoundIn
+  | TimelinePlayRoundIn
 
 export interface PlayRoundOut {
   // Binary-guess concept (MoreOrLess) - null for games with a continuous score (Geoguessr).
