@@ -29,7 +29,7 @@ MODE_PERSON = "person"
 # Admin feature (ADMIN-FEATURE.md point #4) - public (no leading underscore) since
 # services/game_settings.py imports these as defaults for the admin-configurable
 # starting_score/wrong_guess_penalty settings, same convention already used by e.g.
-# asset_rounds.py's TOTAL_ROUNDS/MAX_SCORE.
+# games/geoguessr/game.py's TOTAL_ROUNDS/MAX_SCORE.
 STARTING_SCORE = 100
 WRONG_GUESS_PENALTY = 5
 # Exponent `w` in `peso = c_fotos ^ w` (services/immich_service.py's get_persons

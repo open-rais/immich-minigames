@@ -13,7 +13,7 @@ class GeoguessrRoundOut(BaseModel):
     game_type: Literal["geoguessr"] = GEOGUESSR_TYPE
     id: UUID
     round_index: int
-    # Main ("answer") asset first, then up to 4 decorative extras - see games/asset_rounds.py's
+    # Main ("answer") asset first, then up to 4 decorative extras - see games/geoguessr/game.py's
     # MAX_EXTRA_ASSETS. The guess/actual/score fields below are always about the main asset only.
     asset_ids: list[UUID]
     guess_latitude: float | None

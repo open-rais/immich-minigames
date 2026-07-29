@@ -35,7 +35,7 @@ MODE_NAMED_FACES = "namedFaces"
 # Admin feature (ADMIN-FEATURE.md point #4) - public (no leading underscore) since
 # services/game_settings.py imports these as defaults for the admin-configurable
 # total_people/max_hidden_faces settings, same convention already used by e.g.
-# asset_rounds.py's TOTAL_ROUNDS/MAX_SCORE.
+# games/geoguessr/game.py's TOTAL_ROUNDS/MAX_SCORE.
 TOTAL_PEOPLE = 15
 MAX_HIDDEN_FACES = 5
 

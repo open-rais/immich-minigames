@@ -428,7 +428,7 @@ class GamesService:
     def get_personal_records(self, owner: str, user_id: UUID | None) -> list[GameRecord]:
         """Roadmap point E - personal-best score per (game_type, mode), shown in the main menu.
         Filters by the account's user_id when logged in, otherwise by the anonymous browser's
-        owner id - every game's score is higher-is-better (see games/asset_rounds.py's
+        owner id - every game's score is higher-is-better (see games/shared/scoring.py's
         exp_decay_score and each game's win/streak-based deltas), so MAX(score) among finished
         games is a valid "best" for every existing game/mode."""
         filter_clause = GameModel.user_id == user_id if user_id is not None else GameModel.owner == owner
