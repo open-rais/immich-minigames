@@ -185,7 +185,8 @@
       "email": "Email",
       "username": "Username",
       "fullName": "Full name",
-      "password": "Password"
+      "password": "Password",
+      "person": "Person"
     },
     "login": {
       "title": "Log in",

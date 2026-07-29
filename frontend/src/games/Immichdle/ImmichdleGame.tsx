@@ -55,7 +55,8 @@ export function ImmichdleGame({ coverUrl, hasRoundsView, daily = false }: GameCo
   const [targetFetchDone, setTargetFetchDone] = useState(true)
   // Stable reference across renders that don't change history - PersonSearchInput's debounced
   // search effect depends on excludeIds by reference (see its own docstring, and the other
-  // consumers - SkinPicker/AdminUserRow/FaceGuessPopover - that already follow this contract).
+  // consumers - EditProfilePage/AdminUserRow/FaceGuessPopover - that already follow this
+  // contract).
   const guessedIds = useMemo(() => new Set(history.map((r) => r.guess_person_id!)), [history])
 
   // Roadmap #e - whether the current player has an unfinished game for this mode; null while the

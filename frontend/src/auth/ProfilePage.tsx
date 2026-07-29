@@ -2,32 +2,11 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 
-import { personThumbnailUrl } from "../api/games"
 import { Button } from "../games/shared/Button"
 import { AuthCard } from "./AuthCard"
+import { ProfileAvatar, ProfileAvatarPlaceholder } from "./ProfileAvatar"
 import { RecentGamesModal } from "./RecentGamesModal"
 import { useAuth } from "./useAuth"
-
-// Same img+onError fallback convention as menu/UserMenu.tsx's SkinAvatar / games/shared/
-// PersonAvatar.tsx, just sized as a page hero avatar instead of a small circle. Rendered with
-// `key={personId}` by the caller so switching skins resets `failed` instead of keeping a stale
-// placeholder around.
-function ProfileAvatar({ personId }: { personId: string }) {
-  const [failed, setFailed] = useState(false)
-  if (failed) return <ProfileAvatarPlaceholder />
-  return (
-    <img
-      src={personThumbnailUrl(personId)}
-      alt=""
-      onError={() => setFailed(true)}
-      className="h-24 w-24 rounded-full object-cover shadow-card"
-    />
-  )
-}
-
-function ProfileAvatarPlaceholder() {
-  return <div className="h-24 w-24 rounded-full border border-dashed border-line-strong" />
-}
 
 // Read-only account view (roadmap point B's "lo básico", plus the skin avatar from roadmap point
 // E) - actual editing (username/full name/skin) lives on its own page, reached via "Edit profile"

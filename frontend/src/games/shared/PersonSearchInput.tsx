@@ -13,7 +13,7 @@ const SCROLL_THRESHOLD_PX = 48
 interface PersonSearchInputProps {
   excludeIds: Set<string>
   // Generic "a person was picked" callback - used both for guessing (Immichdle/WhosThatPerson)
-  // and for non-guess selection (the profile page's skin picker, see auth/SkinPicker.tsx).
+  // and for non-guess selection (the profile page's skin picker, see auth/EditProfilePage.tsx).
   onSelect: (personId: string) => void
   disabled: boolean
   // Immichdle-only (see ImmichdleGame.tsx): lets a letter typed anywhere on the page - not just

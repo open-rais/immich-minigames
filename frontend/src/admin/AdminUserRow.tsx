@@ -21,9 +21,10 @@ interface AdminUserRowProps {
 }
 
 // Admin feature (ADMIN-FEATURE.md point #3) - editing (full name/username/skin) for an arbitrary
-// account, mirroring auth/EditProfilePage.tsx + auth/SkinPicker.tsx's fields and flow but against
-// api/admin.ts instead of the self-service api/auth.ts, and operating on the `user` prop instead
-// of useAuth()'s own account.
+// account, mirroring auth/EditProfilePage.tsx's fields and flow but against api/admin.ts instead
+// of the self-service api/auth.ts, and operating on the `user` prop instead of useAuth()'s own
+// account. The row's own skin doubles as the accordion header's icon (left of the user's name),
+// instead of a second avatar repeated inside the body.
 export function AdminUserRow({ user, onUpdated }: AdminUserRowProps) {
   const { t } = useTranslation()
   const [username, setUsername] = useState(user.username)
@@ -80,7 +81,12 @@ export function AdminUserRow({ user, onUpdated }: AdminUserRowProps) {
   }
 
   return (
-    <SettingAccordion nested title={user.full_name} description={user.email}>
+    <SettingAccordion
+      nested
+      icon={<PersonAvatar src={user.skin_person_id ? personThumbnailUrl(user.skin_person_id) : null} alt="" />}
+      title={user.full_name}
+      description={user.email}
+    >
       <form onSubmit={handleSave} className="flex flex-col gap-4">
         <AuthField
           id={`fullName-${user.id}`}
@@ -107,6 +113,27 @@ export function AdminUserRow({ user, onUpdated }: AdminUserRowProps) {
             setSaved(false)
           }}
         />
+        <div className="flex flex-col gap-1.5">
+          <p className="text-sm font-semibold text-body">{t("auth.fields.person")}</p>
+          <div className="flex items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <PersonSearchInput excludeIds={excludeIds} onSelect={applySkin} disabled={busy} />
+            </div>
+            {user.skin_person_id && (
+              <Button
+                type="button"
+                variant="secondary"
+                className="px-4 py-2.5"
+                onClick={() => applySkin(null)}
+                disabled={busy}
+              >
+                {t("auth.profile.skin.clear")}
+              </Button>
+            )}
+          </div>
+        </div>
+        {error && <p className="text-sm font-semibold text-rose-600">{error}</p>}
+        {saved && !error && <p className="text-sm font-semibold text-emerald-600">{t("auth.profile.saved")}</p>}
         <Button type="submit" variant="primary" className="w-full py-2.5" disabled={busy}>
           {t("auth.profile.save")}
         </Button>
@@ -115,30 +142,6 @@ export function AdminUserRow({ user, onUpdated }: AdminUserRowProps) {
       <Button variant="secondary" className="mt-3 w-full py-2.5" onClick={handleResetPassword} disabled={busy}>
         {t("auth.profile.resetPassword")}
       </Button>
-
-      <div className="my-6 border-t border-line" />
-
-      <div className="flex flex-col gap-3">
-        <p className="text-sm font-semibold text-muted">{t("auth.profile.skin.label")}</p>
-        <div className="flex items-center gap-3">
-          {user.skin_person_id ? (
-            <PersonAvatar src={personThumbnailUrl(user.skin_person_id)} alt="" />
-          ) : (
-            <div className="flex h-10 w-10 flex-none items-center justify-center rounded-full border border-dashed border-line-strong text-xs text-faint md:h-14 md:w-14">
-              {t("auth.profile.skin.none")}
-            </div>
-          )}
-          {user.skin_person_id && (
-            <Button variant="secondary" className="px-4 py-2 text-sm" onClick={() => applySkin(null)} disabled={busy}>
-              {t("auth.profile.skin.clear")}
-            </Button>
-          )}
-        </div>
-        <PersonSearchInput excludeIds={excludeIds} onSelect={applySkin} disabled={busy} />
-      </div>
-
-      {error && <p className="mt-4 text-sm font-semibold text-rose-600">{error}</p>}
-      {saved && !error && <p className="mt-4 text-sm font-semibold text-emerald-600">{t("auth.profile.saved")}</p>}
 
       {resetLink && <ShareModal text={resetLink} onClose={() => setResetLink(null)} />}
     </SettingAccordion>

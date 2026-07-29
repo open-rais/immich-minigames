@@ -185,7 +185,8 @@
       "email": "Correo electrónico",
       "username": "Nombre de usuario",
       "fullName": "Nombre completo",
-      "password": "Contraseña"
+      "password": "Contraseña",
+      "person": "Persona"
     },
     "login": {
       "title": "Iniciar sesión",
