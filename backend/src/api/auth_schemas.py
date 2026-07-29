@@ -36,6 +36,13 @@ class ChangePasswordIn(BaseModel):
     new_password: str = Field(min_length=8, max_length=128)
 
 
+class ResetPasswordIn(BaseModel):
+    # Roadmap #H, F2 - the admin-issued password_reset invite token (see api/admin_api.py's
+    # create_password_reset), not a current password - the caller is by definition logged out.
+    token: str
+    new_password: str = Field(min_length=8, max_length=128)
+
+
 class UpdateSkinIn(BaseModel):
     # None clears the cosmetic skin (see AuthService.set_skin) - a Person id from the Immich
     # library otherwise, validated against Immich in the route handler before being saved.

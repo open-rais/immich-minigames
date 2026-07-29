@@ -8,7 +8,15 @@ from typing import Annotated
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
 
-from api.auth_schemas import ChangePasswordIn, LoginIn, RegisterIn, UpdateProfileIn, UpdateSkinIn, UserOut
+from api.auth_schemas import (
+    ChangePasswordIn,
+    LoginIn,
+    RegisterIn,
+    ResetPasswordIn,
+    UpdateProfileIn,
+    UpdateSkinIn,
+    UserOut,
+)
 from api.deps import get_db_session, get_immich_service
 from api.rate_limit import limiter
 from config import get_settings
@@ -110,6 +118,16 @@ def login(
 @router.post("/logout", status_code=204)
 def logout(response: Response) -> None:
     response.delete_cookie(_COOKIE_NAME, **_cookie_attrs())
+
+
+@router.post("/reset-password", status_code=204)
+@limiter.limit("5/minute")
+def reset_password(
+    request: Request,
+    body: ResetPasswordIn,
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
+) -> None:
+    auth_service.reset_password(body.token, body.new_password)
 
 
 @router.get("/me", response_model=UserOut)

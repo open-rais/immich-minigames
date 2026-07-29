@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from persistence.base import get_session_factory
 from services.games_service import GamesService
 from services.immich_service import ImmichService
+from services.invite_service import InviteService
 from services.ml_service import MLService
 
 _session_factory = get_session_factory()
@@ -39,6 +40,14 @@ def get_ml_service() -> MLService:
 
 def get_owner_id(x_owner_id: Annotated[str, Header()]) -> str:
     return x_owner_id
+
+
+# Roadmap #H, F1/F2 - moved here (from api/admin_invites_api.py, where it started) so
+# api/admin_api.py can also depend on it (the new password-reset endpoint, F2) without
+# admin_api.py <-> admin_invites_api.py becoming a circular import (admin_invites_api.py already
+# imports get_current_admin_user *from* admin_api.py).
+def get_invite_service(session: Annotated[Session, Depends(get_db_session)]) -> InviteService:
+    return InviteService(session)
 
 
 # Roadmap #G - moved here (rather than staying private to api/api.py, as it originally was) so

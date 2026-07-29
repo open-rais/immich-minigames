@@ -211,3 +211,16 @@ class AuthService:
         user.password_changed_at = datetime.now(UTC)
         self._session.commit()
         return user
+
+    def reset_password(self, token: str, new_password: str) -> UserModel:
+        """Roadmap #H, F2 - the public counterpart of change_password: proof of identity is the
+        admin-issued token (services/invite_service.py, kind="password_reset") instead of the
+        current password, for a caller who's locked out and by definition has no session to
+        re-issue a cookie for (unlike change_password, this never touches the response cookie -
+        the frontend sends them to /login afterward)."""
+        invite = self._invite_service.consume_invite(token, kind="password_reset")
+        user = self._session.get(UserModel, invite.user_id)
+        user.password_hash = _hasher.hash(new_password)
+        user.password_changed_at = datetime.now(UTC)
+        self._session.commit()
+        return user

@@ -68,8 +68,10 @@ class InviteService:
         invite_id = self._session.execute(stmt).scalar_one_or_none()
         if invite_id is None:
             # Deliberately one message for missing/already-used/expired - same anti-enumeration
-            # reasoning as AuthService.authenticate's InvalidCredentialsError.
-            raise InvalidInviteError("invalid, used, or expired invite code")
+            # reasoning as AuthService.authenticate's InvalidCredentialsError. "token", not "invite
+            # code" - this same message surfaces for both kind="invite" (registration) and
+            # kind="password_reset" (F2), and "invite code" reads wrong in the latter context.
+            raise InvalidInviteError("invalid, used, or expired token")
         self._session.flush()
         return self._session.get(InviteModel, invite_id)
 

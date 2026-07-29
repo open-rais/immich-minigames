@@ -7,10 +7,9 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
 
 from api.admin_api import get_current_admin_user
-from api.deps import get_db_session
+from api.deps import get_invite_service
 from api.dto.admin import CreateInviteOut, InviteOut
 from persistence.users import UserModel
 from services.invite_service import InviteService
@@ -18,10 +17,6 @@ from services.invite_service import InviteService
 router = APIRouter(prefix="/admin/invites", tags=["admin"])
 
 _KIND = "invite"
-
-
-def get_invite_service(session: Annotated[Session, Depends(get_db_session)]) -> InviteService:
-    return InviteService(session)
 
 
 @router.post("", response_model=CreateInviteOut, status_code=201)
