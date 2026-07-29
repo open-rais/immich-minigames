@@ -170,7 +170,6 @@ class TestGameSettingsAffectNewGames:
         game = client.post(
             "/api/v1/games",
             json={"type": GEOGUESSR_TYPE, "mode": "distanceBetweenGuess"},
-            headers={"X-Owner-Id": str(uuid.uuid4())},
         ).json()
 
         assert game["total_rounds"] == 2

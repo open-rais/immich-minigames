@@ -39,224 +39,157 @@ def _wrong_guess(round_) -> str:
 
 
 class TestCreateGame:
-    def test_persists_the_game_and_its_first_round(self, games_service):
-        game = games_service.create_game(owner="owner-a", game_type="more-or-less", mode="personAssets")
+    def test_persists_the_game_and_its_first_round(self, games_service, auth_service):
+        user = _register_user(auth_service)
+        game = games_service.create_game(game_type="more-or-less", mode="personAssets", user_id=user.id)
 
-        reloaded = games_service.get_game(game.id, owner="owner-a")
+        reloaded = games_service.get_game(game.id, user)
 
         assert reloaded.score == 0
         assert reloaded.finished is False
         assert len(reloaded.rounds) == 1
         assert reloaded.rounds[0].reference.name == game.rounds[0].reference.name
 
-    def test_unsupported_game_type_raises(self, games_service):
+    def test_unsupported_game_type_raises(self, games_service, auth_service):
+        user = _register_user(auth_service)
         with pytest.raises(UnsupportedGameError):
-            games_service.create_game(owner="owner-a", game_type="geoguessr", mode="default")
+            games_service.create_game(game_type="geoguessr", mode="default", user_id=user.id)
 
-    def test_not_enough_content_raises_not_enough_content_error(self, games_service, immich_service, monkeypatch):
+    def test_not_enough_content_raises_not_enough_content_error(
+        self, games_service, immich_service, monkeypatch, auth_service
+    ):
         # A game's start() raises a plain ValueError for "library too small" (see
         # games/more_or_less.py, games/immichdle.py) - create_game must translate it into
         # NotEnoughContentError so main.py can map it to a 422 instead of a bare 500.
         monkeypatch.setattr(immich_service, "get_persons", lambda **kwargs: [])
+        user = _register_user(auth_service)
 
         with pytest.raises(NotEnoughContentError, match="not enough entities"):
-            games_service.create_game(owner="owner-a", game_type="more-or-less", mode="personAssets")
+            games_service.create_game(game_type="more-or-less", mode="personAssets", user_id=user.id)
 
-    def test_user_id_is_persisted_when_given(self, games_service, db_session, auth_service):
+    def test_user_id_is_persisted(self, games_service, db_session, auth_service):
         user = _register_user(auth_service)
-        game = games_service.create_game(
-            owner="owner-a", game_type="more-or-less", mode="personAssets", user_id=user.id
-        )
+        game = games_service.create_game(game_type="more-or-less", mode="personAssets", user_id=user.id)
 
         row = db_session.get(GameModel, game.id)
         assert row.user_id == user.id
 
-    def test_user_id_defaults_to_none_for_anonymous_play(self, games_service, db_session):
-        game = games_service.create_game(owner="owner-a", game_type="more-or-less", mode="personAssets")
-
-        row = db_session.get(GameModel, game.id)
-        assert row.user_id is None
-
 
 class TestCreateGameAbandonsPreviousActiveGame:
     """Roadmap #e - creating a new game marks any other still-active game of the same
-    (owner-or-user, game_type, mode) as abandoned, so the idle screen's "Continuar" lookup
+    (user, game_type, mode) as abandoned, so the idle screen's "Continuar" lookup
     (get_current_game) only ever finds the most recently started one."""
 
-    def test_abandons_the_previous_unfinished_game_of_the_same_mode(self, games_service, db_session):
-        owner = f"owner-{uuid.uuid4().hex[:8]}"
-        first = games_service.create_game(owner=owner, game_type="more-or-less", mode="personAssets")
+    def test_abandons_the_previous_unfinished_game_of_the_same_mode(self, games_service, db_session, auth_service):
+        user = _register_user(auth_service)
+        first = games_service.create_game(game_type="more-or-less", mode="personAssets", user_id=user.id)
 
-        games_service.create_game(owner=owner, game_type="more-or-less", mode="personAssets")
+        games_service.create_game(game_type="more-or-less", mode="personAssets", user_id=user.id)
 
         row = db_session.get(GameModel, first.id)
         assert row.abandoned is True
         assert row.finished is False  # abandoned is orthogonal to finished, not a substitute for it
 
-    def test_does_not_touch_a_different_mode(self, games_service, db_session):
-        owner = f"owner-{uuid.uuid4().hex[:8]}"
-        first = games_service.create_game(owner=owner, game_type="more-or-less", mode="personAssets")
+    def test_does_not_touch_a_different_mode(self, games_service, db_session, auth_service):
+        user = _register_user(auth_service)
+        first = games_service.create_game(game_type="more-or-less", mode="personAssets", user_id=user.id)
 
-        games_service.create_game(owner=owner, game_type="more-or-less", mode="albumAssets")
+        games_service.create_game(game_type="more-or-less", mode="albumAssets", user_id=user.id)
 
         row = db_session.get(GameModel, first.id)
         assert row.abandoned is False
 
-    def test_does_not_touch_an_already_finished_game(self, games_service, db_session):
-        owner = f"owner-{uuid.uuid4().hex[:8]}"
-        first = games_service.create_game(owner=owner, game_type="more-or-less", mode="personAssets")
+    def test_does_not_touch_an_already_finished_game(self, games_service, db_session, auth_service):
+        user = _register_user(auth_service)
+        first = games_service.create_game(game_type="more-or-less", mode="personAssets", user_id=user.id)
         row = db_session.get(GameModel, first.id)
         row.finished = True
         db_session.commit()
 
-        games_service.create_game(owner=owner, game_type="more-or-less", mode="personAssets")
+        games_service.create_game(game_type="more-or-less", mode="personAssets", user_id=user.id)
 
         db_session.refresh(row)
         assert row.abandoned is False
 
-    def test_scopes_by_user_id_when_logged_in_even_with_a_mismatched_owner_header(
-        self, games_service, db_session, auth_service
-    ):
-        alice = _register_user(auth_service)
-        first = games_service.create_game(
-            owner="owner-a", game_type="more-or-less", mode="personAssets", user_id=alice.id
-        )
-
-        # Same account, different X-Owner-Id header (e.g. a second device) - must still find and
-        # abandon alice's game by user_id, not miss it because the owner header differs.
-        games_service.create_game(
-            owner="owner-b", game_type="more-or-less", mode="personAssets", user_id=alice.id
-        )
-
-        row = db_session.get(GameModel, first.id)
-        assert row.abandoned is True
-
-    def test_a_legacy_stray_unfinished_game_also_gets_abandoned(self, games_service, db_session):
+    def test_a_legacy_stray_unfinished_game_also_gets_abandoned(self, games_service, db_session, auth_service):
         # Simulates a game created before the `abandoned` column existed - self-heals rather than
         # assuming there's ever only one active row to find.
-        owner = f"owner-{uuid.uuid4().hex[:8]}"
-        first = games_service.create_game(owner=owner, game_type="more-or-less", mode="personAssets")
-        second = games_service.create_game(owner=owner, game_type="more-or-less", mode="personAssets")
+        user = _register_user(auth_service)
+        first = games_service.create_game(game_type="more-or-less", mode="personAssets", user_id=user.id)
+        second = games_service.create_game(game_type="more-or-less", mode="personAssets", user_id=user.id)
         # Undo the abandon the second create_game just did, to simulate two stray active rows.
         db_session.get(GameModel, first.id).abandoned = False
         db_session.commit()
 
-        games_service.create_game(owner=owner, game_type="more-or-less", mode="personAssets")
+        games_service.create_game(game_type="more-or-less", mode="personAssets", user_id=user.id)
 
         assert db_session.get(GameModel, first.id).abandoned is True
         assert db_session.get(GameModel, second.id).abandoned is True
 
 
 class TestGetGame:
-    def test_wrong_owner_raises(self, games_service):
-        game = games_service.create_game(owner="owner-a", game_type="more-or-less", mode="personAssets")
-
-        with pytest.raises(GameOwnershipError):
-            games_service.get_game(game.id, owner="someone-else")
-
-    def test_missing_game_raises(self, games_service):
-        with pytest.raises(GameNotFoundError):
-            games_service.get_game(uuid.uuid4(), owner="owner-a")
-
-    def test_logged_in_game_is_reachable_by_user_even_with_wrong_owner_header(self, games_service, auth_service):
-        # The account is the real proof of ownership once a game is tied to one - a stale/rotated
-        # X-Owner-Id shouldn't lock the owner out of their own game (see docs/TODO/CODE-REVIEW.md #3).
-        alice = _register_user(auth_service)
-        game = games_service.create_game(
-            owner="owner-a", game_type="more-or-less", mode="personAssets", user_id=alice.id
-        )
-
-        reloaded = games_service.get_game(game.id, owner="someone-else", user=alice)
-
-        assert reloaded.id == game.id
-
-    def test_logged_in_game_rejects_a_different_account_even_with_matching_owner_header(
-        self, games_service, auth_service
-    ):
-        # This is the actual bug #3 fixes: a leaked/guessed X-Owner-Id used to be enough on its
-        # own to read and play someone else's logged-in game.
+    def test_wrong_user_raises(self, games_service, auth_service):
         alice = _register_user(auth_service)
         bob = _register_user(auth_service)
-        game = games_service.create_game(
-            owner="owner-a", game_type="more-or-less", mode="personAssets", user_id=alice.id
-        )
+        game = games_service.create_game(game_type="more-or-less", mode="personAssets", user_id=alice.id)
 
         with pytest.raises(GameOwnershipError):
-            games_service.get_game(game.id, owner="owner-a", user=bob)
+            games_service.get_game(game.id, bob)
 
-    def test_logged_in_game_rejects_an_anonymous_request_even_with_matching_owner_header(
-        self, games_service, auth_service
-    ):
-        alice = _register_user(auth_service)
-        game = games_service.create_game(
-            owner="owner-a", game_type="more-or-less", mode="personAssets", user_id=alice.id
-        )
-
-        with pytest.raises(GameOwnershipError):
-            games_service.get_game(game.id, owner="owner-a", user=None)
-
-    def test_anonymous_game_stays_owner_only_even_for_a_logged_in_request(self, games_service, auth_service):
-        # user_id is fixed at creation and never backfilled - logging in later doesn't grant
-        # access to a game started anonymously under a different/wrong owner id.
-        alice = _register_user(auth_service)
-        game = games_service.create_game(owner="owner-a", game_type="more-or-less", mode="personAssets")
-
-        with pytest.raises(GameOwnershipError):
-            games_service.get_game(game.id, owner="someone-else", user=alice)
-
-    def test_anonymous_game_is_still_reachable_by_owner_while_logged_in(self, games_service, auth_service):
-        alice = _register_user(auth_service)
-        game = games_service.create_game(owner="owner-a", game_type="more-or-less", mode="personAssets")
-
-        reloaded = games_service.get_game(game.id, owner="owner-a", user=alice)
-
-        assert reloaded.id == game.id
+    def test_missing_game_raises(self, games_service, auth_service):
+        user = _register_user(auth_service)
+        with pytest.raises(GameNotFoundError):
+            games_service.get_game(uuid.uuid4(), user)
 
 
 class TestPlayRound:
-    def test_correct_guess_persists_the_new_round(self, games_service):
-        game = games_service.create_game(owner="owner-a", game_type="more-or-less", mode="personAssets")
+    def test_correct_guess_persists_the_new_round(self, games_service, auth_service):
+        user = _register_user(auth_service)
+        game = games_service.create_game(game_type="more-or-less", mode="personAssets", user_id=user.id)
         first_round = game.rounds[0]
 
-        played = games_service.play_round(game.id, "owner-a", first_round.id, _correct_guess(first_round))
+        played = games_service.play_round(game.id, user, first_round.id, _correct_guess(first_round))
 
         assert played.score == 1
         assert played.finished is False
         assert len(played.rounds) == 2
 
-        reloaded = games_service.get_game(game.id, owner="owner-a")
+        reloaded = games_service.get_game(game.id, user)
         assert reloaded.score == 1
         assert len(reloaded.rounds) == 2
         assert reloaded.rounds[0].guess == _correct_guess(first_round)
 
-    def test_wrong_guess_finishes_the_game(self, games_service):
-        game = games_service.create_game(owner="owner-a", game_type="more-or-less", mode="personAssets")
+    def test_wrong_guess_finishes_the_game(self, games_service, auth_service):
+        user = _register_user(auth_service)
+        game = games_service.create_game(game_type="more-or-less", mode="personAssets", user_id=user.id)
         first_round = game.rounds[0]
 
-        played = games_service.play_round(game.id, "owner-a", first_round.id, _wrong_guess(first_round))
+        played = games_service.play_round(game.id, user, first_round.id, _wrong_guess(first_round))
 
         assert played.finished is True
-        reloaded = games_service.get_game(game.id, owner="owner-a")
+        reloaded = games_service.get_game(game.id, user)
         assert reloaded.finished is True
 
-    def test_playing_a_non_pending_round_raises(self, games_service):
-        game = games_service.create_game(owner="owner-a", game_type="more-or-less", mode="personAssets")
+    def test_playing_a_non_pending_round_raises(self, games_service, auth_service):
+        user = _register_user(auth_service)
+        game = games_service.create_game(game_type="more-or-less", mode="personAssets", user_id=user.id)
         first_round = game.rounds[0]
-        games_service.play_round(game.id, "owner-a", first_round.id, _wrong_guess(first_round))
+        games_service.play_round(game.id, user, first_round.id, _wrong_guess(first_round))
 
         with pytest.raises(RoundNotPendingError):
-            games_service.play_round(game.id, "owner-a", first_round.id, "more")
+            games_service.play_round(game.id, user, first_round.id, "more")
 
 
 class TestPlayRoundConcurrency:
     def test_simultaneous_plays_of_the_same_round_do_not_double_score(
-        self, games_service, immich_service, ml_service
+        self, games_service, immich_service, ml_service, auth_service
     ):
         # Two independent sessions, exactly like two real concurrent HTTP requests would get
         # (api/deps.py's get_db_session hands out a fresh Session per request) - this is what
         # docs/TODO/CODE-REVIEW.md #6 is about: without the FOR UPDATE lock in _load_game, both
         # could pass play_loaded_round's current_round.id check and both score.
-        game = games_service.create_game(owner="owner-a", game_type="more-or-less", mode="personAssets")
+        user = _register_user(auth_service)
+        game = games_service.create_game(game_type="more-or-less", mode="personAssets", user_id=user.id)
         first_round = game.rounds[0]
         guess = _correct_guess(first_round)
 
@@ -266,13 +199,13 @@ class TestPlayRoundConcurrency:
 
             # Load (and lock) the row via the service under test, but don't commit yet - simulates
             # request A having read the game and being about to play it.
-            loaded_a = games_service._load_game(game.id, owner="owner-a")
+            loaded_a = games_service._load_game(game.id, user)
 
             b_result = {}
 
             def run_b():
                 try:
-                    b_result["game"] = service_b.play_round(game.id, "owner-a", first_round.id, guess)
+                    b_result["game"] = service_b.play_round(game.id, user, first_round.id, guess)
                 except Exception as exc:  # RoundNotPendingError, expected once unblocked
                     b_result["error"] = exc
 
@@ -290,61 +223,57 @@ class TestPlayRoundConcurrency:
 
         # B must have seen A's committed result once unblocked, not double-scored.
         assert isinstance(b_result.get("error"), RoundNotPendingError)
-        reloaded = games_service.get_game(game.id, owner="owner-a")
+        reloaded = games_service.get_game(game.id, user)
         assert reloaded.score == 1
 
 
 class TestPersonalRecords:
     """Records are a pure persistence-layer query (GamesService.get_personal_records) - games here
     are seeded directly at whatever score/finished state is needed rather than played out for
-    real, since it's the MAX(score)-per-(owner-or-user, mode) query being tested, not game logic."""
+    real, since it's the MAX(score)-per-(user, mode) query being tested, not game logic."""
 
-    def _seed_game(self, games_service, db_session, *, owner, user_id=None, score, finished=True):
-        game = games_service.create_game(
-            owner=owner, game_type="more-or-less", mode="personAssets", user_id=user_id
-        )
+    def _seed_game(self, games_service, db_session, *, user_id, score, finished=True):
+        game = games_service.create_game(game_type="more-or-less", mode="personAssets", user_id=user_id)
         row = db_session.get(GameModel, game.id)
         row.score = score
         row.finished = finished
         db_session.commit()
         return game
 
-    def test_returns_the_highest_score_for_the_owner(self, games_service, db_session):
-        owner = f"owner-{uuid.uuid4().hex[:8]}"
-        self._seed_game(games_service, db_session, owner=owner, score=3)
-        self._seed_game(games_service, db_session, owner=owner, score=7)
-        self._seed_game(games_service, db_session, owner=owner, score=5)
+    def test_returns_the_highest_score_for_the_user(self, games_service, db_session, auth_service):
+        user = _register_user(auth_service)
+        self._seed_game(games_service, db_session, user_id=user.id, score=3)
+        self._seed_game(games_service, db_session, user_id=user.id, score=7)
+        self._seed_game(games_service, db_session, user_id=user.id, score=5)
 
-        records = games_service.get_personal_records(owner, user_id=None)
+        records = games_service.get_personal_records(user.id)
 
         assert len(records) == 1
         assert records[0].game_type == "more-or-less"
         assert records[0].mode == "personAssets"
         assert records[0].best_score == 7
 
-    def test_unfinished_games_are_excluded(self, games_service, db_session):
-        owner = f"owner-{uuid.uuid4().hex[:8]}"
-        self._seed_game(games_service, db_session, owner=owner, score=100, finished=False)
-
-        records = games_service.get_personal_records(owner, user_id=None)
-
-        assert records == []
-
-    def test_no_games_returns_an_empty_list(self, games_service):
-        records = games_service.get_personal_records(f"owner-{uuid.uuid4().hex[:8]}", user_id=None)
-
-        assert records == []
-
-    def test_logged_in_filters_by_user_id_not_owner(self, games_service, db_session, auth_service):
-        # Same browser owner id used for both an anonymous game and a logged-in one - the
-        # logged-in query must key off user_id, not fall through to owner, or a shared browser
-        # could leak an unrelated account's record.
-        owner = f"owner-{uuid.uuid4().hex[:8]}"
+    def test_unfinished_games_are_excluded(self, games_service, db_session, auth_service):
         user = _register_user(auth_service)
-        self._seed_game(games_service, db_session, owner=owner, user_id=None, score=50)
-        self._seed_game(games_service, db_session, owner=owner, user_id=user.id, score=9)
+        self._seed_game(games_service, db_session, user_id=user.id, score=100, finished=False)
 
-        records = games_service.get_personal_records(owner, user_id=user.id)
+        records = games_service.get_personal_records(user.id)
+
+        assert records == []
+
+    def test_no_games_returns_an_empty_list(self, games_service, auth_service):
+        user = _register_user(auth_service)
+        records = games_service.get_personal_records(user.id)
+
+        assert records == []
+
+    def test_does_not_leak_a_different_users_records(self, games_service, db_session, auth_service):
+        alice = _register_user(auth_service)
+        bob = _register_user(auth_service)
+        self._seed_game(games_service, db_session, user_id=alice.id, score=50)
+        self._seed_game(games_service, db_session, user_id=bob.id, score=9)
+
+        records = games_service.get_personal_records(bob.id)
 
         assert len(records) == 1
         assert records[0].best_score == 9
@@ -365,16 +294,14 @@ class TestLeaderboard:
         games_service,
         db_session,
         *,
-        user_id=None,
+        user_id,
         score,
         finished=True,
         game_type="more-or-less",
         mode="personAssets",
         created_at=None,
     ):
-        game = games_service.create_game(
-            owner=f"owner-{uuid.uuid4().hex[:8]}", game_type=game_type, mode=mode, user_id=user_id
-        )
+        game = games_service.create_game(game_type=game_type, mode=mode, user_id=user_id)
         row = db_session.get(GameModel, game.id)
         row.score = score
         row.finished = finished
@@ -408,19 +335,6 @@ class TestLeaderboard:
         ours = [e for e in entries if e.username == user.username]
         assert len(ours) == 1
         assert ours[0].best_score == 80
-
-    def test_anonymous_games_are_excluded(self, games_service, db_session):
-        # A distinctive score, not an exact `entries == []` - roadmap #H, F3 means every HTTP-level
-        # game test now creates a real, logged-in (and sometimes finished) game, so this table isn't
-        # exclusively written to by this file anymore; assert our own row's absence, not global
-        # emptiness, to stay correct regardless of what else legitimately lands on this leaderboard.
-        self._seed_game(
-            games_service, db_session, user_id=None, score=9999, game_type="dateguessr", mode="daysToDate"
-        )
-
-        entries = games_service.get_leaderboard("dateguessr", "daysToDate", "all")
-
-        assert not any(e.best_score == 9999 for e in entries)
 
     def test_unfinished_games_are_excluded(self, games_service, db_session, auth_service):
         user = _register_user(auth_service)
@@ -460,9 +374,8 @@ class TestLeaderboard:
         weekly = games_service.get_leaderboard("immichdle", "person", "weekly")
         daily = games_service.get_leaderboard("immichdle", "person", "daily")
 
-        # Subset/absence checks, not exact set equality (roadmap #H, F3 - see
-        # test_anonymous_games_are_excluded's comment: real HTTP-created entries can legitimately
-        # share this table now).
+        # Subset/absence checks, not exact set equality (roadmap #H, F3 - see this class's own
+        # docstring: real HTTP-created entries can legitimately share this table now).
         assert {recent_user.username, old_user.username} <= {e.username for e in all_time}
         assert recent_user.username in {e.username for e in weekly}
         assert old_user.username not in {e.username for e in weekly}
@@ -511,59 +424,56 @@ class TestLeaderboard:
 class TestGetCurrentGame:
     """Roadmap #e - the idle screen's "Continuar" lookup."""
 
-    def test_no_active_game_returns_none(self, games_service):
-        owner = f"owner-{uuid.uuid4().hex[:8]}"
+    def test_no_active_game_returns_none(self, games_service, auth_service):
+        user = _register_user(auth_service)
 
-        assert games_service.get_current_game(owner, "more-or-less", "personAssets", user_id=None) is None
+        assert games_service.get_current_game("more-or-less", "personAssets", user.id) is None
 
-    def test_returns_the_active_game(self, games_service):
-        owner = f"owner-{uuid.uuid4().hex[:8]}"
-        game = games_service.create_game(owner=owner, game_type="more-or-less", mode="personAssets")
+    def test_returns_the_active_game(self, games_service, auth_service):
+        user = _register_user(auth_service)
+        game = games_service.create_game(game_type="more-or-less", mode="personAssets", user_id=user.id)
 
-        current = games_service.get_current_game(owner, "more-or-less", "personAssets", user_id=None)
+        current = games_service.get_current_game("more-or-less", "personAssets", user.id)
 
         assert current is not None
         assert current.id == game.id
 
-    def test_ignores_a_finished_game(self, games_service, db_session):
-        owner = f"owner-{uuid.uuid4().hex[:8]}"
-        game = games_service.create_game(owner=owner, game_type="more-or-less", mode="personAssets")
+    def test_ignores_a_finished_game(self, games_service, db_session, auth_service):
+        user = _register_user(auth_service)
+        game = games_service.create_game(game_type="more-or-less", mode="personAssets", user_id=user.id)
         row = db_session.get(GameModel, game.id)
         row.finished = True
         db_session.commit()
 
-        assert games_service.get_current_game(owner, "more-or-less", "personAssets", user_id=None) is None
+        assert games_service.get_current_game("more-or-less", "personAssets", user.id) is None
 
-    def test_ignores_an_abandoned_game(self, games_service, db_session):
-        owner = f"owner-{uuid.uuid4().hex[:8]}"
-        game = games_service.create_game(owner=owner, game_type="more-or-less", mode="personAssets")
+    def test_ignores_an_abandoned_game(self, games_service, db_session, auth_service):
+        user = _register_user(auth_service)
+        game = games_service.create_game(game_type="more-or-less", mode="personAssets", user_id=user.id)
         row = db_session.get(GameModel, game.id)
         row.abandoned = True
         db_session.commit()
 
-        assert games_service.get_current_game(owner, "more-or-less", "personAssets", user_id=None) is None
+        assert games_service.get_current_game("more-or-less", "personAssets", user.id) is None
 
-    def test_scopes_by_user_id_when_logged_in(self, games_service, auth_service):
+    def test_scopes_by_user_id(self, games_service, auth_service):
         alice = _register_user(auth_service)
         bob = _register_user(auth_service)
-        games_service.create_game(
-            owner="owner-a", game_type="more-or-less", mode="personAssets", user_id=alice.id
-        )
+        games_service.create_game(game_type="more-or-less", mode="personAssets", user_id=alice.id)
 
-        assert games_service.get_current_game("owner-a", "more-or-less", "personAssets", user_id=bob.id) is None
+        assert games_service.get_current_game("more-or-less", "personAssets", bob.id) is None
 
-    def test_unsupported_game_type_raises(self, games_service):
+    def test_unsupported_game_type_raises(self, games_service, auth_service):
+        user = _register_user(auth_service)
         with pytest.raises(UnsupportedGameError):
-            games_service.get_current_game("owner-a", "geoguessr", "not-a-real-mode", user_id=None)
+            games_service.get_current_game("geoguessr", "not-a-real-mode", user.id)
 
 
 class TestGetRecentGames:
     """Roadmap #e - the profile "Ver juegos" modal's last-5 list."""
 
     def _seed_game(self, games_service, db_session, *, user_id, finished=True, abandoned=False, created_at=None):
-        game = games_service.create_game(
-            owner=f"owner-{uuid.uuid4().hex[:8]}", game_type="more-or-less", mode="personAssets", user_id=user_id
-        )
+        game = games_service.create_game(game_type="more-or-less", mode="personAssets", user_id=user_id)
         row = db_session.get(GameModel, game.id)
         row.finished = finished
         row.abandoned = abandoned

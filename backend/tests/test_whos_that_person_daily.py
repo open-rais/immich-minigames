@@ -30,7 +30,6 @@ class TestWhosThatPersonScriptedContent:
         ]
         game = WhosThatPersonGame.start(
             id=uuid4(),
-            owner="owner",
             immich_service=None,  # type: ignore[arg-type]
             content=ScriptedContent(rounds_spec),
             settings={"total_people": 3, "max_hidden_faces": 5},

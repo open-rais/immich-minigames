@@ -20,7 +20,7 @@ def _wrong_person_id(immich_service, game: ImmichdleGame) -> UUID:
 
 class TestImmichdleGame:
     def test_starts_with_score_100_and_one_pending_round(self, immich_service):
-        game = ImmichdleGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        game = ImmichdleGame.start(id=uuid4(), immich_service=immich_service)
 
         assert game.score == 100
         assert game.finished is False
@@ -28,7 +28,7 @@ class TestImmichdleGame:
         assert game.current_round.answered is False
 
     def test_correct_guess_wins_without_losing_points(self, immich_service):
-        game = ImmichdleGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        game = ImmichdleGame.start(id=uuid4(), immich_service=immich_service)
 
         result = game.play_round(game.target.id)
 
@@ -38,7 +38,7 @@ class TestImmichdleGame:
         assert game.rounds[-1].correct is True
 
     def test_wrong_guess_subtracts_five_and_continues(self, immich_service):
-        game = ImmichdleGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        game = ImmichdleGame.start(id=uuid4(), immich_service=immich_service)
         wrong_id = _wrong_person_id(immich_service, game)
 
         result = game.play_round(wrong_id)
@@ -54,14 +54,14 @@ class TestImmichdleGame:
     def test_correct_guess_gives_a_sane_assets_together_count(self, immich_service):
         """Guarding against a self-join bug in get_assets_together_count(id, id): guessing the
         target itself should count photos where the target's own face is tagged, not 0/blow up."""
-        game = ImmichdleGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        game = ImmichdleGame.start(id=uuid4(), immich_service=immich_service)
 
         game.play_round(game.target.id)
 
         assert game.rounds[-1].clues.assets_together > 0
 
     def test_score_floors_at_zero_and_ends_the_game(self, immich_service):
-        game = ImmichdleGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        game = ImmichdleGame.start(id=uuid4(), immich_service=immich_service)
         wrong_candidates = immich_service.get_persons(
             named_only=True, limit=28, exclude_ids=frozenset({game.target.id})
         )
@@ -76,7 +76,7 @@ class TestImmichdleGame:
         assert game.score == 0
 
     def test_duplicate_guess_raises(self, immich_service):
-        game = ImmichdleGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        game = ImmichdleGame.start(id=uuid4(), immich_service=immich_service)
         wrong_id = _wrong_person_id(immich_service, game)
         game.play_round(wrong_id)
 
@@ -84,13 +84,13 @@ class TestImmichdleGame:
             game.play_round(wrong_id)
 
     def test_invalid_person_id_raises(self, immich_service):
-        game = ImmichdleGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        game = ImmichdleGame.start(id=uuid4(), immich_service=immich_service)
 
         with pytest.raises(InvalidGuessError):
             game.play_round(uuid4())
 
     def test_playing_an_already_finished_game_raises(self, immich_service):
-        game = ImmichdleGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        game = ImmichdleGame.start(id=uuid4(), immich_service=immich_service)
         game.play_round(game.target.id)
 
         with pytest.raises(ValueError):
@@ -103,7 +103,7 @@ class TestImmichdleGame:
         monkeypatch.setattr(immich_service, "get_persons", lambda **kwargs: [])
 
         with pytest.raises(ValueError, match="not enough named people"):
-            ImmichdleGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+            ImmichdleGame.start(id=uuid4(), immich_service=immich_service)
 
 
 class TestImmichdleAdminSettings:
@@ -112,14 +112,14 @@ class TestImmichdleAdminSettings:
 
     def test_starting_score_override_changes_the_initial_score(self, immich_service):
         game = ImmichdleGame.start(
-            id=uuid4(), owner="owner", immich_service=immich_service, settings={"starting_score": 50}
+            id=uuid4(), immich_service=immich_service, settings={"starting_score": 50}
         )
 
         assert game.score == 50
 
     def test_wrong_guess_penalty_override_changes_the_score_delta(self, immich_service):
         game = ImmichdleGame.start(
-            id=uuid4(), owner="owner", immich_service=immich_service, settings={"wrong_guess_penalty": 20}
+            id=uuid4(), immich_service=immich_service, settings={"wrong_guess_penalty": 20}
         )
         wrong_id = _wrong_person_id(immich_service, game)
 
@@ -146,7 +146,7 @@ class TestImmichdleAdminSettings:
         calls = self._spy_on_target_selection_call(immich_service, monkeypatch)
 
         ImmichdleGame.start(
-            id=uuid4(), owner="owner", immich_service=immich_service, settings={"asset_count_weight": 0.7}
+            id=uuid4(), immich_service=immich_service, settings={"asset_count_weight": 0.7}
         )
 
         assert calls[0]["asset_count_weight"] == 0.7
@@ -154,7 +154,7 @@ class TestImmichdleAdminSettings:
     def test_asset_count_weight_defaults_when_not_overridden(self, immich_service, monkeypatch):
         calls = self._spy_on_target_selection_call(immich_service, monkeypatch)
 
-        ImmichdleGame.start(id=uuid4(), owner="owner", immich_service=immich_service)
+        ImmichdleGame.start(id=uuid4(), immich_service=immich_service)
 
         assert calls[0]["asset_count_weight"] == ASSET_COUNT_WEIGHT_EXPONENT
 

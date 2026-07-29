@@ -114,8 +114,7 @@ def logged_client(client):
     request without a valid session cookie, so any test hitting a real endpoint (not calling a
     service directly) needs one - this is the "cut over the whole suite" fixture the doc's own
     risk section calls for. Registers a disposable throwaway account and returns the same `client`,
-    now carrying its session cookie; callers that also need X-Owner-Id (game routes - unaffected by
-    F3, still required until F4) keep sending it exactly as before."""
+    now carrying its session cookie."""
     unique = uuid.uuid4().hex[:8]
     response = client.post(
         "/api/v1/auth/register",

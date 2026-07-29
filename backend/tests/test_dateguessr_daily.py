@@ -22,7 +22,6 @@ class TestDateguessrScriptedContent:
         ]
         game = DateguessrGame.start(
             id=uuid4(),
-            owner="owner",
             content=ScriptedContent(rounds_spec),
             settings={"total_rounds": 2},
         )

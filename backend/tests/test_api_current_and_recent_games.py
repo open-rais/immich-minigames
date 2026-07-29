@@ -7,12 +7,8 @@ from uuid import uuid4
 from conftest import mint_invite_code
 
 
-def _create_game(client, owner: str, *, mode: str = "personAssets") -> dict:
-    response = client.post(
-        "/api/v1/games",
-        json={"type": "more-or-less", "mode": mode},
-        headers={"X-Owner-Id": owner},
-    )
+def _create_game(client, *, mode: str = "personAssets") -> dict:
+    response = client.post("/api/v1/games", json={"type": "more-or-less", "mode": mode})
     assert response.status_code == 201
     return response.json()
 
@@ -35,61 +31,42 @@ class TestGetCurrentGame:
         client.cookies.clear()
 
         response = client.get(
-            "/api/v1/games/current",
-            params={"game_type": "more-or-less", "mode": "personAssets"},
-            headers={"X-Owner-Id": str(uuid4())},
+            "/api/v1/games/current", params={"game_type": "more-or-less", "mode": "personAssets"}
         )
 
         assert response.status_code == 401
 
     def test_returns_null_when_nothing_active(self, logged_client):
         response = logged_client.get(
-            "/api/v1/games/current",
-            params={"game_type": "more-or-less", "mode": "personAssets"},
-            headers={"X-Owner-Id": str(uuid4())},
+            "/api/v1/games/current", params={"game_type": "more-or-less", "mode": "personAssets"}
         )
 
         assert response.status_code == 200
         assert response.json() == {"game": None}
 
     def test_returns_the_active_game(self, logged_client):
-        owner = str(uuid4())
-        game = _create_game(logged_client, owner)
+        game = _create_game(logged_client)
 
         response = logged_client.get(
-            "/api/v1/games/current",
-            params={"game_type": "more-or-less", "mode": "personAssets"},
-            headers={"X-Owner-Id": owner},
+            "/api/v1/games/current", params={"game_type": "more-or-less", "mode": "personAssets"}
         )
 
         assert response.status_code == 200
         assert response.json()["game"]["id"] == game["id"]
 
-    def test_requires_owner_header(self, logged_client):
-        response = logged_client.get(
-            "/api/v1/games/current", params={"game_type": "more-or-less", "mode": "personAssets"}
-        )
-
-        assert response.status_code == 422
-
     def test_unsupported_mode_returns_400(self, logged_client):
         response = logged_client.get(
-            "/api/v1/games/current",
-            params={"game_type": "geoguessr", "mode": "not-a-real-mode"},
-            headers={"X-Owner-Id": str(uuid4())},
+            "/api/v1/games/current", params={"game_type": "geoguessr", "mode": "not-a-real-mode"}
         )
 
         assert response.status_code == 400
 
     def test_starting_a_new_game_of_the_same_mode_abandons_the_old_one(self, logged_client):
-        owner = str(uuid4())
-        first = _create_game(logged_client, owner)
-        _create_game(logged_client, owner)
+        first = _create_game(logged_client)
+        _create_game(logged_client)
 
         response = logged_client.get(
-            "/api/v1/games/current",
-            params={"game_type": "more-or-less", "mode": "personAssets"},
-            headers={"X-Owner-Id": owner},
+            "/api/v1/games/current", params={"game_type": "more-or-less", "mode": "personAssets"}
         )
 
         assert response.json()["game"]["id"] != first["id"]
@@ -104,7 +81,6 @@ class TestGetRecentGames:
         assert response.status_code == 401
 
     def test_returns_at_most_five_games(self, client):
-        owner = str(uuid4())
         _register(client)
         # Each create_game call for the same mode abandons the previous one (see
         # test_games_service.py's TestCreateGameAbandonsPreviousActiveGame), so 7 consecutive
@@ -113,7 +89,7 @@ class TestGetRecentGames:
         # first ordering is already covered at the service layer
         # (TestGetRecentGames.test_orders_newest_first_and_caps_at_the_limit), which controls
         # created_at explicitly rather than relying on real wall-clock gaps between requests.
-        games = [_create_game(client, owner) for _ in range(7)]
+        games = [_create_game(client) for _ in range(7)]
         abandoned_ids = {g["id"] for g in games[:6]}
 
         response = client.get("/api/v1/games/recent")
@@ -126,10 +102,9 @@ class TestGetRecentGames:
     def test_the_first_of_two_games_for_the_same_mode_shows_up_once_abandoned(self, client):
         # End-to-end proof that the abandon side effect (GamesService._abandon_active_games) is
         # visible through the API, not just at the service layer.
-        owner = str(uuid4())
         _register(client)
-        first = _create_game(client, owner)
-        _create_game(client, owner)
+        first = _create_game(client)
+        _create_game(client)
 
         response = client.get("/api/v1/games/recent")
 
