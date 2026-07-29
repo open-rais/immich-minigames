@@ -1,3 +1,4 @@
+import time
 import uuid
 
 
@@ -143,6 +144,59 @@ class TestMe:
         client.cookies.clear()
 
         response = client.get("/api/v1/auth/me")
+
+        assert response.status_code == 401
+
+
+class TestChangePassword:
+    def test_correct_current_password_sets_a_new_cookie(self, client):
+        body = _register(client)
+
+        response = client.patch(
+            "/api/v1/auth/me/password",
+            json={"current_password": body["password"], "new_password": "new-password-123"},
+        )
+
+        assert response.status_code == 200
+        assert "access_token" in response.cookies
+
+    def test_wrong_current_password_returns_401(self, client):
+        _register(client)
+
+        response = client.patch(
+            "/api/v1/auth/me/password",
+            json={"current_password": "wrong-password", "new_password": "new-password-123"},
+        )
+
+        assert response.status_code == 401
+
+    def test_the_pre_change_cookie_no_longer_authenticates(self, client):
+        body = _register(client)
+        pre_change_cookie = client.cookies["access_token"]
+        # JWT's iat is an integer-second NumericDate (RFC 7519) - without this, register()'s iat and
+        # change_password()'s password_changed_at could truncate to the same second and the strict
+        # `<` revocation check in get_user_from_token wouldn't reject the old cookie, making this
+        # test flaky depending on execution speed rather than testing a real bug.
+        time.sleep(1.1)
+
+        response = client.patch(
+            "/api/v1/auth/me/password",
+            json={"current_password": body["password"], "new_password": "new-password-123"},
+        )
+        assert response.status_code == 200
+
+        client.cookies.set("access_token", pre_change_cookie)
+        me = client.get("/api/v1/auth/me")
+
+        assert me.status_code == 401
+
+    def test_without_cookie_returns_401(self, client):
+        client.cookies.clear()
+
+        response = client.patch(
+            "/api/v1/auth/me/password",
+            json={"current_password": "whatever123", "new_password": "new-password-123"},
+        )
 
         assert response.status_code == 401
 

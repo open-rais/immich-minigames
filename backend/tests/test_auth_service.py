@@ -1,5 +1,6 @@
 import threading
 import uuid
+from datetime import UTC, datetime, timedelta
 
 import jwt
 import pytest
@@ -144,6 +145,54 @@ class TestAccessToken:
         with pytest.raises(UnauthorizedError):
             auth_service.get_user_from_token(token)
 
+    def test_token_issued_before_a_password_change_is_revoked(self, auth_service):
+        # iat is built by hand with a few seconds of slack rather than via create_access_token()'s
+        # "now" - JWT's iat/exp are integer-second NumericDates (RFC 7519), so a token minted and a
+        # password changed within the same real-world second would truncate to equal timestamps and
+        # not trigger the strict `<` rejection this test exists to check - flaky depending on
+        # execution speed rather than a real bug. See get_user_from_token's own comment for why the
+        # comparison is strict `<` in the first place (the re-issued-cookie-in-the-same-request case
+        # needs iat == password_changed_at, truncated, to still pass).
+        user = _register(auth_service)
+        stale_token = jwt.encode(
+            {
+                "sub": str(user.id),
+                "iat": datetime.now(UTC) - timedelta(seconds=5),
+                "exp": datetime.now(UTC) + timedelta(days=1),
+            },
+            auth_service._settings.jwt_secret,
+            algorithm="HS256",
+        )
+
+        auth_service.change_password(user, "correct-horse-battery-staple", "new-password-123")
+
+        with pytest.raises(UnauthorizedError):
+            auth_service.get_user_from_token(stale_token)
+
+    def test_token_issued_after_a_password_change_is_accepted(self, auth_service):
+        user = _register(auth_service)
+        auth_service.change_password(user, "correct-horse-battery-staple", "new-password-123")
+
+        token = auth_service.create_access_token(user)
+        resolved = auth_service.get_user_from_token(token)
+
+        assert resolved.id == user.id
+
+    def test_token_without_an_iat_claim_is_not_revoked_by_a_password_change(self, auth_service):
+        # Simulates a session that was already active when this code shipped - no `iat` to compare
+        # against password_changed_at, so it must keep working rather than force a mass logout.
+        user = _register(auth_service)
+        token = jwt.encode(
+            {"sub": str(user.id), "exp": datetime.now(UTC) + timedelta(days=1)},
+            auth_service._settings.jwt_secret,
+            algorithm="HS256",
+        )
+
+        auth_service.change_password(user, "correct-horse-battery-staple", "new-password-123")
+
+        resolved = auth_service.get_user_from_token(token)
+        assert resolved.id == user.id
+
 
 class TestUpdateProfile:
     def test_updates_username_and_full_name(self, auth_service):
@@ -217,6 +266,25 @@ class TestUpdateProfileConcurrency:
             session_b.close()
 
         assert isinstance(b_result.get("error"), UsernameAlreadyExistsError)
+
+
+class TestChangePassword:
+    def test_wrong_current_password_raises(self, auth_service):
+        user = _register(auth_service, password="correct-horse-battery-staple")
+
+        with pytest.raises(InvalidCredentialsError):
+            auth_service.change_password(user, "wrong-password", "new-password-123")
+
+    def test_correct_current_password_updates_the_hash_and_timestamp(self, auth_service):
+        user = _register(auth_service, password="correct-horse-battery-staple")
+        assert user.password_changed_at is None
+        old_hash = user.password_hash
+
+        updated = auth_service.change_password(user, "correct-horse-battery-staple", "new-password-123")
+
+        assert updated.password_hash != old_hash
+        assert updated.password_changed_at is not None
+        assert auth_service.authenticate(user.email, "new-password-123").id == user.id
 
 
 class TestSetSkin:
