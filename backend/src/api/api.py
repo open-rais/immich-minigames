@@ -16,7 +16,7 @@ from api.admin_api import router as admin_router
 from api.admin_daily_api import router as admin_daily_router
 from api.admin_games_api import router as admin_games_router
 from api.admin_invites_api import router as admin_invites_router
-from api.auth_api import get_current_user, get_current_user_optional
+from api.auth_api import get_current_user
 from api.auth_api import router as auth_router
 from api.daily_api import router as daily_router
 from api.deps import get_games_service, get_immich_service, get_owner_id
@@ -42,10 +42,12 @@ router.include_router(daily_router)
 
 @router.get("/config", response_model=ConfigOut)
 def get_config(settings: Annotated[Settings, Depends(get_settings)]) -> ConfigOut:
-    # Public and unauthenticated (no X-Owner-Id, no rate limit) - static config, no DB/Immich call,
-    # used by the frontend's "Ver en Immich" buttons (ROUNDS-VIEW.md roadmap point #10). Depends()
-    # rather than calling get_settings() inline (see auth_api.py) so tests can override this one
-    # dependency without touching the lru_cache singleton every other module shares.
+    # No rate limit of its own (static config, no DB/Immich call) - used by the frontend's "Ver en
+    # Immich" buttons (ROUNDS-VIEW.md roadmap point #10). Requires a session like everything else
+    # now (roadmap #H, F3's default-deny middleware), even though this route declares no auth
+    # dependency itself. Depends() rather than calling get_settings() inline (see auth_api.py) so
+    # tests can override this one dependency without touching the lru_cache singleton every other
+    # module shares.
     return ConfigOut(immich_external_url=settings.immich_public_url)
 
 
@@ -55,25 +57,24 @@ def create_game(
     request: Request,
     body: CreateGameIn,
     owner: Annotated[str, Depends(get_owner_id)],
-    user: Annotated[UserModel | None, Depends(get_current_user_optional)],
+    user: Annotated[UserModel, Depends(get_current_user)],
     games_service: Annotated[GamesService, Depends(get_games_service)],
 ) -> GameOut:
-    game = games_service.create_game(
-        owner=owner, game_type=body.type, mode=body.mode, user_id=user.id if user else None
-    )
+    # Roadmap #H, F3 - every request reaching here is now guaranteed authenticated (the
+    # default-deny middleware already rejected anything without a valid session), so `user` is
+    # never None anymore - get_current_user_optional is gone. owner/X-Owner-Id stays exactly as
+    # before (GamesService's own owner/user_id plumbing is untouched until F4).
+    game = games_service.create_game(owner=owner, game_type=body.type, mode=body.mode, user_id=user.id)
     return GameOut.from_game(game)
 
 
 @router.get("/games/records", response_model=GameRecordsOut)
 def get_game_records(
     owner: Annotated[str, Depends(get_owner_id)],
-    user: Annotated[UserModel | None, Depends(get_current_user_optional)],
+    user: Annotated[UserModel, Depends(get_current_user)],
     games_service: Annotated[GamesService, Depends(get_games_service)],
 ) -> GameRecordsOut:
-    # Personal bests are shown to every visitor, not just logged-in accounts (confirmed with the
-    # project owner) - anonymous play is scoped to the browser's X-Owner-Id, logged-in play to the
-    # account. Leaderboards (roadmap point F) are the feature that will require auth, not this one.
-    records = games_service.get_personal_records(owner, user.id if user else None)
+    records = games_service.get_personal_records(owner, user.id)
     return GameRecordsOut.from_records(records)
 
 
@@ -82,14 +83,13 @@ def get_current_game(
     game_type: str,
     mode: str,
     owner: Annotated[str, Depends(get_owner_id)],
-    user: Annotated[UserModel | None, Depends(get_current_user_optional)],
+    user: Annotated[UserModel, Depends(get_current_user)],
     games_service: Annotated[GamesService, Depends(get_games_service)],
 ) -> CurrentGameOut:
-    # Idle-screen "Continuar" lookup (roadmap #e) - anonymous-friendly like create_game/get_game
-    # above ("ya sea loggeado o no"), unlike get_recent_games below which requires an account.
-    # Declared before GET /games/{game_id} (same reason /games/records already is): a static path
-    # must precede a {game_id}: UUID catch-all or it 422s trying to parse "current" as a UUID.
-    game = games_service.get_current_game(owner, game_type, mode, user.id if user else None)
+    # Idle-screen "Continuar" lookup (roadmap #e). Declared before GET /games/{game_id} (same
+    # reason /games/records already is): a static path must precede a {game_id}: UUID catch-all or
+    # it 422s trying to parse "current" as a UUID.
+    game = games_service.get_current_game(owner, game_type, mode, user.id)
     return CurrentGameOut.from_game(game)
 
 
@@ -112,9 +112,9 @@ def get_leaderboard(
     games_service: Annotated[GamesService, Depends(get_games_service)],
     window: LeaderboardWindow = "all",
 ) -> LeaderboardOut:
-    # Viewable without an account (confirmed with the project owner) - only the *entries* are
-    # restricted to logged-in players, via GamesService.get_leaderboard's inner join to UserModel
-    # (an anonymous game has no user_id to join on), not this route requiring auth.
+    # No auth dependency of its own, but roadmap #H, F3's default-deny middleware now requires a
+    # session for every route regardless ("sin sesión no se ve nada: ni... leaderboards", see
+    # docs/TODO/NEW-AUTH.md §2) - this route just never needed one on top of that.
     entries = games_service.get_leaderboard(game_type, mode, window)
     return LeaderboardOut.from_entries(window, entries)
 
@@ -123,7 +123,7 @@ def get_leaderboard(
 def get_game(
     game_id: UUID,
     owner: Annotated[str, Depends(get_owner_id)],
-    user: Annotated[UserModel | None, Depends(get_current_user_optional)],
+    user: Annotated[UserModel, Depends(get_current_user)],
     games_service: Annotated[GamesService, Depends(get_games_service)],
 ) -> GameOut:
     game = games_service.get_game(game_id, owner, user)
@@ -138,7 +138,7 @@ def play_round(
     round_id: UUID,
     body: Annotated[dict[str, Any], Body()],
     owner: Annotated[str, Depends(get_owner_id)],
-    user: Annotated[UserModel | None, Depends(get_current_user_optional)],
+    user: Annotated[UserModel, Depends(get_current_user)],
     games_service: Annotated[GamesService, Depends(get_games_service)],
 ) -> PlayRoundOut:
     # game_id already fixes this round's game/mode - looked up first so the guess body only ever

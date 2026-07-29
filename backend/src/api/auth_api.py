@@ -5,7 +5,7 @@ in main.py, same pattern as api/api.py's own routes."""
 
 from typing import Annotated
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
 
 from api.auth_schemas import (
@@ -33,29 +33,17 @@ def get_auth_service(session: Annotated[Session, Depends(get_db_session)]) -> Au
     return AuthService(session)
 
 
-def get_current_user(
-    auth_service: Annotated[AuthService, Depends(get_auth_service)],
-    access_token: Annotated[str | None, Cookie()] = None,
-) -> UserModel:
-    if access_token is None:
+def get_current_user(request: Request) -> UserModel:
+    """Roadmap #H, F3 - no longer parses the cookie itself: api/auth_middleware.py already did
+    that for every request that reaches here (anything outside its allow-list), leaving the
+    resolved user on request.state. Routes still declare Depends(get_current_user) exactly as
+    before, unchanged - only where the identity comes from changed. The defensive None-check below
+    should never actually trigger (the middleware guarantees state.user is set for anything that
+    isn't allow-listed, and no allow-listed route uses this dependency), but costs nothing to keep."""
+    user = getattr(request.state, "user", None)
+    if user is None:
         raise UnauthorizedError("not authenticated")
-    return auth_service.get_user_from_token(access_token)
-
-
-def get_current_user_optional(
-    auth_service: Annotated[AuthService, Depends(get_auth_service)],
-    access_token: Annotated[str | None, Cookie()] = None,
-) -> UserModel | None:
-    """Same cookie read as get_current_user, but never raises - used where a route serves both
-    anonymous and logged-in requests (see api/api.py's create_game/get_game_records) and just
-    wants "the account if there is one", not to require auth. An invalid/expired token is treated
-    the same as no cookie at all rather than surfacing as an error."""
-    if access_token is None:
-        return None
-    try:
-        return auth_service.get_user_from_token(access_token)
-    except UnauthorizedError:
-        return None
+    return user
 
 
 def _cookie_attrs() -> dict[str, object]:

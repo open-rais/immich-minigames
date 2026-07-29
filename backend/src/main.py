@@ -16,6 +16,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from api.api import router
+from api.auth_middleware import AuthMiddleware
 from api.rate_limit import limiter
 from config import get_settings
 from games.immichdle import DuplicateGuessError, InvalidGuessError
@@ -57,6 +58,10 @@ async def _lifespan(_: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title="Immich Minigames", lifespan=_lifespan)
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
+# Added after SlowAPIMiddleware so it's the outermost layer (Starlette wraps in reverse
+# registration order) - an unauthenticated request to a protected route 401s immediately without
+# touching rate-limit state at all, rather than being rate-limited on its way to a 401 anyway.
+app.add_middleware(AuthMiddleware)
 
 
 def _error_handler(status_code: int):
