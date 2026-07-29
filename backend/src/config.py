@@ -95,8 +95,17 @@ class Settings(BaseSettings):
         return self._db_url(self.db_app_database_name)
 
     @property
-    def immich_public_url(self) -> str:
-        return (self.immich_external_url or self.immich_server_url).rstrip("/")
+    def immich_public_url(self) -> str | None:
+        """Falls back to immich_server_url only when immich_external_url is genuinely **unset**
+        (None) - convenient for localhost dev, where both point at the same place anyway. An
+        explicitly empty IMMICH_EXTERNAL_URL ("") means "no public link" and returns None outright
+        instead of falling back - the deliberate way to suppress the "Ver en Immich" button
+        (GET /config, roadmap #10) on a deployment where immich_server_url is an internal-only
+        address (e.g. host.docker.internal) that would otherwise leak into a browser-facing
+        response (roadmap #H, F6)."""
+        if self.immich_external_url is None:
+            return self.immich_server_url.rstrip("/")
+        return self.immich_external_url.rstrip("/") or None
 
 
 @lru_cache(maxsize=1)

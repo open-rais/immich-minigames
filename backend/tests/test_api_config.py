@@ -42,3 +42,16 @@ class TestGetConfig:
             del app.dependency_overrides[get_settings]
 
         assert response.json() == {"immich_external_url": settings.immich_server_url.rstrip("/")}
+
+    def test_returns_null_when_explicitly_set_empty(self, logged_client):
+        # Roadmap #H, F6 - an explicitly empty IMMICH_EXTERNAL_URL means "no public link", not
+        # "unset" - unlike None, it must NOT fall back to immich_server_url (which is often an
+        # internal-only address, e.g. host.docker.internal, that would otherwise leak into this
+        # browser-facing response).
+        app.dependency_overrides[get_settings] = lambda: _settings_with_external_url("")
+        try:
+            response = logged_client.get("/api/v1/config")
+        finally:
+            del app.dependency_overrides[get_settings]
+
+        assert response.json() == {"immich_external_url": None}

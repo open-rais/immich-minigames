@@ -76,8 +76,16 @@ class AuthService:
         reason - same anti-enumeration shape as InviteService.consume_invite."""
         if self._is_first_user():
             token = self._settings.initial_invite_token
-            if token is None:
-                return  # unset - dev convenience, first registration is free
+            if not token:
+                # Falsy, not `is None` - roadmap #H, F6 found that an unset INITIAL_INVITE_TOKEN
+                # reaches here as "" (empty string), not None, whenever it's set via a blank
+                # `INITIAL_INVITE_TOKEN=` line (.env.example's own documented default) or Docker
+                # Compose's `${INITIAL_INVITE_TOKEN}` interpolation with no var defined (Compose
+                # always injects the key with an empty-string value in that case, never omits it -
+                # verified with `docker compose config`). An `is None` check here would silently
+                # lock every fresh install's first registration behind an invite code that can
+                # never be satisfied (nothing ever submits an empty string as one).
+                return  # unset (or blank) - dev convenience, first registration is free
             if invite_code is None or not secrets.compare_digest(invite_code, token):
                 raise InvalidInviteError("invalid initial invite token")
             return

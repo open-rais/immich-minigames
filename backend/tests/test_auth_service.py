@@ -134,6 +134,21 @@ class TestRegisterBootstrap:
 
         assert user.id is not None
 
+    def test_blank_initial_token_also_allows_free_registration(self, db_session, monkeypatch):
+        # Roadmap #H, F6 - "" (not None) is exactly what INITIAL_INVITE_TOKEN parses to whenever
+        # it's left blank rather than fully absent: .env.example's own documented default
+        # (`INITIAL_INVITE_TOKEN=`) and Docker Compose's `${INITIAL_INVITE_TOKEN}` interpolation
+        # with no var defined (verified via `docker compose config`) both produce "", never None.
+        # Must behave exactly like None (free first registration), not like a configured token
+        # nothing could ever match.
+        settings = Settings(initial_invite_token="")
+        service = AuthService(db_session, settings=settings)
+        monkeypatch.setattr(service, "_is_first_user", lambda: True)
+
+        user = _register(service, invite_code=None)
+
+        assert user.id is not None
+
 
 class TestRegisterConcurrency:
     def test_losing_a_registration_race_raises_the_typed_error(self, db_session):

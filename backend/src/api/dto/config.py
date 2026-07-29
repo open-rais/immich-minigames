@@ -4,7 +4,8 @@ from pydantic import BaseModel
 
 
 class ConfigOut(BaseModel):
-    # Settings.immich_public_url, already resolved (IMMICH_EXTERNAL_URL or a fallback to
-    # IMMICH_SERVER_URL) - optional because immich_server_url is a plain str field with no
-    # guarantee against being blanked out, not because callers are expected to see null in practice.
+    # Settings.immich_public_url, already resolved (IMMICH_EXTERNAL_URL, a fallback to
+    # IMMICH_SERVER_URL when unset, or None) - genuinely null in the response either when
+    # IMMICH_EXTERNAL_URL is explicitly set empty (roadmap #H, F6 - "no public link", not a
+    # fallback) or, in principle, if immich_server_url itself were ever blanked out.
     immich_external_url: str | None

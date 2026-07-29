@@ -330,6 +330,46 @@ class TestHappyPath:
             cur.execute(f"SELECT is_admin FROM {LEGACY_SCHEMA}.users")
             assert cur.fetchone()[0] is False
 
+    def test_pre_accounts_install_drops_all_games_but_still_migrates_users(self, migrated_target):
+        """An install frozen at 0001 - the app's very first shape, before user_id (or accounts at
+        all) existed - has `games.owner` and nothing else identifying a player. Every row there is
+        anonymous by definition, not just the ones a NULL user_id would flag on a newer schema, so
+        _copy_games/_copy_rounds_of_migrated_games must drop all of them (roadmap #H, F4/decision
+        [I]: the target's games.user_id is NOT NULL) rather than crash trying to insert a column
+        that was never there to begin with. users has no such problem - it never depended on
+        accounts existing."""
+        source, target = migrated_target
+        _create_legacy_schema(source, revision="0001")
+        game_id = uuid.uuid4()
+        with psycopg.connect(_admin_url(source)) as conn, conn.cursor() as cur:
+            cur.execute(
+                f"INSERT INTO {LEGACY_SCHEMA}.users "
+                "(id, email, username, full_name, password_hash) VALUES (%s, %s, %s, %s, %s)",
+                (uuid.uuid4(), "old@example.com", "old-user", "Old User", "hash"),
+            )
+            cur.execute(
+                f"INSERT INTO {LEGACY_SCHEMA}.games "
+                "(id, owner, game_type, mode, score, finished) VALUES (%s, %s, %s, %s, %s, %s)",
+                (game_id, "some-browser-owner-id", "geoguessr", "classic", 500, True),
+            )
+            cur.execute(
+                f"INSERT INTO {LEGACY_SCHEMA}.rounds "
+                "(id, game_id, round_index, score_delta, payload) VALUES (%s, %s, %s, %s, %s)",
+                (uuid.uuid4(), game_id, 0, 500, Jsonb({"asset": "x"})),
+            )
+            conn.commit()
+
+        report = _migrate(source, target)
+
+        assert report.action == "migrated"
+        # game_settings arrived in 0004 - absent from a 0001 source, so simply skipped (same as
+        # test_older_install_missing_a_later_column_still_migrates above).
+        assert report.rows_copied == {"users": 1, "games": 0, "rounds": 0}
+        assert report.anonymous_games_dropped == 1
+        assert report.dropped is True
+        assert _counts(target) == {"users": 1, "games": 0, "rounds": 0, "game_settings": 0}
+        assert not _schema_exists(source)
+
 
 class TestRefusesToDestroy:
     def test_count_mismatch_rolls_back_and_drops_nothing(self, migrated_target, monkeypatch):
