@@ -13,8 +13,12 @@ import type {
 // updateProfile/updateSkin, applied to an arbitrary userId instead of the caller's own account.
 // Backend enforces is_admin on every route here (see backend/src/api/admin_api.py).
 
-export async function listUsers(): Promise<User[]> {
-  const { data } = await apiClient.get<User[]>("/admin/users")
+// Paginated (roadmap infinite-scroll UI, see admin/useInfiniteAdminList.ts) - same offset/limit
+// convention as api/games.ts's searchPersons.
+export async function listUsers(opts?: { offset?: number; limit?: number }): Promise<User[]> {
+  const { data } = await apiClient.get<User[]>("/admin/users", {
+    params: { offset: opts?.offset, limit: opts?.limit },
+  })
   return data
 }
 
@@ -77,8 +81,12 @@ export async function createInvite(): Promise<CreateInviteOut> {
   return data
 }
 
-export async function listInvites(): Promise<InviteOut[]> {
-  const { data } = await apiClient.get<InviteOut[]>("/admin/invites")
+// Paginated (roadmap infinite-scroll UI, see admin/useInfiniteAdminList.ts) - same offset/limit
+// convention as api/games.ts's searchPersons.
+export async function listInvites(opts?: { offset?: number; limit?: number }): Promise<InviteOut[]> {
+  const { data } = await apiClient.get<InviteOut[]>("/admin/invites", {
+    params: { offset: opts?.offset, limit: opts?.limit },
+  })
   return data
 }
 
