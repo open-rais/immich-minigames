@@ -205,6 +205,13 @@
       "save": "Guardar cambios",
       "saved": "Perfil actualizado",
       "viewGames": "Ver juegos",
+      "changePassword": {
+        "title": "Cambiar contraseña",
+        "currentPassword": "Contraseña actual",
+        "newPassword": "Nueva contraseña",
+        "save": "Cambiar contraseña",
+        "saved": "Contraseña cambiada"
+      },
       "skin": {
         "label": "Piel",
         "none": "Ninguna",

@@ -1,6 +1,6 @@
 import { createContext } from "react"
 
-import type { LoginIn, RegisterIn, UpdateProfileIn, User } from "../api/types"
+import type { ChangePasswordIn, LoginIn, RegisterIn, UpdateProfileIn, User } from "../api/types"
 
 // Own account session (roadmap point B) - entirely separate from the anonymous X-Owner-Id used by
 // games (see api/ownerId.ts). The backend holds the session as an httpOnly JWT cookie; this
@@ -17,6 +17,9 @@ export interface AuthContextValue {
   // the server's response, same pattern as login/register.
   updateProfile: (body: UpdateProfileIn) => Promise<User>
   updateSkin: (personId: string | null) => Promise<User>
+  // Roadmap #H, F0 - change-password page (ChangePasswordPage.tsx), same refresh-from-response
+  // pattern as updateProfile/updateSkin above.
+  changePassword: (body: ChangePasswordIn) => Promise<User>
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)

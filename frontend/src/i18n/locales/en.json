@@ -205,6 +205,13 @@
       "save": "Save changes",
       "saved": "Profile updated",
       "viewGames": "View games",
+      "changePassword": {
+        "title": "Change password",
+        "currentPassword": "Current password",
+        "newPassword": "New password",
+        "save": "Change password",
+        "saved": "Password changed"
+      },
       "skin": {
         "label": "Skin",
         "none": "None",

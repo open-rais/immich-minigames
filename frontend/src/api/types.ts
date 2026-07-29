@@ -264,6 +264,12 @@ export interface UpdateProfileIn {
   full_name?: string
 }
 
+// Roadmap #H, F0 - mirrors backend/src/api/auth_schemas.py's ChangePasswordIn.
+export interface ChangePasswordIn {
+  current_password: string
+  new_password: string
+}
+
 // Reusable across features (not just Immichdle's guess input) - see backend/src/api/api.py's
 // /persons/search.
 export interface PersonSearchResultOut {

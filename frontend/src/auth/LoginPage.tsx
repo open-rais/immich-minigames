@@ -7,6 +7,7 @@ import { apiErrorMessage } from "../api/errors"
 import { Button } from "../games/shared/Button"
 import { AuthCard } from "./AuthCard"
 import { AuthField } from "./AuthField"
+import { consumePendingRedirectFrom } from "./pendingRedirect"
 import { useAuth } from "./useAuth"
 
 export function LoginPage() {
@@ -26,7 +27,11 @@ export function LoginPage() {
     setError(null)
     try {
       await login({ email, password })
-      navigate("/profile")
+      // Roadmap #H, F0 - a session that expired mid-use lands the user back where they were (the
+      // 401 interceptor in AuthProvider.tsx sets this via pendingRedirect.ts), not just on their
+      // profile.
+      const from = consumePendingRedirectFrom()
+      navigate(from ?? "/profile", { replace: true })
     } catch (err) {
       setError(apiErrorMessage(err) ?? t("auth.error.generic"))
     } finally {

@@ -84,6 +84,9 @@ export function ProfilePage() {
       <Button variant="primary" className="mt-6 w-full py-2.5" onClick={() => navigate("/profile/edit")}>
         {t("auth.profile.edit")}
       </Button>
+      <Button variant="secondary" className="mt-3 w-full py-2.5" onClick={() => navigate("/profile/password")}>
+        {t("auth.profile.changePassword.title")}
+      </Button>
       <Button variant="secondary" className="mt-3 w-full py-2.5" onClick={() => setShowRecentGames(true)}>
         {t("auth.profile.viewGames")}
       </Button>

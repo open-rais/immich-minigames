@@ -1,5 +1,5 @@
 import { apiClient } from "./client"
-import type { LoginIn, RegisterIn, UpdateProfileIn, User } from "./types"
+import type { ChangePasswordIn, LoginIn, RegisterIn, UpdateProfileIn, User } from "./types"
 
 // The backend sets/clears the session as an httpOnly cookie (see backend/src/api/auth_api.py) -
 // same-origin in both dev (vite.config.ts's proxy) and prod (nginx.conf.template), so the browser
@@ -10,8 +10,10 @@ export async function register(body: RegisterIn): Promise<User> {
   return data
 }
 
+// skipAuthRedirect (client.ts) - a wrong-password 401 here is normal control flow, shown inline on
+// LoginPage, not "your session died" (the global 401 interceptor's concern - see AuthProvider.tsx).
 export async function login(body: LoginIn): Promise<User> {
-  const { data } = await apiClient.post<User>("/auth/login", body)
+  const { data } = await apiClient.post<User>("/auth/login", body, { skipAuthRedirect: true })
   return data
 }
 
@@ -19,13 +21,25 @@ export async function logout(): Promise<void> {
   await apiClient.post("/auth/logout")
 }
 
+// skipAuthRedirect (client.ts) - called on every mount by AuthProvider to check for an existing
+// session; a 401 here just means "logged out", not an expired session to redirect away from.
 export async function getMe(): Promise<User> {
-  const { data } = await apiClient.get<User>("/auth/me")
+  const { data } = await apiClient.get<User>("/auth/me", { skipAuthRedirect: true })
   return data
 }
 
 export async function updateProfile(body: UpdateProfileIn): Promise<User> {
   const { data } = await apiClient.patch<User>("/auth/me", body)
+  return data
+}
+
+// Roadmap #H, F0 - re-issues the session cookie in the same response (see backend/src/api/
+// auth_api.py's change_password), so the caller's own session survives the password_changed_at
+// bump that would otherwise revoke it. skipAuthRedirect (client.ts) - a wrong-current-password 401
+// here is normal control flow, shown inline on ChangePasswordPage, same reasoning as login() above
+// (without it, the global interceptor would redirect to /login before the inline error ever shows).
+export async function changePassword(body: ChangePasswordIn): Promise<User> {
+  const { data } = await apiClient.patch<User>("/auth/me/password", body, { skipAuthRedirect: true })
   return data
 }
 
