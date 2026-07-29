@@ -365,6 +365,52 @@ generates a challenge), `POST /daily/{type}/{mode}/games` (create/consume today'
 `DAILY_SETTING_SPECS` - the normal `GAME_SETTING_SPECS` plus `no_repeat_days`, or `chain_length` for
 MoreOrLess). `reset` clears only the value overrides; `enabled` is untouched.
 
+## Logging (roadmap #I)
+
+Full design in `docs/TODO/LOGGING.md`; summary here. Goal: answer "who did what, when, from
+where" on an exposed instance — structured (JSON lines) to stdout, rotation left to Docker
+(`json-file` + `max-size`/`max-file` in both compose files) rather than the app managing files or
+integrating a concrete aggregator itself (same deployment-agnostic philosophy as auth — whoever
+wants Loki/Grafana/etc. connects it externally, over the stdout already emitted).
+
+Three loggers, stdlib `logging` + a hand-written JSON formatter (`logging_setup.py`) — no new
+dependency:
+
+- **`audit`** — account/security events (`audit.py`'s `audit(event, **fields)`), always INFO,
+  never filtered by `LOG_LEVEL` (a quiet `LOG_LEVEL=ERROR` for app noise must not also silence
+  security events). Emitted from the **services** where each fact actually happens and the data is
+  on hand (`auth_service.py`, `invite_service.py`, `admin_bootstrap.py`) — not from routes or
+  `main.py`'s exception handlers, which only see an already-generic exception. One exception:
+  `admin_api.py::create_password_reset` emits its own `password_reset_created` in addition to
+  `invite_service`'s generic `invite_created` — it has `target_user_id`, which `invite_service`
+  has no reason to know. Never logs passwords, tokens in the clear (JWT/invite/reset), or
+  authorization headers — enforced by `tests/test_audit.py`'s dedicated secrets test, which drives
+  a real register → login → change-password → admin-reset → reset-password sequence and asserts
+  none of the plaintext values used anywhere appear in any emitted log line.
+- **`access`** — one line per request (`api/request_log_middleware.py`, the outermost middleware so
+  it also catches the 401s `AuthMiddleware` cuts before a route runs), replacing uvicorn's own
+  access log (silenced in `logging_setup.py` — otherwise every request would log twice): method,
+  path, status, duration, and the caller's `user_id`/`username` when authenticated — uvicorn's
+  default only ever logged the socket peer, useless for "which account did this" now that every
+  route requires one.
+- Everything else — ordinary `getLogger(__name__)` app logging, level controlled by `LOG_LEVEL`.
+
+**Request context without threading it through every call site**: `api/request_context.py`
+contextvars (`request_id`, `ip`, `forwarded_for`, `user`) are set once, by
+`RequestLogMiddleware`/`AuthMiddleware`, and merged into *every* record by the formatters — an
+`audit()` call never needs to know the request it's in. One propagation gotcha this relies on:
+`BaseHTTPMiddleware`'s `call_next` runs the rest of the stack in a task that inherits a *copy* of
+the calling context (downward propagation works), but nothing set further in flips back up to the
+caller once that inner task returns — so the outer `RequestLogMiddleware` reads the authenticated
+user off `request.state` (shared via the ASGI scope) rather than the `user` contextvar
+`AuthMiddleware` set one layer in.
+
+`LOG_FORMAT` (`console`, human-readable — the default for bare `uv run uvicorn` dev; `json` — one
+object per line, what the Docker image's own `Dockerfile` defaults to via `ENV LOG_FORMAT=json` so
+every packaged install emits it without touching `.env`) picks the formatter; `LOG_LEVEL` only
+gates ordinary app logging. Querying: `docker logs <container> | jq 'select(.logger == "audit")'`
+and variants — see `docs/INSTALL.md` § *Viewing the audit logs*.
+
 ## Configuration
 
 `config.py`, pydantic-settings, reads the repo-root `.env`. `get_settings()` is `lru_cache`d
@@ -383,3 +429,5 @@ because constructing `Settings()` re-reads the file from disk.
 | `ADMIN_EMAIL` | Account to promote to admin on startup. |
 | `INITIAL_INVITE_TOKEN` | Roadmap #H, F1. Stands in for an invite code for the very first account on a fresh install (registration is otherwise invite-only, see § Auth). Unset means the first registration is free — a one-shot door that closes itself the moment any account exists, regardless of this setting. |
 | `RATE_LIMIT_STORAGE_URI` | Roadmap #H, F5. Backing store for `api/rate_limit.py`'s counters. `memory://` (default) — fine for this app's single-backend-container deployment; `redis://host:port` only matters if more than one backend process shares the same traffic. |
+| `LOG_LEVEL` | Roadmap #I (see § Logging). Ordinary app logging only — `audit`/`access` always stay at INFO. |
+| `LOG_FORMAT` | Roadmap #I. `console` (default for bare `uv run uvicorn`) or `json` (what the Docker image defaults to via its own `Dockerfile`, regardless of this file). |

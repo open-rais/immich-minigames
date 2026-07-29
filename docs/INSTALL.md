@@ -284,6 +284,36 @@ Two things worth knowing afterwards:
 
 You do **not** need to add `DB_APP_DATABASE_NAME` to your `.env`; leaving it unset uses `minigames`.
 
+## Viewing the audit logs
+
+Every account/security event (registrations, logins, password changes/resets, admin edits, rate
+limiting) and every request (method, path, status, who made it) is logged as one JSON line per
+event to the backend container's stdout - `docker logs` plus [`jq`](https://jqlang.org/) is enough
+to query them, no separate log aggregator required (see `docs/ARCHITECTURE/BACKEND.md` § Logging
+for the full design):
+
+```bash
+# Every audit event (account/security), newest last
+docker logs immich-minigames-app-backend-1 | jq -c 'select(.logger == "audit")'
+
+# Just one kind of event
+docker logs immich-minigames-app-backend-1 | jq -c 'select(.logger == "audit" and .event == "login_failed")'
+
+# Every audit event for one email
+docker logs immich-minigames-app-backend-1 | jq -c 'select(.logger == "audit" and .email == "someone@example.com")'
+
+# The full access log (one line per request) for a specific status
+docker logs immich-minigames-app-backend-1 | jq -c 'select(.logger == "access" and .status == 429)'
+
+# Everything that happened during one request, by its X-Request-Id (also returned as a response
+# header - useful for correlating a user's bug report with what actually happened server-side)
+docker logs immich-minigames-app-backend-1 | jq -c 'select(.request_id == "<id-from-the-header>")'
+```
+
+For the manual dev setup (`uv run uvicorn`), logs go to the terminal in a human-readable format by
+default instead of JSON - set `LOG_FORMAT=json` in `.env` if you want the same `jq` recipes to work
+there too.
+
 ## Common Issues & Solutions
 
 ### Issue: "Database connection refused"
