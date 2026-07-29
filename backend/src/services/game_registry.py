@@ -37,6 +37,9 @@ from games.more_or_less import (
     MoreOrLessRound,
     PersonAssetsProvider,
 )
+from games.timeline import GAME_TYPE as TIMELINE_TYPE
+from games.timeline import MODE_ARCADE, TimelineGame, TimelineRound
+from games.timeline import LiveContent as TimelineLiveContent
 from games.whos_that_person import GAME_TYPE as WHOS_THAT_PERSON_TYPE
 from games.whos_that_person import MODE_NAMED_FACES, WhosThatPersonGame, WhosThatPersonRound
 from games.whos_that_person import LiveContent as WhosThatPersonLiveContent
@@ -87,5 +90,9 @@ GAMES: dict[tuple[str, str], GameSpec] = {
         WhosThatPersonRound,
         content_factory=WhosThatPersonLiveContent,
         daily=whos_that_person_daily,
+    ),
+    (TIMELINE_TYPE, MODE_ARCADE): GameSpec(
+        TimelineGame, TimelineRound, content_factory=TimelineLiveContent
+        # No `daily` yet - games/timeline/daily.py is roadmap #11's F5, not part of this phase.
     ),
 }

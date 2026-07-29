@@ -138,7 +138,11 @@ def play_round(
     try:
         guess = parse_guess(existing_game.current_round, body)
     except ValidationError as exc:
-        raise HTTPException(status_code=422, detail=exc.errors()) from exc
+        # include_context=False - a custom `raise ValueError(...)` inside a guess schema's own
+        # validator (TimelinePlayRoundIn's board-length check) otherwise leaves the raw exception
+        # object in errors()[i]["ctx"]["error"], which isn't JSON-serializable and 500s the response
+        # instead of returning this 422.
+        raise HTTPException(status_code=422, detail=exc.errors(include_context=False)) from exc
 
     game = games_service.play_loaded_round(existing_game, round_id, guess)
     answered_round = next(r for r in game.rounds if r.id == round_id)

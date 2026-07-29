@@ -24,12 +24,14 @@ from api.dto.dateguessr import DateguessrPlayRoundIn, DateguessrRoundOut
 from api.dto.geoguessr import GeoguessrPlayRoundIn, GeoguessrRoundOut
 from api.dto.immichdle import ImmichdlePlayRoundIn, ImmichdleRoundOut
 from api.dto.more_or_less import MoreOrLessPlayRoundIn, MoreOrLessRoundOut
+from api.dto.timeline import TimelinePlayRoundIn, TimelineRoundOut
 from api.dto.whos_that_person import WhosThatPersonPlayRoundIn, WhosThatPersonRoundOut
 from games.base import BaseGame, BaseRound
 from games.dateguessr import DateguessrRound
 from games.geoguessr import GeoguessrRound
 from games.immichdle import ImmichdleGame, ImmichdleRound
 from games.more_or_less import MoreOrLessRound
+from games.timeline import TimelineRound
 from games.whos_that_person import WhosThatPersonRound
 from services.games_service import RecentGame, UnsupportedGameError
 
@@ -40,7 +42,14 @@ class CreateGameIn(BaseModel):
 
 
 RoundOut = Annotated[
-    Union[MoreOrLessRoundOut, GeoguessrRoundOut, DateguessrRoundOut, ImmichdleRoundOut, WhosThatPersonRoundOut],
+    Union[
+        MoreOrLessRoundOut,
+        GeoguessrRoundOut,
+        DateguessrRoundOut,
+        ImmichdleRoundOut,
+        WhosThatPersonRoundOut,
+        TimelineRoundOut,
+    ],
     Field(discriminator="game_type"),
 ]
 
@@ -68,6 +77,7 @@ _ROUND_SPECS: dict[type[BaseRound], _RoundSpec] = {
     WhosThatPersonRound: _RoundSpec(
         WhosThatPersonPlayRoundIn, WhosThatPersonRoundOut, has_binary_correctness=True
     ),
+    TimelineRound: _RoundSpec(TimelinePlayRoundIn, TimelineRoundOut, has_binary_correctness=True),
 }
 
 
@@ -80,16 +90,25 @@ def _round_spec(round_: BaseRound) -> _RoundSpec:
 
 def round_out_from_round(
     round_: BaseRound,
-) -> MoreOrLessRoundOut | GeoguessrRoundOut | DateguessrRoundOut | ImmichdleRoundOut | WhosThatPersonRoundOut:
+) -> (
+    MoreOrLessRoundOut
+    | GeoguessrRoundOut
+    | DateguessrRoundOut
+    | ImmichdleRoundOut
+    | WhosThatPersonRoundOut
+    | TimelineRoundOut
+):
     return _round_spec(round_).out_class.from_round(round_)
 
 
 def parse_guess(round_: BaseRound, body: dict[str, Any]) -> Any:
     """Picks the right guess schema for an already-loaded round - the caller (see api/api.py's
     play_round) has already looked the game up (and confirmed this is the pending round), so this
-    never needs the client to also restate its own game_type in the guess body. Raises
+    never needs the client to also restate its own game_type in the guess body. The round itself is
+    passed through as pydantic's `context` so a schema that needs it (TimelinePlayRoundIn's
+    board-length upper bound) can validate against it - every other schema simply ignores it. Raises
     pydantic.ValidationError on a malformed body."""
-    return _round_spec(round_).guess_schema.model_validate(body).to_domain()
+    return _round_spec(round_).guess_schema.model_validate(body, context={"round": round_}).to_domain()
 
 
 class GameOut(BaseModel):
