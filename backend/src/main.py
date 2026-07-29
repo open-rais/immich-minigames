@@ -38,6 +38,7 @@ from services.games_service import (
     RoundNotPendingError,
     UnsupportedGameError,
 )
+from services.invite_service import InvalidInviteError, InviteNotFoundError
 
 
 @asynccontextmanager
@@ -87,5 +88,7 @@ app.add_exception_handler(UnknownGameSettingError, _error_handler(400))
 app.add_exception_handler(InvalidGameSettingValueError, _error_handler(400))
 app.add_exception_handler(DailyNotEnabledError, _error_handler(404))
 app.add_exception_handler(DailyAlreadyPlayedError, _error_handler(409))
+app.add_exception_handler(InvalidInviteError, _error_handler(400))
+app.add_exception_handler(InviteNotFoundError, _error_handler(404))
 
 app.include_router(router)

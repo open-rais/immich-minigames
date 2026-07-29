@@ -14,6 +14,9 @@ class RegisterIn(BaseModel):
     username: str = Field(min_length=3, max_length=32, pattern=r"^[a-zA-Z0-9_-]+$")
     full_name: str = Field(min_length=1, max_length=100)
     password: str = Field(min_length=8, max_length=128)
+    # Roadmap #H, F1 - required except for the very first account (see AuthService.
+    # _authorize_registration's decision [H] bootstrap).
+    invite_code: str | None = None
 
 
 class LoginIn(BaseModel):

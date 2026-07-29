@@ -59,6 +59,15 @@ class Settings(BaseSettings):
     # (register normally first, then restart the backend). None/unset means no admin is managed.
     admin_email: str | None = None
 
+    # Roadmap #H, F1 - registration is invite-only (services/invite_service.py), but the very first
+    # account can't have an invite yet. While the `users` table is empty, RegisterIn.invite_code is
+    # accepted as valid if it matches this value instead (services/auth_service.py's
+    # _authorize_registration) - a one-shot bootstrap door that closes itself the moment any
+    # account exists. Generate with `openssl rand -hex 32`, same as JWT_SECRET. Leave unset to allow
+    # the first registration freely (dev convenience, zero config for local dev) - the door still
+    # closes after that first account either way.
+    initial_invite_token: str | None = None
+
     # Two databases, one role. Deliberately no single `db_url` property: an ambiguous name pointing
     # at one of two databases is exactly the class of mistake the split exists to rule out.
     def _db_url(self, database: str) -> str:

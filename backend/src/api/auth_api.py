@@ -88,6 +88,7 @@ def register(
         username=body.username,
         full_name=body.full_name,
         password=body.password,
+        invite_code=body.invite_code,
     )
     _set_session_cookie(response, auth_service.create_access_token(user))
     return UserOut.from_user(user)

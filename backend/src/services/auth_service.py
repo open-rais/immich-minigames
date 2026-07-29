@@ -11,6 +11,7 @@ clears the cookie client-side, a token copied before logout stays valid until it
 if real revocation is ever needed.
 """
 
+import secrets
 from calendar import timegm
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
@@ -24,6 +25,7 @@ from sqlalchemy.orm import Session
 
 from config import Settings, get_settings
 from persistence.users import UserModel
+from services.invite_service import InvalidInviteError, InviteService
 
 _JWT_ALGORITHM = "HS256"
 
@@ -47,9 +49,12 @@ class UnauthorizedError(Exception):
 
 
 class AuthService:
-    def __init__(self, session: Session, settings: Settings | None = None) -> None:
+    def __init__(
+        self, session: Session, settings: Settings | None = None, invite_service: InviteService | None = None
+    ) -> None:
         self._session = session
         self._settings = settings or get_settings()
+        self._invite_service = invite_service or InviteService(session)
 
     def list_users(self) -> list[UserModel]:
         """Admin feature (ADMIN-FEATURE.md point #3) - every account, oldest-registered first."""
@@ -60,10 +65,38 @@ class AuthService:
         caller's own (unlike get_user_from_token, which is JWT-subject-bound)."""
         return self._session.get(UserModel, user_id)
 
-    def register(self, email: str, username: str, full_name: str, password: str) -> UserModel:
+    def _is_first_user(self) -> bool:
+        return self._session.scalar(select(UserModel.id).limit(1)) is None
+
+    def _authorize_registration(self, invite_code: str | None) -> None:
+        """Roadmap #H, F1 - registration is invite-only, except for the very first account (which
+        can't have an invite yet - decision [H]). Raises InvalidInviteError, never returns a
+        reason - same anti-enumeration shape as InviteService.consume_invite."""
+        if self._is_first_user():
+            token = self._settings.initial_invite_token
+            if token is None:
+                return  # unset - dev convenience, first registration is free
+            if invite_code is None or not secrets.compare_digest(invite_code, token):
+                raise InvalidInviteError("invalid initial invite token")
+            return
+        if invite_code is None:
+            raise InvalidInviteError("an invite code is required to register")
+        self._invite_service.consume_invite(invite_code, kind="invite")
+
+    def register(
+        self, email: str, username: str, full_name: str, password: str, invite_code: str | None = None
+    ) -> UserModel:
+        self._authorize_registration(invite_code)
+        # Roll back explicitly rather than relying on the caller's session lifecycle to undo the
+        # invite consumption above (a flush, not a commit - see InviteService.consume_invite) -
+        # true for a normal request (api/deps.py::get_db_session rolls back on close anyway), but
+        # this keeps the "a failed registration doesn't burn the invite" guarantee true regardless
+        # of what the caller does with the session afterward.
         if self._session.scalar(select(UserModel).where(UserModel.email == email)) is not None:
+            self._session.rollback()
             raise EmailAlreadyExistsError(f"email {email} is already registered")
         if self._session.scalar(select(UserModel).where(UserModel.username == username)) is not None:
+            self._session.rollback()
             raise UsernameAlreadyExistsError(f"username {username} is already taken")
 
         user = UserModel(
