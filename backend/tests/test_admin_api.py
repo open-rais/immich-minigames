@@ -3,6 +3,7 @@ from uuid import UUID
 
 from conftest import mint_invite_code
 from persistence.users import UserModel
+from services.auth_service import AuthService
 
 
 def _unique(prefix: str) -> str:
@@ -58,6 +59,36 @@ class TestListUsers:
         assert response.status_code == 200
         emails = {u["email"] for u in response.json()}
         assert {first["email"], second["email"], admin["email"]} <= emails
+
+    def test_pagination_limit_caps_the_page_and_offset_reaches_the_rest(self, client, db_session):
+        # 7 fresh users, seeded directly through AuthService (not the rate-limited HTTP endpoint -
+        # /auth/register is capped at 3/minute, see api/auth_api.py) - these are guaranteed to be
+        # the 7 newest rows in the whole (shared, never-reset-per-test) table at query time, so
+        # under the newest-first order they land across exactly two pages of limit=5 regardless of
+        # how many older rows other tests left behind.
+        auth_service = AuthService(db_session)
+        seeded = [
+            auth_service.register(
+                email=f"{_unique('pag')}@example.com",
+                username=_unique("pag"),
+                full_name="Pagination Test User",
+                password="correct-horse-battery-staple",
+                invite_code=mint_invite_code(),
+            )
+            for _ in range(7)
+        ]
+        _promote_to_admin(db_session, str(seeded[-1].id))
+        client.post("/api/v1/auth/login", json={"email": seeded[-1].email, "password": "correct-horse-battery-staple"})
+        our_emails = {u.email for u in seeded}
+
+        first_page = client.get("/api/v1/admin/users", params={"limit": 5, "offset": 0})
+        second_page = client.get("/api/v1/admin/users", params={"limit": 5, "offset": 5})
+
+        assert first_page.status_code == 200
+        assert len(first_page.json()) == 5
+        assert second_page.status_code == 200
+        seen_emails = {u["email"] for u in first_page.json()} | {u["email"] for u in second_page.json()}
+        assert our_emails <= seen_emails
 
 
 class TestUpdateUser:

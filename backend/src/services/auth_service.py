@@ -56,9 +56,12 @@ class AuthService:
         self._settings = settings or get_settings()
         self._invite_service = invite_service or InviteService(session)
 
-    def list_users(self) -> list[UserModel]:
-        """Admin feature (ADMIN-FEATURE.md point #3) - every account, oldest-registered first."""
-        return list(self._session.scalars(select(UserModel).order_by(UserModel.created_at)))
+    def list_users(self, *, offset: int = 0, limit: int = 5) -> list[UserModel]:
+        """Admin feature (ADMIN-FEATURE.md point #3) - newest-registered first, paginated (roadmap
+        infinite-scroll UI, see api/admin_api.py) - offset/limit, same convention as
+        ImmichService.search_persons."""
+        stmt = select(UserModel).order_by(UserModel.created_at.desc()).offset(offset).limit(limit)
+        return list(self._session.scalars(stmt))
 
     def get_user_by_id(self, user_id: UUID) -> UserModel | None:
         """Admin feature (ADMIN-FEATURE.md point #3) - looks up any account by id, not just the

@@ -7,7 +7,7 @@ an arbitrary user_id instead of the caller's own account."""
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from api.auth_api import get_auth_service, get_current_user
 from api.auth_schemas import UpdateProfileIn, UpdateSkinIn, UserOut
@@ -36,8 +36,10 @@ def _get_target_user(auth_service: AuthService, user_id: UUID) -> UserModel:
 def list_users(
     _admin: Annotated[UserModel, Depends(get_current_admin_user)],
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=50)] = 5,
 ) -> list[UserOut]:
-    return [UserOut.from_user(u) for u in auth_service.list_users()]
+    return [UserOut.from_user(u) for u in auth_service.list_users(offset=offset, limit=limit)]
 
 
 @router.patch("/users/{user_id}", response_model=UserOut)

@@ -73,12 +73,17 @@ class InviteService:
         self._session.flush()
         return self._session.get(InviteModel, invite_id)
 
-    def list_invites(self, kind: str) -> list[InviteModel]:
-        return list(
-            self._session.scalars(
-                sa.select(InviteModel).where(InviteModel.kind == kind).order_by(InviteModel.created_at.desc())
-            )
+    def list_invites(self, kind: str, *, offset: int = 0, limit: int = 5) -> list[InviteModel]:
+        # Paginated (roadmap infinite-scroll UI, see api/admin_invites_api.py) - offset/limit, same
+        # convention as AuthService.list_users/ImmichService.search_persons.
+        stmt = (
+            sa.select(InviteModel)
+            .where(InviteModel.kind == kind)
+            .order_by(InviteModel.created_at.desc())
+            .offset(offset)
+            .limit(limit)
         )
+        return list(self._session.scalars(stmt))
 
     def revoke_invite(self, invite_id: UUID) -> None:
         """Deletes a still-pending invite outright - an already-used one isn't revocable (it did

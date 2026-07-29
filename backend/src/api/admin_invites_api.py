@@ -6,7 +6,7 @@ dependency, same router-per-subresource split."""
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from api.admin_api import get_current_admin_user
@@ -37,8 +37,10 @@ def create_invite(
 def list_invites(
     _admin: Annotated[UserModel, Depends(get_current_admin_user)],
     invite_service: Annotated[InviteService, Depends(get_invite_service)],
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=50)] = 5,
 ) -> list[InviteOut]:
-    return [InviteOut.from_model(i) for i in invite_service.list_invites(kind=_KIND)]
+    return [InviteOut.from_model(i) for i in invite_service.list_invites(kind=_KIND, offset=offset, limit=limit)]
 
 
 @router.delete("/{invite_id}", status_code=204)

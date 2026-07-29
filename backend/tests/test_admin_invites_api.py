@@ -105,6 +105,21 @@ class TestListInvites:
         assert matching[0]["status"] == "used"
         assert matching[0]["used_at"] is not None
 
+    def test_pagination_limit_caps_the_page_and_offset_reaches_the_rest(self, client, db_session):
+        _register_as_admin(client, db_session)
+        # 7 fresh invites, newest-first order (InviteService.list_invites) - guaranteed to be the 7
+        # newest kind="invite" rows at query time, same reasoning as test_admin_api.py's equivalent.
+        created_ids = {client.post("/api/v1/admin/invites").json()["id"] for _ in range(7)}
+
+        first_page = client.get("/api/v1/admin/invites", params={"limit": 5, "offset": 0})
+        second_page = client.get("/api/v1/admin/invites", params={"limit": 5, "offset": 5})
+
+        assert first_page.status_code == 200
+        assert len(first_page.json()) == 5
+        assert second_page.status_code == 200
+        seen_ids = {i["id"] for i in first_page.json()} | {i["id"] for i in second_page.json()}
+        assert created_ids <= seen_ids
+
 
 class TestRevokeInvite:
     def test_revoking_a_pending_invite_makes_it_unusable(self, client, db_session):
