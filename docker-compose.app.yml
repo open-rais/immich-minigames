@@ -70,6 +70,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       INITIAL_INVITE_TOKEN: ${INITIAL_INVITE_TOKEN}
+      RATE_LIMIT_STORAGE_URI: ${RATE_LIMIT_STORAGE_URI:-memory://}
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     restart: unless-stopped
