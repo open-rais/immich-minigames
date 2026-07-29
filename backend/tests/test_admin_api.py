@@ -216,3 +216,44 @@ class TestCreatePasswordReset:
             "/api/v1/auth/reset-password", json={"token": body["token"], "new_password": "new-password-123"}
         )
         assert reset_response.status_code == 204
+
+
+class TestAuditEvents:
+    """docs/TODO/LOGGING.md §4.4, phase F2."""
+
+    def test_password_reset_creation_emits_password_reset_created(self, client, db_session, audit_log):
+        target = _register(client)
+        admin = _register(client)
+        _promote_to_admin(db_session, admin["id"])
+        audit_log.clear()
+
+        response = client.post(f"/api/v1/admin/users/{target['id']}/password-reset")
+
+        assert response.status_code == 201
+        record = next(r for r in audit_log.records if r.event == "password_reset_created")
+        assert record.target_user_id == target["id"]
+        assert record.invite_id == response.json()["id"]
+
+    def test_admin_editing_someone_else_records_admin_as_actor_and_other_as_target(
+        self, client, db_session, audit_log
+    ):
+        # The actor (whoever the request is authenticated as) lives in the request context, not an
+        # explicit field (LOGGING.md §4.4) - target_user_id is the only explicit field, so this is
+        # the only way to tell an admin's edit of someone else apart from self-service from the
+        # audit trail alone.
+        target = _register(client)
+        admin = _register(client)
+        _promote_to_admin(db_session, admin["id"])
+        audit_log.clear()
+
+        response = client.patch(
+            f"/api/v1/admin/users/{target['id']}",
+            json={"username": _unique("renamed"), "full_name": "Renamed User"},
+        )
+
+        assert response.status_code == 200
+        index = next(i for i, r in enumerate(audit_log.records) if r.event == "profile_updated")
+        record = audit_log.records[index]
+        context = audit_log.contexts[index]
+        assert record.target_user_id == target["id"]
+        assert context["user_id"] == admin["id"]

@@ -7,6 +7,7 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from audit import audit
 from config import Settings
 from persistence.users import UserModel
 
@@ -29,4 +30,4 @@ def ensure_admin(session: Session, settings: Settings) -> None:
     if not user.is_admin:
         user.is_admin = True
         session.commit()
-        logger.info("promoted %s to admin", settings.admin_email)
+        audit("admin_promoted", user_id=str(user.id), email=settings.admin_email)

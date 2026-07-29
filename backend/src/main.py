@@ -17,8 +17,9 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from api.api import router
 from api.auth_middleware import AuthMiddleware
-from api.rate_limit import limiter
+from api.rate_limit import limiter, session_or_ip_key
 from api.request_log_middleware import RequestLogMiddleware
+from audit import audit
 from config import get_settings
 from games.immichdle import DuplicateGuessError, InvalidGuessError
 from games.whos_that_person import IncompleteGuessError
@@ -80,6 +81,7 @@ def _error_handler(status_code: int):
 
 
 async def _rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+    audit("rate_limited", path=request.url.path, scope="route", key=session_or_ip_key(request))
     response = JSONResponse(status_code=429, content={"detail": f"rate limit exceeded: {exc.detail}"})
     return limiter._inject_headers(response, request.state.view_rate_limit)
 

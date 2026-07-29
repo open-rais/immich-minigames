@@ -12,6 +12,7 @@ That database has to exist before any of this works. Provision it once with:
     docker compose -f docker-compose.app.yml run --rm db-init
 """
 
+import logging
 import uuid
 
 import pytest
@@ -19,6 +20,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from api.rate_limit import limiter
+from api.request_context import context_fields
 from config import get_settings
 from main import app
 from persistence.base import get_app_engine, get_session_factory, reset_db
@@ -32,6 +34,52 @@ from services.games_service import GamesService
 from services.immich_service import ImmichService
 from services.invite_service import InviteService
 from services.ml_service import MLService
+
+
+class _LogCapture(logging.Handler):
+    """Captures records directly off a logger, bypassing caplog - `audit`/`access` both set
+    propagate=False (logging_setup.py, decision [H]), so records emitted on them never reach
+    caplog's root-attached handler. Also snapshots api.request_context.context_fields() at the same
+    point emit() runs (still inside the request's own task/context, unlike by the time a test
+    asserts afterward) - a raw record's own __dict__ only has whatever a call site explicitly put in
+    `extra`; request_id/ip/user_id/username are merged in later, at *format* time, by
+    JsonFormatter/ConsoleFormatter (logging_setup.py) - a formatter-less capture handler like this
+    one never sees them any other way."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.records: list[logging.LogRecord] = []
+        self.contexts: list[dict[str, object]] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        self.records.append(record)
+        self.contexts.append(context_fields())
+
+    def clear(self) -> None:
+        # Clears both lists together - `records` and `contexts` are index-aligned (emit() appends
+        # to both atomically), so clearing only one desyncs a later `contexts[i]` from `records[i]`.
+        self.records.clear()
+        self.contexts.clear()
+
+
+def _capture_logger(name: str):
+    handler = _LogCapture()
+    logger = logging.getLogger(name)
+    logger.addHandler(handler)
+    try:
+        yield handler
+    finally:
+        logger.removeHandler(handler)
+
+
+@pytest.fixture
+def access_log():
+    yield from _capture_logger("access")
+
+
+@pytest.fixture
+def audit_log():
+    yield from _capture_logger("audit")
 
 
 @pytest.fixture(scope="session")

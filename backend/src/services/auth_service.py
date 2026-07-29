@@ -22,6 +22,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from audit import audit
 from config import Settings, get_settings
 from persistence.users import UserModel
 from services.invite_service import InvalidInviteError, InviteService
@@ -70,10 +71,13 @@ class AuthService:
     def _is_first_user(self) -> bool:
         return self._session.scalar(select(UserModel.id).limit(1)) is None
 
-    def _authorize_registration(self, invite_code: str | None) -> None:
+    def _authorize_registration(self, email: str, invite_code: str | None) -> str:
         """Roadmap #H, F1 - registration is invite-only, except for the very first account (which
         can't have an invite yet - decision [H]). Raises InvalidInviteError, never returns a
-        reason - same anti-enumeration shape as InviteService.consume_invite."""
+        reason to the caller - same anti-enumeration shape as InviteService.consume_invite (the
+        real reason still goes to the audit log via register_rejected, LOGGING.md §4.4, decision
+        [D] - only the HTTP response stays generic). Returns `via` ("first_user"/"bootstrap_token"/
+        "invite") for register()'s register_ok event on the success path."""
         if self._is_first_user():
             token = self._settings.initial_invite_token
             if not token:
@@ -85,18 +89,25 @@ class AuthService:
                 # verified with `docker compose config`). An `is None` check here would silently
                 # lock every fresh install's first registration behind an invite code that can
                 # never be satisfied (nothing ever submits an empty string as one).
-                return  # unset (or blank) - dev convenience, first registration is free
+                return "first_user"  # unset (or blank) - dev convenience, first registration is free
             if invite_code is None or not secrets.compare_digest(invite_code, token):
+                audit("register_rejected", email=email, reason="invalid initial invite token")
                 raise InvalidInviteError("invalid initial invite token")
-            return
+            return "bootstrap_token"
         if invite_code is None:
+            audit("register_rejected", email=email, reason="an invite code is required to register")
             raise InvalidInviteError("an invite code is required to register")
-        self._invite_service.consume_invite(invite_code, kind="invite")
+        try:
+            self._invite_service.consume_invite(invite_code, kind="invite")
+        except InvalidInviteError as exc:
+            audit("register_rejected", email=email, reason=str(exc))
+            raise
+        return "invite"
 
     def register(
         self, email: str, username: str, full_name: str, password: str, invite_code: str | None = None
     ) -> UserModel:
-        self._authorize_registration(invite_code)
+        via = self._authorize_registration(email, invite_code)
         # Roll back explicitly rather than relying on the caller's session lifecycle to undo the
         # invite consumption above (a flush, not a commit - see InviteService.consume_invite) -
         # true for a normal request (api/deps.py::get_db_session rolls back on close anyway), but
@@ -127,6 +138,7 @@ class AuthService:
             if self._session.scalar(select(UserModel).where(UserModel.email == email)) is not None:
                 raise EmailAlreadyExistsError(f"email {email} is already registered") from None
             raise UsernameAlreadyExistsError(f"username {username} is already taken") from None
+        audit("register_ok", user_id=str(user.id), email=email, via=via)
         return user
 
     def update_profile(
@@ -134,19 +146,27 @@ class AuthService:
     ) -> UserModel:
         """Roadmap point E - profile edit page. Both args are None-means-"leave unchanged" (PATCH
         semantics), mirroring UpdateProfileIn."""
+        changed = []
         if username is not None and username != user.username:
             existing = self._session.scalar(select(UserModel).where(UserModel.username == username))
             if existing is not None:
                 raise UsernameAlreadyExistsError(f"username {username} is already taken")
             user.username = username
+            changed.append("username")
         if full_name is not None:
             user.full_name = full_name
+            changed.append("full_name")
         try:
             self._session.commit()
         except IntegrityError:
             # Same race as register(), but only username is writable here.
             self._session.rollback()
             raise UsernameAlreadyExistsError(f"username {username} is already taken") from None
+        # The actor (self-service caller or an admin editing someone else) is implicit in the
+        # request context (LOGGING.md §4.4) - one event covers both cases, since AuthService has no
+        # way to tell them apart itself (both routes call this same method).
+        if changed:
+            audit("profile_updated", target_user_id=str(user.id), fields=changed)
         return user
 
     def set_skin(self, user: UserModel, person_id: UUID | None) -> UserModel:
@@ -155,6 +175,7 @@ class AuthService:
         design, same separation as the rest of this module."""
         user.skin_person_id = person_id
         self._session.commit()
+        audit("skin_updated", target_user_id=str(user.id), fields=["skin_person_id"])
         return user
 
     def authenticate(self, email: str, password: str) -> UserModel:
@@ -162,11 +183,14 @@ class AuthService:
         # Same error whether the email doesn't exist or the password is wrong - never reveal
         # which one it was.
         if user is None:
+            audit("login_failed", email=email)
             raise InvalidCredentialsError("invalid email or password")
         try:
             _hasher.verify(user.password_hash, password)
         except VerifyMismatchError as exc:
+            audit("login_failed", email=email, user_id=str(user.id))
             raise InvalidCredentialsError("invalid email or password") from exc
+        audit("login_ok", email=email, user_id=str(user.id))
         return user
 
     def create_access_token(self, user: UserModel) -> str:
@@ -213,10 +237,12 @@ class AuthService:
         try:
             _hasher.verify(user.password_hash, current_password)
         except VerifyMismatchError as exc:
+            audit("password_change_failed", user_id=str(user.id))
             raise InvalidCredentialsError("current password is incorrect") from exc
         user.password_hash = _hasher.hash(new_password)
         user.password_changed_at = datetime.now(UTC)
         self._session.commit()
+        audit("password_change_ok", user_id=str(user.id))
         return user
 
     def reset_password(self, token: str, new_password: str) -> UserModel:
@@ -225,9 +251,14 @@ class AuthService:
         current password, for a caller who's locked out and by definition has no session to
         re-issue a cookie for (unlike change_password, this never touches the response cookie -
         the frontend sends them to /login afterward)."""
-        invite = self._invite_service.consume_invite(token, kind="password_reset")
+        try:
+            invite = self._invite_service.consume_invite(token, kind="password_reset")
+        except InvalidInviteError as exc:
+            audit("password_reset_failed", reason=str(exc))
+            raise
         user = self._session.get(UserModel, invite.user_id)
         user.password_hash = _hasher.hash(new_password)
         user.password_changed_at = datetime.now(UTC)
         self._session.commit()
+        audit("password_reset_ok", user_id=str(user.id))
         return user

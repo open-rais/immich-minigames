@@ -9,7 +9,10 @@ from datetime import UTC, datetime
 from api.request_context import context_fields
 from config import Settings
 
-_STANDARD_ATTRS = frozenset(vars(logging.LogRecord("", 0, "", 0, "", (), None)).keys()) | {
+# The reserved LogRecord attribute names - also used by audit.py to reject an audit() field that
+# would silently clobber one of these (§5 risk: `extra` overwriting `msg`/`args`/`levelname`... and
+# breaking with a cryptic KeyError deep inside stdlib logging).
+RESERVED_LOG_RECORD_ATTRS = frozenset(vars(logging.LogRecord("", 0, "", 0, "", (), None)).keys()) | {
     "message",
     "asctime",
 }
@@ -29,7 +32,7 @@ class JsonFormatter(logging.Formatter):
         else:
             payload["msg"] = record.getMessage()
         for key, value in record.__dict__.items():
-            if key not in _STANDARD_ATTRS and key != "event":
+            if key not in RESERVED_LOG_RECORD_ATTRS and key != "event":
                 payload[key] = value
         if record.exc_info:
             payload["exc"] = self.formatException(record.exc_info)
@@ -45,7 +48,7 @@ class ConsoleFormatter(logging.Formatter):
         extras.update(
             (key, value)
             for key, value in record.__dict__.items()
-            if key not in _STANDARD_ATTRS and key != "event"
+            if key not in RESERVED_LOG_RECORD_ATTRS and key != "event"
         )
         if extras:
             line += " " + " ".join(f"{key}={value}" for key, value in extras.items())

@@ -108,7 +108,7 @@ def login(
     # Roadmap #H, F5 - on top of the IP-keyed decorator above (a loose global cap), this bounds
     # attempts against one specific email regardless of which IP/session they come from - see
     # api/rate_limit.py's enforce_login_email_limit for why the decorator alone can't do this.
-    enforce_login_email_limit(body.email)
+    enforce_login_email_limit(body.email, request.url.path)
     user = auth_service.authenticate(body.email, body.password)
     _set_session_cookie(response, auth_service.create_access_token(user))
     return UserOut.from_user(user)
