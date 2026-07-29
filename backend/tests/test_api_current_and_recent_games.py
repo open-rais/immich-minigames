@@ -31,8 +31,19 @@ def _register(client) -> None:
 
 
 class TestGetCurrentGame:
-    def test_returns_null_when_nothing_active(self, client):
+    def test_without_a_cookie_returns_401(self, client):
+        client.cookies.clear()
+
         response = client.get(
+            "/api/v1/games/current",
+            params={"game_type": "more-or-less", "mode": "personAssets"},
+            headers={"X-Owner-Id": str(uuid4())},
+        )
+
+        assert response.status_code == 401
+
+    def test_returns_null_when_nothing_active(self, logged_client):
+        response = logged_client.get(
             "/api/v1/games/current",
             params={"game_type": "more-or-less", "mode": "personAssets"},
             headers={"X-Owner-Id": str(uuid4())},
@@ -41,11 +52,11 @@ class TestGetCurrentGame:
         assert response.status_code == 200
         assert response.json() == {"game": None}
 
-    def test_returns_the_active_game(self, client):
+    def test_returns_the_active_game(self, logged_client):
         owner = str(uuid4())
-        game = _create_game(client, owner)
+        game = _create_game(logged_client, owner)
 
-        response = client.get(
+        response = logged_client.get(
             "/api/v1/games/current",
             params={"game_type": "more-or-less", "mode": "personAssets"},
             headers={"X-Owner-Id": owner},
@@ -54,15 +65,15 @@ class TestGetCurrentGame:
         assert response.status_code == 200
         assert response.json()["game"]["id"] == game["id"]
 
-    def test_requires_owner_header(self, client):
-        response = client.get(
+    def test_requires_owner_header(self, logged_client):
+        response = logged_client.get(
             "/api/v1/games/current", params={"game_type": "more-or-less", "mode": "personAssets"}
         )
 
         assert response.status_code == 422
 
-    def test_unsupported_mode_returns_400(self, client):
-        response = client.get(
+    def test_unsupported_mode_returns_400(self, logged_client):
+        response = logged_client.get(
             "/api/v1/games/current",
             params={"game_type": "geoguessr", "mode": "not-a-real-mode"},
             headers={"X-Owner-Id": str(uuid4())},
@@ -70,12 +81,12 @@ class TestGetCurrentGame:
 
         assert response.status_code == 400
 
-    def test_starting_a_new_game_of_the_same_mode_abandons_the_old_one(self, client):
+    def test_starting_a_new_game_of_the_same_mode_abandons_the_old_one(self, logged_client):
         owner = str(uuid4())
-        first = _create_game(client, owner)
-        _create_game(client, owner)
+        first = _create_game(logged_client, owner)
+        _create_game(logged_client, owner)
 
-        response = client.get(
+        response = logged_client.get(
             "/api/v1/games/current",
             params={"game_type": "more-or-less", "mode": "personAssets"},
             headers={"X-Owner-Id": owner},
@@ -86,6 +97,8 @@ class TestGetCurrentGame:
 
 class TestGetRecentGames:
     def test_requires_login(self, client):
+        client.cookies.clear()
+
         response = client.get("/api/v1/games/recent")
 
         assert response.status_code == 401

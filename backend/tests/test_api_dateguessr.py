@@ -1,8 +1,8 @@
 from uuid import uuid4
 
 
-def _create_game(client, owner: str) -> dict:
-    response = client.post(
+def _create_game(logged_client, owner: str) -> dict:
+    response = logged_client.post(
         "/api/v1/games",
         json={"type": "dateguessr", "mode": "daysToDate"},
         headers={"X-Owner-Id": owner},
@@ -12,10 +12,10 @@ def _create_game(client, owner: str) -> dict:
 
 
 class TestCreateGame:
-    def test_returns_a_game_with_a_redacted_first_round(self, client):
+    def test_returns_a_game_with_a_redacted_first_round(self, logged_client):
         owner = str(uuid4())
 
-        game = _create_game(client, owner)
+        game = _create_game(logged_client, owner)
 
         assert game["score"] == 0
         assert game["finished"] is False
@@ -30,15 +30,15 @@ class TestCreateGame:
 
 
 class TestPlayRound:
-    def test_full_playthrough_reveals_actual_date_and_ends_after_five_rounds(self, client):
+    def test_full_playthrough_reveals_actual_date_and_ends_after_five_rounds(self, logged_client):
         owner = str(uuid4())
-        game = _create_game(client, owner)
+        game = _create_game(logged_client, owner)
 
         rounds_played = 0
         while not game["finished"] and rounds_played < 10:
             pending = game["rounds"][-1]
 
-            response = client.post(
+            response = logged_client.post(
                 f"/api/v1/games/{game['id']}/rounds/{pending['id']}",
                 json={"date": "2020-01-01"},
                 headers={"X-Owner-Id": owner},
@@ -47,7 +47,7 @@ class TestPlayRound:
             result = response.json()
             assert result["correct"] is None  # not a binary-guess game
 
-            state = client.get(f"/api/v1/games/{game['id']}", headers={"X-Owner-Id": owner}).json()
+            state = logged_client.get(f"/api/v1/games/{game['id']}", headers={"X-Owner-Id": owner}).json()
             answered = next(r for r in state["rounds"] if r["id"] == pending["id"])
             assert answered["actual_date"] is not None
             assert answered["days_off"] is not None
@@ -59,11 +59,11 @@ class TestPlayRound:
         assert rounds_played == 5
         assert game["finished"] is True
 
-    def test_wrong_round_id_returns_409(self, client):
+    def test_wrong_round_id_returns_409(self, logged_client):
         owner = str(uuid4())
-        game = _create_game(client, owner)
+        game = _create_game(logged_client, owner)
 
-        response = client.post(
+        response = logged_client.post(
             f"/api/v1/games/{game['id']}/rounds/{uuid4()}",
             json={"date": "2020-01-01"},
             headers={"X-Owner-Id": owner},
@@ -71,12 +71,12 @@ class TestPlayRound:
 
         assert response.status_code == 409
 
-    def test_malformed_date_returns_422(self, client):
+    def test_malformed_date_returns_422(self, logged_client):
         owner = str(uuid4())
-        game = _create_game(client, owner)
+        game = _create_game(logged_client, owner)
         pending = game["rounds"][-1]
 
-        response = client.post(
+        response = logged_client.post(
             f"/api/v1/games/{game['id']}/rounds/{pending['id']}",
             json={"date": "not-a-date"},
             headers={"X-Owner-Id": owner},

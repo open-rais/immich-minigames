@@ -12,6 +12,8 @@ That database has to exist before any of this works. Provision it once with:
     docker compose -f docker-compose.app.yml run --rm db-init
 """
 
+import uuid
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
@@ -104,6 +106,29 @@ def _reset_rate_limiter():
 def client():
     with TestClient(app) as test_client:
         yield test_client
+
+
+@pytest.fixture
+def logged_client(client):
+    """Roadmap #H, F3 - the default-deny middleware (api/auth_middleware.py) now rejects every
+    request without a valid session cookie, so any test hitting a real endpoint (not calling a
+    service directly) needs one - this is the "cut over the whole suite" fixture the doc's own
+    risk section calls for. Registers a disposable throwaway account and returns the same `client`,
+    now carrying its session cookie; callers that also need X-Owner-Id (game routes - unaffected by
+    F3, still required until F4) keep sending it exactly as before."""
+    unique = uuid.uuid4().hex[:8]
+    response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": f"logged-{unique}@example.com",
+            "username": f"logged-{unique}",
+            "full_name": "Logged In User",
+            "password": "correct-horse-battery-staple",
+            "invite_code": mint_invite_code(),
+        },
+    )
+    assert response.status_code == 201
+    return client
 
 
 def mint_invite_code(kind: str = "invite") -> str:

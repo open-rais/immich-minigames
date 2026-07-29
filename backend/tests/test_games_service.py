@@ -353,10 +353,12 @@ class TestPersonalRecords:
 class TestLeaderboard:
     """Same persistence-layer-query testing philosophy as TestPersonalRecords - games are seeded
     directly at whatever score/finished/created_at state a test needs, not played out for real.
-    Tests that need an exact row count use a game_type/mode no other test in this file seeds a
-    finished+user_id game for (see the per-test game_type/mode below), so unrelated tests' data
-    can't pollute an exact-count assertion; tests that only check relative order/membership among
-    their own named users reuse the default "more-or-less"/"personAssets" and filter by username."""
+    Every assertion here checks membership/absence of its own known users rather than an exact
+    count or `== []`, filtering by username or a distinctive seeded score - roadmap #H, F3 means
+    this table is no longer written to exclusively by this file (an HTTP-level game test can now
+    create and finish a real, logged-in game against the same game_type/mode), so an exact-count
+    assertion can't assume isolation anymore. test_limit_is_15 additionally seeds scores far above
+    any realistically-reachable real one so its top-15 boundary check stays deterministic."""
 
     def _seed_game(
         self,
@@ -408,13 +410,17 @@ class TestLeaderboard:
         assert ours[0].best_score == 80
 
     def test_anonymous_games_are_excluded(self, games_service, db_session):
+        # A distinctive score, not an exact `entries == []` - roadmap #H, F3 means every HTTP-level
+        # game test now creates a real, logged-in (and sometimes finished) game, so this table isn't
+        # exclusively written to by this file anymore; assert our own row's absence, not global
+        # emptiness, to stay correct regardless of what else legitimately lands on this leaderboard.
         self._seed_game(
             games_service, db_session, user_id=None, score=9999, game_type="dateguessr", mode="daysToDate"
         )
 
         entries = games_service.get_leaderboard("dateguessr", "daysToDate", "all")
 
-        assert entries == []
+        assert not any(e.best_score == 9999 for e in entries)
 
     def test_unfinished_games_are_excluded(self, games_service, db_session, auth_service):
         user = _register_user(auth_service)
@@ -430,7 +436,7 @@ class TestLeaderboard:
 
         entries = games_service.get_leaderboard("dateguessr", "daysToDate", "all")
 
-        assert entries == []
+        assert user.username not in {e.username for e in entries}
 
     def test_window_cutoffs_exclude_older_games(self, games_service, db_session, auth_service):
         recent_user = _register_user(auth_service)
@@ -454,18 +460,31 @@ class TestLeaderboard:
         weekly = games_service.get_leaderboard("immichdle", "person", "weekly")
         daily = games_service.get_leaderboard("immichdle", "person", "daily")
 
-        assert {e.username for e in all_time} == {recent_user.username, old_user.username}
-        assert {e.username for e in weekly} == {recent_user.username}
-        assert {e.username for e in daily} == {recent_user.username}
+        # Subset/absence checks, not exact set equality (roadmap #H, F3 - see
+        # test_anonymous_games_are_excluded's comment: real HTTP-created entries can legitimately
+        # share this table now).
+        assert {recent_user.username, old_user.username} <= {e.username for e in all_time}
+        assert recent_user.username in {e.username for e in weekly}
+        assert old_user.username not in {e.username for e in weekly}
+        assert recent_user.username in {e.username for e in daily}
+        assert old_user.username not in {e.username for e in daily}
 
     def test_limit_is_15(self, games_service, db_session, auth_service):
+        # Scores start comfortably above any realistically-reachable real score (roadmap #H, F3 -
+        # an HTTP-level geoguessr test can now finish a real, logged-in game against this same
+        # table) - guarantees our 16 seeded rows occupy the entire top of the ranking regardless of
+        # how many lower-scored real entries also exist, so the "16th squeezed out" boundary this
+        # test checks stays deterministic.
+        base = 10_000_000
+        users = []
         for score in range(16):
             user = _register_user(auth_service)
+            users.append(user)
             self._seed_game(
                 games_service,
                 db_session,
                 user_id=user.id,
-                score=score,
+                score=base + score,
                 game_type="geoguessr",
                 mode="distanceBetweenGuess",
             )
@@ -473,9 +492,11 @@ class TestLeaderboard:
         entries = games_service.get_leaderboard("geoguessr", "distanceBetweenGuess", "all")
 
         assert len(entries) == 15
+        ours = [e for e in entries if e.username in {u.username for u in users}]
+        assert len(ours) == 15  # nothing else can outscore `base` - every slot is ours
         # The lowest of the 16 seeded scores (0) must be the one squeezed out.
-        assert [e.best_score for e in entries] == list(range(15, 0, -1))
-        assert [e.rank for e in entries] == list(range(1, 16))
+        assert [e.best_score - base for e in ours] == list(range(15, 0, -1))
+        assert [e.rank for e in ours] == list(range(1, 16))
 
     def test_unsupported_game_type_raises(self, games_service):
         with pytest.raises(UnsupportedGameError):
