@@ -69,6 +69,7 @@ services:
       IMMICH_API_KEY: ${IMMICH_API_KEY}
       JWT_SECRET: ${JWT_SECRET}
       ADMIN_EMAIL: ${ADMIN_EMAIL}
+      INITIAL_INVITE_TOKEN: ${INITIAL_INVITE_TOKEN}
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     restart: unless-stopped
