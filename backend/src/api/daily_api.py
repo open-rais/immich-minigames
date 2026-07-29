@@ -12,7 +12,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, Request
 
 from api.auth_api import get_current_user
-from api.deps import get_games_service, get_owner_id
+from api.deps import get_games_service
 from api.dto.common import GameOut
 from api.dto.daily import DailyStatusOut
 from api.dto.leaderboard import DailyLeaderboardOut
@@ -32,12 +32,11 @@ def _resets_at(today: date) -> datetime:
 
 @router.get("", response_model=DailyStatusOut)
 def get_daily_status(
-    owner: Annotated[str, Depends(get_owner_id)],
     user: Annotated[UserModel, Depends(get_current_user)],
     games_service: Annotated[GamesService, Depends(get_games_service)],
 ) -> DailyStatusOut:
     today = date.today()
-    statuses = games_service.get_daily_status(owner, user.id, today)
+    statuses = games_service.get_daily_status(user.id, today)
     return DailyStatusOut.from_statuses(_resets_at(today), datetime.now(), statuses)
 
 
@@ -47,11 +46,10 @@ def create_daily_game(
     request: Request,
     game_type: str,
     mode: str,
-    owner: Annotated[str, Depends(get_owner_id)],
     user: Annotated[UserModel, Depends(get_current_user)],
     games_service: Annotated[GamesService, Depends(get_games_service)],
 ) -> GameOut:
-    game = games_service.create_daily_game(owner=owner, game_type=game_type, mode=mode, user_id=user.id)
+    game = games_service.create_daily_game(game_type=game_type, mode=mode, user_id=user.id)
     return GameOut.from_game(game)
 
 

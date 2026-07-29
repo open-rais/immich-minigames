@@ -1,9 +1,8 @@
 """
 Own persistence layer for this app's user accounts (roadmap point B) - entirely separate from
 Immich's own users (see docs/ARCHITECTURE/BACKEND.md). Shares this app's own database/Base with
-games.py (persistence/base.py). GameModel.user_id (roadmap point E) links a game to its account
-when the creating request was authenticated - the anonymous-owner flow still works unchanged for
-logged-out play (see services/games_service.py).
+games.py (persistence/base.py). GameModel.user_id (roadmap point E) links every game to the
+account that created it - login is mandatory (roadmap #H, see services/games_service.py).
 """
 
 from datetime import datetime

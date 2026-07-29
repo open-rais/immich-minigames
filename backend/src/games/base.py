@@ -64,7 +64,6 @@ class BaseGame(ABC):
     def __init__(
         self,
         id: UUID,
-        owner: str,
         game_type: str,
         mode: str,
         rounds: list[BaseRound],
@@ -73,7 +72,6 @@ class BaseGame(ABC):
         settings: Mapping[str, float] | None = None,
     ) -> None:
         self.id = id
-        self.owner = owner
         self.game_type = game_type
         self.mode = mode
         self.rounds = rounds

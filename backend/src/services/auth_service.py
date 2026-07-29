@@ -1,9 +1,8 @@
 """
 Auth service - registers/authenticates this app's own user accounts (roadmap point B) and
 issues/verifies their login JWT. Entirely separate from Immich's own users (never touches
-Immich's Postgres schema). Games created while authenticated get GameModel.user_id set (roadmap
-point E, see games_service.py) alongside the anonymous X-Owner-Id, which anonymous play still uses
-on its own - full leaderboards are a later roadmap point (F).
+Immich's Postgres schema). Every game is tied to the account that created it via
+GameModel.user_id (roadmap point E, see games_service.py) - login is mandatory (roadmap #H).
 
 Session model: stateless JWT in an httpOnly cookie, no server-side session table - "logout" just
 clears the cookie client-side, a token copied before logout stays valid until it expires

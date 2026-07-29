@@ -228,7 +228,6 @@ class GeoguessrGame(BaseGame):
     def __init__(
         self,
         id: UUID,
-        owner: str,
         rounds: list[BaseRound],
         content: GeoguessrContent,
         score: int = 0,
@@ -237,7 +236,6 @@ class GeoguessrGame(BaseGame):
     ) -> None:
         super().__init__(
             id=id,
-            owner=owner,
             game_type=self.game_type,
             mode=self.mode,
             rounds=rounds,
@@ -290,9 +288,9 @@ class GeoguessrGame(BaseGame):
 
     @classmethod
     def start(
-        cls, id: UUID, owner: str, content: GeoguessrContent, settings: Mapping[str, float] | None = None
+        cls, id: UUID, content: GeoguessrContent, settings: Mapping[str, float] | None = None
     ) -> "GeoguessrGame":
-        game = cls(id=id, owner=owner, rounds=[], content=content, settings=settings)
+        game = cls(id=id, rounds=[], content=content, settings=settings)
         asset = game._pick_asset(exclude_ids=frozenset())
         if asset is None:
             raise ValueError(cls._not_enough_assets_message)

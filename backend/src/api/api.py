@@ -19,7 +19,7 @@ from api.admin_invites_api import router as admin_invites_router
 from api.auth_api import get_current_user
 from api.auth_api import router as auth_router
 from api.daily_api import router as daily_router
-from api.deps import get_games_service, get_immich_service, get_owner_id
+from api.deps import get_games_service, get_immich_service
 from api.dto.common import CreateGameIn, CurrentGameOut, GameOut, PlayRoundOut, RecentGamesOut, parse_guess
 from api.dto.config import ConfigOut
 from api.dto.leaderboard import LeaderboardOut, LeaderboardWindow
@@ -56,25 +56,19 @@ def get_config(settings: Annotated[Settings, Depends(get_settings)]) -> ConfigOu
 def create_game(
     request: Request,
     body: CreateGameIn,
-    owner: Annotated[str, Depends(get_owner_id)],
     user: Annotated[UserModel, Depends(get_current_user)],
     games_service: Annotated[GamesService, Depends(get_games_service)],
 ) -> GameOut:
-    # Roadmap #H, F3 - every request reaching here is now guaranteed authenticated (the
-    # default-deny middleware already rejected anything without a valid session), so `user` is
-    # never None anymore - get_current_user_optional is gone. owner/X-Owner-Id stays exactly as
-    # before (GamesService's own owner/user_id plumbing is untouched until F4).
-    game = games_service.create_game(owner=owner, game_type=body.type, mode=body.mode, user_id=user.id)
+    game = games_service.create_game(game_type=body.type, mode=body.mode, user_id=user.id)
     return GameOut.from_game(game)
 
 
 @router.get("/games/records", response_model=GameRecordsOut)
 def get_game_records(
-    owner: Annotated[str, Depends(get_owner_id)],
     user: Annotated[UserModel, Depends(get_current_user)],
     games_service: Annotated[GamesService, Depends(get_games_service)],
 ) -> GameRecordsOut:
-    records = games_service.get_personal_records(owner, user.id)
+    records = games_service.get_personal_records(user.id)
     return GameRecordsOut.from_records(records)
 
 
@@ -82,14 +76,13 @@ def get_game_records(
 def get_current_game(
     game_type: str,
     mode: str,
-    owner: Annotated[str, Depends(get_owner_id)],
     user: Annotated[UserModel, Depends(get_current_user)],
     games_service: Annotated[GamesService, Depends(get_games_service)],
 ) -> CurrentGameOut:
     # Idle-screen "Continuar" lookup (roadmap #e). Declared before GET /games/{game_id} (same
     # reason /games/records already is): a static path must precede a {game_id}: UUID catch-all or
     # it 422s trying to parse "current" as a UUID.
-    game = games_service.get_current_game(owner, game_type, mode, user.id)
+    game = games_service.get_current_game(game_type, mode, user.id)
     return CurrentGameOut.from_game(game)
 
 
@@ -122,11 +115,10 @@ def get_leaderboard(
 @router.get("/games/{game_id}", response_model=GameOut)
 def get_game(
     game_id: UUID,
-    owner: Annotated[str, Depends(get_owner_id)],
     user: Annotated[UserModel, Depends(get_current_user)],
     games_service: Annotated[GamesService, Depends(get_games_service)],
 ) -> GameOut:
-    game = games_service.get_game(game_id, owner, user)
+    game = games_service.get_game(game_id, user)
     return GameOut.from_game(game)
 
 
@@ -137,13 +129,12 @@ def play_round(
     game_id: UUID,
     round_id: UUID,
     body: Annotated[dict[str, Any], Body()],
-    owner: Annotated[str, Depends(get_owner_id)],
     user: Annotated[UserModel, Depends(get_current_user)],
     games_service: Annotated[GamesService, Depends(get_games_service)],
 ) -> PlayRoundOut:
     # game_id already fixes this round's game/mode - looked up first so the guess body only ever
     # needs to hold the guess itself, not also restate a game_type the client could get wrong.
-    existing_game = games_service.get_game(game_id, owner, user)
+    existing_game = games_service.get_game(game_id, user)
     try:
         guess = parse_guess(existing_game.current_round, body)
     except ValidationError as exc:

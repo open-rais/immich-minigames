@@ -2,10 +2,7 @@
 session cookie except an exact allow-list of public auth endpoints. A middleware, not a
 per-router dependency: a route someone adds tomorrow and forgets to protect is covered by
 construction (it breaks closed), where a dependency-based approach would leave it wide open by
-default. See tests/test_auth_middleware.py for the structural test that keeps this true.
-
-Deliberately does not touch GamesService's owner/X-Owner-Id plumbing (still required, unchanged) -
-that's roadmap #H's F4, not this one. This phase only makes *authentication* mandatory."""
+default. See tests/test_auth_middleware.py for the structural test that keeps this true."""
 
 from fastapi import Request
 from fastapi.responses import JSONResponse

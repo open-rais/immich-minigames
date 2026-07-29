@@ -6,7 +6,6 @@ and builds the kwargs to replay it against the *same* WhosThatPersonGame class a
 from typing import Any
 from uuid import UUID, uuid4
 
-from games.daily import GENERATOR_OWNER
 from games.whos_that_person.game import HiddenFace, LiveContent, WhosThatPersonGame
 from services.immich_service import ImmichService
 from services.ml_service import MLService
@@ -36,7 +35,7 @@ class ScriptedContent:
 
 def build_spec(mode: str, immich_service: ImmichService, settings: dict[str, float]) -> dict[str, Any]:
     game = WhosThatPersonGame.start(
-        id=uuid4(), owner=GENERATOR_OWNER, immich_service=immich_service, content=LiveContent(immich_service), settings=settings
+        id=uuid4(), immich_service=immich_service, content=LiveContent(immich_service), settings=settings
     )
     total_people = game.total_people
     while sum(len(r.faces) for r in game.rounds) < total_people:

@@ -213,7 +213,6 @@ class ImmichdleGame(BaseGame):
     def __init__(
         self,
         id: UUID,
-        owner: str,
         rounds: list[ImmichdleRound],
         immich_service: ImmichService,
         ml_service: MLService | None = None,
@@ -223,7 +222,6 @@ class ImmichdleGame(BaseGame):
     ) -> None:
         super().__init__(
             id=id,
-            owner=owner,
             game_type=GAME_TYPE,
             mode=MODE_PERSON,
             rounds=rounds,
@@ -250,7 +248,6 @@ class ImmichdleGame(BaseGame):
     def start(
         cls,
         id: UUID,
-        owner: str,
         immich_service: ImmichService,
         ml_service: MLService | None = None,
         settings: Mapping[str, float] | None = None,
@@ -283,7 +280,6 @@ class ImmichdleGame(BaseGame):
         starting_score = int((settings or {}).get("starting_score", STARTING_SCORE))
         return cls(
             id=id,
-            owner=owner,
             rounds=[first_round],
             immich_service=immich_service,
             ml_service=ml_service,

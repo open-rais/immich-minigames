@@ -5,7 +5,7 @@ from collections.abc import Iterator
 from functools import lru_cache
 from typing import Annotated
 
-from fastapi import Depends, Header, Request
+from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
 from persistence.base import get_session_factory
@@ -49,10 +49,6 @@ def get_immich_service() -> ImmichService:
 @lru_cache(maxsize=1)
 def get_ml_service() -> MLService:
     return MLService()
-
-
-def get_owner_id(x_owner_id: Annotated[str, Header()]) -> str:
-    return x_owner_id
 
 
 # Roadmap #H, F1/F2 - moved here (from api/admin_invites_api.py, where it started) so

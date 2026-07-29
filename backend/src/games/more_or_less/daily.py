@@ -6,7 +6,6 @@ docs/TODO/DECOUPLING.md decision C)."""
 from typing import Any
 from uuid import UUID, uuid4
 
-from games.daily import GENERATOR_OWNER
 from games.more_or_less.album_assets import AlbumAssetsProvider
 from games.more_or_less.game import (
     MODE_PERSON_ASSETS,
@@ -53,7 +52,7 @@ def build_spec(mode: str, immich_service: ImmichService, settings: dict[str, flo
     provider = provider_cls(immich_service)
     chain_length = int(settings.get("chain_length", 100))
 
-    game = MoreOrLessGame.start(id=uuid4(), owner=GENERATOR_OWNER, mode=mode, provider=provider)
+    game = MoreOrLessGame.start(id=uuid4(), mode=mode, provider=provider)
     chain = [game.rounds[0].reference, game.rounds[0].candidate]
     while len(chain) < chain_length + 1:
         next_round = game.create_next_round()

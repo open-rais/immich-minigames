@@ -24,48 +24,34 @@ from persistence.daily import DailyChallengeModel  # noqa: F401
 
 class GameModel(Base):
     __tablename__ = "games"
-    # Both indexes back GamesService.get_personal_records's per-(owner-or-user, game_type, mode)
-    # MAX(score) lookup - one per filter branch (anonymous X-Owner-Id vs logged-in user_id).
+    # Backs GamesService.get_personal_records's per-(user, game_type, mode) MAX(score) lookup.
     __table_args__ = (
-        Index("ix_games_owner_type_mode", "owner", "game_type", "mode"),
         Index("ix_games_user_type_mode", "user_id", "game_type", "mode"),
         # Roadmap #G - "one daily attempt per (challenge, player)" enforced at the DB level, not
-        # just in GamesService.create_daily_game. Two partial indexes (mirroring the
-        # owner-vs-user_id branching every other per-player query in this file already does)
-        # rather than one plain UNIQUE(daily_challenge_id, user_id): Postgres never treats two NULLs
-        # as equal, so a plain unique constraint on that pair would let unlimited anonymous
-        # (user_id IS NULL) games through for the same challenge - the owner-keyed index below is
-        # what actually catches those.
+        # just in GamesService.create_daily_game. A plain UNIQUE(daily_challenge_id, user_id) is
+        # safe now that user_id is never null (roadmap #H, F4) - no anonymous NULL rows left to
+        # dodge the constraint.
         Index(
-            "uq_games_daily_user",
+            "uq_games_daily",
             "daily_challenge_id",
             "user_id",
             unique=True,
-            postgresql_where=text("daily_challenge_id IS NOT NULL AND user_id IS NOT NULL"),
-        ),
-        Index(
-            "uq_games_daily_owner",
-            "daily_challenge_id",
-            "owner",
-            unique=True,
-            postgresql_where=text("daily_challenge_id IS NOT NULL AND user_id IS NULL"),
+            postgresql_where=text("daily_challenge_id IS NOT NULL"),
         ),
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
-    owner: Mapped[str]
-    # Set only when the game-creation request was authenticated (see api/api.py's create_game) -
-    # anonymous play leaves this null and keeps working off `owner` alone, exactly as before this
-    # column existed. A real FK (unlike skin_person_id on UserModel) since UserModel lives in this
-    # same app database, not Immich's.
-    user_id: Mapped[UUID | None] = mapped_column(ForeignKey(f"{SCHEMA}.users.id"), default=None)
+    # Every game belongs to a logged-in account (roadmap #H, F3 made login mandatory; F4 dropped
+    # the old anonymous `owner` identity this column replaced). A real FK (unlike skin_person_id on
+    # UserModel) since UserModel lives in this same app database, not Immich's.
+    user_id: Mapped[UUID] = mapped_column(ForeignKey(f"{SCHEMA}.users.id"))
     game_type: Mapped[str]
     mode: Mapped[str]
     score: Mapped[int] = mapped_column(default=0)
     finished: Mapped[bool] = mapped_column(default=False)
-    # Roadmap #e - set when a new game of the same (owner-or-user, game_type, mode) starts while
-    # this one was still unfinished (GamesService._abandon_active_games). Never becomes True at the
-    # same time finished does, so get_personal_records/get_leaderboard need no changes.
+    # Roadmap #e - set when a new game of the same (user, game_type, mode) starts while this one
+    # was still unfinished (GamesService._abandon_active_games). Never becomes True at the same
+    # time finished does, so get_personal_records/get_leaderboard need no changes.
     abandoned: Mapped[bool] = mapped_column(default=False)
     # Roadmap #G - set only for a game created through the daily flow (GamesService.
     # create_daily_game), pointing at the shared challenge content it was instantiated from. NULL

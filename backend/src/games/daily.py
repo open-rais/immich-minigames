@@ -12,11 +12,6 @@ from uuid import UUID
 from services.immich_service import ImmichService
 from services.ml_service import MLService
 
-# The daily-generator's own throwaway games (driven through their real start()/create_next_round()
-# to reuse the exact same picking logic a normal game uses) are never persisted - this owner string
-# just needs to be a valid str for BaseGame's constructor, never read back.
-GENERATOR_OWNER = "daily-generator"
-
 
 class DailySupport(Protocol):
     @staticmethod
