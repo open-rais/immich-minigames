@@ -266,17 +266,15 @@ class ImmichdleGame(BaseGame):
         # frozen spec.
         if target is None:
             asset_count_weight = float((settings or {}).get("asset_count_weight", ASSET_COUNT_WEIGHT_EXPONENT))
+            # limit=2 in one call instead of a second get_persons just to check an alternative
+            # exists - that second query repeated the full asset_face aggregation for nothing more
+            # than an existence check.
             target_people = immich_service.get_persons(
-                named_only=True, randomize=True, limit=1, asset_count_weight=asset_count_weight
+                named_only=True, randomize=True, limit=2, asset_count_weight=asset_count_weight
             )
-            if not target_people:
+            if len(target_people) < 2:
                 raise ValueError("not enough named people in Immich to start an Immichdle game")
-            [target_person] = target_people
-            has_alternative = immich_service.get_persons(
-                named_only=True, limit=1, exclude_ids=frozenset({target_person.id})
-            )
-            if not has_alternative:
-                raise ValueError("not enough named people in Immich to start an Immichdle game")
+            target_person = target_people[0]
 
             target = PersonSnapshot.of(
                 target_person, first_asset_date=immich_service.get_person_first_asset_date(target_person.id)

@@ -1,15 +1,70 @@
 """Roadmap #G, phase F3 - pure unit tests (no DB) for MoreOrLess's daily support
-(games/more_or_less/daily.py::ScriptedCandidateProvider). Hand-constructed content, so none of
-this needs the immich_service/db_session fixtures."""
+(games/more_or_less/daily.py::ScriptedCandidateProvider, _BufferedProvider). Hand-constructed
+content, so none of this needs the immich_service/db_session fixtures."""
 
-from uuid import uuid4
+from uuid import UUID, uuid4
 
-from games.more_or_less import MODE_PERSON_ASSETS, EntitySnapshot, MoreOrLessGame
-from games.more_or_less.daily import ScriptedCandidateProvider
+from games.more_or_less import MODE_PERSON_ASSETS, CandidateProvider, EntitySnapshot, MoreOrLessGame
+from games.more_or_less.daily import ScriptedCandidateProvider, _BufferedProvider
 
 
 def _entity(value: int) -> EntitySnapshot:
     return EntitySnapshot(id=uuid4(), name=f"entity-{value}", value=value)
+
+
+class _FakePool(CandidateProvider):
+    """A CandidateProvider over a fixed in-memory pool, counting real sample() calls the way a
+    live provider's DB query would count - what _BufferedProvider is meant to shield against."""
+
+    def __init__(self, pool: list[EntitySnapshot]) -> None:
+        self._pool = pool
+        self.calls = 0
+
+    def sample(self, *, limit: int, exclude_ids: frozenset[UUID]) -> list[EntitySnapshot]:
+        self.calls += 1
+        eligible = [e for e in self._pool if e.id not in exclude_ids]
+        return eligible[:limit]
+
+    def any_exist(self) -> bool:
+        return bool(self._pool)
+
+
+class TestBufferedProvider:
+    def test_serves_many_small_samples_from_one_underlying_call(self):
+        pool = [_entity(i) for i in range(50)]
+        fake = _FakePool(pool)
+        buffered = _BufferedProvider(fake, batch_size=50)
+
+        served = [e for _ in range(5) for e in buffered.sample(limit=10, exclude_ids=frozenset())]
+
+        assert len(served) == 50
+        assert {e.id for e in served} == {e.id for e in pool}
+        assert fake.calls == 1
+
+    def test_repeats_once_the_real_pool_is_exhausted(self):
+        # Mirrors create_next_round's own small-pool fallback (repeats allowed once the pool runs
+        # dry) - just served from memory instead of a fresh query discovering it every round.
+        pool = [_entity(i) for i in range(3)]
+        fake = _FakePool(pool)
+        buffered = _BufferedProvider(fake, batch_size=10)
+
+        served = [e for _ in range(20) for e in buffered.sample(limit=1, exclude_ids=frozenset())]
+
+        assert len(served) == 20
+        assert {e.id for e in served} == {e.id for e in pool}  # only ever these 3, repeated
+        assert fake.calls == 2  # 1 to fetch the pool, 1 more to discover it's exhausted
+
+    def test_any_exist_true_even_after_the_buffer_drains(self):
+        fake = _FakePool([_entity(1)])
+        buffered = _BufferedProvider(fake, batch_size=10)
+        buffered.sample(limit=1, exclude_ids=frozenset())
+
+        assert buffered.any_exist() is True
+
+    def test_any_exist_false_for_an_empty_pool(self):
+        buffered = _BufferedProvider(_FakePool([]), batch_size=10)
+
+        assert buffered.any_exist() is False
 
 
 class TestScriptedCandidateProvider:
