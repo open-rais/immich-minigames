@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom"
 
 import { playRound } from "../../api/games"
 import { GameType, Mode } from "../../api/types"
-import type { RoundOut, TimelineCardOut, TimelineRoundOut } from "../../api/types"
+import type { TimelineRoundOut } from "../../api/types"
 import type { GameComponentProps } from "../catalog"
 import { Button } from "../shared/Button"
 import { ErrorScreen, FinishedScreen, IdleScreen } from "../shared/GameScreens"
@@ -16,6 +16,7 @@ import { useRoundGame } from "../shared/useRoundGame"
 import { TimelineCard } from "./TimelineCard"
 import type { TrackCard, TrackSlotKind } from "./TimelineTrack"
 import { TimelineTrack } from "./TimelineTrack"
+import { adjustedMarkerSlot, isTimelineRound, toTrackCard } from "./timelineBoard"
 
 const GAME_TYPE = GameType.Timeline
 const MODE = Mode.Arcade
@@ -31,24 +32,6 @@ const TRACK_HEIGHT_CLASS = "h-40 md:h-48"
 const TRACK_BOTTOM_CLASS = "bottom-40 md:bottom-48"
 // Track height + a breathing gap - for the confirm button / reveal card floating just above it.
 const ABOVE_TRACK_BOTTOM_CLASS = "bottom-[172px] md:bottom-[208px]"
-
-// This component only ever creates/plays "timeline" games (see GAME_TYPE/MODE above), so a
-// mismatched game_type means the backend returned something unexpected.
-function isTimelineRound(round: RoundOut): round is TimelineRoundOut {
-  return round.game_type === GameType.Timeline
-}
-
-function toTrackCard(card: TimelineCardOut): TrackCard {
-  return { assetId: card.asset_id, date: card.date }
-}
-
-// Where a wrong guess's real insertion point lands once the track also shows the (also wrong)
-// guessed card spliced in at guessSlot - every original gap index at or after guessSlot shifts
-// right by one slot to make room for it. correctSlot is always != guessSlot here: accepted_slots
-// always contains correctSlot (docs/TODO/TIMELINE.md decision [D]), so a rejected guess can't be it.
-function adjustedMarkerSlot(correctSlot: number, guessSlot: number): number {
-  return correctSlot < guessSlot ? correctSlot : correctSlot + 1
-}
 
 export function TimelineGame({ coverUrl, hasRoundsView, daily = false }: GameComponentProps) {
   const { t } = useTranslation()

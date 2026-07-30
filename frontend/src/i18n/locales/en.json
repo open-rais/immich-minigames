@@ -194,6 +194,12 @@
     "result": {
       "correct": "Correct!",
       "wrong": "Wrong spot"
+    },
+    "rounds": {
+      "banner": "The number on each card shows the order it was drawn in.",
+      "bannerLoss": "The card that ended the run is shown in red: where you placed it vs. where it actually belonged.",
+      "startBadge": "Start",
+      "orderBadge": "#{{count}}"
     }
   },
   "auth": {

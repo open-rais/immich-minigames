@@ -194,6 +194,12 @@
     "result": {
       "correct": "¡Correcto!",
       "wrong": "Lugar equivocado"
+    },
+    "rounds": {
+      "banner": "El número en cada tarjeta indica el orden en que salió.",
+      "bannerLoss": "La tarjeta que terminó la partida se muestra en rojo: dónde la pusiste vs. dónde iba en realidad.",
+      "startBadge": "Inicio",
+      "orderBadge": "#{{count}}"
     }
   },
   "auth": {

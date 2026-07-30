@@ -11,6 +11,7 @@ import { ImmichdleRounds } from "./Immichdle/ImmichdleRounds"
 import { MoreOrLessGame } from "./MoreOrLess/MoreOrLessGame"
 import { MoreOrLessRounds } from "./MoreOrLess/MoreOrLessRounds"
 import { TimelineGame } from "./Timeline/TimelineGame"
+import { TimelineRounds } from "./Timeline/TimelineRounds"
 import { WhosThatPersonGame } from "./WhosThatPerson/WhosThatPersonGame"
 import { WhosThatPersonRounds } from "./WhosThatPerson/WhosThatPersonRounds"
 
@@ -156,13 +157,12 @@ export const GAME_CATALOG: CatalogGame[] = [
     gameTitleKey: "timeline.title",
     modes: [
       {
-        // roundsComponent lands in a later phase (docs/TODO/TIMELINE.md F4) - "Ver rondas" just
-        // stays hidden on a finished Timeline game until then, same as any other mode before its
-        // rounds review exists (see roundsComponent's own doc comment above).
         mode: Mode.Arcade,
         modeTitleKey: "timeline.modes.arcade",
         component: TimelineGame,
         coverUrl: "/covers/timeline.webp",
+        roundsComponent: TimelineRounds,
+        roundsLayout: "fullscreen",
       },
     ],
   },
