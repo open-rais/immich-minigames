@@ -71,6 +71,11 @@ export function buildDailyShareBody(t: TFunction, game: GameOut): string {
       return `${t("daily.share.whosThatPerson", { correct, total })}\n${t("daily.share.total", { score: game.score })}`
     }
 
+    case GameType.Timeline:
+      // Score IS the streak of correctly placed cards (docs/TODO/TIMELINE.md decision [B]), same
+      // "score doubles as the headline count" shape as MoreOrLess's own streak line above.
+      return `${t("daily.share.timeline", { count: game.score })}\n${t("daily.share.total", { score: game.score })}`
+
     default:
       return t("daily.share.total", { score: game.score })
   }
@@ -113,6 +118,10 @@ export function buildDailyShareOneLiner(t: TFunction, game: GameOut): string {
       const { correct, total } = whosThatPersonCorrectTotal(game)
       return t("daily.share.whosThatPerson", { correct, total })
     }
+
+    case GameType.Timeline:
+      // One-liner: just the first line (docs/TODO/TIMELINE.md §6.3) - the score is already in it.
+      return t("daily.share.timeline", { count: game.score })
 
     default:
       return `${game.score}pts`

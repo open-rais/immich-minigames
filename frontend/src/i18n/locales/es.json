@@ -39,7 +39,8 @@
       "immichdleLost": "🟥 No fue adivinado",
       "whosThatPerson": "🧑‍🧑‍🧒‍🧒 {{correct}}/{{total}} personas",
       "km": "{{value}}km",
-      "days": "{{count}} días"
+      "days": "{{count}} días",
+      "timeline": "🃏 {{count}} cartas"
     }
   },
   "leaderboard": {
