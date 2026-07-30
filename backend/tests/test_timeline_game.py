@@ -116,10 +116,10 @@ class TestTimelineRoundScoring:
 
 
 class TestTimelineRoundTrip:
-    def test_to_payload_from_payload_round_trip(self):
-        board = [CardSnapshot(id=uuid4(), date=date(2020, 1, 1)), CardSnapshot(id=uuid4(), date=date(2020, 6, 1))]
+    def test_round_1_round_trips_with_its_seed_board(self):
+        board = [CardSnapshot(id=uuid4(), date=date(2020, 1, 1))]
         card = CardSnapshot(id=uuid4(), date=date(2020, 3, 1))
-        round_ = TimelineRound(id=uuid4(), game_id=uuid4(), round_index=2, board=board, card=card)
+        round_ = TimelineRound(id=uuid4(), game_id=uuid4(), round_index=1, board=board, card=card)
         round_.guess = 1
         round_.score_delta = 1
 
@@ -133,6 +133,36 @@ class TestTimelineRoundTrip:
         assert restored.guess == 1
         assert restored.score_delta == 1
 
+    def test_later_rounds_omit_the_board_from_their_payload(self):
+        # Only round 1 persists a board; the rest are rebuilt at load time by
+        # TimelineGame._hydrate_boards (TestTimelineBoardHydration below).
+        board = [CardSnapshot(id=uuid4(), date=date(2020, 1, 1)), CardSnapshot(id=uuid4(), date=date(2020, 6, 1))]
+        card = CardSnapshot(id=uuid4(), date=date(2020, 3, 1))
+        round_ = TimelineRound(id=uuid4(), game_id=uuid4(), round_index=2, board=board, card=card)
+
+        payload = round_.to_payload()
+
+        assert "board" not in payload
+        restored = TimelineRound.from_payload(round_.id, round_.game_id, round_.round_index, payload, None)
+        assert restored.board == []
+        assert restored.card == card
+
+    def test_a_legacy_payload_with_a_board_still_restores_it(self):
+        # Rows written before boards were slimmed carry one on every round - from_payload keeps
+        # honoring it, which is the whole backward-compat story (no migration).
+        board = [CardSnapshot(id=uuid4(), date=date(2020, 1, 1)), CardSnapshot(id=uuid4(), date=date(2020, 6, 1))]
+        card = CardSnapshot(id=uuid4(), date=date(2020, 3, 1))
+        legacy_payload = {
+            "board": [c.to_dict() for c in board],
+            "card": card.to_dict(),
+            "guess": 1,
+        }
+
+        restored = TimelineRound.from_payload(uuid4(), uuid4(), 3, legacy_payload, 1)
+
+        assert restored.board == board
+        assert restored.card == card
+
     def test_round_trip_with_an_unanswered_round(self):
         board = [CardSnapshot(id=uuid4(), date=date(2020, 1, 1))]
         card = CardSnapshot(id=uuid4(), date=date(2020, 6, 1))
@@ -143,6 +173,58 @@ class TestTimelineRoundTrip:
 
         assert restored.guess is None
         assert restored.score_delta is None
+
+
+def _replayed(game: TimelineGame, rounds_payloads: list[dict] | None = None) -> TimelineGame:
+    """Round-trips a game the way GamesService does (to_payload rows -> from_payload -> the game
+    constructor, see _row_to_game) - the path where boards omitted from payloads must come back."""
+    payloads = rounds_payloads or [round_.to_payload() for round_ in game.rounds]
+    rounds = [
+        TimelineRound.from_payload(round_.id, round_.game_id, round_.round_index, payload, round_.score_delta)
+        for round_, payload in zip(game.rounds, payloads, strict=True)
+    ]
+    return TimelineGame(id=game.id, rounds=rounds, content=_FiniteContent([]), score=game.score, finished=game.finished)
+
+
+class TestTimelineBoardHydration:
+    """Rounds >= 2 persist no board, so loading a game must rebuild every board (and the shown
+    ids derived from them) exactly as they were when played."""
+
+    def _played_game(self) -> TimelineGame:
+        assets = [
+            _asset(date(2020, 6, 1)),
+            _asset(date(2020, 1, 1)),
+            _asset(date(2020, 12, 1)),
+            _asset(date(2020, 8, 1)),
+        ]
+        game = TimelineGame.start(id=uuid4(), content=_FiniteContent(assets))
+        game.play_round(0)  # board=[Jun1], card=Jan1 -> slot 0
+        game.play_round(2)  # board=[Jan1, Jun1], card=Dec1 -> slot 2; leaves round 3 pending
+        return game
+
+    def test_reloading_rebuilds_every_board_and_shown_ids(self):
+        game = self._played_game()
+
+        restored = _replayed(game)
+
+        for original, loaded in zip(game.rounds, restored.rounds, strict=True):
+            assert loaded.board == original.board
+            assert loaded.card == original.card
+            assert loaded.guess == original.guess
+            assert loaded.shown_entities == original.shown_entities
+        assert restored._shown_asset_ids == game._shown_asset_ids
+
+    def test_a_mix_of_legacy_and_slim_payloads_reconstructs_the_same_boards(self):
+        # A game saved before the slimming and resumed after it: old rounds still carry their
+        # board (honored as-is), new rounds don't (rebuilt) - both shapes coexist in one game.
+        game = self._played_game()
+        payloads = [round_.to_payload() for round_ in game.rounds]
+        payloads[1]["board"] = [c.to_dict() for c in game.rounds[1].board]  # round 2 as legacy
+
+        restored = _replayed(game, payloads)
+
+        for original, loaded in zip(game.rounds, restored.rounds, strict=True):
+            assert loaded.board == original.board
 
 
 class TestTimelineGame:

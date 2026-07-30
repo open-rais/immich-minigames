@@ -147,11 +147,18 @@ class TimelineRound(BaseRound):
         return self.score_delta == 1
 
     def to_payload(self) -> dict[str, Any]:
-        return {
-            "board": [c.to_dict() for c in self.board],
+        payload: dict[str, Any] = {
             "card": self.card.to_dict(),
             "guess": self.guess,
         }
+        if self.round_index == 1:
+            # Only round 1 persists its board (the single seed card) - every later board is
+            # derivable from it (board N = board N-1 + insert(correct_slot, card), exactly what
+            # create_next_round does live), so storing each round's whole board would make a
+            # game's stored payloads grow O(R^2) with the streak.
+            # TimelineGame._hydrate_boards rebuilds the omitted ones at load time.
+            payload["board"] = [c.to_dict() for c in self.board]
+        return payload
 
     @classmethod
     def from_payload(
@@ -161,12 +168,22 @@ class TimelineRound(BaseRound):
             id=id,
             game_id=game_id,
             round_index=round_index,
-            board=[CardSnapshot.from_dict(c) for c in payload["board"]],
+            # Absent for rounds >= 2 (see to_payload) - left empty here and filled in by
+            # TimelineGame._hydrate_boards, which sees the whole rounds list; payloads written
+            # before boards were slimmed still carry one, and using it when present is the whole
+            # backward-compat story.
+            board=[CardSnapshot.from_dict(c) for c in payload.get("board", [])],
             card=CardSnapshot.from_dict(payload["card"]),
         )
         round_.guess = payload["guess"]
         round_.score_delta = score_delta
         return round_
+
+    def _hydrate_board(self, board: list[CardSnapshot]) -> None:
+        """Fills in a board omitted from this round's persisted payload (see to_payload) - also
+        recomputes shown_entities, which __init__ derived from the then-empty board."""
+        self.board = board
+        self.shown_entities = [self.card.id] + [c.id for c in board]
 
 
 class TimelineGame(BaseGame):
@@ -193,6 +210,23 @@ class TimelineGame(BaseGame):
             settings=settings,
         )
         self._content = content
+        self._hydrate_boards()
+
+    def _hydrate_boards(self) -> None:
+        # Rebuilds the boards from_payload left empty (rounds >= 2 don't persist theirs - see
+        # TimelineRound.to_payload): replays round 1's persisted seed forward, inserting each
+        # round's card at its real slot - the same two lines create_next_round runs live, so
+        # there's no second definition of "how the board grows" to drift from it. A no-op for
+        # boards already present (a game mid-play in memory, or payloads from before the slimming).
+        board: list[CardSnapshot] | None = None
+        for round_ in self.rounds:
+            if board is None:
+                board = round_.board  # round 1 always persists its seed board
+            elif not round_.board:
+                round_._hydrate_board(board)
+            next_board = list(round_.board)
+            next_board.insert(round_.correct_slot, round_.card)
+            board = next_board
 
     # -- admin-configurable (ADMIN-FEATURE.md point #4, see services/game_settings.py) ----------
 
@@ -212,9 +246,14 @@ class TimelineGame(BaseGame):
 
     @property
     def _shown_asset_ids(self) -> frozenset[UUID]:
-        # Flattens every round's shown_entities (board + the card being placed), so an asset already
-        # shown this game - whether on the board or as a still-pending card - is never picked again.
-        return frozenset(id_ for round_ in self.rounds for id_ in round_.shown_entities)
+        # Every asset ever shown this game - whether on the board or as a still-pending card - so
+        # none is picked again. Round 1's seed board plus each round's drawn card is exactly that
+        # set (every later board is built from those and nothing else), which keeps this O(R) -
+        # flattening every round's shown_entities would revisit the same ids O(R^2) times.
+        if not self.rounds:
+            return frozenset()
+        seed_ids = frozenset(c.id for c in self.rounds[0].board)
+        return seed_ids | frozenset(round_.card.id for round_ in self.rounds)
 
     @classmethod
     def start(cls, id: UUID, content: TimelineContent, settings: Mapping[str, float] | None = None) -> "TimelineGame":
