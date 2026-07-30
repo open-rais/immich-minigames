@@ -123,18 +123,15 @@ class TimelineRound(BaseRound):
     def accepted_slots(self, tolerance_days: int) -> range:
         """Every slot whose neighbors don't contradict `card`'s real date beyond `tolerance_days` -
         decision [D]. Always contains correct_slot, and is always a contiguous range: the left
-        condition below is true for a prefix of slots (board[i-1] only grows as i grows) and the
-        right condition true for a suffix (board[i] only grows too), so their intersection is a
-        single interval."""
+        endpoint is the first slot whose left neighbor doesn't undercut `card.date - tol` and the
+        right endpoint is the last slot whose right neighbor doesn't overshoot `card.date + tol`,
+        so both bounds are plain binary searches on the (sorted) board dates."""
         dates = [c.date for c in self.board]
         tol = timedelta(days=tolerance_days)
-        valid = [
-            i
-            for i in range(len(dates) + 1)
-            if (i == 0 or dates[i - 1] <= self.card.date + tol)
-            and (i == len(dates) or dates[i] >= self.card.date - tol)
-        ]
-        return range(valid[0], valid[-1] + 1)
+        return range(
+            bisect.bisect_left(dates, self.card.date - tol),
+            bisect.bisect_right(dates, self.card.date + tol) + 1,
+        )
 
     def calculate_score(self, settings: Mapping[str, float] | None = None) -> int:
         settings = settings or {}
@@ -220,9 +217,7 @@ class TimelineGame(BaseGame):
         return frozenset(id_ for round_ in self.rounds for id_ in round_.shown_entities)
 
     @classmethod
-    def start(
-        cls, id: UUID, content: TimelineContent, settings: Mapping[str, float] | None = None
-    ) -> "TimelineGame":
+    def start(cls, id: UUID, content: TimelineContent, settings: Mapping[str, float] | None = None) -> "TimelineGame":
         game = cls(id=id, rounds=[], content=content, settings=settings)
         min_separation_days = game._min_separation_days
 

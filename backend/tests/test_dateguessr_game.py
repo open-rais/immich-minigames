@@ -133,9 +133,7 @@ class TestDateguessrAdminSettings:
     what GameSettingsService reports (see test_game_settings_service.py for that)."""
 
     def test_total_rounds_override_changes_how_many_rounds_are_played(self, immich_service):
-        game = DateguessrGame.start(
-            id=uuid4(), content=LiveContent(immich_service), settings={"total_rounds": 2}
-        )
+        game = DateguessrGame.start(id=uuid4(), content=LiveContent(immich_service), settings={"total_rounds": 2})
 
         rounds_played = 0
         while not game.finished and rounds_played < 10:

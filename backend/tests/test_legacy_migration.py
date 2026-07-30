@@ -51,9 +51,7 @@ def _run_alembic(database: str, revision: str) -> None:
     from alembic.config import Config
 
     cfg = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
-    cfg.set_main_option(
-        "sqlalchemy.url", _admin_url(database).replace("postgresql://", "postgresql+psycopg://")
-    )
+    cfg.set_main_option("sqlalchemy.url", _admin_url(database).replace("postgresql://", "postgresql+psycopg://"))
     command.upgrade(cfg, revision)
 
 
@@ -64,9 +62,7 @@ def _create_database(name: str) -> None:
 
 def _drop_database(name: str) -> None:
     with psycopg.connect(_admin_url("postgres"), autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute(
-            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = %s", (name,)
-        )
+        cur.execute("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = %s", (name,))
         cur.execute(sql.SQL("DROP DATABASE IF EXISTS {}").format(sql.Identifier(name)))
 
 
@@ -184,15 +180,12 @@ def _counts(database: str, schema: str = LEGACY_SCHEMA) -> dict[str, int]:
         result = {}
         for table in tables:
             cur.execute(
-                "SELECT 1 FROM information_schema.tables "
-                "WHERE table_schema = %s AND table_name = %s",
+                "SELECT 1 FROM information_schema.tables WHERE table_schema = %s AND table_name = %s",
                 (schema, table),
             )
             if cur.fetchone() is None:
                 continue
-            cur.execute(sql.SQL("SELECT count(*) FROM {}.{}").format(
-                sql.Identifier(schema), sql.Identifier(table)
-            ))
+            cur.execute(sql.SQL("SELECT count(*) FROM {}.{}").format(sql.Identifier(schema), sql.Identifier(table)))
             result[table] = cur.fetchone()[0]
     return result
 
@@ -249,9 +242,7 @@ class TestHappyPath:
         _migrate(source, target)
 
         with psycopg.connect(_admin_url(target)) as conn, conn.cursor() as cur:
-            cur.execute(
-                f"SELECT email, username, full_name, is_admin, created_at FROM {LEGACY_SCHEMA}.users"
-            )
+            cur.execute(f"SELECT email, username, full_name, is_admin, created_at FROM {LEGACY_SCHEMA}.users")
             email, username, full_name, is_admin, created_at = cur.fetchone()
             assert (email, username, full_name) == ("raúl@example.com", "raúl", "Raúl Rodríguez Ñandú")
             assert is_admin is True
@@ -265,8 +256,7 @@ class TestHappyPath:
 
             # The owned game's FK is intact; the anonymous one never made it across at all.
             cur.execute(
-                f"SELECT count(*) FROM {LEGACY_SCHEMA}.games g "
-                f"JOIN {LEGACY_SCHEMA}.users u ON u.id = g.user_id"
+                f"SELECT count(*) FROM {LEGACY_SCHEMA}.games g JOIN {LEGACY_SCHEMA}.users u ON u.id = g.user_id"
             )
             assert cur.fetchone()[0] == 1
             cur.execute(f"SELECT count(*) FROM {LEGACY_SCHEMA}.games")

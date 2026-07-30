@@ -6,13 +6,13 @@ from datetime import UTC, datetime, timedelta
 
 import jwt
 import pytest
+from conftest import mint_invite_code
 from fastapi import HTTPException
 from starlette.requests import Request
 from starlette.testclient import TestClient
 
 from api.rate_limit import enforce_login_email_limit, session_or_ip_key
 from config import get_settings
-from conftest import mint_invite_code
 from main import app
 
 

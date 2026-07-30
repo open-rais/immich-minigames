@@ -85,13 +85,11 @@ class WhosThatPersonContent(Protocol):
     advances an internal index on every successful call, so has_next_round() checking availability
     by calling (and discarding) pick_round would silently skip a round."""
 
-    @staticmethod
-    def has_more(max_faces: int, exclude_asset_ids: frozenset[UUID]) -> bool:
+    def has_more(self, max_faces: int, exclude_asset_ids: frozenset[UUID]) -> bool:
         """Whether another round's worth of content is available, without actually picking it."""
         ...
 
-    @staticmethod
-    def pick_round(max_faces: int, exclude_asset_ids: frozenset[UUID]) -> tuple[UUID, list[HiddenFace]] | None:
+    def pick_round(self, max_faces: int, exclude_asset_ids: frozenset[UUID]) -> tuple[UUID, list[HiddenFace]] | None:
         """The next round's photo + which of its named faces to hide - None when no eligible photo
         is left."""
         ...
@@ -198,9 +196,7 @@ class WhosThatPersonRound(BaseRound):
             faces=[HiddenFace.from_dict(f) for f in payload["faces"]],
             incoming_streak=payload["incoming_streak"],
         )
-        round_.guess = (
-            {UUID(k): UUID(v) for k, v in payload["guess"].items()} if payload["guess"] is not None else None
-        )
+        round_.guess = {UUID(k): UUID(v) for k, v in payload["guess"].items()} if payload["guess"] is not None else None
         # payload.get(...) or {} rather than payload["guess_names"] - a round played before this
         # field existed has no such key at all; it just shows "?" instead of a name in the "Tu
         # respuesta" rounds-review view (ROUNDS-VIEW.md §4.3), not a KeyError.
@@ -288,7 +284,9 @@ class WhosThatPersonGame(BaseGame):
         # not one per face. A guessed id that no longer resolves to a real person (deleted from
         # Immich since) just doesn't show up in the result, leaving that face's name unresolved.
         guessed_person_ids = frozenset(guess.values())
-        persons = self._immich_service.get_persons(named_only=True, ids=guessed_person_ids, limit=len(guessed_person_ids))
+        persons = self._immich_service.get_persons(
+            named_only=True, ids=guessed_person_ids, limit=len(guessed_person_ids)
+        )
         self.current_round.guess_names = {person.id: person.name for person in persons}
         return super().play_round(guess)
 

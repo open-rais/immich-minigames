@@ -81,9 +81,7 @@ class MLService:
         embedding = _parse_vector_text(avg_text)
 
         with self._app_engine.begin() as conn:
-            upsert = pg_insert(_CACHE_TABLE).values(
-                person_id=person_id, embedding=embedding, face_count=current_count
-            )
+            upsert = pg_insert(_CACHE_TABLE).values(person_id=person_id, embedding=embedding, face_count=current_count)
             upsert = upsert.on_conflict_do_update(
                 index_elements=[_CACHE_TABLE.c.person_id],
                 set_={

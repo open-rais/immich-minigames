@@ -10,9 +10,9 @@ from contextlib import contextmanager
 from uuid import UUID
 
 import pytest
+from conftest import mint_invite_code
 
 from audit import audit
-from conftest import mint_invite_code
 from logging_setup import JsonFormatter
 from persistence.users import UserModel
 

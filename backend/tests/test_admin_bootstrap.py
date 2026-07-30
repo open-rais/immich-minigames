@@ -1,7 +1,8 @@
 import uuid
 
-from config import Settings, get_settings
 from conftest import mint_invite_code
+
+from config import Settings, get_settings
 from services.admin_bootstrap import ensure_admin
 
 

@@ -22,9 +22,7 @@ def _settings_with_external_url(external_url: str | None) -> Settings:
 
 class TestGetConfig:
     def test_returns_external_url_when_set(self, logged_client):
-        app.dependency_overrides[get_settings] = lambda: _settings_with_external_url(
-            "https://fotos.example.cl/"
-        )
+        app.dependency_overrides[get_settings] = lambda: _settings_with_external_url("https://fotos.example.cl/")
         try:
             response = logged_client.get("/api/v1/config")
         finally:

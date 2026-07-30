@@ -418,9 +418,7 @@ class ImmichService:
         doesn't exist or has no assets at all - the caller (api/api.py's album thumbnail route)
         maps that to a 404. The actual image bytes are then served via get_asset_thumbnail."""
         with self._engine.connect() as conn:
-            cover_id = conn.execute(
-                select(album.c.albumThumbnailAssetId).where(album.c.id == album_id)
-            ).scalar()
+            cover_id = conn.execute(select(album.c.albumThumbnailAssetId).where(album.c.id == album_id)).scalar()
             if cover_id is not None:
                 return cover_id
             return conn.execute(

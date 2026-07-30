@@ -3,6 +3,7 @@ import uuid
 from uuid import UUID
 
 from conftest import mint_invite_code
+
 from persistence.users import UserModel
 
 
@@ -255,9 +256,7 @@ class TestResetPassword:
         old_login = client.post("/api/v1/auth/login", json={"email": target["email"], "password": target["password"]})
         assert old_login.status_code == 401
 
-        new_login = client.post(
-            "/api/v1/auth/login", json={"email": target["email"], "password": "new-password-123"}
-        )
+        new_login = client.post("/api/v1/auth/login", json={"email": target["email"], "password": "new-password-123"})
         assert new_login.status_code == 200
 
     def test_reusing_the_same_token_returns_400(self, client, db_session):

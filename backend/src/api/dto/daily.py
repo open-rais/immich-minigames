@@ -39,7 +39,9 @@ class DailyStatusOut(BaseModel):
     modes: list[DailyModeStatusOut]
 
     @classmethod
-    def from_statuses(cls, resets_at: datetime, server_now: datetime, statuses: list[DailyModeStatus]) -> "DailyStatusOut":
+    def from_statuses(
+        cls, resets_at: datetime, server_now: datetime, statuses: list[DailyModeStatus]
+    ) -> "DailyStatusOut":
         return cls(
             resets_at=resets_at, server_now=server_now, modes=[DailyModeStatusOut.from_status(s) for s in statuses]
         )

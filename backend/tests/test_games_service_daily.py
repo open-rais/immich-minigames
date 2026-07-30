@@ -7,8 +7,8 @@ import uuid
 from datetime import date, timedelta
 
 import pytest
-
 from conftest import mint_invite_code
+
 from games.geoguessr import GAME_TYPE as GEOGUESSR_TYPE
 from games.geoguessr import MODE_DISTANCE_BETWEEN_GUESS
 from games.immichdle import GAME_TYPE as IMMICHDLE_TYPE
@@ -154,7 +154,9 @@ class TestMoreOrLessDailyChainExhaustion:
         )
         user = _register_user(auth_service)
         d = _next_date()
-        game = games_service.create_daily_game(game_type=MORE_OR_LESS_TYPE, mode=MODE_PERSON_ASSETS, user_id=user.id, today=d)
+        game = games_service.create_daily_game(
+            game_type=MORE_OR_LESS_TYPE, mode=MODE_PERSON_ASSETS, user_id=user.id, today=d
+        )
         game_id = game.id
 
         while not game.finished:
@@ -179,7 +181,9 @@ class TestResumeDailyGame:
         )
         user = _register_user(auth_service)
         d = _next_date()
-        game = games_service.create_daily_game(game_type=MORE_OR_LESS_TYPE, mode=MODE_PERSON_ASSETS, user_id=user.id, today=d)
+        game = games_service.create_daily_game(
+            game_type=MORE_OR_LESS_TYPE, mode=MODE_PERSON_ASSETS, user_id=user.id, today=d
+        )
         first_round = game.current_round
         guess = "more" if first_round.candidate.value > first_round.reference.value else "less"
         played = games_service.play_round(game.id, user, first_round.id, guess)

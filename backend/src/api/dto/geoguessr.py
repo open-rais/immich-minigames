@@ -6,7 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from games.geoguessr import GAME_TYPE as GEOGUESSR_TYPE
-from games.geoguessr import LatLng, GeoguessrRound
+from games.geoguessr import GeoguessrRound, LatLng
 
 
 class GeoguessrRoundOut(BaseModel):

@@ -4,10 +4,10 @@ MoreOrLessGame` (external callers, tests) keeps working unchanged."""
 
 from games.more_or_less.album_assets import AlbumAssetsProvider
 from games.more_or_less.game import (
+    _RECENT_EXCLUDE_WINDOW,  # noqa: F401 (re-exported for tests)
     GAME_TYPE,
     MODE_ALBUM_ASSETS,
     MODE_PERSON_ASSETS,
-    _RECENT_EXCLUDE_WINDOW,  # noqa: F401 (re-exported for tests)
     CandidateProvider,
     EntitySnapshot,
     Guess,

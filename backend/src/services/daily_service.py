@@ -131,14 +131,18 @@ class DailyService:
         if spec_entry is None or spec_entry.daily is None:
             return frozenset()
         cutoff = before_date - timedelta(days=no_repeat_days)
-        specs = self._session.execute(
-            select(DailyChallengeModel.spec).where(
-                DailyChallengeModel.game_type == game_type,
-                DailyChallengeModel.mode == mode,
-                DailyChallengeModel.challenge_date >= cutoff,
-                DailyChallengeModel.challenge_date < before_date,
+        specs = (
+            self._session.execute(
+                select(DailyChallengeModel.spec).where(
+                    DailyChallengeModel.game_type == game_type,
+                    DailyChallengeModel.mode == mode,
+                    DailyChallengeModel.challenge_date >= cutoff,
+                    DailyChallengeModel.challenge_date < before_date,
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         ids: set[UUID] = set()
         for spec in specs:
             # decision [F] (docs/TODO/DAILY-GAMES.md) - MoreOrLess's exclusion_ids() always returns

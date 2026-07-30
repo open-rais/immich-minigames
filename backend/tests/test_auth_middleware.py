@@ -57,8 +57,7 @@ def test_every_registered_route_outside_the_allow_list_requires_a_cookie(client)
             for concrete_path in _concrete_paths(path):
                 response = client.request(method, concrete_path)
                 assert response.status_code == 401, (
-                    f"{method} {concrete_path} did not 401 without a cookie "
-                    f"(got {response.status_code})"
+                    f"{method} {concrete_path} did not 401 without a cookie (got {response.status_code})"
                 )
                 checked += 1
     # Sanity net: fails loudly if app.routes ever came back empty/near-empty instead of silently

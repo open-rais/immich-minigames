@@ -1,7 +1,8 @@
-import pytest
 from uuid import UUID, uuid4
 
+import pytest
 from conftest import mint_invite_code
+
 from games.timeline import TOLERANCE_DAYS
 from persistence.games import GameModel
 from persistence.users import UserModel

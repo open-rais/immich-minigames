@@ -111,16 +111,12 @@ class TestImmichdleAdminSettings:
     what GameSettingsService reports (see test_game_settings_service.py for that)."""
 
     def test_starting_score_override_changes_the_initial_score(self, immich_service):
-        game = ImmichdleGame.start(
-            id=uuid4(), immich_service=immich_service, settings={"starting_score": 50}
-        )
+        game = ImmichdleGame.start(id=uuid4(), immich_service=immich_service, settings={"starting_score": 50})
 
         assert game.score == 50
 
     def test_wrong_guess_penalty_override_changes_the_score_delta(self, immich_service):
-        game = ImmichdleGame.start(
-            id=uuid4(), immich_service=immich_service, settings={"wrong_guess_penalty": 20}
-        )
+        game = ImmichdleGame.start(id=uuid4(), immich_service=immich_service, settings={"wrong_guess_penalty": 20})
         wrong_id = _wrong_person_id(immich_service, game)
 
         result = game.play_round(wrong_id)
@@ -145,9 +141,7 @@ class TestImmichdleAdminSettings:
     def test_asset_count_weight_override_is_forwarded_to_target_selection(self, immich_service, monkeypatch):
         calls = self._spy_on_target_selection_call(immich_service, monkeypatch)
 
-        ImmichdleGame.start(
-            id=uuid4(), immich_service=immich_service, settings={"asset_count_weight": 0.7}
-        )
+        ImmichdleGame.start(id=uuid4(), immich_service=immich_service, settings={"asset_count_weight": 0.7})
 
         assert calls[0]["asset_count_weight"] == 0.7
 
@@ -163,7 +157,9 @@ class TestComputeClues:
     """Isolated from the DB - constructs snapshots directly to deterministically exercise every
     clue direction, same style as test_more_or_less_game.py's TestMoreOrLessRoundTieScoring."""
 
-    def _snapshot(self, *, name: str, asset_count: int, birth_date: date | None, first_asset_date: date | None) -> PersonSnapshot:
+    def _snapshot(
+        self, *, name: str, asset_count: int, birth_date: date | None, first_asset_date: date | None
+    ) -> PersonSnapshot:
         return PersonSnapshot(
             id=uuid4(), name=name, asset_count=asset_count, birth_date=birth_date, first_asset_date=first_asset_date
         )

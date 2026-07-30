@@ -96,20 +96,17 @@ class GeoguessrContent(Protocol):
     live Immich queries (LiveContent below) vs. a frozen daily spec (games/geoguessr/daily.py's
     ScriptedContent). The game engine below never knows which."""
 
-    @staticmethod
-    def pick_asset(exclude_ids: frozenset[UUID], previous_answers: list[tuple[float, float]]) -> Asset | None:
+    def pick_asset(self, exclude_ids: frozenset[UUID], previous_answers: list[tuple[float, float]]) -> Asset | None:
         """The next round's main asset, excluding `exclude_ids` and preferring one far enough from
         every entry in `previous_answers` (see games/shared/picking.py's pick_spread_asset) - None
         when no eligible asset is left."""
         ...
 
-    @staticmethod
-    def pick_extras(main: Asset, exclude_ids: frozenset[UUID], *, limit: int) -> list[Asset]:
+    def pick_extras(self, main: Asset, exclude_ids: frozenset[UUID], *, limit: int) -> list[Asset]:
         """Up to `limit` decorative photos to show alongside `main` this round."""
         ...
 
-    @staticmethod
-    def has_more(exclude_ids: frozenset[UUID]) -> bool:
+    def has_more(self, exclude_ids: frozenset[UUID]) -> bool:
         """Whether another round's worth of content is available, without actually picking it -
         used by has_next_round() so it doesn't have to look at a guess to decide (this game's
         rounds are guess-independent, unlike MoreOrLess's chain)."""
@@ -287,9 +284,7 @@ class GeoguessrGame(BaseGame):
         return self._content.pick_extras(main, exclude_ids, limit=self._max_extra_assets)
 
     @classmethod
-    def start(
-        cls, id: UUID, content: GeoguessrContent, settings: Mapping[str, float] | None = None
-    ) -> "GeoguessrGame":
+    def start(cls, id: UUID, content: GeoguessrContent, settings: Mapping[str, float] | None = None) -> "GeoguessrGame":
         game = cls(id=id, rounds=[], content=content, settings=settings)
         asset = game._pick_asset(exclude_ids=frozenset())
         if asset is None:

@@ -2,6 +2,7 @@ import uuid
 from uuid import UUID
 
 from conftest import mint_invite_code
+
 from persistence.users import UserModel
 from services.auth_service import AuthService
 
@@ -234,9 +235,7 @@ class TestAuditEvents:
         assert record.target_user_id == target["id"]
         assert record.invite_id == response.json()["id"]
 
-    def test_admin_editing_someone_else_records_admin_as_actor_and_other_as_target(
-        self, client, db_session, audit_log
-    ):
+    def test_admin_editing_someone_else_records_admin_as_actor_and_other_as_target(self, client, db_session, audit_log):
         # The actor (whoever the request is authenticated as) lives in the request context, not an
         # explicit field (LOGGING.md §4.4) - target_user_id is the only explicit field, so this is
         # the only way to tell an admin's edit of someone else apart from self-service from the

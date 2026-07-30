@@ -2,6 +2,7 @@ import uuid
 from uuid import UUID
 
 from conftest import mint_invite_code
+
 from persistence.users import UserModel
 
 

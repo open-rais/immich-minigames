@@ -2,8 +2,8 @@ import uuid
 from uuid import UUID
 
 import pytest
-
 from conftest import mint_invite_code
+
 from games.geoguessr import GAME_TYPE as GEOGUESSR_TYPE
 from games.geoguessr import MODE_DISTANCE_BETWEEN_GUESS
 from games.more_or_less import GAME_TYPE as MORE_OR_LESS_TYPE
@@ -91,7 +91,9 @@ class TestUpdateGameSettings:
     def test_admin_can_update_a_setting(self, client, db_session):
         _register_as_admin(client, db_session)
 
-        response = client.put(f"/api/v1/admin/games/{GEOGUESSR_TYPE}/{MODE_DISTANCE_BETWEEN_GUESS}/settings", json={"decay_km": 900.0})
+        response = client.put(
+            f"/api/v1/admin/games/{GEOGUESSR_TYPE}/{MODE_DISTANCE_BETWEEN_GUESS}/settings", json={"decay_km": 900.0}
+        )
 
         assert response.status_code == 200
         settings = {s["key"]: s["value"] for s in response.json()["settings"]}
@@ -100,28 +102,36 @@ class TestUpdateGameSettings:
     def test_non_admin_returns_403(self, client):
         _register(client)
 
-        response = client.put(f"/api/v1/admin/games/{GEOGUESSR_TYPE}/{MODE_DISTANCE_BETWEEN_GUESS}/settings", json={"decay_km": 900.0})
+        response = client.put(
+            f"/api/v1/admin/games/{GEOGUESSR_TYPE}/{MODE_DISTANCE_BETWEEN_GUESS}/settings", json={"decay_km": 900.0}
+        )
 
         assert response.status_code == 403
 
     def test_unknown_key_returns_400(self, client, db_session):
         _register_as_admin(client, db_session)
 
-        response = client.put(f"/api/v1/admin/games/{GEOGUESSR_TYPE}/{MODE_DISTANCE_BETWEEN_GUESS}/settings", json={"not_a_real_key": 1})
+        response = client.put(
+            f"/api/v1/admin/games/{GEOGUESSR_TYPE}/{MODE_DISTANCE_BETWEEN_GUESS}/settings", json={"not_a_real_key": 1}
+        )
 
         assert response.status_code == 400
 
     def test_value_below_min_returns_400(self, client, db_session):
         _register_as_admin(client, db_session)
 
-        response = client.put(f"/api/v1/admin/games/{GEOGUESSR_TYPE}/{MODE_DISTANCE_BETWEEN_GUESS}/settings", json={"total_rounds": 0})
+        response = client.put(
+            f"/api/v1/admin/games/{GEOGUESSR_TYPE}/{MODE_DISTANCE_BETWEEN_GUESS}/settings", json={"total_rounds": 0}
+        )
 
         assert response.status_code == 400
 
     def test_value_above_max_returns_400(self, client, db_session):
         _register_as_admin(client, db_session)
 
-        response = client.put(f"/api/v1/admin/games/{GEOGUESSR_TYPE}/{MODE_DISTANCE_BETWEEN_GUESS}/settings", json={"total_rounds": 51})
+        response = client.put(
+            f"/api/v1/admin/games/{GEOGUESSR_TYPE}/{MODE_DISTANCE_BETWEEN_GUESS}/settings", json={"total_rounds": 51}
+        )
 
         assert response.status_code == 400
 
@@ -165,7 +175,9 @@ class TestGameSettingsAffectNewGames:
 
     def test_total_rounds_override_is_reflected_in_a_newly_created_game(self, client, db_session):
         _register_as_admin(client, db_session)
-        client.put(f"/api/v1/admin/games/{GEOGUESSR_TYPE}/{MODE_DISTANCE_BETWEEN_GUESS}/settings", json={"total_rounds": 2})
+        client.put(
+            f"/api/v1/admin/games/{GEOGUESSR_TYPE}/{MODE_DISTANCE_BETWEEN_GUESS}/settings", json={"total_rounds": 2}
+        )
 
         game = client.post(
             "/api/v1/games",
@@ -178,7 +190,9 @@ class TestGameSettingsAffectNewGames:
 class TestResetGameSettings:
     def test_admin_can_reset_a_previously_changed_setting(self, client, db_session):
         _register_as_admin(client, db_session)
-        client.put(f"/api/v1/admin/games/{GEOGUESSR_TYPE}/{MODE_DISTANCE_BETWEEN_GUESS}/settings", json={"decay_km": 900.0})
+        client.put(
+            f"/api/v1/admin/games/{GEOGUESSR_TYPE}/{MODE_DISTANCE_BETWEEN_GUESS}/settings", json={"decay_km": 900.0}
+        )
 
         response = client.post(f"/api/v1/admin/games/{GEOGUESSR_TYPE}/{MODE_DISTANCE_BETWEEN_GUESS}/settings/reset")
 

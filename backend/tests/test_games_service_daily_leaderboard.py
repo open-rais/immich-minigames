@@ -6,8 +6,8 @@ import uuid
 from datetime import date, timedelta
 
 import pytest
-
 from conftest import mint_invite_code
+
 from games.immichdle import GAME_TYPE as IMMICHDLE_TYPE
 from games.immichdle import MODE_PERSON
 from persistence.daily import DailyConfigModel
@@ -52,13 +52,17 @@ class TestGetDailyLeaderboard:
     def test_a_date_with_no_challenge_returns_empty(self, games_service):
         assert games_service.get_daily_leaderboard(IMMICHDLE_TYPE, MODE_PERSON, _next_date()) == []
 
-    def test_scores_finished_games_of_that_challenge(self, games_service, daily_settings_service, db_session, auth_service):
+    def test_scores_finished_games_of_that_challenge(
+        self, games_service, daily_settings_service, db_session, auth_service
+    ):
         daily_settings_service.update_settings(IMMICHDLE_TYPE, MODE_PERSON, enabled=True)
         d = _next_date()
         alice = _register(auth_service)
         bob = _register(auth_service)
 
-        alice_game = games_service.create_daily_game(game_type=IMMICHDLE_TYPE, mode=MODE_PERSON, user_id=alice.id, today=d)
+        alice_game = games_service.create_daily_game(
+            game_type=IMMICHDLE_TYPE, mode=MODE_PERSON, user_id=alice.id, today=d
+        )
         bob_game = games_service.create_daily_game(game_type=IMMICHDLE_TYPE, mode=MODE_PERSON, user_id=bob.id, today=d)
         db_session.get(GameModel, alice_game.id).finished = True
         db_session.get(GameModel, alice_game.id).score = 90

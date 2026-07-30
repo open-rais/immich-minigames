@@ -3,8 +3,8 @@ import uuid
 from datetime import datetime, timedelta
 
 import pytest
-
 from conftest import mint_invite_code
+
 from persistence.base import get_session_factory
 from persistence.games import GameModel
 from services.games_service import (
@@ -502,9 +502,7 @@ class TestGetRecentGames:
     def test_orders_newest_first_and_caps_at_the_limit(self, games_service, db_session, auth_service):
         user = _register_user(auth_service)
         games = [
-            self._seed_game(
-                games_service, db_session, user_id=user.id, created_at=datetime.now() - timedelta(days=i)
-            )
+            self._seed_game(games_service, db_session, user_id=user.id, created_at=datetime.now() - timedelta(days=i))
             for i in range(7)
         ]
 

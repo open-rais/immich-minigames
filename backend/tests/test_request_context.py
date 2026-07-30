@@ -56,7 +56,7 @@ def test_json_formatter_merges_bound_context_into_every_record():
     try:
         payload = json.loads(_emit(JsonFormatter()))
     finally:
-        for var, token in zip((request_id_var, ip_var, forwarded_for_var), tokens):
+        for var, token in zip((request_id_var, ip_var, forwarded_for_var), tokens, strict=True):
             var.reset(token)
 
     assert payload["request_id"] == "req-2"

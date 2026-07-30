@@ -10,8 +10,9 @@ import uuid
 from datetime import date, timedelta
 
 import pytest
-
 from conftest import mint_invite_code
+from sqlalchemy.exc import IntegrityError
+
 from persistence.daily import DailyChallengeModel
 from persistence.games import GameModel
 from services.games_service import UnsupportedGameError
@@ -73,7 +74,9 @@ class TestDailyGamesExcludedFromPersonalRecords:
 class TestDailyGamesExcludedFromLeaderboard:
     def test_a_finished_daily_game_does_not_appear(self, games_service, db_session, auth_service):
         user = _register_user(auth_service)
-        game, _ = _make_daily_game(games_service, db_session, user_id=user.id, game_type="dateguessr", mode="daysToDate")
+        game, _ = _make_daily_game(
+            games_service, db_session, user_id=user.id, game_type="dateguessr", mode="daysToDate"
+        )
         row = db_session.get(GameModel, game.id)
         row.finished = True
         row.score = 999
@@ -93,7 +96,9 @@ class TestDailyGamesExcludedFromCurrentGame:
 
 
 class TestDailyGamesDoNotInteractWithAbandon:
-    def test_starting_a_normal_game_does_not_abandon_an_in_progress_daily(self, games_service, db_session, auth_service):
+    def test_starting_a_normal_game_does_not_abandon_an_in_progress_daily(
+        self, games_service, db_session, auth_service
+    ):
         user = _register_user(auth_service)
         daily_game, _ = _make_daily_game(games_service, db_session, user_id=user.id)
 
@@ -123,7 +128,9 @@ class TestGetRecentGamesFlagsDaily:
 
 
 class TestGamesDailyChallengeIdRoundTrips:
-    def test_partial_unique_index_rejects_a_second_attempt_by_the_same_user(self, games_service, db_session, auth_service):
+    def test_partial_unique_index_rejects_a_second_attempt_by_the_same_user(
+        self, games_service, db_session, auth_service
+    ):
         user = _register_user(auth_service)
         challenge = _seed_challenge(db_session)
         first = games_service.create_game(game_type="more-or-less", mode="personAssets", user_id=user.id)
@@ -136,7 +143,7 @@ class TestGamesDailyChallengeIdRoundTrips:
         # Same (challenge, user_id) twice - the partial unique index on
         # (daily_challenge_id, user_id) WHERE daily_challenge_id IS NOT NULL must reject this at
         # flush time.
-        with pytest.raises(Exception):
+        with pytest.raises(IntegrityError):
             db_session.commit()
         db_session.rollback()
 

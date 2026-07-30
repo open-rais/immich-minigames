@@ -2,8 +2,8 @@ import uuid
 from uuid import UUID
 
 import pytest
-
 from conftest import mint_invite_code
+
 from games.geoguessr import GAME_TYPE as GEOGUESSR_TYPE
 from games.geoguessr import MODE_DISTANCE_BETWEEN_GUESS
 from persistence.daily import DailyConfigModel
@@ -80,7 +80,9 @@ class TestUpdateDailySettings:
     def test_admin_can_enable_a_mode(self, client, db_session):
         _register_as_admin(client, db_session)
 
-        response = client.put(f"/api/v1/admin/daily/{GEOGUESSR_TYPE}/{MODE_DISTANCE_BETWEEN_GUESS}", json={"enabled": True})
+        response = client.put(
+            f"/api/v1/admin/daily/{GEOGUESSR_TYPE}/{MODE_DISTANCE_BETWEEN_GUESS}", json={"enabled": True}
+        )
 
         assert response.status_code == 200
         assert response.json()["enabled"] is True
@@ -89,7 +91,8 @@ class TestUpdateDailySettings:
         _register_as_admin(client, db_session)
 
         response = client.put(
-            f"/api/v1/admin/daily/{GEOGUESSR_TYPE}/{MODE_DISTANCE_BETWEEN_GUESS}", json={"values": {"no_repeat_days": 10}}
+            f"/api/v1/admin/daily/{GEOGUESSR_TYPE}/{MODE_DISTANCE_BETWEEN_GUESS}",
+            json={"values": {"no_repeat_days": 10}},
         )
 
         assert response.status_code == 200
@@ -99,7 +102,9 @@ class TestUpdateDailySettings:
     def test_non_admin_returns_403(self, client):
         _register(client)
 
-        response = client.put(f"/api/v1/admin/daily/{GEOGUESSR_TYPE}/{MODE_DISTANCE_BETWEEN_GUESS}", json={"enabled": True})
+        response = client.put(
+            f"/api/v1/admin/daily/{GEOGUESSR_TYPE}/{MODE_DISTANCE_BETWEEN_GUESS}", json={"enabled": True}
+        )
 
         assert response.status_code == 403
 
@@ -107,7 +112,8 @@ class TestUpdateDailySettings:
         _register_as_admin(client, db_session)
 
         response = client.put(
-            f"/api/v1/admin/daily/{GEOGUESSR_TYPE}/{MODE_DISTANCE_BETWEEN_GUESS}", json={"values": {"not_a_real_key": 1}}
+            f"/api/v1/admin/daily/{GEOGUESSR_TYPE}/{MODE_DISTANCE_BETWEEN_GUESS}",
+            json={"values": {"not_a_real_key": 1}},
         )
 
         assert response.status_code == 400
@@ -115,7 +121,9 @@ class TestUpdateDailySettings:
     def test_unknown_game_type_returns_404(self, client, db_session):
         _register_as_admin(client, db_session)
 
-        response = client.put(f"/api/v1/admin/daily/not-a-real-game/{MODE_DISTANCE_BETWEEN_GUESS}", json={"enabled": True})
+        response = client.put(
+            f"/api/v1/admin/daily/not-a-real-game/{MODE_DISTANCE_BETWEEN_GUESS}", json={"enabled": True}
+        )
 
         assert response.status_code == 404
 

@@ -20,8 +20,16 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=8",
+    "ruff>=0.16.1",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 120
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

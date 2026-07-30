@@ -22,7 +22,9 @@ def _clean_daily_config(db_session):
 
 
 def _enable(db_session) -> None:
-    db_session.add(DailyConfigModel(game_type=GEOGUESSR_TYPE, mode=MODE_DISTANCE_BETWEEN_GUESS, enabled=True, values={}))
+    db_session.add(
+        DailyConfigModel(game_type=GEOGUESSR_TYPE, mode=MODE_DISTANCE_BETWEEN_GUESS, enabled=True, values={})
+    )
     db_session.commit()
 
 
@@ -43,9 +45,7 @@ class TestGetDailyStatus:
         body = response.json()
         assert "resets_at" in body
         assert "server_now" in body
-        assert any(
-            m["game_type"] == GEOGUESSR_TYPE and m["mode"] == MODE_DISTANCE_BETWEEN_GUESS for m in body["modes"]
-        )
+        assert any(m["game_type"] == GEOGUESSR_TYPE and m["mode"] == MODE_DISTANCE_BETWEEN_GUESS for m in body["modes"])
 
 
 class TestCreateDailyGame:

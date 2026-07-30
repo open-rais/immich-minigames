@@ -82,7 +82,9 @@ class TestGeoguessrExtras:
         for round_ in game.rounds:
             assert len(round_.extras) <= MAX_EXTRA_ASSETS
             for extra in round_.extras:
-                assert haversine_km(round_.asset.latitude, round_.asset.longitude, extra.latitude, extra.longitude) <= 0.5
+                assert (
+                    haversine_km(round_.asset.latitude, round_.asset.longitude, extra.latitude, extra.longitude) <= 0.5
+                )
 
     def test_no_asset_is_ever_shown_twice_within_the_same_game(self, immich_service):
         game = GeoguessrGame.start(id=uuid4(), content=LiveContent(immich_service))
@@ -142,9 +144,7 @@ class TestGeoguessrAdminSettings:
     what GameSettingsService reports (see test_game_settings_service.py for that)."""
 
     def test_total_rounds_override_changes_how_many_rounds_are_played(self, immich_service):
-        game = GeoguessrGame.start(
-            id=uuid4(), content=LiveContent(immich_service), settings={"total_rounds": 2}
-        )
+        game = GeoguessrGame.start(id=uuid4(), content=LiveContent(immich_service), settings={"total_rounds": 2})
 
         rounds_played = 0
         while not game.finished and rounds_played < 10:

@@ -152,7 +152,9 @@ def _compute_clues(
         assets_together=assets_together,
         age_close=_is_close(target.birth_date, guess.birth_date) if age in ("older", "younger") else None,
         first_appearance_close=(
-            _is_close(target.first_asset_date, guess.first_asset_date) if first_appearance in ("before", "after") else None
+            _is_close(target.first_asset_date, guess.first_asset_date)
+            if first_appearance in ("before", "after")
+            else None
         ),
         asset_count_close=asset_count_close,
         age_both_unknown=target.birth_date is None and guess.birth_date is None,
@@ -199,9 +201,13 @@ class ImmichdleRound(BaseRound):
     def from_payload(
         cls, id: UUID, game_id: UUID, round_index: int, payload: dict[str, Any], score_delta: int | None
     ) -> "ImmichdleRound":
-        round_ = cls(id=id, game_id=game_id, round_index=round_index, target=PersonSnapshot.from_dict(payload["target"]))
+        round_ = cls(
+            id=id, game_id=game_id, round_index=round_index, target=PersonSnapshot.from_dict(payload["target"])
+        )
         round_.guess = UUID(payload["guess"]) if payload["guess"] else None
-        round_.guessed_person = PersonSnapshot.from_dict(payload["guessed_person"]) if payload["guessed_person"] else None
+        round_.guessed_person = (
+            PersonSnapshot.from_dict(payload["guessed_person"]) if payload["guessed_person"] else None
+        )
         round_.clues = ImmichdleClues.from_dict(payload["clues"]) if payload["clues"] else None
         round_.score_delta = score_delta
         if round_.guessed_person is not None:

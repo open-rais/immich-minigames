@@ -4,9 +4,9 @@ from datetime import UTC, datetime, timedelta
 
 import jwt
 import pytest
-
-from config import Settings, get_settings
 from conftest import mint_invite_code
+
+from config import Settings
 from persistence.base import get_session_factory
 from persistence.users import UserModel
 from services.auth_service import (
@@ -158,9 +158,7 @@ class TestRegisterConcurrency:
         # the first transaction resolves, then re-checks - so holding "A"'s insert open reliably
         # makes "B"'s real register() call block, then fail for real once "A" commits.
         email = f"{_unique('race')}@example.com"
-        db_session.add(
-            UserModel(email=email, username=_unique("race-a"), full_name="A", password_hash="irrelevant")
-        )
+        db_session.add(UserModel(email=email, username=_unique("race-a"), full_name="A", password_hash="irrelevant"))
         # add() alone only stages the object in the Session - flush() is what actually sends the
         # INSERT to Postgres (uncommitted), which is what makes "B"'s conflicting insert block below.
         db_session.flush()
@@ -501,7 +499,9 @@ class TestAuditEvents:
         record = next(r for r in audit_log.records if r.event == "register_rejected")
         assert record.reason == "invalid, used, or expired token"
 
-    def test_bootstrap_registration_emits_register_ok_with_via_bootstrap_token(self, db_session, monkeypatch, audit_log):
+    def test_bootstrap_registration_emits_register_ok_with_via_bootstrap_token(
+        self, db_session, monkeypatch, audit_log
+    ):
         settings = Settings(initial_invite_token="bootstrap-secret")
         service = AuthService(db_session, settings=settings)
         monkeypatch.setattr(service, "_is_first_user", lambda: True)

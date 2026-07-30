@@ -58,9 +58,7 @@ class GameModel(Base):
     # for every normal game, exactly as before this column existed - see GamesService's
     # daily_challenge_id IS NULL filters on get_personal_records/get_leaderboard/get_current_game/
     # _abandon_active_games (daily games live in a separate "world", docs/TODO/DAILY-GAMES.md §4.5).
-    daily_challenge_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey(f"{SCHEMA}.daily_challenges.id"), default=None
-    )
+    daily_challenge_id: Mapped[UUID | None] = mapped_column(ForeignKey(f"{SCHEMA}.daily_challenges.id"), default=None)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
     rounds: Mapped[list["RoundModel"]] = relationship(

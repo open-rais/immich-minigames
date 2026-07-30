@@ -1,7 +1,6 @@
 from uuid import uuid4
 
 import pytest
-
 from conftest import mint_invite_code
 
 

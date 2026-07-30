@@ -30,9 +30,7 @@ class TestGetCurrentGame:
     def test_without_a_cookie_returns_401(self, client):
         client.cookies.clear()
 
-        response = client.get(
-            "/api/v1/games/current", params={"game_type": "more-or-less", "mode": "personAssets"}
-        )
+        response = client.get("/api/v1/games/current", params={"game_type": "more-or-less", "mode": "personAssets"})
 
         assert response.status_code == 401
 

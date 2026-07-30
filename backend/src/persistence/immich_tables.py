@@ -24,9 +24,7 @@ metadata = MetaData()
 # them against a string bind parameter fails with "operator does not exist: assets_status_enum =
 # character varying". create_type=False because these enums are owned/migrated by Immich.
 asset_status_enum = ENUM("active", "trashed", "deleted", name="assets_status_enum", create_type=False)
-asset_visibility_enum = ENUM(
-    "archive", "timeline", "hidden", "locked", name="asset_visibility_enum", create_type=False
-)
+asset_visibility_enum = ENUM("archive", "timeline", "hidden", "locked", name="asset_visibility_enum", create_type=False)
 
 asset = Table(
     "asset",

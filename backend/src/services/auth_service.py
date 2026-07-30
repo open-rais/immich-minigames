@@ -141,9 +141,7 @@ class AuthService:
         audit("register_ok", user_id=str(user.id), email=email, via=via)
         return user
 
-    def update_profile(
-        self, user: UserModel, username: str | None = None, full_name: str | None = None
-    ) -> UserModel:
+    def update_profile(self, user: UserModel, username: str | None = None, full_name: str | None = None) -> UserModel:
         """Roadmap point E - profile edit page. Both args are None-means-"leave unchanged" (PATCH
         semantics), mirroring UpdateProfileIn."""
         changed = []

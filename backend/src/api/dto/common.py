@@ -15,7 +15,7 @@ the same file.
 
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Annotated, Any, Union
+from typing import Annotated, Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -42,14 +42,12 @@ class CreateGameIn(BaseModel):
 
 
 RoundOut = Annotated[
-    Union[
-        MoreOrLessRoundOut,
-        GeoguessrRoundOut,
-        DateguessrRoundOut,
-        ImmichdleRoundOut,
-        WhosThatPersonRoundOut,
-        TimelineRoundOut,
-    ],
+    MoreOrLessRoundOut
+    | GeoguessrRoundOut
+    | DateguessrRoundOut
+    | ImmichdleRoundOut
+    | WhosThatPersonRoundOut
+    | TimelineRoundOut,
     Field(discriminator="game_type"),
 ]
 
@@ -74,9 +72,7 @@ _ROUND_SPECS: dict[type[BaseRound], _RoundSpec] = {
     GeoguessrRound: _RoundSpec(GeoguessrPlayRoundIn, GeoguessrRoundOut, has_binary_correctness=False),
     DateguessrRound: _RoundSpec(DateguessrPlayRoundIn, DateguessrRoundOut, has_binary_correctness=False),
     ImmichdleRound: _RoundSpec(ImmichdlePlayRoundIn, ImmichdleRoundOut, has_binary_correctness=True),
-    WhosThatPersonRound: _RoundSpec(
-        WhosThatPersonPlayRoundIn, WhosThatPersonRoundOut, has_binary_correctness=True
-    ),
+    WhosThatPersonRound: _RoundSpec(WhosThatPersonPlayRoundIn, WhosThatPersonRoundOut, has_binary_correctness=True),
     TimelineRound: _RoundSpec(TimelinePlayRoundIn, TimelineRoundOut, has_binary_correctness=True),
 }
 

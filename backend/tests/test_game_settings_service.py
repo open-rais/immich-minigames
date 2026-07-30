@@ -78,9 +78,7 @@ class TestUpdateSettings:
 
     def test_unknown_key_raises(self, game_settings_service):
         with pytest.raises(UnknownGameSettingError):
-            game_settings_service.update_settings(
-                GEOGUESSR_TYPE, MODE_DISTANCE_BETWEEN_GUESS, {"not_a_real_key": 1}
-            )
+            game_settings_service.update_settings(GEOGUESSR_TYPE, MODE_DISTANCE_BETWEEN_GUESS, {"not_a_real_key": 1})
 
     def test_value_below_min_raises(self, game_settings_service):
         with pytest.raises(InvalidGameSettingValueError):

@@ -31,9 +31,7 @@ class HiddenFaceOut(BaseModel):
     guess_person_name: str | None
 
     @classmethod
-    def from_face(
-        cls, face: HiddenFace, guess: UUID | None, guess_name: str | None, answered: bool
-    ) -> "HiddenFaceOut":
+    def from_face(cls, face: HiddenFace, guess: UUID | None, guess_name: str | None, answered: bool) -> "HiddenFaceOut":
         return cls(
             face_id=face.face_id,
             image_width=face.image_width,

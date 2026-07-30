@@ -7,13 +7,13 @@ from games.immichdle.game import (
     MODE_PERSON,
     STARTING_SCORE,
     WRONG_GUESS_PENALTY,
-    _compute_clues,  # noqa: F401 (re-exported for tests)
     DuplicateGuessError,
     ImmichdleClues,
     ImmichdleGame,
     ImmichdleRound,
     InvalidGuessError,
     PersonSnapshot,
+    _compute_clues,  # noqa: F401 (re-exported for tests)
 )
 
 __all__ = [

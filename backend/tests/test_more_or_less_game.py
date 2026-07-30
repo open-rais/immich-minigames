@@ -4,9 +4,9 @@ from uuid import uuid4
 import pytest
 
 from games.more_or_less import (
+    _RECENT_EXCLUDE_WINDOW,
     MODE_ALBUM_ASSETS,
     MODE_PERSON_ASSETS,
-    _RECENT_EXCLUDE_WINDOW,
     AlbumAssetsProvider,
     CandidateProvider,
     EntitySnapshot,
@@ -17,9 +17,7 @@ from games.more_or_less import (
 
 
 def _start_game(immich_service):
-    return MoreOrLessGame.start(
-        id=uuid4(), mode=MODE_PERSON_ASSETS, provider=PersonAssetsProvider(immich_service)
-    )
+    return MoreOrLessGame.start(id=uuid4(), mode=MODE_PERSON_ASSETS, provider=PersonAssetsProvider(immich_service))
 
 
 def _wrong_guess(round_) -> str:
@@ -153,9 +151,7 @@ class TestMoreOrLessNeverEnds:
         # Pool of 3, window of 10 - after the first few rounds every entity is always within the
         # recent window, so without the fallback create_next_round would run dry and the game would
         # end. It must keep going (allowing repeats) instead.
-        game = MoreOrLessGame.start(
-            id=uuid4(), mode=MODE_ALBUM_ASSETS, provider=_SmallPoolProvider(size=3)
-        )
+        game = MoreOrLessGame.start(id=uuid4(), mode=MODE_ALBUM_ASSETS, provider=_SmallPoolProvider(size=3))
         for _ in range(_RECENT_EXCLUDE_WINDOW * 3):
             game.play_round(_correct_guess(game.current_round))
             assert not game.finished, "game ended on a correct guess despite the pool never being empty"
@@ -165,9 +161,7 @@ class TestMoreOrLessAlbumMode:
     """Integration against the dev library's real albums (see conftest)."""
 
     def test_album_mode_plays_a_round(self, immich_service):
-        game = MoreOrLessGame.start(
-            id=uuid4(), mode=MODE_ALBUM_ASSETS, provider=AlbumAssetsProvider(immich_service)
-        )
+        game = MoreOrLessGame.start(id=uuid4(), mode=MODE_ALBUM_ASSETS, provider=AlbumAssetsProvider(immich_service))
         assert game.mode == MODE_ALBUM_ASSETS
         first_round = game.current_round
 
