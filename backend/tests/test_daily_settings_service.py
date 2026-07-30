@@ -4,6 +4,8 @@ from games.geoguessr import GAME_TYPE as GEOGUESSR_TYPE
 from games.geoguessr import MODE_DISTANCE_BETWEEN_GUESS
 from games.more_or_less import GAME_TYPE as MORE_OR_LESS_TYPE
 from games.more_or_less import MODE_PERSON_ASSETS
+from games.timeline import GAME_TYPE as TIMELINE_TYPE
+from games.timeline import MODE_ARCADE as TIMELINE_MODE_ARCADE
 from persistence.daily import DailyConfigModel
 from services.daily_settings import InvalidGameSettingValueError, UnknownGameSettingError
 
@@ -38,6 +40,17 @@ class TestGetSpecsAndSettings:
         keys = {s.key for s in specs}
         assert "chain_length" in keys
         assert "no_repeat_days" not in keys
+
+    def test_timeline_gets_both_chain_length_and_no_repeat_days(self, daily_settings_service):
+        # docs/TODO/TIMELINE.md decision [G] - the first mode that needs both at once. The two
+        # tests above (unchanged) already pin that Geoguessr/MoreOrLess keep their own single-spec
+        # behavior after this composition change.
+        specs = daily_settings_service.get_specs(TIMELINE_TYPE, TIMELINE_MODE_ARCADE)
+
+        keys = {s.key for s in specs}
+        assert "chain_length" in keys
+        assert "no_repeat_days" in keys
+        assert "tolerance_days" in keys  # inherited from GAME_SETTING_SPECS
 
     def test_no_row_means_disabled_with_defaults(self, daily_settings_service):
         enabled, values = daily_settings_service.get_config(GEOGUESSR_TYPE, MODE_DISTANCE_BETWEEN_GUESS)

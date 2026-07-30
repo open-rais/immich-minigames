@@ -14,6 +14,8 @@ from sqlalchemy.orm import Session
 
 from games.more_or_less import GAME_TYPE as MORE_OR_LESS_TYPE
 from games.more_or_less import MODE_ALBUM_ASSETS, MODE_PERSON_ASSETS
+from games.timeline import GAME_TYPE as TIMELINE_TYPE
+from games.timeline import MODE_ARCADE as TIMELINE_MODE_ARCADE
 from persistence.daily import DailyConfigModel
 from services.game_settings import (
     GAME_SETTING_SPECS,
@@ -26,16 +28,26 @@ from services.game_settings import (
 # Roadmap #G decisions [E]/[F] (docs/TODO/DAILY-GAMES.md §4.2) - every mode except MoreOrLess needs
 # a no-repeat window (assets/persons excluded from the last N days' challenges); MoreOrLess instead
 # gets a cap on its pre-generated candidate chain, since it has no "asset/person" content to avoid
-# repeating within a single day (the roadmap: "ahí solo debe ser otra seed").
+# repeating within a single day (the roadmap: "ahí solo debe ser otra seed"). Timeline is the first
+# mode that needs *both* (docs/TODO/TIMELINE.md decision [G]): its own content is concrete assets
+# (so it still needs no_repeat_days like every other game), but it's also chain-shaped like
+# MoreOrLess (so it needs chain_length too, to cap how many cards get pre-generated). Composed by
+# set membership rather than an if/else so a mode can land in either, both, or neither.
 _NO_REPEAT_DAYS_SPEC = SettingSpec("no_repeat_days", 30, "int", 0, 365)
 _CHAIN_LENGTH_SPEC = SettingSpec("chain_length", 100, "int", 10, 1000)
 _MORE_OR_LESS_MODES = {(MORE_OR_LESS_TYPE, MODE_PERSON_ASSETS), (MORE_OR_LESS_TYPE, MODE_ALBUM_ASSETS)}
+_CHAIN_MODES = _MORE_OR_LESS_MODES | {(TIMELINE_TYPE, TIMELINE_MODE_ARCADE)}
+_NO_REPEAT_MODES = set(GAME_SETTING_SPECS) - _MORE_OR_LESS_MODES
 
 
 def _daily_specs_for(game_type: str, mode: str) -> list[SettingSpec]:
     base = GAME_SETTING_SPECS.get((game_type, mode), [])
-    extra = _CHAIN_LENGTH_SPEC if (game_type, mode) in _MORE_OR_LESS_MODES else _NO_REPEAT_DAYS_SPEC
-    return [*base, extra]
+    extras: list[SettingSpec] = []
+    if (game_type, mode) in _CHAIN_MODES:
+        extras.append(_CHAIN_LENGTH_SPEC)
+    if (game_type, mode) in _NO_REPEAT_MODES:
+        extras.append(_NO_REPEAT_DAYS_SPEC)
+    return [*base, *extras]
 
 
 DAILY_SETTING_SPECS: dict[tuple[str, str], list[SettingSpec]] = {

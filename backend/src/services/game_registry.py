@@ -16,6 +16,7 @@ import games.dateguessr.daily as dateguessr_daily
 import games.geoguessr.daily as geoguessr_daily
 import games.immichdle.daily as immichdle_daily
 import games.more_or_less.daily as more_or_less_daily
+import games.timeline.daily as timeline_daily
 import games.whos_that_person.daily as whos_that_person_daily
 from games.base import BaseGame, BaseRound
 from games.daily import DailySupport
@@ -92,7 +93,6 @@ GAMES: dict[tuple[str, str], GameSpec] = {
         daily=whos_that_person_daily,
     ),
     (TIMELINE_TYPE, MODE_ARCADE): GameSpec(
-        TimelineGame, TimelineRound, content_factory=TimelineLiveContent
-        # No `daily` yet - games/timeline/daily.py is roadmap #11's F5, not part of this phase.
+        TimelineGame, TimelineRound, content_factory=TimelineLiveContent, daily=timeline_daily
     ),
 }
