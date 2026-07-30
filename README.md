@@ -34,14 +34,13 @@ Detailed gameplay for each game, including modes and scoring rules, can be found
 
 ## Current Status
 
-**Five games are fully playable:**
+**All six games are fully playable:**
 - **MoreOrLess** ✅ (PC and mobile layouts, both English and Spanish)
 - **Geoguessr** ✅ (MapLibre-powered, 5-round game mode)
 - **Dateguessr** ✅ (Timeline-based, 5-round game mode)
 - **Immichdle** ✅ (Wordle-style person guessing with comparative clues)
 - **Who'sThatPerson** ✅ (Guess person names from hidden faces in photos)
-
-**Other games are design stubs only** (Timeline).
+- **Timeline** ✅ (Insert photos in the correct chronological spot; one mistake ends the run)
 
 **Features:**
 - ✅ User login (email/username/password, profile page, logout)
