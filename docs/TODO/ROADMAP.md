@@ -64,7 +64,7 @@ Cuando se complete un item, marcar su checkbox.
 - [x] H. Cambio de sistema de usuarios (login obligatorio, invitaciones, reset de contraseña,
       rate limiting sesión-o-IP - ver `docs/TODO/NEW-AUTH.md`).
 - [X] I. Agregar Logging (para auditoría).
-- [ ] 11. API y frontend para Timeline
+- [x] 11. API y frontend para Timeline
 - [x] 12. MoreOrLess: nueva modalidad `album-asset-count`
 - [ ] J. Code-Review humano completo.
   - Revisión completa del código
@@ -120,6 +120,11 @@ Cuando se complete un item, marcar su checkbox.
     - 3 listas, 1 para cada tipo (asset, person, album)
     - cada lista con Infinite scroll
     - tendrá botón de ver en immich, además de botón para marcar como resuelto
+  - En juegos que dependan de la fecha, excluir las reportadas con fecha mala
+  - En juegos que dependan de fecha de nacimiento, excluir esas
+  - ... así para cada reporte
+  - Ojo que es para la generación de rondas solamente, pero igual si se debería poder intentar adivinar una persona mala (ej: en immichdle o who's that person si puedo buscar en el buscador aunque haya algo malo, solo que no debe poder ser una persona mala la que esté por adivinar)
+  - Si alguien juega un daily y reporta, ese daily quedará con ese asset igualmente, aunque esté mal marcado
 - [ ] 16. Agregar sistema de pistas a Immichdle
 - [ ] 17. Geoguessr: nueva modalidad `Country`
 - [ ] 18. Geoguessr: nueva modalidad `City`

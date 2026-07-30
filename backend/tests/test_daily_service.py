@@ -18,6 +18,8 @@ from games.immichdle import GAME_TYPE as IMMICHDLE_TYPE
 from games.immichdle import MODE_PERSON
 from games.more_or_less import GAME_TYPE as MORE_OR_LESS_TYPE
 from games.more_or_less import MODE_ALBUM_ASSETS, MODE_PERSON_ASSETS
+from games.timeline import GAME_TYPE as TIMELINE_TYPE
+from games.timeline import MODE_ARCADE as TIMELINE_MODE_ARCADE
 from games.whos_that_person import GAME_TYPE as WHOS_THAT_PERSON_TYPE
 from games.whos_that_person import MODE_NAMED_FACES
 from persistence.base import get_session_factory
@@ -33,6 +35,7 @@ _TOUCHED_GAME_TYPES = [
     DATEGUESSR_TYPE,
     IMMICHDLE_TYPE,
     WHOS_THAT_PERSON_TYPE,
+    TIMELINE_TYPE,
 ]
 
 
@@ -118,6 +121,17 @@ class TestSpecShapePerGame:
         assert challenge.settings["total_rounds"] == 2
         assert challenge.settings["decay_km"] == 1500.0  # untouched key still falls back to its default
 
+    def test_timeline_cards_chain_length(self, daily_service, daily_settings_service):
+        # docs/TODO/TIMELINE.md decision [G] - the first mode with both chain_length *and*
+        # no_repeat_days (see TestExclusionWindow's own timeline test below for that half).
+        daily_settings_service.update_settings(TIMELINE_TYPE, TIMELINE_MODE_ARCADE, values={"chain_length": 10})
+
+        challenge = daily_service.get_or_create_challenge(_next_date(), TIMELINE_TYPE, TIMELINE_MODE_ARCADE)
+
+        assert len(challenge.spec["cards"]) == 11  # chain_length + 1 (the seed card)
+        assert "id" in challenge.spec["cards"][0]
+        assert "date" in challenge.spec["cards"][0]
+
 
 class TestGetOrCreateIsIdempotent:
     def test_second_call_returns_the_same_row(self, daily_service):
@@ -125,6 +139,18 @@ class TestGetOrCreateIsIdempotent:
 
         first = daily_service.get_or_create_challenge(d, IMMICHDLE_TYPE, MODE_PERSON)
         second = daily_service.get_or_create_challenge(d, IMMICHDLE_TYPE, MODE_PERSON)
+
+        assert first.id == second.id
+        assert first.spec == second.spec
+
+    def test_timeline_two_players_get_the_same_card_sequence(self, daily_service):
+        # docs/TODO/TIMELINE.md F5 - "dos jugadores ven la misma secuencia": the second call is a
+        # different player's own request for the same day, not a retry - it must land on the exact
+        # same persisted spec rather than generating a fresh chain.
+        d = _next_date()
+
+        first = daily_service.get_or_create_challenge(d, TIMELINE_TYPE, TIMELINE_MODE_ARCADE)
+        second = daily_service.get_or_create_challenge(d, TIMELINE_TYPE, TIMELINE_MODE_ARCADE)
 
         assert first.id == second.id
         assert first.spec == second.spec
@@ -167,6 +193,22 @@ class TestExclusionWindow:
 
         assert len(first.spec["chain"]) == 11
         assert len(second.spec["chain"]) == 11
+
+    def test_timeline_excludes_the_previous_days_cards_within_the_window(self, daily_service, daily_settings_service):
+        # Unlike MoreOrLess just above, Timeline's own content *is* concrete assets, so it keeps
+        # the normal no_repeat_days exclusion on top of its chain_length cap (decision [G]).
+        daily_settings_service.update_settings(
+            TIMELINE_TYPE, TIMELINE_MODE_ARCADE, values={"chain_length": 10, "no_repeat_days": 3}
+        )
+        day1 = _next_date()
+        day2 = day1 + timedelta(days=1)
+
+        first = daily_service.get_or_create_challenge(day1, TIMELINE_TYPE, TIMELINE_MODE_ARCADE)
+        second = daily_service.get_or_create_challenge(day2, TIMELINE_TYPE, TIMELINE_MODE_ARCADE)
+
+        first_ids = {card["id"] for card in first.spec["cards"]}
+        second_ids = {card["id"] for card in second.spec["cards"]}
+        assert first_ids.isdisjoint(second_ids)
 
 
 class TestFallbackWithoutHistoricalExclusion:

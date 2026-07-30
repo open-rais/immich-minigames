@@ -82,7 +82,7 @@ scored: **Immichdle** (the guess is a person id that must be validated and turne
 | Dateguessr | 5 rounds | Same curve on days: flat 0, decay 500 days |
 | Immichdle | Correct guess, or score hits 0 | Starts at 100, −5 per wrong guess |
 | Who'sThatPerson | 15 people asked (across variable-size rounds) | Combo streak by person; any miss in a round zeroes the incoming streak *before* scoring |
-| Timeline | — | Not implemented; `games/timeline/game.py` is a design stub |
+| Timeline | First wrong guess (or `max_cards`/library exhausted, which end it as a win) | +1 per correctly inserted card (a within-tolerance slot counts as correct) |
 
 **Geoguessr and Dateguessr each own their whole loop** (`games/geoguessr/game.py` /
 `games/dateguessr/game.py`) — fixed N rounds, one asset per round, decay scoring, spread-out
@@ -343,10 +343,14 @@ treats two NULLs as equal). A daily game is the *exact same game class* a normal
 `Daily*Game` subclasses - that used to be `games/daily_scripted.py`, since deleted) - only its
 content source differs, via each game's own `game_kwargs()`: MoreOrLess's `ScriptedCandidateProvider`
 replays a pre-generated chain (mirroring its normal `CandidateProvider` seam); Geoguessr/Dateguessr/
-WhosThatPerson each get a `ScriptedContent` implementing that game's own `<Name>Content` protocol
-(mirroring their normal `LiveContent`); `ImmichdleGame.start()` takes an optional `target` (no
-content protocol needed - Immichdle's only precomputed content *is* the target, guesses stay live
-either way). Everything else - scoring, streaks, `play_round`, persistence - is the exact same
+WhosThatPerson/Timeline each get a `ScriptedContent` implementing that game's own `<Name>Content`
+protocol (mirroring their normal `LiveContent`); `ImmichdleGame.start()` takes an optional `target`
+(no content protocol needed - Immichdle's only precomputed content *is* the target, guesses stay
+live either way). Timeline's `build_spec()` is chain-shaped like MoreOrLess's (it drives
+`create_next_round()` directly in a loop, since `has_next_round()` depends on a guess that a
+throwaway spec-generation game never makes) but its `exclusion_ids()`/`no_repeat_days` behave like
+every other content-protocol game's, since its cards are concrete assets, not a value chain - the
+first mode that needs both a `chain_length` cap *and* a `no_repeat_days` window at once. Everything else - scoring, streaks, `play_round`, persistence - is the exact same
 machinery every game already uses; `GamesService._row_to_game` just branches on
 `daily_challenge_id` and, if set, resolves that game's `daily.py::game_kwargs()` through the
 `game_registry.GAMES` lookup instead of the normal live-settings path.

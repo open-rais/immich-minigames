@@ -16,6 +16,7 @@ import games.dateguessr.daily as dateguessr_daily
 import games.geoguessr.daily as geoguessr_daily
 import games.immichdle.daily as immichdle_daily
 import games.more_or_less.daily as more_or_less_daily
+import games.timeline.daily as timeline_daily
 import games.whos_that_person.daily as whos_that_person_daily
 from games.base import BaseGame, BaseRound
 from games.daily import DailySupport
@@ -37,6 +38,9 @@ from games.more_or_less import (
     MoreOrLessRound,
     PersonAssetsProvider,
 )
+from games.timeline import GAME_TYPE as TIMELINE_TYPE
+from games.timeline import MODE_ARCADE, TimelineGame, TimelineRound
+from games.timeline import LiveContent as TimelineLiveContent
 from games.whos_that_person import GAME_TYPE as WHOS_THAT_PERSON_TYPE
 from games.whos_that_person import MODE_NAMED_FACES, WhosThatPersonGame, WhosThatPersonRound
 from games.whos_that_person import LiveContent as WhosThatPersonLiveContent
@@ -87,5 +91,8 @@ GAMES: dict[tuple[str, str], GameSpec] = {
         WhosThatPersonRound,
         content_factory=WhosThatPersonLiveContent,
         daily=whos_that_person_daily,
+    ),
+    (TIMELINE_TYPE, MODE_ARCADE): GameSpec(
+        TimelineGame, TimelineRound, content_factory=TimelineLiveContent, daily=timeline_daily
     ),
 }

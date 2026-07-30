@@ -10,6 +10,8 @@ import { ImmichdleGame } from "./Immichdle/ImmichdleGame"
 import { ImmichdleRounds } from "./Immichdle/ImmichdleRounds"
 import { MoreOrLessGame } from "./MoreOrLess/MoreOrLessGame"
 import { MoreOrLessRounds } from "./MoreOrLess/MoreOrLessRounds"
+import { TimelineGame } from "./Timeline/TimelineGame"
+import { TimelineRounds } from "./Timeline/TimelineRounds"
 import { WhosThatPersonGame } from "./WhosThatPerson/WhosThatPersonGame"
 import { WhosThatPersonRounds } from "./WhosThatPerson/WhosThatPersonRounds"
 
@@ -146,6 +148,20 @@ export const GAME_CATALOG: CatalogGame[] = [
         component: WhosThatPersonGame,
         coverUrl: "/covers/whos-that-person.webp",
         roundsComponent: WhosThatPersonRounds,
+        roundsLayout: "fullscreen",
+      },
+    ],
+  },
+  {
+    gameType: GameType.Timeline,
+    gameTitleKey: "timeline.title",
+    modes: [
+      {
+        mode: Mode.Arcade,
+        modeTitleKey: "timeline.modes.arcade",
+        component: TimelineGame,
+        coverUrl: "/covers/timeline.webp",
+        roundsComponent: TimelineRounds,
         roundsLayout: "fullscreen",
       },
     ],
