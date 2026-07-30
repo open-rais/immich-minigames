@@ -36,9 +36,11 @@ changes, both must be edited. Same convention as `catalog.ts` vs `_GAMES`.
 Each game's top-level `*Game.tsx` owns its screen state machine:
 `idle → playing → finished | error`, plus a per-round phase `guessing → submitting → revealed`.
 
-**`games/shared/useRoundGame.ts`** encapsulates that machine for the "fixed rounds, one picker,
-auto-advance after a reveal hold" shape. Geoguessr, Dateguessr and Who'sThatPerson use it; the
-component keeps only its own guess-input state. It handles:
+**`games/shared/useRoundGame.ts`** encapsulates that machine for the "one picker per round,
+auto-advance after a reveal hold" shape. Geoguessr, Dateguessr and Who'sThatPerson use it for their
+fixed-N-rounds games; Timeline uses the same hook for its infinite streak (no `total_rounds` —
+`finished` alone, driven by the backend, is what ends it) — the hook itself doesn't care whether the
+round count is fixed or open-ended. The component keeps only its own guess-input state. It handles:
 
 - **Re-entrancy guards** (`startInFlightRef`, `guessInFlightRef`) — a double-click can fire two
   handlers before React re-renders, so state alone cannot prevent a duplicate request.
@@ -52,7 +54,7 @@ component keeps only its own guess-input state. It handles:
 
 Reveal-hold durations differ on purpose: MoreOrLess 1400ms, Geoguessr/Dateguessr 2400ms (the map's
 own 600ms `fitBounds` animation plus reading two numbers), Who'sThatPerson 2800ms (several faces to
-read at once).
+read at once), Timeline 2200ms (its own ~500ms fly-in animation plus reading the result).
 
 ## Rounds review (roadmap #10)
 
@@ -62,12 +64,16 @@ component, chosen from `catalog.ts`'s `roundsComponent` (mirroring how `GameRout
 
 - **`"list"`** (default, unset — MoreOrLess, Immichdle): wrapped in `games/rounds/RoundsShell.tsx`,
   a normal padded/scrolling page (back button, title, final score).
-- **`"fullscreen"`** (Geoguessr, Dateguessr, Who'sThatPerson): `RoundsShell` is skipped entirely —
-  `MapPicker`/`TimelineRuler`/`AssetPhoto` are all `position: fixed`, full-viewport components that
-  don't belong inside a padded scrolling shell, and each `<XxxRounds>` owns its whole screen the same
-  way the live `*Game.tsx` components already do (their own `BackButton`, and
-  `games/rounds/RoundStepper.tsx` — an interactive `RoundBadge` with prev/next arrows — in the same
-  top-center slot `RoundBadge` uses during play).
+- **`"fullscreen"`** (Geoguessr, Dateguessr, Who'sThatPerson, Timeline): `RoundsShell` is skipped
+  entirely — `MapPicker`/`TimelineRuler`/`AssetPhoto` are all `position: fixed`, full-viewport
+  components that don't belong inside a padded scrolling shell, and each `<XxxRounds>` owns its
+  whole screen the same way the live `*Game.tsx` components already do (their own `BackButton`). The
+  first three step through one round at a time via `games/rounds/RoundStepper.tsx` — an interactive
+  `RoundBadge` with prev/next arrows — in the same top-center slot `RoundBadge` uses during play.
+  `TimelineRounds.tsx` is the odd one out here: the owner explicitly asked for the *whole* final
+  board at once instead of a stepper (`docs/TODO/TIMELINE.md` decision [H]), so it reuses
+  `TimelineTrack.tsx` read-only rather than `RoundStepper` — same "fullscreen, no `RoundsShell`"
+  family, different internal shape.
 
 `games/shared/EntryOptionsMenu.tsx` (a "⋯" trigger + popover, today holding just
 `games/shared/ImmichLink.tsx`) is the shared "Ver en Immich" entry point everywhere it appears. Its

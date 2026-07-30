@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 
-import { createGame, getGame, personThumbnailUrl, playRound } from "../../api/games"
+import { createDailyGame, getDailyStatus } from "../../api/daily"
+import { apiErrorStatus } from "../../api/errors"
+import { createGame, getCurrentGame, getGame, personThumbnailUrl, playRound } from "../../api/games"
 import { GameType, Mode } from "../../api/types"
 import type { ImmichdleRoundOut, RoundOut } from "../../api/types"
 import type { GameComponentProps } from "../catalog"
@@ -34,7 +36,7 @@ interface GameState {
   targetPersonId: string | null
 }
 
-export function ImmichdleGame({ coverUrl, hasRoundsView }: GameComponentProps) {
+export function ImmichdleGame({ coverUrl, hasRoundsView, daily = false }: GameComponentProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const backToMenu = () => navigate("/")
@@ -53,8 +55,20 @@ export function ImmichdleGame({ coverUrl, hasRoundsView }: GameComponentProps) {
   const [targetFetchDone, setTargetFetchDone] = useState(true)
   // Stable reference across renders that don't change history - PersonSearchInput's debounced
   // search effect depends on excludeIds by reference (see its own docstring, and the other
-  // consumers - SkinPicker/AdminUserRow/FaceGuessPopover - that already follow this contract).
+  // consumers - EditProfilePage/AdminUserRow/FaceGuessPopover - that already follow this
+  // contract).
   const guessedIds = useMemo(() => new Set(history.map((r) => r.guess_person_id!)), [history])
+
+  // Roadmap #e - whether the current player has an unfinished game for this mode; null while the
+  // idle-screen check below is still in flight (IdleScreen treats that the same as false).
+  const [hasCurrentGame, setHasCurrentGame] = useState<boolean | null>(null)
+  // Roadmap #G - the daily game's id, known from GET /daily's status before the player has done
+  // anything - resumeGame() reads this instead of calling getCurrentGame (which never returns a
+  // daily game, see docs/TODO/DAILY-GAMES.md §4.5).
+  const dailyGameIdRef = useRef<string | null>(null)
+  // Bumped when the idle-screen status needs re-fetching while the screen is already "idle" -
+  // today only the daily 409 fallback in startGame below (docs/TODO/DAILY-GAMES.md §4.7).
+  const [idleRefresh, setIdleRefresh] = useState(0)
 
   const { isCurrent, guarded, discardInFlight } = useGuardedRequests()
   // One in-flight ref per action - start vs guess don't need to block each other, but each needs
@@ -66,13 +80,111 @@ export function ImmichdleGame({ coverUrl, hasRoundsView }: GameComponentProps) {
     await guarded(startInFlightRef, async (token) => {
       setBusy(true)
       try {
-        const g = await createGame(GAME_TYPE, MODE)
+        const g = daily ? await createDailyGame(GAME_TYPE, MODE) : await createGame(GAME_TYPE, MODE)
         if (!isCurrent(token)) return
         const round = g.rounds[g.rounds.length - 1]
         assertImmichdle(round)
         setGame({ id: g.id, score: g.score, finished: false, won: false, targetName: null, targetPersonId: null })
         setPendingRoundId(round.id)
         setHistory([])
+        setAnimatingRoundId(null)
+        setRowAnimationDone(false)
+        setTargetFetchDone(true)
+        setScreen("playing")
+      } catch (err) {
+        if (!isCurrent(token)) return
+        if (daily && apiErrorStatus(err) === 409) {
+          // Today's attempt was consumed between the idle status check and this create (another
+          // tab/device) - re-run the status check instead of showing a generic error; it lands on
+          // the finished (or in-progress) state, the "ya jugado" behavior of DAILY-GAMES.md §4.7.
+          setHasCurrentGame(null)
+          setIdleRefresh((n) => n + 1)
+          return
+        }
+        setScreen("error")
+      } finally {
+        if (isCurrent(token)) setBusy(false)
+      }
+    })
+  }
+
+  // Re-checked every time the idle screen is (re-)shown - roadmap #e's "Continuar" affordance.
+  useEffect(() => {
+    if (screen !== "idle") return
+    let cancelled = false
+
+    if (daily) {
+      getDailyStatus()
+        .then((status) => {
+          if (cancelled) return
+          const modeStatus = status.modes.find((m) => m.game_type === GAME_TYPE && m.mode === MODE)
+          dailyGameIdRef.current = modeStatus?.game_id ?? null
+
+          if (modeStatus?.status === "finished" && modeStatus.game_id) {
+            setHasCurrentGame(false)
+            getGame(modeStatus.game_id)
+              .then((g) => {
+                if (cancelled) return
+                const lastRound = g.rounds[g.rounds.length - 1]
+                assertImmichdle(lastRound)
+                setGame({
+                  id: g.id,
+                  score: g.score,
+                  finished: true,
+                  won: lastRound.correct === true,
+                  targetName: g.target_person_name ?? null,
+                  targetPersonId: g.target_person_id ?? null,
+                })
+                setScreen("finished")
+              })
+              .catch(() => {
+                if (!cancelled) setScreen("error")
+              })
+            return
+          }
+          setHasCurrentGame(modeStatus?.status === "in_progress")
+        })
+        .catch(() => {
+          if (!cancelled) setHasCurrentGame(false)
+        })
+      return () => {
+        cancelled = true
+      }
+    }
+
+    getCurrentGame(GAME_TYPE, MODE)
+      .then((g) => {
+        if (!cancelled) setHasCurrentGame(g !== null)
+      })
+      .catch(() => {
+        if (!cancelled) setHasCurrentGame(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [screen, daily, idleRefresh])
+
+  // Roadmap #e - "Continuar" button's action: rebuilds `history` from every already-answered round
+  // of the resumed game (all but the last, still-pending one), newest-first to match how a live
+  // game accumulates it (see handleGuess's setHistory below). No reveal animation on resume - the
+  // player just sees the table as it already stood.
+  async function resumeGame() {
+    await guarded(startInFlightRef, async (token) => {
+      setBusy(true)
+      try {
+        const g = daily
+          ? dailyGameIdRef.current
+            ? await getGame(dailyGameIdRef.current)
+            : null
+          : await getCurrentGame(GAME_TYPE, MODE)
+        if (!isCurrent(token) || !g) return
+        const answered = g.rounds.slice(0, -1)
+        answered.forEach(assertImmichdle)
+        const pending = g.rounds[g.rounds.length - 1]
+        assertImmichdle(pending)
+        setGame({ id: g.id, score: g.score, finished: false, won: false, targetName: null, targetPersonId: null })
+        setPendingRoundId(pending.id)
+        setHistory([...(answered as ImmichdleRoundOut[])].reverse())
         setAnimatingRoundId(null)
         setRowAnimationDone(false)
         setTargetFetchDone(true)
@@ -163,6 +275,9 @@ export function ImmichdleGame({ coverUrl, hasRoundsView }: GameComponentProps) {
         onStart={startGame}
         onBack={backToMenu}
         busy={busy}
+        hasCurrentGame={hasCurrentGame}
+        onContinue={resumeGame}
+        allowNewGame={!daily}
       />
     )
   }
@@ -181,6 +296,18 @@ export function ImmichdleGame({ coverUrl, hasRoundsView }: GameComponentProps) {
         gameId={game.id}
         hasRoundsView={hasRoundsView}
         title={t(game.won ? "immichdle.finished.won" : "immichdle.finished.lost")}
+        allowPlayAgain={!daily}
+        dailyShare={
+          daily
+            ? {
+                gameId: game.id,
+                gameType: GAME_TYPE,
+                mode: MODE,
+                gameTitle: t("immichdle.title"),
+                modeTitle: t("immichdle.modes.person"),
+              }
+            : undefined
+        }
       >
         {game.targetPersonId && (
           <div className="flex flex-col items-center gap-2">

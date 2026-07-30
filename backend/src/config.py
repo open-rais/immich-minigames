@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -53,11 +54,35 @@ class Settings(BaseSettings):
     # cookie keeps going out without the Secure flag even over HTTPS.
     cookie_secure: bool = False
 
+    # Roadmap #I (docs/TODO/LOGGING.md, decision [H]) - LOG_LEVEL only affects app logging
+    # (getLogger(__name__) call sites); the audit/access loggers are always INFO, never filtered.
+    # LOG_FORMAT defaults to legible console output for bare `uv run uvicorn` dev; the Dockerfile
+    # sets ENV LOG_FORMAT=json so every packaged install emits JSON without touching its .env.
+    log_level: str = "INFO"
+    log_format: Literal["console", "json"] = "console"
+
+    # Roadmap #H, F5 - backing store for api/rate_limit.py's Limiter (and the per-email login
+    # check it shares that storage with). "memory://" (default) is a single process's own memory -
+    # fine for this app's single-backend-container deployment shape, and what every rate limit
+    # test in this suite runs against. Accepts "redis://host:port" too (the `limits` library's own
+    # URI scheme) for a multi-process deployment, where per-process in-memory counters would let
+    # each process serve its own separate budget instead of one shared one.
+    rate_limit_storage_uri: str = "memory://"
+
     # Admin feature (ADMIN-FEATURE.md point #1) - promotion only, not account creation: if a user
     # already registered (via /signup) with this email, services/admin_bootstrap.py flips their
     # is_admin flag to True on every backend startup. If no such account exists yet, it's a no-op
     # (register normally first, then restart the backend). None/unset means no admin is managed.
     admin_email: str | None = None
+
+    # Roadmap #H, F1 - registration is invite-only (services/invite_service.py), but the very first
+    # account can't have an invite yet. While the `users` table is empty, RegisterIn.invite_code is
+    # accepted as valid if it matches this value instead (services/auth_service.py's
+    # _authorize_registration) - a one-shot bootstrap door that closes itself the moment any
+    # account exists. Generate with `openssl rand -hex 32`, same as JWT_SECRET. Leave unset to allow
+    # the first registration freely (dev convenience, zero config for local dev) - the door still
+    # closes after that first account either way.
+    initial_invite_token: str | None = None
 
     # Two databases, one role. Deliberately no single `db_url` property: an ambiguous name pointing
     # at one of two databases is exactly the class of mistake the split exists to rule out.
@@ -78,8 +103,17 @@ class Settings(BaseSettings):
         return self._db_url(self.db_app_database_name)
 
     @property
-    def immich_public_url(self) -> str:
-        return (self.immich_external_url or self.immich_server_url).rstrip("/")
+    def immich_public_url(self) -> str | None:
+        """Falls back to immich_server_url only when immich_external_url is genuinely **unset**
+        (None) - convenient for localhost dev, where both point at the same place anyway. An
+        explicitly empty IMMICH_EXTERNAL_URL ("") means "no public link" and returns None outright
+        instead of falling back - the deliberate way to suppress the "Ver en Immich" button
+        (GET /config, roadmap #10) on a deployment where immich_server_url is an internal-only
+        address (e.g. host.docker.internal) that would otherwise leak into a browser-facing
+        response (roadmap #H, F6)."""
+        if self.immich_external_url is None:
+            return self.immich_server_url.rstrip("/")
+        return self.immich_external_url.rstrip("/") or None
 
 
 @lru_cache(maxsize=1)

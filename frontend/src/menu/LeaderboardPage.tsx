@@ -12,10 +12,7 @@ import { PersonAvatar } from "../games/shared/PersonAvatar"
 import { SegmentedControl } from "../games/shared/SegmentedControl"
 
 // Roadmap point F - top 15 per (gameType, mode), reached from that mode's idle/finished screens
-// (see games/shared/GameScreens.tsx). Viewable by anyone, logged in or not (confirmed with the
-// project owner) - only the *entries* are restricted to logged-in players, via
-// GamesService.get_leaderboard's inner join to UserModel (an anonymous game has no user_id to
-// join on), not this page/route.
+// (see games/shared/GameScreens.tsx).
 export function LeaderboardPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()

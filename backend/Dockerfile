@@ -13,6 +13,10 @@ COPY alembic ./alembic
 COPY docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 
+# Packaged installs always emit structured JSON logs (docs/TODO/LOGGING.md) - config.py's
+# LOG_FORMAT default of "console" is for bare `uv run uvicorn` dev only.
+ENV LOG_FORMAT=json
+
 EXPOSE 8000
 
 # Runs pending Alembic migrations before starting uvicorn (--host 0.0.0.0 is required there, unlike

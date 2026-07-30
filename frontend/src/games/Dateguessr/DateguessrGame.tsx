@@ -32,23 +32,22 @@ function isDateguessrRound(round: RoundOut): round is DateguessrRoundOut {
   return round.game_type === GameType.Dateguessr
 }
 
-export function DateguessrGame({ coverUrl, hasRoundsView }: GameComponentProps) {
+export function DateguessrGame({ coverUrl, hasRoundsView, daily = false }: GameComponentProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const backToMenu = () => navigate("/")
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
-  const { screen, busy, game, round, phase, revealed, startGame, submitGuess, backToIdle } = useRoundGame<
-    DateguessrRoundOut,
-    string
-  >({
-    gameType: GAME_TYPE,
-    mode: MODE,
-    revealHoldMs: REVEAL_HOLD_MS,
-    isRound: isDateguessrRound,
-    playRound: (gameId, roundId, guess) => playRound(gameId, roundId, { date: guess }),
-    onNewRound: () => setSelectedDate(null),
-  })
+  const { screen, busy, game, round, phase, revealed, hasCurrentGame, startGame, resumeGame, submitGuess, backToIdle } =
+    useRoundGame<DateguessrRoundOut, string>({
+      gameType: GAME_TYPE,
+      mode: MODE,
+      revealHoldMs: REVEAL_HOLD_MS,
+      isRound: isDateguessrRound,
+      playRound: (gameId, roundId, guess) => playRound(gameId, roundId, { date: guess }),
+      onNewRound: () => setSelectedDate(null),
+      daily,
+    })
 
   if (screen === "idle") {
     return (
@@ -60,6 +59,9 @@ export function DateguessrGame({ coverUrl, hasRoundsView }: GameComponentProps) 
         onStart={startGame}
         onBack={backToMenu}
         busy={busy}
+        hasCurrentGame={hasCurrentGame}
+        onContinue={resumeGame}
+        allowNewGame={!daily}
       />
     )
   }
@@ -77,6 +79,18 @@ export function DateguessrGame({ coverUrl, hasRoundsView }: GameComponentProps) 
         busy={busy}
         gameId={game?.id}
         hasRoundsView={hasRoundsView}
+        allowPlayAgain={!daily}
+        dailyShare={
+          daily && game
+            ? {
+                gameId: game.id,
+                gameType: GAME_TYPE,
+                mode: MODE,
+                gameTitle: t("dateguessr.title"),
+                modeTitle: t("dateguessr.modes.daysToDate"),
+              }
+            : undefined
+        }
       />
     )
   }

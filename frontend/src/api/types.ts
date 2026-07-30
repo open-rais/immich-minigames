@@ -10,6 +10,7 @@ export const GameType = {
   Dateguessr: "dateguessr",
   Immichdle: "immichdle",
   WhosThatPerson: "whos-that-person",
+  Timeline: "timeline",
 } as const
 export type GameType = (typeof GameType)[keyof typeof GameType]
 
@@ -20,6 +21,7 @@ export const Mode = {
   DaysToDate: "daysToDate",
   Person: "person",
   NamedFaces: "namedFaces",
+  Arcade: "arcade",
 } as const
 export type Mode = (typeof Mode)[keyof typeof Mode]
 
@@ -144,12 +146,33 @@ export interface WhosThatPersonRoundOut {
   score_delta: number | null
 }
 
+// A card already on the board - always fully revealed (see docs/TODO/TIMELINE.md decision [H]).
+export interface TimelineCardOut {
+  asset_id: string
+  date: string
+}
+
+export interface TimelineRoundOut {
+  game_type: typeof GameType.Timeline
+  id: string
+  round_index: number
+  board: TimelineCardOut[]
+  card_asset_id: string
+  guess_slot: number | null
+  // Redacted (null) until this round has been answered - it IS the answer.
+  card_date: string | null
+  correct_slot: number | null
+  correct: boolean | null
+  score_delta: number | null
+}
+
 export type RoundOut =
   | MoreOrLessRoundOut
   | GeoguessrRoundOut
   | DateguessrRoundOut
   | ImmichdleRoundOut
   | WhosThatPersonRoundOut
+  | TimelineRoundOut
 
 export interface GameOut {
   id: string
@@ -172,6 +195,16 @@ export interface GameOut {
   // games/shared/useRoundGame.ts's GameState).
   total_rounds?: number | null
   total_people?: number | null
+  // Roadmap #G - set only for a daily-challenge game, null for every normal game. Lets the
+  // frontend recognize a resumed/loaded game as a daily one after a page reload (see
+  // games/shared/useRoundGame.ts).
+  daily_challenge_date?: string | null
+}
+
+// Roadmap #e - idle-screen "Continuar" lookup. A wrapper (not a bare nullable GameOut/404) so "no
+// active game" - the expected result on every idle-screen visit - is never mistaken for an error.
+export interface CurrentGameOut {
+  game: GameOut | null
 }
 
 // No game_type here (unlike RoundOut) - game_id already fixes a round's game/mode server-side, so
@@ -199,7 +232,13 @@ export interface WhosThatPersonPlayRoundIn {
   guesses: Record<string, string>
 }
 
-// The five guess bodies share one endpoint (POST /games/{id}/rounds/{roundId}) - see playRound in
+// slot is the insertion index into the pending round's board (list.insert(i, x) semantics) - see
+// backend/src/api/dto/timeline.py's TimelinePlayRoundIn.
+export interface TimelinePlayRoundIn {
+  slot: number
+}
+
+// The guess bodies share one endpoint (POST /games/{id}/rounds/{roundId}) - see playRound in
 // api/games.ts. Which one is valid is fixed by the game's type/mode server-side, not restated here.
 export type PlayRoundIn =
   | MoreOrLessPlayRoundIn
@@ -207,6 +246,7 @@ export type PlayRoundIn =
   | DateguessrPlayRoundIn
   | ImmichdlePlayRoundIn
   | WhosThatPersonPlayRoundIn
+  | TimelinePlayRoundIn
 
 export interface PlayRoundOut {
   // Binary-guess concept (MoreOrLess) - null for games with a continuous score (Geoguessr).
@@ -220,7 +260,7 @@ export interface PlayRoundOut {
 }
 
 // Mirrors backend/src/api/auth_schemas.py - own accounts (roadmap point B), unrelated to Immich's
-// own users and, for now, to the anonymous X-Owner-Id used by games (see api/ownerId.ts).
+// own users.
 export interface User {
   id: string
   email: string
@@ -240,6 +280,9 @@ export interface RegisterIn {
   username: string
   full_name: string
   password: string
+  // Roadmap #H, F1 - required except for the very first account (see backend/src/services/
+  // auth_service.py's _authorize_registration decision [H] bootstrap).
+  invite_code?: string
 }
 
 export interface LoginIn {
@@ -252,6 +295,18 @@ export interface LoginIn {
 export interface UpdateProfileIn {
   username?: string
   full_name?: string
+}
+
+// Roadmap #H, F0 - mirrors backend/src/api/auth_schemas.py's ChangePasswordIn.
+export interface ChangePasswordIn {
+  current_password: string
+  new_password: string
+}
+
+// Roadmap #H, F2 - mirrors backend/src/api/auth_schemas.py's ResetPasswordIn.
+export interface ResetPasswordIn {
+  token: string
+  new_password: string
 }
 
 // Reusable across features (not just Immichdle's guess input) - see backend/src/api/api.py's
@@ -277,6 +332,24 @@ export interface GameRecordsOut {
   records: GameRecordOut[]
 }
 
+// Roadmap #e - profile "Ver juegos" modal - mirrors backend/src/api/dto/common.py's
+// RecentGameOut/RecentGamesOut. Only ever finished or abandoned games (never a still-active one).
+export interface RecentGameOut {
+  id: string
+  game_type: string
+  mode: string
+  score: number
+  finished: boolean
+  abandoned: boolean
+  created_at: string
+  // Roadmap #G - whether this was a daily-challenge game (see menu/DailySection.tsx).
+  is_daily: boolean
+}
+
+export interface RecentGamesOut {
+  games: RecentGameOut[]
+}
+
 // Admin feature (ADMIN-FEATURE.md point #4) - mirrors backend/src/api/dto/common.py's
 // GameSettingOut/GameSettingsOut. `key` names match services/game_settings.py's SettingSpec keys
 // (e.g. "decay_km", "total_rounds") - see admin/AdminGameRow.tsx for how they're labeled.
@@ -291,7 +364,22 @@ export interface GameSettingOut {
 
 export interface GameSettingsOut {
   game_type: string
+  mode: string
   settings: GameSettingOut[]
+}
+
+// Roadmap #G - mirrors backend/src/api/dto/common.py's DailySettingsOut/UpdateDailySettingsIn.
+export interface DailySettingsOut {
+  game_type: string
+  mode: string
+  // The "Activar juego diario" checkbox from roadmap #f.
+  enabled: boolean
+  settings: GameSettingOut[]
+}
+
+export interface UpdateDailySettingsIn {
+  enabled?: boolean
+  values?: Record<string, number>
 }
 
 // Roadmap point F - leaderboards (requires login, unlike the personal records above) - mirrors
@@ -313,4 +401,51 @@ export interface LeaderboardOut {
 // Roadmap point #10 (rounds review) - mirrors backend/src/api/dto/common.py's ConfigOut.
 export interface ConfigOut {
   immich_external_url: string | null
+}
+
+// Roadmap #G - daily games. Mirrors backend/src/api/dto/common.py's DailyModeStatusOut/
+// DailyStatusOut (see services/games_service.py's GamesService.get_daily_status).
+export type DailyModeStatusValue = "not_played" | "in_progress" | "finished"
+
+export interface DailyModeStatusOut {
+  game_type: string
+  mode: string
+  status: DailyModeStatusValue
+  game_id: string | null
+  score: number | null
+}
+
+export interface DailyStatusOut {
+  // ISO datetimes (server time) - the countdown ticks off their offset rather than trusting the
+  // client's own clock alone (see menu/DailyCountdown.tsx).
+  resets_at: string
+  server_now: string
+  modes: DailyModeStatusOut[]
+}
+
+// Roadmap #G, F5 - mirrors backend/src/api/dto/common.py's DailyLeaderboardOut. Same entry shape
+// as the normal LeaderboardOut, scoped to one specific day's challenge instead of a rolling window.
+export interface DailyLeaderboardOut {
+  date: string
+  entries: LeaderboardEntryOut[]
+}
+
+// Roadmap #H, F1 - mirrors backend/src/api/dto/admin.py's InviteOut/CreateInviteOut.
+export type InviteStatus = "pending" | "used" | "expired"
+
+export interface InviteOut {
+  id: string
+  kind: string
+  status: InviteStatus
+  expires_at: string
+  used_at: string | null
+  created_at: string
+}
+
+export interface CreateInviteOut {
+  id: string
+  // The only time the plain token is ever available - shown once via ShareModal, see
+  // admin/AdminInvitesSection.tsx.
+  token: string
+  expires_at: string
 }

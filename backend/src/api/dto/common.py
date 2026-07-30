@@ -6,11 +6,16 @@ already fixes a round's game/mode server-side (see api/api.py), so asking the cl
 back `game_type` in the guess body would be redundant - and worse, if it disagreed with the game's
 actual type, nothing would catch the mismatch before it reached the domain layer as a
 wrongly-shaped guess.
+
+Everything that doesn't spread across every game/mode lives in a sibling module instead
+(api/dto/persons.py, records.py, leaderboard.py, daily.py, admin.py, config.py) - this file used to
+hold all of it, split apart since each section had nothing to do with the others beyond living in
+the same file.
 """
 
 from dataclasses import dataclass
-from datetime import date
-from typing import Annotated, Any, Literal, Union
+from datetime import date, datetime
+from typing import Annotated, Any, Union
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -19,17 +24,16 @@ from api.dto.dateguessr import DateguessrPlayRoundIn, DateguessrRoundOut
 from api.dto.geoguessr import GeoguessrPlayRoundIn, GeoguessrRoundOut
 from api.dto.immichdle import ImmichdlePlayRoundIn, ImmichdleRoundOut
 from api.dto.more_or_less import MoreOrLessPlayRoundIn, MoreOrLessRoundOut
+from api.dto.timeline import TimelinePlayRoundIn, TimelineRoundOut
 from api.dto.whos_that_person import WhosThatPersonPlayRoundIn, WhosThatPersonRoundOut
-from domain.person import Person
-from games.asset_rounds import AssetRoundsGame
 from games.base import BaseGame, BaseRound
 from games.dateguessr import DateguessrRound
 from games.geoguessr import GeoguessrRound
 from games.immichdle import ImmichdleGame, ImmichdleRound
 from games.more_or_less import MoreOrLessRound
-from games.whos_that_person import WhosThatPersonGame, WhosThatPersonRound
-from services.game_settings import SettingSpec
-from services.games_service import GameRecord, LeaderboardEntry, UnsupportedGameError
+from games.timeline import TimelineRound
+from games.whos_that_person import WhosThatPersonRound
+from services.games_service import RecentGame, UnsupportedGameError
 
 
 class CreateGameIn(BaseModel):
@@ -38,7 +42,14 @@ class CreateGameIn(BaseModel):
 
 
 RoundOut = Annotated[
-    Union[MoreOrLessRoundOut, GeoguessrRoundOut, DateguessrRoundOut, ImmichdleRoundOut, WhosThatPersonRoundOut],
+    Union[
+        MoreOrLessRoundOut,
+        GeoguessrRoundOut,
+        DateguessrRoundOut,
+        ImmichdleRoundOut,
+        WhosThatPersonRoundOut,
+        TimelineRoundOut,
+    ],
     Field(discriminator="game_type"),
 ]
 
@@ -66,6 +77,7 @@ _ROUND_SPECS: dict[type[BaseRound], _RoundSpec] = {
     WhosThatPersonRound: _RoundSpec(
         WhosThatPersonPlayRoundIn, WhosThatPersonRoundOut, has_binary_correctness=True
     ),
+    TimelineRound: _RoundSpec(TimelinePlayRoundIn, TimelineRoundOut, has_binary_correctness=True),
 }
 
 
@@ -78,16 +90,25 @@ def _round_spec(round_: BaseRound) -> _RoundSpec:
 
 def round_out_from_round(
     round_: BaseRound,
-) -> MoreOrLessRoundOut | GeoguessrRoundOut | DateguessrRoundOut | ImmichdleRoundOut | WhosThatPersonRoundOut:
+) -> (
+    MoreOrLessRoundOut
+    | GeoguessrRoundOut
+    | DateguessrRoundOut
+    | ImmichdleRoundOut
+    | WhosThatPersonRoundOut
+    | TimelineRoundOut
+):
     return _round_spec(round_).out_class.from_round(round_)
 
 
 def parse_guess(round_: BaseRound, body: dict[str, Any]) -> Any:
     """Picks the right guess schema for an already-loaded round - the caller (see api/api.py's
     play_round) has already looked the game up (and confirmed this is the pending round), so this
-    never needs the client to also restate its own game_type in the guess body. Raises
+    never needs the client to also restate its own game_type in the guess body. The round itself is
+    passed through as pydantic's `context` so a schema that needs it (TimelinePlayRoundIn's
+    board-length upper bound) can validate against it - every other schema simply ignores it. Raises
     pydantic.ValidationError on a malformed body."""
-    return _round_spec(round_).guess_schema.model_validate(body).to_domain()
+    return _round_spec(round_).guess_schema.model_validate(body, context={"round": round_}).to_domain()
 
 
 class GameOut(BaseModel):
@@ -109,11 +130,17 @@ class GameOut(BaseModel):
     target_birth_date: date | None = None
     target_first_asset_date: date | None = None
     # Admin feature (ADMIN-FEATURE.md point #4) - the *live* configured total for this game
-    # instance (AssetRoundsGame.total_rounds / WhosThatPersonGame.total_people), so the frontend's
-    # round counter (e.g. "Round 2 of 5") reflects an admin override instead of a hardcoded
-    # display-only constant. Null for every other game, which has no such fixed/counted total.
+    # instance (BaseGame.total_rounds/total_people, overridden by Geoguessr/Dateguessr and
+    # WhosThatPerson respectively), so the frontend's round counter (e.g. "Round 2 of 5") reflects
+    # an admin override instead of a hardcoded display-only constant. Null for every other game,
+    # which has no such fixed/counted total.
     total_rounds: int | None = None
     total_people: int | None = None
+    # Roadmap #G - set only for a daily-challenge game (see games/base.py's BaseGame.
+    # daily_challenge_date), null for every normal game. Lets the frontend tell a resumed/loaded
+    # game is a daily one on a fresh page load (no separate "Nuevo juego" affordance, no re-offer
+    # to play) and titles the rounds-review page (docs/TODO/DAILY-GAMES.md §5).
+    daily_challenge_date: date | None = None
 
     @classmethod
     def from_game(cls, game: BaseGame) -> "GameOut":
@@ -140,9 +167,56 @@ class GameOut(BaseModel):
             target_asset_count=target_asset_count,
             target_birth_date=target_birth_date,
             target_first_asset_date=target_first_asset_date,
-            total_rounds=game.total_rounds if isinstance(game, AssetRoundsGame) else None,
-            total_people=game.total_people if isinstance(game, WhosThatPersonGame) else None,
+            total_rounds=game.total_rounds,
+            total_people=game.total_people,
+            daily_challenge_date=game.daily_challenge_date,
         )
+
+
+# -- resumable games (roadmap point #e, see GamesService.get_current_game/get_recent_games) ---
+
+
+class CurrentGameOut(BaseModel):
+    # A wrapper, not a 404 - "no active game" is the expected result on every idle-screen visit,
+    # not an error the frontend needs to distinguish from a real failure.
+    game: GameOut | None
+
+    @classmethod
+    def from_game(cls, game: BaseGame | None) -> "CurrentGameOut":
+        return cls(game=GameOut.from_game(game) if game is not None else None)
+
+
+class RecentGameOut(BaseModel):
+    id: UUID
+    game_type: str
+    mode: str
+    score: int
+    finished: bool
+    abandoned: bool
+    created_at: datetime
+    # Roadmap #G - whether this was a daily-challenge game (see GamesService.get_recent_games).
+    is_daily: bool
+
+    @classmethod
+    def from_recent_game(cls, recent: RecentGame) -> "RecentGameOut":
+        return cls(
+            id=recent.id,
+            game_type=recent.game_type,
+            mode=recent.mode,
+            score=recent.score,
+            finished=recent.finished,
+            abandoned=recent.abandoned,
+            created_at=recent.created_at,
+            is_daily=recent.is_daily,
+        )
+
+
+class RecentGamesOut(BaseModel):
+    games: list[RecentGameOut]
+
+    @classmethod
+    def from_recent_games(cls, games: list[RecentGame]) -> "RecentGamesOut":
+        return cls(games=[RecentGameOut.from_recent_game(g) for g in games])
 
 
 class PlayRoundOut(BaseModel):
@@ -168,118 +242,3 @@ class PlayRoundOut(BaseModel):
             answered_round=round_out_from_round(answered_round),
             next_round=next_round,
         )
-
-
-# -- person search (reusable across features - not game-specific, see api.py's /persons/search) ---
-
-
-class PersonSearchResultOut(BaseModel):
-    id: UUID
-    name: str
-
-    @classmethod
-    def from_person(cls, person: Person) -> "PersonSearchResultOut":
-        return cls(id=person.id, name=person.name)
-
-
-class PersonSearchOut(BaseModel):
-    results: list[PersonSearchResultOut]
-
-    @classmethod
-    def from_persons(cls, persons: list[Person]) -> "PersonSearchOut":
-        return cls(results=[PersonSearchResultOut.from_person(p) for p in persons])
-
-
-# -- personal records (roadmap point E, see GamesService.get_personal_records) ---
-
-
-class GameRecordOut(BaseModel):
-    game_type: str
-    mode: str
-    best_score: int
-
-    @classmethod
-    def from_record(cls, record: GameRecord) -> "GameRecordOut":
-        return cls(game_type=record.game_type, mode=record.mode, best_score=record.best_score)
-
-
-class GameRecordsOut(BaseModel):
-    records: list[GameRecordOut]
-
-    @classmethod
-    def from_records(cls, records: list[GameRecord]) -> "GameRecordsOut":
-        return cls(records=[GameRecordOut.from_record(r) for r in records])
-
-
-# -- leaderboard (roadmap point F, see GamesService.get_leaderboard) ---
-
-LeaderboardWindow = Literal["all", "weekly", "daily"]
-
-
-class LeaderboardEntryOut(BaseModel):
-    rank: int
-    username: str
-    skin_person_id: UUID | None
-    best_score: int
-
-    @classmethod
-    def from_entry(cls, entry: LeaderboardEntry) -> "LeaderboardEntryOut":
-        return cls(
-            rank=entry.rank,
-            username=entry.username,
-            skin_person_id=entry.skin_person_id,
-            best_score=entry.best_score,
-        )
-
-
-class LeaderboardOut(BaseModel):
-    window: LeaderboardWindow
-    entries: list[LeaderboardEntryOut]
-
-    @classmethod
-    def from_entries(cls, window: LeaderboardWindow, entries: list[LeaderboardEntry]) -> "LeaderboardOut":
-        return cls(window=window, entries=[LeaderboardEntryOut.from_entry(e) for e in entries])
-
-
-# -- admin game settings (ADMIN-FEATURE.md point #4, see services/game_settings.py) ---
-
-
-class GameSettingOut(BaseModel):
-    key: str
-    value: float
-    default: float
-    value_type: Literal["int", "float"]
-    min_value: float
-    max_value: float
-
-
-class GameSettingsOut(BaseModel):
-    game_type: str
-    settings: list[GameSettingOut]
-
-    @classmethod
-    def from_specs(cls, game_type: str, specs: list[SettingSpec], values: dict[str, float]) -> "GameSettingsOut":
-        return cls(
-            game_type=game_type,
-            settings=[
-                GameSettingOut(
-                    key=spec.key,
-                    value=values[spec.key],
-                    default=spec.default,
-                    value_type=spec.value_type,
-                    min_value=spec.min_value,
-                    max_value=spec.max_value,
-                )
-                for spec in specs
-            ],
-        )
-
-
-# -- public runtime config (ROUNDS-VIEW.md roadmap point #10, see Settings.immich_public_url) ---
-
-
-class ConfigOut(BaseModel):
-    # Settings.immich_public_url, already resolved (IMMICH_EXTERNAL_URL or a fallback to
-    # IMMICH_SERVER_URL) - optional because immich_server_url is a plain str field with no
-    # guarantee against being blanked out, not because callers are expected to see null in practice.
-    immich_external_url: str | None

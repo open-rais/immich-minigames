@@ -1,0 +1,318 @@
+"""
+Based on Who's That Pokémon. A photo is shown with some of its already-named detected faces blacked
+out (up to MAX_HIDDEN_FACES) - the player identifies every blacked-out face before submitting. A
+round is one photo: even when it hides several faces, they're all answered in a single submit, so
+the round keeps the same one-guess shape every other game uses (see BaseRound.guess). The same
+person can appear twice in one photo (mirrors, collages, etc.) - each hidden face is graded
+independently against its own true person, never deduplicated. Faces without a name are never
+blacked out (there'd be nothing to grade), so a photo can have more visible faces than hidden ones.
+See docs/GAMES/WHOS_THAT_PERSON.md.
+
+The game asks about TOTAL_PEOPLE people total, across as many rounds as it takes to reach that
+count - a round's face count is capped so the running total never overshoots it.
+
+Scoring is a combo streak counted by person, not by round: each correct guess adds the current
+streak (which grows by 1 per consecutive hit); a wrong guess resets the streak to 0 for scoring
+purposes. Crucially, that reset happens at the *start* of a round's score calculation whenever the
+round contains any miss - not only from the point of the miss onward - so correct guesses that
+happen to come before a miss within the same round don't get to spend a streak carried in from a
+previous round (see WhosThatPersonRound.calculate_score).
+"""
+
+from collections.abc import Mapping
+from dataclasses import dataclass
+from typing import Any, Protocol
+from uuid import UUID, uuid4
+
+from domain.face import Face
+from games.base import BaseGame, BaseRound, PlayRoundResult
+from games.shared.serialization import DictCodec
+from services.immich_service import ImmichService
+
+GAME_TYPE = "whos-that-person"
+MODE_NAMED_FACES = "namedFaces"
+
+# Admin feature (ADMIN-FEATURE.md point #4) - public (no leading underscore) since
+# services/game_settings.py imports these as defaults for the admin-configurable
+# total_people/max_hidden_faces settings, same convention already used by e.g.
+# games/geoguessr/game.py's TOTAL_ROUNDS/MAX_SCORE.
+TOTAL_PEOPLE = 15
+MAX_HIDDEN_FACES = 5
+
+
+class IncompleteGuessError(Exception):
+    pass
+
+
+@dataclass(frozen=True)
+class HiddenFace(DictCodec):
+    """A blacked-out face's bounding box (never secret - needed to draw the box) plus the person it
+    actually belongs to (secret until answered - redaction happens in the API DTO layer, not here) -
+    frozen at round-creation time, same rationale as every other game's *Snapshot types."""
+
+    face_id: UUID
+    person_id: UUID
+    person_name: str
+    image_width: int
+    image_height: int
+    bounding_box_x1: int
+    bounding_box_y1: int
+    bounding_box_x2: int
+    bounding_box_y2: int
+
+    @classmethod
+    def of(cls, face: Face) -> "HiddenFace":
+        return cls(
+            face_id=face.id,
+            person_id=face.person_id,
+            person_name=face.person_name,
+            image_width=face.image_width,
+            image_height=face.image_height,
+            bounding_box_x1=face.bounding_box_x1,
+            bounding_box_y1=face.bounding_box_y1,
+            bounding_box_x2=face.bounding_box_x2,
+            bounding_box_y2=face.bounding_box_y2,
+        )
+
+
+class WhosThatPersonContent(Protocol):
+    """The single point of variation between a normal Who'sThatPerson game and a daily one
+    (roadmap #G) - live Immich queries (LiveContent below) vs. a frozen daily spec
+    (games/whos_that_person/daily.py's ScriptedContent). The game engine below never knows which.
+
+    `has_more` and `pick_round` are deliberately separate methods, not "call pick_round and discard
+    the result" - LiveContent's query is idempotent to repeat, but ScriptedContent's pick_round
+    advances an internal index on every successful call, so has_next_round() checking availability
+    by calling (and discarding) pick_round would silently skip a round."""
+
+    @staticmethod
+    def has_more(max_faces: int, exclude_asset_ids: frozenset[UUID]) -> bool:
+        """Whether another round's worth of content is available, without actually picking it."""
+        ...
+
+    @staticmethod
+    def pick_round(max_faces: int, exclude_asset_ids: frozenset[UUID]) -> tuple[UUID, list[HiddenFace]] | None:
+        """The next round's photo + which of its named faces to hide - None when no eligible photo
+        is left."""
+        ...
+
+
+class LiveContent:
+    """Normal-play WhosThatPersonContent - samples an eligible photo straight from Immich."""
+
+    def __init__(self, immich_service: ImmichService) -> None:
+        self._immich_service = immich_service
+
+    def pick_round(self, max_faces: int, exclude_asset_ids: frozenset[UUID]) -> tuple[UUID, list[HiddenFace]] | None:
+        faces = self._immich_service.get_random_asset_with_named_faces(
+            max_faces=max_faces, exclude_asset_ids=exclude_asset_ids
+        )
+        if not faces:
+            return None
+        return faces[0].asset_id, [HiddenFace.of(f) for f in faces]
+
+    def has_more(self, max_faces: int, exclude_asset_ids: frozenset[UUID]) -> bool:
+        # Cheap-ish existence check, discarded - create_next_round() samples again, same
+        # double-sample pattern MoreOrLessGame/GeoguessrGame already use. Safe to repeat here since
+        # a live query has no side effect (unlike ScriptedContent.has_more).
+        return self.pick_round(max_faces, exclude_asset_ids) is not None
+
+
+class WhosThatPersonRound(BaseRound):
+    def __init__(
+        self,
+        id: UUID,
+        game_id: UUID,
+        round_index: int,
+        asset_id: UUID,
+        faces: list[HiddenFace],
+        incoming_streak: int = 0,
+    ) -> None:
+        super().__init__(id, game_id, round_index, shown_entities=[asset_id] + [f.person_id for f in faces])
+        self.asset_id = asset_id
+        self.faces = faces
+        self.guess: dict[UUID, UUID] | None = None  # face_id -> guessed person_id
+        # person_id -> name, frozen at guess time by WhosThatPersonGame.play_round (roadmap #10's
+        # rounds review, ROUNDS-VIEW.md §4.3) - same "snapshot" rationale as every other game's
+        # *Snapshot types: the name the player *saw* shouldn't depend on Immich data staying put.
+        # Empty (not None) for a round played before this field existed - see from_payload.
+        self.guess_names: dict[UUID, str] = {}
+        # Set at construction (the previous round's ending_streak, or 0 for the game's first
+        # round) rather than injected later - see calculate_score().
+        self.incoming_streak = incoming_streak
+        self.ending_streak: int | None = None
+
+    @property
+    def results(self) -> list[bool]:
+        """Per-face correctness, in self.faces order - the fixed order calculate_score() streaks
+        over."""
+        if self.guess is None:
+            raise RuntimeError("results accessed before the round was answered")
+        return [self.guess[face.face_id] == face.person_id for face in self.faces]
+
+    @property
+    def correct(self) -> bool | None:
+        """Whether every hidden face in this round was guessed correctly - None until answered.
+        Single definition of "correct" for the DTOs, same role as MoreOrLessRound.correct."""
+        if not self.answered:
+            return None
+        return all(self.results)
+
+    def calculate_score(self, settings: Mapping[str, float] | None = None) -> int:
+        # No admin-configurable knob affects this game's scoring (only its length, see
+        # WhosThatPersonGame's total_people/_max_hidden_faces) - settings is accepted only to
+        # satisfy BaseRound's shared signature.
+        results = self.results
+        # A miss anywhere in this round zeroes the streak before any of the round's own hits are
+        # scored - not just from the point of the miss onward (see module docstring).
+        streak = self.incoming_streak if all(results) else 0
+        delta = 0
+        for is_correct in results:
+            if is_correct:
+                streak += 1
+                delta += streak
+            else:
+                streak = 0
+        self.ending_streak = streak
+        return delta
+
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "asset_id": str(self.asset_id),
+            "faces": [f.to_dict() for f in self.faces],
+            "guess": {str(k): str(v) for k, v in self.guess.items()} if self.guess is not None else None,
+            "guess_names": {str(k): v for k, v in self.guess_names.items()},
+            "incoming_streak": self.incoming_streak,
+            "ending_streak": self.ending_streak,
+        }
+
+    @classmethod
+    def from_payload(
+        cls, id: UUID, game_id: UUID, round_index: int, payload: dict[str, Any], score_delta: int | None
+    ) -> "WhosThatPersonRound":
+        round_ = cls(
+            id=id,
+            game_id=game_id,
+            round_index=round_index,
+            asset_id=UUID(payload["asset_id"]),
+            faces=[HiddenFace.from_dict(f) for f in payload["faces"]],
+            incoming_streak=payload["incoming_streak"],
+        )
+        round_.guess = (
+            {UUID(k): UUID(v) for k, v in payload["guess"].items()} if payload["guess"] is not None else None
+        )
+        # payload.get(...) or {} rather than payload["guess_names"] - a round played before this
+        # field existed has no such key at all; it just shows "?" instead of a name in the "Tu
+        # respuesta" rounds-review view (ROUNDS-VIEW.md §4.3), not a KeyError.
+        round_.guess_names = {UUID(k): v for k, v in (payload.get("guess_names") or {}).items()}
+        round_.ending_streak = payload["ending_streak"]
+        round_.score_delta = score_delta
+        return round_
+
+
+class WhosThatPersonGame(BaseGame):
+    def __init__(
+        self,
+        id: UUID,
+        rounds: list[WhosThatPersonRound],
+        immich_service: ImmichService,
+        content: WhosThatPersonContent,
+        score: int = 0,
+        finished: bool = False,
+        settings: Mapping[str, float] | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            game_type=GAME_TYPE,
+            mode=MODE_NAMED_FACES,
+            rounds=rounds,
+            score=score,
+            finished=finished,
+            settings=settings,
+        )
+        # Always live, daily or not - unlike content (which round's photo/faces come from), guess
+        # resolution (play_round below) always needs a fresh name lookup for whatever the player
+        # actually typed, regardless of where the round's content itself came from.
+        self._immich_service = immich_service
+        self._content = content
+
+    @property
+    def _people_asked(self) -> int:
+        return sum(len(round_.faces) for round_ in self.rounds)
+
+    # -- admin-configurable (ADMIN-FEATURE.md point #4, see services/game_settings.py) ----------
+
+    @property
+    def total_people(self) -> int:
+        # Public (no leading underscore) - api/dto/common.py's GameOut reads this to show the
+        # frontend the *live* total instead of the hardcoded display-only constant it used to
+        # mirror.
+        return int(self._settings.get("total_people", TOTAL_PEOPLE))
+
+    @property
+    def _max_hidden_faces(self) -> int:
+        return int(self._settings.get("max_hidden_faces", MAX_HIDDEN_FACES))
+
+    @property
+    def _shown_asset_ids(self) -> frozenset[UUID]:
+        # Never repeat the same photo within a game (unlike people, who can and will repeat across
+        # photos - the named-people pool is much smaller than 15).
+        return frozenset(round_.asset_id for round_ in self.rounds)
+
+    @classmethod
+    def start(
+        cls,
+        id: UUID,
+        immich_service: ImmichService,
+        content: WhosThatPersonContent,
+        settings: Mapping[str, float] | None = None,
+    ) -> "WhosThatPersonGame":
+        game = cls(id=id, rounds=[], immich_service=immich_service, content=content, settings=settings)
+        picked = game._content.pick_round(min(game._max_hidden_faces, game.total_people), frozenset())
+        if picked is None:
+            raise ValueError("not enough named faces in Immich to start a Who'sThatPerson game")
+
+        asset_id, faces = picked
+        first_round = WhosThatPersonRound(id=uuid4(), game_id=id, round_index=1, asset_id=asset_id, faces=faces)
+        game.rounds.append(first_round)
+        return game
+
+    def play_round(self, guess: dict[UUID, UUID]) -> PlayRoundResult:
+        if self.finished:
+            raise ValueError("game is already finished")
+        expected_face_ids = {face.face_id for face in self.current_round.faces}
+        if set(guess) != expected_face_ids:
+            raise IncompleteGuessError("guess must include exactly one entry per hidden face in the round")
+        # Frozen here (roadmap #10's rounds review, ROUNDS-VIEW.md §4.3) rather than looked up again
+        # whenever the round is later displayed - one query for every guessed person in this round,
+        # not one per face. A guessed id that no longer resolves to a real person (deleted from
+        # Immich since) just doesn't show up in the result, leaving that face's name unresolved.
+        guessed_person_ids = frozenset(guess.values())
+        persons = self._immich_service.get_persons(named_only=True, ids=guessed_person_ids, limit=len(guessed_person_ids))
+        self.current_round.guess_names = {person.id: person.name for person in persons}
+        return super().play_round(guess)
+
+    def has_next_round(self) -> bool:
+        if self._people_asked >= self.total_people:
+            return False
+        max_faces = min(self._max_hidden_faces, self.total_people - self._people_asked)
+        return self._content.has_more(max_faces, self._shown_asset_ids)
+
+    def create_next_round(self) -> WhosThatPersonRound:
+        previous = self.current_round
+        max_faces = min(self._max_hidden_faces, self.total_people - self._people_asked)
+        picked = self._content.pick_round(max_faces, self._shown_asset_ids)
+        if picked is None:
+            raise ValueError("no more eligible photos left - has_next_round() should have returned False")
+        asset_id, faces = picked
+
+        if previous.ending_streak is None:
+            raise RuntimeError("create_next_round() called before calculate_score() set ending_streak")
+        return WhosThatPersonRound(
+            id=uuid4(),
+            game_id=self.id,
+            round_index=previous.round_index + 1,
+            asset_id=asset_id,
+            faces=faces,
+            incoming_streak=previous.ending_streak,
+        )

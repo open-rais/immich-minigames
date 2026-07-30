@@ -41,3 +41,10 @@ without their count. The player must guess whether B has **more** or **fewer** t
 | `personBirthDate` | Person's birthday | Future |
 
 See [docs/TODO/ROADMAP.md](../TODO/ROADMAP.md) for when future modes are planned.
+
+## Daily
+
+The daily challenge's chain is pre-generated once for the day (`ScriptedCandidateProvider`) up to
+an admin-configured `chain_length` (default 100) - reaching the end of the chain ends the game as
+"perfect" instead of a loss. Unlike every other daily mode, MoreOrLess has no cross-day no-repeat
+window - see [docs/TODO/DAILY-GAMES.md](../TODO/DAILY-GAMES.md) decision [F].

@@ -4,9 +4,12 @@ interface ModeCardProps {
   title: string
   coverUrl?: string
   // Personal-best score for this mode (roadmap point E, see menu/MainMenu.tsx's records fetch) -
-  // undefined renders "not played yet" instead of a score. Always shown, for anonymous visitors
-  // (scoped to their browser) and logged-in accounts alike - not gated behind login.
+  // undefined renders "not played yet" instead of a score.
   bestScore?: number
+  // Roadmap #G - overrides the bestScore-derived subtitle entirely when set (menu/DailySection.tsx's
+  // status-driven "Continuar"/score/"no jugado" text) - undefined keeps the normal bestScore
+  // behavior, so this stays a no-op for every non-daily caller.
+  subtitle?: string
   onClick: () => void
 }
 
@@ -19,7 +22,7 @@ interface ModeCardProps {
 // hover treatment on its album grid. Mobile switches to a full-width row (small square cover on the
 // left, title to its right) instead of the stacked desktop card - same breakpoint-driven single
 // component tree convention used by MoreOrLessGame.
-export function ModeCard({ title, coverUrl, bestScore, onClick }: ModeCardProps) {
+export function ModeCard({ title, coverUrl, bestScore, subtitle, onClick }: ModeCardProps) {
   const { t } = useTranslation()
 
   return (
@@ -42,7 +45,7 @@ export function ModeCard({ title, coverUrl, bestScore, onClick }: ModeCardProps)
           {title}
         </div>
         <div className="truncate text-sm text-muted">
-          {bestScore === undefined ? t("mainMenu.notPlayed") : t("mainMenu.bestScore", { score: bestScore })}
+          {subtitle ?? (bestScore === undefined ? t("mainMenu.notPlayed") : t("mainMenu.bestScore", { score: bestScore }))}
         </div>
       </div>
     </button>

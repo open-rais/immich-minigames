@@ -34,14 +34,13 @@ Detailed gameplay for each game, including modes and scoring rules, can be found
 
 ## Current Status
 
-**Five games are fully playable:**
+**All six games are fully playable:**
 - **MoreOrLess** ✅ (PC and mobile layouts, both English and Spanish)
 - **Geoguessr** ✅ (MapLibre-powered, 5-round game mode)
 - **Dateguessr** ✅ (Timeline-based, 5-round game mode)
 - **Immichdle** ✅ (Wordle-style person guessing with comparative clues)
 - **Who'sThatPerson** ✅ (Guess person names from hidden faces in photos)
-
-**Other games are design stubs only** (Timeline).
+- **Timeline** ✅ (Insert photos in the correct chronological spot; one mistake ends the run)
 
 **Features:**
 - ✅ User login (email/username/password, profile page, logout)
@@ -51,7 +50,8 @@ Detailed gameplay for each game, including modes and scoring rules, can be found
 - ✅ Direct Postgres access for game data, Immich REST API for images
 - ✅ Leaderboards (daily, weekly, all-time per game)
 - ✅ User profiles with cosmetic person avatar selection
-- ❌ Daily challenges (planned)
+- ✅ Daily challenges (same content for every player each day, one attempt, own leaderboard,
+  shareable results - Wordle-style)
 - ❌ Report incorrect metadata (planned)
 
 Full implementation roadmap is in [`docs/TODO/ROADMAP.md`](./docs/TODO/ROADMAP.md).
@@ -121,6 +121,12 @@ app runs as (see **Database Access & Security** below), then it starts the backe
 No manual database setup step is needed.
 
 Open `http://localhost:${FRONTEND_PORT:-3000}` (3000 by default).
+
+Registration is invite-only, except the very first account — set `INITIAL_INVITE_TOKEN` in `.env`
+(also `openssl rand -hex 32`) and use it as that account's "invite code" on the signup page, or
+leave it unset to let the first registration through with no code at all. Either way, the door
+closes itself the moment any account exists — further accounts always need a real invite, minted
+from the Admin panel by an existing admin (see "Creating an admin account" below).
 
 If you later rotate `DB_APP_PASSWORD` in `.env`, re-run just the role step:
 

@@ -9,57 +9,45 @@ from typing import Annotated, Any
 from uuid import UUID
 
 import httpx
-from fastapi import APIRouter, Body, Depends, Header, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response
 from pydantic import ValidationError
-from sqlalchemy.orm import Session
 
 from api.admin_api import router as admin_router
+from api.admin_daily_api import router as admin_daily_router
 from api.admin_games_api import router as admin_games_router
-from api.auth_api import get_current_user_optional
+from api.admin_invites_api import router as admin_invites_router
+from api.auth_api import get_current_user
 from api.auth_api import router as auth_router
-from api.deps import get_db_session, get_immich_service, get_ml_service
-from api.dto.common import (
-    ConfigOut,
-    CreateGameIn,
-    GameOut,
-    GameRecordsOut,
-    LeaderboardOut,
-    LeaderboardWindow,
-    PersonSearchOut,
-    PlayRoundOut,
-    parse_guess,
-)
+from api.daily_api import router as daily_router
+from api.deps import get_games_service, get_immich_service
+from api.dto.common import CreateGameIn, CurrentGameOut, GameOut, PlayRoundOut, RecentGamesOut, parse_guess
+from api.dto.config import ConfigOut
+from api.dto.leaderboard import LeaderboardOut, LeaderboardWindow
+from api.dto.persons import PersonSearchOut
+from api.dto.records import GameRecordsOut
 from api.rate_limit import GAME_ACTION_LIMIT, SEARCH_LIMIT, THUMBNAIL_LIMIT, limiter
 from config import Settings, get_settings
 from persistence.users import UserModel
 from services.games_service import GamesService
 from services.immich_service import ImmichService
-from services.ml_service import MLService
 
 router = APIRouter(prefix="/api/v1")
 router.include_router(auth_router)
 router.include_router(admin_router)
 router.include_router(admin_games_router)
-
-
-def get_games_service(
-    session: Annotated[Session, Depends(get_db_session)],
-    immich_service: Annotated[ImmichService, Depends(get_immich_service)],
-    ml_service: Annotated[MLService, Depends(get_ml_service)],
-) -> GamesService:
-    return GamesService(session, immich_service, ml_service)
-
-
-def get_owner_id(x_owner_id: Annotated[str, Header()]) -> str:
-    return x_owner_id
+router.include_router(admin_daily_router)
+router.include_router(admin_invites_router)
+router.include_router(daily_router)
 
 
 @router.get("/config", response_model=ConfigOut)
 def get_config(settings: Annotated[Settings, Depends(get_settings)]) -> ConfigOut:
-    # Public and unauthenticated (no X-Owner-Id, no rate limit) - static config, no DB/Immich call,
-    # used by the frontend's "Ver en Immich" buttons (ROUNDS-VIEW.md roadmap point #10). Depends()
-    # rather than calling get_settings() inline (see auth_api.py) so tests can override this one
-    # dependency without touching the lru_cache singleton every other module shares.
+    # No rate limit of its own (static config, no DB/Immich call) - used by the frontend's "Ver en
+    # Immich" buttons (ROUNDS-VIEW.md roadmap point #10). Requires a session like everything else
+    # now (roadmap #H, F3's default-deny middleware), even though this route declares no auth
+    # dependency itself. Depends() rather than calling get_settings() inline (see auth_api.py) so
+    # tests can override this one dependency without touching the lru_cache singleton every other
+    # module shares.
     return ConfigOut(immich_external_url=settings.immich_public_url)
 
 
@@ -68,27 +56,46 @@ def get_config(settings: Annotated[Settings, Depends(get_settings)]) -> ConfigOu
 def create_game(
     request: Request,
     body: CreateGameIn,
-    owner: Annotated[str, Depends(get_owner_id)],
-    user: Annotated[UserModel | None, Depends(get_current_user_optional)],
+    user: Annotated[UserModel, Depends(get_current_user)],
     games_service: Annotated[GamesService, Depends(get_games_service)],
 ) -> GameOut:
-    game = games_service.create_game(
-        owner=owner, game_type=body.type, mode=body.mode, user_id=user.id if user else None
-    )
+    game = games_service.create_game(game_type=body.type, mode=body.mode, user_id=user.id)
     return GameOut.from_game(game)
 
 
 @router.get("/games/records", response_model=GameRecordsOut)
 def get_game_records(
-    owner: Annotated[str, Depends(get_owner_id)],
-    user: Annotated[UserModel | None, Depends(get_current_user_optional)],
+    user: Annotated[UserModel, Depends(get_current_user)],
     games_service: Annotated[GamesService, Depends(get_games_service)],
 ) -> GameRecordsOut:
-    # Personal bests are shown to every visitor, not just logged-in accounts (confirmed with the
-    # project owner) - anonymous play is scoped to the browser's X-Owner-Id, logged-in play to the
-    # account. Leaderboards (roadmap point F) are the feature that will require auth, not this one.
-    records = games_service.get_personal_records(owner, user.id if user else None)
+    records = games_service.get_personal_records(user.id)
     return GameRecordsOut.from_records(records)
+
+
+@router.get("/games/current", response_model=CurrentGameOut)
+def get_current_game(
+    game_type: str,
+    mode: str,
+    user: Annotated[UserModel, Depends(get_current_user)],
+    games_service: Annotated[GamesService, Depends(get_games_service)],
+) -> CurrentGameOut:
+    # Idle-screen "Continuar" lookup (roadmap #e). Declared before GET /games/{game_id} (same
+    # reason /games/records already is): a static path must precede a {game_id}: UUID catch-all or
+    # it 422s trying to parse "current" as a UUID.
+    game = games_service.get_current_game(game_type, mode, user.id)
+    return CurrentGameOut.from_game(game)
+
+
+@router.get("/games/recent", response_model=RecentGamesOut)
+def get_recent_games(
+    user: Annotated[UserModel, Depends(get_current_user)],
+    games_service: Annotated[GamesService, Depends(get_games_service)],
+) -> RecentGamesOut:
+    # "Ver juegos" profile modal (roadmap #e) - login required (unlike get_current_game above),
+    # matching the roadmap's "del jugador con sesión iniciada" - there's no anonymous equivalent of
+    # a persistent game history to look up.
+    games = games_service.get_recent_games(user.id)
+    return RecentGamesOut.from_recent_games(games)
 
 
 @router.get("/games/{game_type}/{mode}/leaderboard", response_model=LeaderboardOut)
@@ -98,9 +105,9 @@ def get_leaderboard(
     games_service: Annotated[GamesService, Depends(get_games_service)],
     window: LeaderboardWindow = "all",
 ) -> LeaderboardOut:
-    # Viewable without an account (confirmed with the project owner) - only the *entries* are
-    # restricted to logged-in players, via GamesService.get_leaderboard's inner join to UserModel
-    # (an anonymous game has no user_id to join on), not this route requiring auth.
+    # No auth dependency of its own, but roadmap #H, F3's default-deny middleware now requires a
+    # session for every route regardless ("sin sesión no se ve nada: ni... leaderboards", see
+    # docs/TODO/NEW-AUTH.md §2) - this route just never needed one on top of that.
     entries = games_service.get_leaderboard(game_type, mode, window)
     return LeaderboardOut.from_entries(window, entries)
 
@@ -108,11 +115,10 @@ def get_leaderboard(
 @router.get("/games/{game_id}", response_model=GameOut)
 def get_game(
     game_id: UUID,
-    owner: Annotated[str, Depends(get_owner_id)],
-    user: Annotated[UserModel | None, Depends(get_current_user_optional)],
+    user: Annotated[UserModel, Depends(get_current_user)],
     games_service: Annotated[GamesService, Depends(get_games_service)],
 ) -> GameOut:
-    game = games_service.get_game(game_id, owner, user)
+    game = games_service.get_game(game_id, user)
     return GameOut.from_game(game)
 
 
@@ -123,17 +129,20 @@ def play_round(
     game_id: UUID,
     round_id: UUID,
     body: Annotated[dict[str, Any], Body()],
-    owner: Annotated[str, Depends(get_owner_id)],
-    user: Annotated[UserModel | None, Depends(get_current_user_optional)],
+    user: Annotated[UserModel, Depends(get_current_user)],
     games_service: Annotated[GamesService, Depends(get_games_service)],
 ) -> PlayRoundOut:
     # game_id already fixes this round's game/mode - looked up first so the guess body only ever
     # needs to hold the guess itself, not also restate a game_type the client could get wrong.
-    existing_game = games_service.get_game(game_id, owner, user)
+    existing_game = games_service.get_game(game_id, user)
     try:
         guess = parse_guess(existing_game.current_round, body)
     except ValidationError as exc:
-        raise HTTPException(status_code=422, detail=exc.errors()) from exc
+        # include_context=False - a custom `raise ValueError(...)` inside a guess schema's own
+        # validator (TimelinePlayRoundIn's board-length check) otherwise leaves the raw exception
+        # object in errors()[i]["ctx"]["error"], which isn't JSON-serializable and 500s the response
+        # instead of returning this 422.
+        raise HTTPException(status_code=422, detail=exc.errors(include_context=False)) from exc
 
     game = games_service.play_loaded_round(existing_game, round_id, guess)
     answered_round = next(r for r in game.rounds if r.id == round_id)

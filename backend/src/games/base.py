@@ -8,6 +8,7 @@ persistence/games.py.
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import date
 from typing import Any
 from uuid import UUID
 
@@ -63,7 +64,6 @@ class BaseGame(ABC):
     def __init__(
         self,
         id: UUID,
-        owner: str,
         game_type: str,
         mode: str,
         rounds: list[BaseRound],
@@ -72,7 +72,6 @@ class BaseGame(ABC):
         settings: Mapping[str, float] | None = None,
     ) -> None:
         self.id = id
-        self.owner = owner
         self.game_type = game_type
         self.mode = mode
         self.rounds = rounds
@@ -83,10 +82,29 @@ class BaseGame(ABC):
         # request (see GamesService._game_kwargs), never snapshotted onto a round, so a change
         # takes effect on the very next round played rather than only on new games.
         self._settings: Mapping[str, float] = settings or {}
+        # Roadmap #G - set by GamesService (never a constructor param - it's pure persistence
+        # metadata this domain layer doesn't otherwise care about) right after building a daily
+        # game, to the challenge's date. None for every normal game.
+        self.daily_challenge_date: date | None = None
 
     @property
     def current_round(self) -> BaseRound:
         return self.rounds[-1]
+
+    @property
+    def total_rounds(self) -> int | None:
+        """Live fixed round count (ADMIN-FEATURE.md point #4), for games that have one
+        (Geoguessr/Dateguessr) - None for every other game. Overridden by whoever has it; see
+        api/dto/common.py's GameOut for why this is public. Living here (rather than an
+        `isinstance` check in the DTO layer) is what lets each game define this independently
+        without the DTO layer knowing which games happen to share the concept."""
+        return None
+
+    @property
+    def total_people(self) -> int | None:
+        """Live target headcount (ADMIN-FEATURE.md point #4) for WhosThatPerson - None for every
+        other game. Same rationale as total_rounds above."""
+        return None
 
     def play_round(self, guess: Any) -> PlayRoundResult:
         if self.finished:

@@ -12,18 +12,74 @@ That database has to exist before any of this works. Provision it once with:
     docker compose -f docker-compose.app.yml run --rm db-init
 """
 
+import logging
+import uuid
+
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 from api.rate_limit import limiter
+from api.request_context import context_fields
+from config import get_settings
 from main import app
 from persistence.base import get_app_engine, get_session_factory, reset_db
 from persistence.immich_db import get_immich_engine
+from persistence.users import UserModel
 from services.auth_service import AuthService
+from services.daily_service import DailyService
+from services.daily_settings import DailySettingsService
 from services.game_settings import GameSettingsService
 from services.games_service import GamesService
 from services.immich_service import ImmichService
+from services.invite_service import InviteService
 from services.ml_service import MLService
+
+
+class _LogCapture(logging.Handler):
+    """Captures records directly off a logger, bypassing caplog - `audit`/`access` both set
+    propagate=False (logging_setup.py, decision [H]), so records emitted on them never reach
+    caplog's root-attached handler. Also snapshots api.request_context.context_fields() at the same
+    point emit() runs (still inside the request's own task/context, unlike by the time a test
+    asserts afterward) - a raw record's own __dict__ only has whatever a call site explicitly put in
+    `extra`; request_id/ip/user_id/username are merged in later, at *format* time, by
+    JsonFormatter/ConsoleFormatter (logging_setup.py) - a formatter-less capture handler like this
+    one never sees them any other way."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.records: list[logging.LogRecord] = []
+        self.contexts: list[dict[str, object]] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        self.records.append(record)
+        self.contexts.append(context_fields())
+
+    def clear(self) -> None:
+        # Clears both lists together - `records` and `contexts` are index-aligned (emit() appends
+        # to both atomically), so clearing only one desyncs a later `contexts[i]` from `records[i]`.
+        self.records.clear()
+        self.contexts.clear()
+
+
+def _capture_logger(name: str):
+    handler = _LogCapture()
+    logger = logging.getLogger(name)
+    logger.addHandler(handler)
+    try:
+        yield handler
+    finally:
+        logger.removeHandler(handler)
+
+
+@pytest.fixture
+def access_log():
+    yield from _capture_logger("access")
+
+
+@pytest.fixture
+def audit_log():
+    yield from _capture_logger("audit")
 
 
 @pytest.fixture(scope="session")
@@ -76,6 +132,16 @@ def game_settings_service(db_session):
     return GameSettingsService(db_session)
 
 
+@pytest.fixture
+def daily_settings_service(db_session):
+    return DailySettingsService(db_session)
+
+
+@pytest.fixture
+def daily_service(db_session, immich_service):
+    return DailyService(db_session, immich_service)
+
+
 @pytest.fixture(autouse=True)
 def _reset_rate_limiter():
     # The TestClient always calls in as the same client IP, and the limiter's in-memory counters
@@ -88,3 +154,52 @@ def _reset_rate_limiter():
 def client():
     with TestClient(app) as test_client:
         yield test_client
+
+
+@pytest.fixture
+def logged_client(client):
+    """Roadmap #H, F3 - the default-deny middleware (api/auth_middleware.py) now rejects every
+    request without a valid session cookie, so any test hitting a real endpoint (not calling a
+    service directly) needs one - this is the "cut over the whole suite" fixture the doc's own
+    risk section calls for. Registers a disposable throwaway account and returns the same `client`,
+    now carrying its session cookie."""
+    unique = uuid.uuid4().hex[:8]
+    response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": f"logged-{unique}@example.com",
+            "username": f"logged-{unique}",
+            "full_name": "Logged In User",
+            "password": "correct-horse-battery-staple",
+            "invite_code": mint_invite_code(),
+        },
+    )
+    assert response.status_code == 201
+    return client
+
+
+def mint_invite_code(kind: str = "invite") -> str:
+    """Roadmap #H, F1 - registration now requires a valid invite_code (except for the very first
+    account). A plain function, not a fixture: every test file's own `_register()` helper stays a
+    plain function too, and this lets it mint a real, valid invite with a one-line change to its
+    default body dict rather than threading an invite_service fixture through every one of the
+    ~70 existing `_register(client, ...)` call sites across the suite. Opens its own throwaway
+    session (not the `db_session` fixture, which isn't available outside a test/fixture function)
+    and commits immediately (InviteService.create_invite always does) so the token is visible to
+    the `client` fixture's own, separate request-scoped session right after.
+
+    Bootstrap-aware: if `users` is currently empty, the *next* registration hits AuthService's
+    bootstrap branch (decision [H]), which never checks the `invites` table at all - it only
+    accepts INITIAL_INVITE_TOKEN (or, if that's unset, anything). A freshly-minted real invite
+    would be silently ignored there, which is harmless when INITIAL_INVITE_TOKEN is unset, but
+    wrong when a developer's own .env has it set (as this one does) - so return that value
+    instead in exactly that case."""
+    session = get_session_factory()()
+    try:
+        if kind == "invite" and session.scalar(select(UserModel.id).limit(1)) is None:
+            token = get_settings().initial_invite_token
+            if token is not None:
+                return token
+        return InviteService(session).create_invite(kind=kind)[1]
+    finally:
+        session.close()

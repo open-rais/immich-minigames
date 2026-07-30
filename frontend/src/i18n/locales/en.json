@@ -19,6 +19,30 @@
     "bestScore": "Best: {{score}}",
     "notPlayed": "Not played yet"
   },
+  "daily": {
+    "title": "Daily",
+    "leaderboard": {
+      "previousDay": "Previous day",
+      "nextDay": "Next day"
+    },
+    "share": {
+      "button": "Share",
+      "copyButton": "Copy",
+      "copied": "Copied to clipboard!",
+      "error": "Couldn't copy - try again",
+      "header": "{{game}} - {{date}}",
+      "allHeader": "Daily results - {{date}}",
+      "moreOrLess": "📈 Streak: {{score}} 📉",
+      "roundLine": "{{color}} {{points}} pts ({{detail}})",
+      "total": "Total: {{score}} pts",
+      "immichdleWon": "🟩 Guessed in {{attempts}} tries",
+      "immichdleLost": "🟥 Not guessed",
+      "whosThatPerson": "🧑‍🧑‍🧒‍🧒 {{correct}}/{{total}} people",
+      "km": "{{value}}km",
+      "days": "{{count}} days",
+      "timeline": "🃏 {{count}} cards"
+    }
+  },
   "leaderboard": {
     "title": "Leaderboard",
     "empty": "No one has played this mode in this window yet.",
@@ -32,6 +56,8 @@
     "back": "Back",
     "score": "Score",
     "startCta": "Start game",
+    "continueCta": "Continue",
+    "newGameCta": "New game",
     "confirmGuess": "Confirm guess",
     "roundOf": "Round {{current}} of {{total}}",
     "points": "+{{score}} pts",
@@ -58,7 +84,7 @@
     },
     "exitConfirm": {
       "title": "Are you sure you want to exit?",
-      "message": "You won't be able to continue this game.",
+      "message": "You'll leave this round unanswered, but you can continue this game later from its menu.",
       "confirm": "Exit",
       "cancel": "Cancel"
     }
@@ -155,12 +181,35 @@
       "real": "Real"
     }
   },
+  "timeline": {
+    "title": "Timeline",
+    "modes": {
+      "arcade": "Arcade"
+    },
+    "start": {
+      "description": "Insert each new photo into the correct spot in the timeline. One mistake ends the run."
+    },
+    "cardLabel": "Card {{count}}",
+    "confirmSlot": "Confirm position",
+    "selectSlotAria": "Select insertion point",
+    "result": {
+      "correct": "Correct!",
+      "wrong": "Wrong spot"
+    },
+    "rounds": {
+      "banner": "The number on each card shows the order it was drawn in.",
+      "bannerLoss": "The card that ended the run is shown in red: where you placed it vs. where it actually belonged.",
+      "startBadge": "Start",
+      "orderBadge": "#{{count}}"
+    }
+  },
   "auth": {
     "fields": {
       "email": "Email",
       "username": "Username",
       "fullName": "Full name",
-      "password": "Password"
+      "password": "Password",
+      "person": "Person"
     },
     "login": {
       "title": "Log in",
@@ -170,7 +219,14 @@
     "signup": {
       "title": "Sign up",
       "cta": "Sign up",
-      "hasAccount": "Already have an account?"
+      "hasAccount": "Already have an account?",
+      "inviteCode": "Invite code"
+    },
+    "resetPassword": {
+      "title": "Reset password",
+      "token": "Reset token",
+      "newPassword": "New password",
+      "submit": "Reset password"
     },
     "profile": {
       "title": "Profile",
@@ -179,10 +235,28 @@
       "edit": "Edit profile",
       "save": "Save changes",
       "saved": "Profile updated",
+      "viewGames": "View games",
+      "resetPassword": "Reset password",
+      "changePassword": {
+        "title": "Change password",
+        "currentPassword": "Current password",
+        "newPassword": "New password",
+        "save": "Change password",
+        "saved": "Password changed"
+      },
       "skin": {
         "label": "Skin",
         "none": "None",
         "clear": "Clear"
+      },
+      "recentGames": {
+        "title": "Recent games",
+        "loading": "Loading games...",
+        "empty": "You haven't finished any games yet.",
+        "score": "{{score}} pts",
+        "finished": "Finished",
+        "abandoned": "Abandoned",
+        "daily": "Daily"
       }
     },
     "error": {
@@ -196,7 +270,6 @@
       "loading": "Loading users..."
     },
     "games": {
-      "title": "Games",
       "description": "Edit configuration for each game",
       "loading": "Loading games...",
       "noSettings": "This game has no configurable settings yet.",
@@ -213,8 +286,35 @@
         "wrong_guess_penalty": "Wrong guess penalty",
         "asset_count_weight": "Photo count weight (0 = uniform, 1 = proportional)",
         "total_people": "Total people",
-        "max_hidden_faces": "Max hidden faces per round"
+        "max_hidden_faces": "Max hidden faces per round",
+        "tolerance_days": "Slot tolerance (days)",
+        "min_separation_days": "Min. spread between cards (days)",
+        "max_cards": "Max cards (0 = unlimited)"
       }
+    },
+    "daily": {
+      "title": "Daily game",
+      "enabledLabel": "Enable for the daily rotation",
+      "settings": {
+        "no_repeat_days": "No-repeat window (days)",
+        "chain_length": "Chain length cap"
+      }
+    },
+    "invites": {
+      "title": "Invitations",
+      "description": "Generate registration links",
+      "loading": "Loading invitations...",
+      "empty": "No invitations yet.",
+      "generate": "Generate invite",
+      "revoke": "Revoke",
+      "status": {
+        "pending": "Pending",
+        "used": "Used",
+        "expired": "Expired"
+      },
+      "createdAt": "Created {{date}}",
+      "expiresAt": "Expires {{date}}",
+      "usedAt": "Used {{date}}"
     }
   }
 }

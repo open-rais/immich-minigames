@@ -1,6 +1,7 @@
 import uuid
 
 from config import Settings, get_settings
+from conftest import mint_invite_code
 from services.admin_bootstrap import ensure_admin
 
 
@@ -14,6 +15,7 @@ def _register(auth_service, **overrides):
         "username": _unique("user"),
         "full_name": "Test User",
         "password": "correct-horse-battery-staple",
+        "invite_code": mint_invite_code(),
     }
     defaults.update(overrides)
     return auth_service.register(**defaults)
@@ -69,3 +71,26 @@ class TestEnsureAdmin:
         missing_email = f"{_unique('nobody')}@example.com"
 
         ensure_admin(db_session, _settings_with_admin_email(missing_email))
+
+
+class TestAuditEvents:
+    """docs/TODO/LOGGING.md §4.4, phase F2."""
+
+    def test_promoting_emits_admin_promoted(self, db_session, auth_service, audit_log):
+        user = _register(auth_service)
+
+        ensure_admin(db_session, _settings_with_admin_email(user.email))
+
+        record = next(r for r in audit_log.records if r.event == "admin_promoted")
+        assert record.user_id == str(user.id)
+        assert record.email == user.email
+
+    def test_promoting_an_already_admin_user_does_not_re_emit(self, db_session, auth_service, audit_log):
+        user = _register(auth_service)
+        settings = _settings_with_admin_email(user.email)
+        ensure_admin(db_session, settings)
+        audit_log.clear()
+
+        ensure_admin(db_session, settings)
+
+        assert not any(r.event == "admin_promoted" for r in audit_log.records)

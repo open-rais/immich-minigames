@@ -57,25 +57,43 @@ DB_APP_PASSWORD=your_minigames_app_password
 # ends up in Immich's dumps and breaks its restore. Leave unset to accept the default.
 DB_APP_DATABASE_NAME=minigames
 
-# Immich API access (image bytes only - metadata comes from Postgres above)
+# Immich API access (image bytes only - metadata comes from Postgres above). The key only ever
+# needs read access to asset/person thumbnails - in Immich's API key permission picker, that's
+# Asset (View/Download) and Person (Read); pick the read-only preset if you're unsure, this app
+# never writes anything back to Immich.
 IMMICH_SERVER_URL=http://your-immich-server:2283
 IMMICH_API_KEY=your-immich-api-key
 
 # Public URL the *browser* opens for the "Ver en Immich" links on the post-game rounds review
 # (e.g. https://photos.example.com). Distinct from IMMICH_SERVER_URL above, which is how the
 # *backend* reaches Immich and is often an address only reachable from inside your Docker network
-# (like host.docker.internal) - not something a browser can open. Optional: if unset, this falls
-# back to IMMICH_SERVER_URL, which works fine if that's already a browser-reachable address, but
-# produces a broken link if it isn't.
+# (like host.docker.internal) - not something a browser can open. Leave unset to fall back to
+# IMMICH_SERVER_URL, which works fine if that's already a browser-reachable address; set it
+# explicitly to an empty string instead (IMMICH_EXTERNAL_URL=) if you'd rather hide the "Ver en
+# Immich" links entirely than have them point at an internal-only address.
 IMMICH_EXTERNAL_URL=https://your-public-immich-url
 
-# Backend configuration
+# Backend configuration. JWT_SECRET is this app's real security perimeter - every route requires
+# a valid session now (there is no anonymous/guest mode), so a weak or leaked secret is a full
+# account-takeover risk, not just a convenience setting.
 BACKEND_PORT=8000
 JWT_SECRET=your-random-secret-key-32-chars
 JWT_EXPIRE_DAYS=7
+
+# Login is mandatory and registration is invite-only (see "Creating the first account" below) -
+# this is what lets that very first account register without an invite from anyone. Set it to a
+# random value and use it as that account's invite code on /signup; leave unset for a fully open
+# first registration (fine for local/trusted dev, not recommended for anything internet-facing).
+# Either way, this only ever matters until the first account exists.
+INITIAL_INVITE_TOKEN=your-random-bootstrap-token
+
+# Promotes an already-registered account to admin on every backend startup (this app's own users
+# table, not Immich's) - register normally first, then set this and restart. Leave unset to not
+# manage an admin.
+ADMIN_EMAIL=you@example.com
 ```
 
-**Tip:** Generate a secure `JWT_SECRET` with:
+**Tip:** Generate secure `JWT_SECRET`/`INITIAL_INVITE_TOKEN` values with:
 ```bash
 openssl rand -hex 32
 ```
@@ -104,17 +122,41 @@ docker compose -f docker-compose.app.yml up -d
 ```
 
 The application will be available at:
-- **Frontend:** http://localhost:5173 (or configured FRONTEND_PORT)
+- **Frontend:** http://localhost:3000 (or your configured `FRONTEND_PORT`)
 - **Backend API:** http://localhost:8000/api/v1
 
 ### 5. Verify Installation
 
-Test the connection:
+The backend requires a valid login session for almost everything (there is no anonymous/guest
+mode) - a bare, unauthenticated request should get a 401, not a connection error:
 ```bash
-curl http://localhost:8000/api/v1/games
+curl -i http://localhost:8000/api/v1/config
+```
+`HTTP/1.1 401 Unauthorized` means the backend is up and reachable. Open the frontend URL above in
+a browser and continue with "Creating the first account" below to actually log in.
+
+### 6. Creating the First Account
+
+Registration is invite-only (an admin generates further invites from the app's own Admin panel
+once logged in) - except the very first account, which authenticates with `INITIAL_INVITE_TOKEN`
+instead (see step 2 above). On the frontend's signup page, register using that value as the
+"invite code" (if you left `INITIAL_INVITE_TOKEN` unset, the first registration needs no code at
+all). This only ever matters for the very first account - the door closes itself the moment any
+account exists, regardless of that setting.
+
+To make that account an admin (so it can generate invites for everyone else, manage users, and
+tune per-game settings), set `ADMIN_EMAIL` in `.env` to its email and restart the backend:
+```bash
+docker compose -f docker-compose.app.yml up -d --force-recreate backend
 ```
 
-You should get an empty JSON response or a list of games if any exist.
+**Invites control *who* can log in - not *what* they can see once they're in.** Every account with
+a session can see every asset/person Immich itself would show on the main timeline: content
+curation is entirely Immich's own `visibility` field (an asset marked archived, in the locked
+folder, or trashed in Immich is automatically excluded from every game, the same way it's excluded
+from Immich's own timeline). If you're sharing this with people you don't want seeing your whole
+library, curate *in Immich* (archive/lock what shouldn't be shared) before inviting them here - the
+invite system has no separate, finer-grained permission of its own.
 
 ## Option 2: Development Setup (Manual)
 
@@ -184,6 +226,29 @@ docker compose -f docker-compose.app.yml up -d
 `db-init` runs automatically before the backend on every `up`, and applies any pending database
 migrations. Nothing else is normally required.
 
+### Upgrading from a version without accounts/login
+
+Versions before login became mandatory let anyone play anonymously, scoped to a random browser id
+(`localStorage`, sent as a header). That's gone now — every route requires a real, logged-in
+account, and every game/record/leaderboard entry belongs to one. Two things to know before you
+pull:
+
+- **You need at least one account before you can do anything.** Since registration is invite-only
+  except the very first account, set `INITIAL_INVITE_TOKEN` in `.env` *before* upgrading (or leave
+  it unset for a fully open first registration) — see "Creating the First Account" above. Without
+  it, you'd have a running backend with no way to log into it.
+- **Anonymous games from before this upgrade are deleted, not migrated — there's no account to
+  attach them to.** This happens automatically the first time you upgrade through this point (an
+  Alembic migration deletes them from this app's own database if you'd already done the database-
+  split upgrade below; `db-init`'s legacy-schema copy does the same if you're upgrading from
+  further back, before that split). If you want to keep a record of those scores, back up this
+  app's database first:
+  ```bash
+  pg_dump -h <DB_HOST> -U <DB_USERNAME> -d <DB_APP_DATABASE_NAME> > minigames-backup.sql
+  ```
+  There is no way to recover them afterwards — they were never tied to anything that could prove
+  who played them.
+
 ### Upgrading from a version that stored its tables inside Immich's database
 
 Versions before the database split kept this app's tables in a `minigames` **schema inside Immich's
@@ -218,6 +283,36 @@ Two things worth knowing afterwards:
   ```
 
 You do **not** need to add `DB_APP_DATABASE_NAME` to your `.env`; leaving it unset uses `minigames`.
+
+## Viewing the audit logs
+
+Every account/security event (registrations, logins, password changes/resets, admin edits, rate
+limiting) and every request (method, path, status, who made it) is logged as one JSON line per
+event to the backend container's stdout - `docker logs` plus [`jq`](https://jqlang.org/) is enough
+to query them, no separate log aggregator required (see `docs/ARCHITECTURE/BACKEND.md` § Logging
+for the full design):
+
+```bash
+# Every audit event (account/security), newest last
+docker logs immich-minigames-app-backend-1 | jq -c 'select(.logger == "audit")'
+
+# Just one kind of event
+docker logs immich-minigames-app-backend-1 | jq -c 'select(.logger == "audit" and .event == "login_failed")'
+
+# Every audit event for one email
+docker logs immich-minigames-app-backend-1 | jq -c 'select(.logger == "audit" and .email == "someone@example.com")'
+
+# The full access log (one line per request) for a specific status
+docker logs immich-minigames-app-backend-1 | jq -c 'select(.logger == "access" and .status == 429)'
+
+# Everything that happened during one request, by its X-Request-Id (also returned as a response
+# header - useful for correlating a user's bug report with what actually happened server-side)
+docker logs immich-minigames-app-backend-1 | jq -c 'select(.request_id == "<id-from-the-header>")'
+```
+
+For the manual dev setup (`uv run uvicorn`), logs go to the terminal in a human-readable format by
+default instead of JSON - set `LOG_FORMAT=json` in `.env` if you want the same `jq` recipes to work
+there too.
 
 ## Common Issues & Solutions
 
@@ -296,9 +391,10 @@ docker compose -f docker-compose.app.yml run --rm db-init
 **Solutions for Docker:**
 - Ensure nginx proxy is configured correctly
 - Check backend and frontend are on the same Docker network
-- Test from inside the frontend container:
+- Test from inside the frontend container (a 401 is fine here — it means the backend answered;
+  a connection error/timeout is the actual problem):
   ```bash
-  docker exec <frontend-container> curl http://backend:8000/api/v1/games
+  docker exec <frontend-container> curl -i http://backend:8000/api/v1/config
   ```
 
 ### Issue: Backend crashes on startup with "table already exists"
@@ -325,10 +421,11 @@ uv run alembic upgrade head
 **Solutions:**
 - Check backend logs for errors
 - Verify database migrations ran: `uv run alembic current`
-- Test the API directly:
-  ```bash
-  curl http://localhost:8000/api/v1/games
-  ```
+- Every game/menu route requires being logged in - if you're not seeing games, first make sure
+  you're actually logged in (not stuck on a login/signup screen), then check the browser's Network
+  tab (F12) for the actual failing request/response instead of curling game endpoints directly
+  (they all need the session cookie a browser carries automatically, which a bare `curl` won't
+  have)
 - Check frontend console for errors (F12 → Console tab)
 
 ### Issue: "Immich-ML not reachable"
@@ -407,19 +504,25 @@ Then update `docker-compose.app.yml` or run commands accordingly.
 For production deployments:
 
 1. Use a reverse proxy (nginx, Traefik)
-2. Set `Secure=True` in the JWT cookie config (requires HTTPS)
+2. Set `COOKIE_SECURE=true` in `.env` (requires HTTPS - marks the session cookie `Secure`-only, so
+   it stops going out over plain HTTP)
 3. Update `IMMICH_SERVER_URL` to use `https://`
 4. Use proper certificate management (Let's Encrypt, etc.)
+5. If you run more than one backend container/process behind that proxy, point
+   `RATE_LIMIT_STORAGE_URI` at a shared Redis instance (`redis://host:port`) instead of the
+   default `memory://` - otherwise each process enforces its own separate rate limit budget
 
 ## Verification Checklist
 
 After installation, verify:
 
-- [ ] Backend is running: `curl http://localhost:8000/api/v1/games`
-- [ ] Frontend loads: open http://localhost:5173
+- [ ] Backend is running: `curl -i http://localhost:8000/api/v1/config` returns `401` (not a
+      connection error - every route requires a session, so `401` means it's up and reachable)
+- [ ] Frontend loads: open `http://localhost:${FRONTEND_PORT:-3000}` (Docker) or
+      `http://localhost:5173` (manual dev)
 - [ ] Database role exists: run a test query
-- [ ] Immich API key works: try logging in
-- [ ] At least one game loads without errors
+- [ ] Can register the first account (see "Creating the First Account") and log in
+- [ ] Immich API key works: at least one game shows real photos/people, not broken thumbnails
 - [ ] Can create a game and play a round
 
 ## Getting Help

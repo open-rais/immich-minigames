@@ -71,7 +71,7 @@ function ThemeSelector() {
 // them into the bar.
 export function UserMenu() {
   const { t } = useTranslation()
-  const { user, loading } = useAuth()
+  const { user } = useAuth()
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const location = useLocation()
@@ -97,7 +97,11 @@ export function UserMenu() {
     setOpen(false)
   }, [location.pathname])
 
-  if (loading) return null
+  // Roadmap #H, F3 - RequireAuth (App.tsx) already guarantees a session before AppHeader (this
+  // trigger's only caller) ever mounts; this is just a TypeScript narrowing helper (user: User |
+  // null), not reachable at runtime. The trigger no longer has an anonymous state to render at all
+  // - login/logged-out are the same "not here" case RequireAuth already redirects away from.
+  if (!user) return null
 
   return (
     <div ref={rootRef} className="relative">
@@ -108,15 +112,15 @@ export function UserMenu() {
         aria-expanded={open}
         className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-line-strong bg-surface text-body shadow-card transition-colors hover:bg-hover-tint"
       >
-        {user?.skin_person_id ? <SkinAvatar key={user.skin_person_id} personId={user.skin_person_id} /> : <UserIcon />}
+        {user.skin_person_id ? <SkinAvatar key={user.skin_person_id} personId={user.skin_person_id} /> : <UserIcon />}
       </button>
 
       {open && (
         <div className="absolute top-[calc(100%+8px)] right-0 z-40 w-64 rounded-2xl border border-line bg-surface p-2 shadow-card">
-          <Link to={user ? "/profile" : "/login"} className="block rounded-xl px-3 py-2.5 text-sm font-semibold text-body hover:bg-hover-tint">
-            {user ? user.username : t("auth.login.cta")}
+          <Link to="/profile" className="block rounded-xl px-3 py-2.5 text-sm font-semibold text-body hover:bg-hover-tint">
+            {user.username}
           </Link>
-          {user?.is_admin && (
+          {user.is_admin && (
             <Link to="/admin" className="block rounded-xl px-3 py-2.5 text-sm font-semibold text-body hover:bg-hover-tint">
               {t("userMenu.adminPanel")}
             </Link>

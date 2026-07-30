@@ -30,7 +30,7 @@ function isWhosThatPersonRound(round: RoundOut): round is WhosThatPersonRoundOut
   return round.game_type === GameType.WhosThatPerson
 }
 
-export function WhosThatPersonGame({ coverUrl, hasRoundsView }: GameComponentProps) {
+export function WhosThatPersonGame({ coverUrl, hasRoundsView, daily = false }: GameComponentProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const backToMenu = () => navigate("/")
@@ -43,20 +43,27 @@ export function WhosThatPersonGame({ coverUrl, hasRoundsView }: GameComponentPro
   const [peopleAskedTotal, setPeopleAskedTotal] = useState(0)
   const seenRoundIdsRef = useRef<Set<string>>(new Set())
 
-  const { screen, busy, game, round, phase, revealed, startGame, submitGuess, backToIdle } = useRoundGame<
-    WhosThatPersonRoundOut,
-    Record<string, string>
-  >({
-    gameType: GAME_TYPE,
-    mode: MODE,
-    revealHoldMs: REVEAL_HOLD_MS,
-    isRound: isWhosThatPersonRound,
-    playRound: (gameId, roundId, guess) => playRound(gameId, roundId, { guesses: guess }),
-    onNewRound: () => {
-      setGuesses({})
-      setActiveFaceId(null)
-    },
-  })
+  const { screen, busy, game, round, phase, revealed, hasCurrentGame, startGame, resumeGame, submitGuess, backToIdle } =
+    useRoundGame<WhosThatPersonRoundOut, Record<string, string>>({
+      gameType: GAME_TYPE,
+      mode: MODE,
+      revealHoldMs: REVEAL_HOLD_MS,
+      isRound: isWhosThatPersonRound,
+      playRound: (gameId, roundId, guess) => playRound(gameId, roundId, { guesses: guess }),
+      onNewRound: () => {
+        setGuesses({})
+        setActiveFaceId(null)
+      },
+      // Roadmap #e - on resume, seed the "N of 15 people" progress from every already-answered
+      // round (all but the resumed pending one), so the per-round effect below only adds that
+      // pending round on top instead of undercounting the whole resumed history.
+      onResume: (g) => {
+        const answered = g.rounds.slice(0, -1).filter(isWhosThatPersonRound)
+        seenRoundIdsRef.current = new Set(answered.map((r) => r.id))
+        setPeopleAskedTotal(answered.reduce((sum, r) => sum + r.faces.length, 0))
+      },
+      daily,
+    })
 
   useEffect(() => {
     if (!round || seenRoundIdsRef.current.has(round.id)) return
@@ -84,6 +91,9 @@ export function WhosThatPersonGame({ coverUrl, hasRoundsView }: GameComponentPro
         onStart={handleStart}
         onBack={backToMenu}
         busy={busy}
+        hasCurrentGame={hasCurrentGame}
+        onContinue={resumeGame}
+        allowNewGame={!daily}
       />
     )
   }
@@ -101,6 +111,18 @@ export function WhosThatPersonGame({ coverUrl, hasRoundsView }: GameComponentPro
         busy={busy}
         gameId={game?.id}
         hasRoundsView={hasRoundsView}
+        allowPlayAgain={!daily}
+        dailyShare={
+          daily && game
+            ? {
+                gameId: game.id,
+                gameType: GAME_TYPE,
+                mode: MODE,
+                gameTitle: t("whosThatPerson.title"),
+                modeTitle: t("whosThatPerson.modes.namedFaces"),
+              }
+            : undefined
+        }
       />
     )
   }
