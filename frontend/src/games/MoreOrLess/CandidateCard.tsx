@@ -12,8 +12,14 @@ interface CandidateCardProps {
   displayValue: number | string
   valueKind: "count" | "date"
   subtitle: string
-  moreLabel: string
-  lessLabel: string
+  // Which wire guess the primary (colored, up-arrow, left) button sends - the secondary
+  // (down-arrow, right) button always sends the other one. Count modes keep "more" on the primary
+  // button (More/Más); personBirthDate puts "less" there instead (Before/Antes) so the "primary,
+  // up-arrow" slot reads as "more age", matching the count modes' own up-arrow-is-more intuition
+  // (see modeConfig.ts's ModeConfig.primaryGuess).
+  primaryGuess: MoreOrLessGuess
+  primaryLabel: string
+  secondaryLabel: string
   correct: boolean | null
   onGuess: (guess: MoreOrLessGuess) => void
 }
@@ -25,14 +31,16 @@ export function CandidateCard({
   displayValue,
   valueKind,
   subtitle,
-  moreLabel,
-  lessLabel,
+  primaryGuess,
+  primaryLabel,
+  secondaryLabel,
   correct,
   onGuess,
 }: CandidateCardProps) {
   // Only the value itself changes color on reveal - the card border/badge stay neutral.
   const valueColorClass =
     phase === "revealed" ? (correct ? "text-emerald-600" : "text-rose-600") : "text-ink"
+  const secondaryGuess: MoreOrLessGuess = primaryGuess === "more" ? "less" : "more"
 
   return (
     <StatCard thumbnailUrl={thumbnailUrl} name={name} subtitle={subtitle}>
@@ -41,7 +49,7 @@ export function CandidateCard({
           <Button
             variant="primary"
             className="flex-1 py-3 md:py-3 flex items-center justify-center gap-2"
-            onClick={() => onGuess("more")}
+            onClick={() => onGuess(primaryGuess)}
           >
             <svg
               width="18"
@@ -55,12 +63,12 @@ export function CandidateCard({
             >
               <path d="M12 19V5M5 12l7-7 7 7" />
             </svg>
-            {moreLabel}
+            {primaryLabel}
           </Button>
           <Button
             variant="secondary"
             className="flex-1 py-3 md:py-3 flex items-center justify-center gap-2"
-            onClick={() => onGuess("less")}
+            onClick={() => onGuess(secondaryGuess)}
           >
             <svg
               width="18"
@@ -74,7 +82,7 @@ export function CandidateCard({
             >
               <path d="M12 5v14M5 12l7 7 7-7" />
             </svg>
-            {lessLabel}
+            {secondaryLabel}
           </Button>
         </div>
       ) : (

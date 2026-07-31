@@ -248,8 +248,8 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameC
   if (!game || !reference || !candidate) return null
 
   const displayValue = config.valueKind === "count" ? displayCount : (revealValue ?? "")
-  const moreLabel = t(config.moreLabelKey)
-  const lessLabel = t(config.lessLabelKey)
+  const primaryLabel = t(config.primaryLabelKey)
+  const secondaryLabel = t(config.secondaryLabelKey)
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-app-bg px-[18px] py-[22px] md:px-10 md:py-7">
@@ -281,8 +281,9 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameC
                 displayValue={0}
                 valueKind={config.valueKind}
                 subtitle={t(config.questionKey, { name: revealResult.nextRound.candidate_name })}
-                moreLabel={moreLabel}
-                lessLabel={lessLabel}
+                primaryGuess={config.primaryGuess}
+                primaryLabel={primaryLabel}
+                secondaryLabel={secondaryLabel}
                 correct={null}
                 onGuess={() => {}}
               />
@@ -307,8 +308,9 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameC
               displayValue={displayValue}
               valueKind={config.valueKind}
               subtitle={t(config.questionKey, { name: candidate.name })}
-              moreLabel={moreLabel}
-              lessLabel={lessLabel}
+              primaryGuess={config.primaryGuess}
+              primaryLabel={primaryLabel}
+              secondaryLabel={secondaryLabel}
               correct={revealResult?.correct ?? null}
               onGuess={handleGuess}
             />

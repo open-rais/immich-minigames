@@ -1,4 +1,5 @@
 import { albumThumbnailUrl, personThumbnailUrl } from "../../api/games"
+import type { MoreOrLessGuess } from "../../api/types/moreOrLess"
 import { Mode } from "../../api/types/common"
 
 // The three MoreOrLess modes differ only in their data source/thumbnail endpoint and how their
@@ -22,10 +23,14 @@ export interface ModeConfig {
   hasLabelKey: string
   // CandidateCard's subtitle question key, interpolated with {{name}}.
   questionKey: string
-  // Button labels for the "more"/"less" wire-format guess (see round.py docstring - the guess
-  // itself is always "more"/"less" regardless of mode; only its label varies).
-  moreLabelKey: string
-  lessLabelKey: string
+  // Which wire guess ("more"/"less" - see round.py docstring, always this pair regardless of mode)
+  // the primary (colored, up-arrow, left) button sends; the secondary (down-arrow, right) button
+  // always sends the other one - see CandidateCard.tsx. Count modes keep the intuitive "more" on
+  // the up-arrow button; personBirthDate puts "less" (born before -> more age) there instead, on
+  // the owner's request, so the up-arrow slot still reads as "more" in the age sense.
+  primaryGuess: MoreOrLessGuess
+  primaryLabelKey: string
+  secondaryLabelKey: string
 }
 
 export const MODE_CONFIG: Record<string, ModeConfig> = {
@@ -37,8 +42,9 @@ export const MODE_CONFIG: Record<string, ModeConfig> = {
     valueKind: "count",
     hasLabelKey: "moreOrLess.has",
     questionKey: "moreOrLess.question",
-    moreLabelKey: "moreOrLess.guessMore",
-    lessLabelKey: "moreOrLess.guessLess",
+    primaryGuess: "more",
+    primaryLabelKey: "moreOrLess.guessMore",
+    secondaryLabelKey: "moreOrLess.guessLess",
   },
   [Mode.AlbumAssets]: {
     thumbnailUrl: albumThumbnailUrl,
@@ -48,8 +54,9 @@ export const MODE_CONFIG: Record<string, ModeConfig> = {
     valueKind: "count",
     hasLabelKey: "moreOrLess.has",
     questionKey: "moreOrLess.question",
-    moreLabelKey: "moreOrLess.guessMore",
-    lessLabelKey: "moreOrLess.guessLess",
+    primaryGuess: "more",
+    primaryLabelKey: "moreOrLess.guessMore",
+    secondaryLabelKey: "moreOrLess.guessLess",
   },
   [Mode.PersonBirthDate]: {
     thumbnailUrl: personThumbnailUrl,
@@ -59,7 +66,8 @@ export const MODE_CONFIG: Record<string, ModeConfig> = {
     valueKind: "date",
     hasLabelKey: "moreOrLess.bornOn",
     questionKey: "moreOrLess.birthDateQuestion",
-    moreLabelKey: "moreOrLess.guessAfter",
-    lessLabelKey: "moreOrLess.guessBefore",
+    primaryGuess: "less",
+    primaryLabelKey: "moreOrLess.guessBefore",
+    secondaryLabelKey: "moreOrLess.guessAfter",
   },
 }
