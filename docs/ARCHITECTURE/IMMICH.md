@@ -35,7 +35,7 @@ One pooled `httpx.Client` with a 10s timeout is shared process-wide (`_get_http_
 > ⚠️ These two endpoints are re-exposed by this app **without any authentication or scoping** —
 > anyone who can reach the backend can enumerate any thumbnail in the Immich library, and in
 > Who'sThatPerson a player can bypass the blacked-out faces entirely by opening the asset URL
-> directly. See findings #2 and #4 in `docs/TODO/CODE-REVIEW.md`.
+> directly.
 
 ## The scoped DB role
 
@@ -53,7 +53,7 @@ once as the `db-init` compose service) provisions a dedicated role:
   WRITE` on itself. The real boundary is that only `SELECT` is ever granted.
 - `REVOKE CREATE ON SCHEMA public FROM PUBLIC` — needed because Postgres 14 and earlier grant
   `CREATE` on `public` to everyone by default. Note this is a change to *Immich's* schema ACL
-  affecting every role, not just ours (see finding #21). It names no role of ours, so unlike an
+  affecting every role, not just ours. It names no role of ours, so unlike an
   explicit `GRANT` it restores cleanly anywhere.
 
 Consequence for anyone writing queries: **you cannot `CREATE EXTENSION`, and you cannot write
@@ -126,7 +126,7 @@ matches "Raimundo Rodríguez" regardless of typed order, but not mid-word. User 
 LIKE wildcards first (`_escape_like`).
 
 > Note: `get_persons`'s own `name_query` is a plain substring `ILIKE` that does **not** escape
-> wildcards — an inconsistency with `search_persons`. See finding #14.
+> wildcards — an inconsistency with `search_persons`.
 
 ## Face similarity (Immich-ML)
 

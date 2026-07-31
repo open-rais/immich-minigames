@@ -11,10 +11,9 @@ next).
 | [FRONTEND.md](FRONTEND.md) | React structure, the per-game state machines, the design-token system, responsive conventions. |
 
 > **Note:** these three files were written during the code review of 2026-07-20. Code comments
-> across the repo had been citing them (plus `ADMIN-FEATURE.md` and `AUDIT_TODO.md`) for a long
-> time without them existing — see finding #1 in `docs/TODO/CODE-REVIEW.md`. `ADMIN-FEATURE.md`
-> and `AUDIT_TODO.md` still do not exist; their content is folded into BACKEND.md's "Admin
-> feature" section here instead.
+> across the repo had been citing `ADMIN-FEATURE.md` and `AUDIT_TODO.md` for a long time without
+> either file existing. Neither exists now either; their content is folded into BACKEND.md's
+> "Admin feature" section here instead.
 
 ## System at a glance
 
@@ -52,21 +51,14 @@ Key structural decisions, and where each is justified:
 - **The browser only ever talks to one origin.** nginx (prod) / Vite (dev) proxy `/api/` to the
   backend, so there is no CORS configuration anywhere. See FRONTEND.md § API layer.
 
-## Two identity systems
+## Identity
 
-This trips people up, so it is stated once here and referenced from both other docs.
-
-| | `X-Owner-Id` | User account |
-|---|---|---|
-| What | Random UUID in `localStorage`, sent as a request header | Row in `minigames.users` |
-| Set by | The browser itself (`frontend/src/api/ownerId.ts`) | Registration (`POST /auth/register`) |
-| Carried as | Plain header, client-controlled, **not authenticated** | httpOnly JWT cookie (HS256) |
-| Used for | Owning/replaying a game, anonymous personal records | Leaderboards, profile, skin, admin |
-| Stored on `GameModel` | `owner` (always) | `user_id` (only if the creating request had a valid cookie) |
-
-A game created while logged in has **both**. Ownership checks on `GET /games/{id}` and
-`POST /games/{id}/rounds/{id}` currently key off `owner` only — see finding #3 in
-`docs/TODO/CODE-REVIEW.md` for why that matters.
+Every game belongs to a logged-in account — there is no anonymous play. Login is a stateless JWT
+(HS256) in an httpOnly cookie, issued by `POST /auth/register`/`POST /auth/login`; a default-deny
+session middleware requires a valid cookie on every route except the small allow-list of public
+ones (login/register/reset-password/health). `GameModel.user_id` is a real FK to the account and
+every ownership check (`GET /games/{id}`, `POST /games/{id}/rounds/{id}`) compares against it,
+raising `GameOwnershipError` on a mismatch. See BACKEND.md § Auth for the full request lifecycle.
 
 ## Where the code lives
 
