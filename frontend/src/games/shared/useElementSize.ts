@@ -5,8 +5,9 @@ import type { Size } from "./fitBox"
 
 // Tracks an element's own rendered size via ResizeObserver - null until the first observation
 // fires. Takes an existing ref rather than creating its own so callers that also need the element
-// for other purposes (pointer handlers, getBoundingClientRect) keep a single ref (AssetPhoto.tsx;
-// TimelineRuler.tsx's own containerWidth tracking follows the same convention, see A-2).
+// for other purposes (pointer handlers, getBoundingClientRect) keep a single ref (AssetPhoto.tsx).
+// TimelineRuler.tsx keeps its own inline ResizeObserver instead - it wants a window.innerWidth
+// fallback before the first observation, not null.
 export function useElementSize<T extends HTMLElement>(ref: RefObject<T | null>): Size | null {
   const [size, setSize] = useState<Size | null>(null)
 
