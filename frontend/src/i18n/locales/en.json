@@ -97,18 +97,24 @@
     "title": "More or Less",
     "modes": {
       "personAssets": "Person assets",
-      "albumAssets": "Album assets"
+      "albumAssets": "Album assets",
+      "personBirthDate": "Person birth date"
     },
     "start": {
       "personAssets": "Guess whether the next person has more or fewer assets than the last. One wrong guess ends the run.",
-      "albumAssets": "Guess whether the next album has more or fewer assets than the last. One wrong guess ends the run."
+      "albumAssets": "Guess whether the next album has more or fewer assets than the last. One wrong guess ends the run.",
+      "personBirthDate": "Guess whether the next person was born before or after the last. One wrong guess ends the run."
     },
     "has": "has",
+    "bornOn": "was born on",
     "unit_one": "asset",
     "unit_other": "assets",
     "question": "Does {{name}} have more or fewer assets?",
+    "birthDateQuestion": "Was {{name}} born before or after?",
     "guessMore": "More",
     "guessLess": "Fewer",
+    "guessAfter": "After",
+    "guessBefore": "Before",
     "result": {
       "correct": "Correct!",
       "incorrect": "Not quite.",

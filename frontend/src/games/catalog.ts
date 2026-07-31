@@ -128,6 +128,15 @@ export const GAME_CATALOG: CatalogGame[] = [
         coverUrl: "/covers/more-or-less-albums.webp",
         roundsComponent: MoreOrLessRounds,
       },
+      {
+        // Same component again - swaps its data source to birth dates (MODE_CONFIG's valueKind
+        // "date").
+        mode: Mode.PersonBirthDate,
+        modeTitleKey: "moreOrLess.modes.personBirthDate",
+        component: MoreOrLessGame,
+        coverUrl: "/covers/more-or-less-birthdate.webp",
+        roundsComponent: MoreOrLessRounds,
+      },
     ],
   },
   {

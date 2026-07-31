@@ -1,9 +1,7 @@
-import { useTranslation } from "react-i18next"
-
 import type { MoreOrLessGuess } from "../../api/types/moreOrLess"
 import { Button } from "../shared/Button"
-import { CountBadge } from "./CountBadge"
 import { StatCard } from "./StatCard"
+import { ValueBadge } from "./ValueBadge"
 
 export type CandidatePhase = "guessing" | "counting" | "revealed"
 
@@ -11,7 +9,11 @@ interface CandidateCardProps {
   name: string
   thumbnailUrl: string
   phase: CandidatePhase
-  displayCount: number
+  displayValue: number | string
+  valueKind: "count" | "date"
+  subtitle: string
+  moreLabel: string
+  lessLabel: string
   correct: boolean | null
   onGuess: (guess: MoreOrLessGuess) => void
 }
@@ -20,18 +22,20 @@ export function CandidateCard({
   name,
   thumbnailUrl,
   phase,
-  displayCount,
+  displayValue,
+  valueKind,
+  subtitle,
+  moreLabel,
+  lessLabel,
   correct,
   onGuess,
 }: CandidateCardProps) {
-  const { t } = useTranslation()
-
-  // Only the number itself changes color on reveal - the card border/badge stay neutral.
-  const countColorClass =
+  // Only the value itself changes color on reveal - the card border/badge stay neutral.
+  const valueColorClass =
     phase === "revealed" ? (correct ? "text-emerald-600" : "text-rose-600") : "text-ink"
 
   return (
-    <StatCard thumbnailUrl={thumbnailUrl} name={name} subtitle={t("moreOrLess.question", { name })}>
+    <StatCard thumbnailUrl={thumbnailUrl} name={name} subtitle={subtitle}>
       {phase === "guessing" ? (
         <div className="flex w-full gap-2.5">
           <Button
@@ -51,7 +55,7 @@ export function CandidateCard({
             >
               <path d="M12 19V5M5 12l7-7 7 7" />
             </svg>
-            {t("moreOrLess.guessMore")}
+            {moreLabel}
           </Button>
           <Button
             variant="secondary"
@@ -70,11 +74,11 @@ export function CandidateCard({
             >
               <path d="M12 5v14M5 12l7 7 7-7" />
             </svg>
-            {t("moreOrLess.guessLess")}
+            {lessLabel}
           </Button>
         </div>
       ) : (
-        <CountBadge value={displayCount} colorClass={countColorClass} />
+        <ValueBadge value={displayValue} kind={valueKind} colorClass={valueColorClass} />
       )}
     </StatCard>
   )
