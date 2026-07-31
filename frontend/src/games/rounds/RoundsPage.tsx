@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Navigate, useNavigate, useParams } from "react-router-dom"
 
@@ -76,7 +76,12 @@ export function RoundsPage() {
   // that only the component itself holds. RoundsShell is reserved for the "list" family
   // (MoreOrLess, Immichdle).
   if (catalogMode.roundsLayout === "fullscreen") {
-    return <RoundsComponent game={state.game} onBack={onBack} />
+    return (
+      // catalog.ts's roundsComponent is lazy-loaded (B-1) - this Suspense covers its chunk download.
+      <Suspense fallback={<div className="min-h-dvh bg-app-bg" />}>
+        <RoundsComponent game={state.game} onBack={onBack} />
+      </Suspense>
+    )
   }
 
   return (
@@ -86,7 +91,9 @@ export function RoundsPage() {
       score={state.game.score}
       onBack={onBack}
     >
-      <RoundsComponent game={state.game} />
+      <Suspense fallback={null}>
+        <RoundsComponent game={state.game} />
+      </Suspense>
     </RoundsShell>
   )
 }

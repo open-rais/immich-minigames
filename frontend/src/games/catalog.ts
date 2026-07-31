@@ -1,19 +1,52 @@
 import type { ComponentType } from "react"
+import { lazy } from "react"
 
 import type { GameOut } from "../api/types"
 import { GameType, Mode } from "../api/types"
-import { DateguessrGame } from "./Dateguessr/DateguessrGame"
-import { DateguessrRounds } from "./Dateguessr/DateguessrRounds"
-import { GeoguessrGame } from "./Geoguessr/GeoguessrGame"
-import { GeoguessrRounds } from "./Geoguessr/GeoguessrRounds"
-import { ImmichdleGame } from "./Immichdle/ImmichdleGame"
-import { ImmichdleRounds } from "./Immichdle/ImmichdleRounds"
-import { MoreOrLessGame } from "./MoreOrLess/MoreOrLessGame"
-import { MoreOrLessRounds } from "./MoreOrLess/MoreOrLessRounds"
-import { TimelineGame } from "./Timeline/TimelineGame"
-import { TimelineRounds } from "./Timeline/TimelineRounds"
-import { WhosThatPersonGame } from "./WhosThatPerson/WhosThatPersonGame"
-import { WhosThatPersonRounds } from "./WhosThatPerson/WhosThatPersonRounds"
+
+// Every game/rounds component is lazy-loaded (roadmap B-1 of CODE-REVIEW-FRONT.md) - this is what
+// keeps maplibre-gl (Geoguessr's map, ~1 MB minified) and the other 5 games out of the initial
+// bundle, since this catalog is imported eagerly from the app's entry routes. Callers that render
+// `component`/`roundsComponent` need a <Suspense> boundary above them (see menu/GameRoute.tsx,
+// menu/DailyGameRoute.tsx, games/rounds/RoundsPage.tsx).
+const DateguessrGame = lazy(() =>
+  import("./Dateguessr/DateguessrGame").then((m) => ({ default: m.DateguessrGame })),
+)
+const DateguessrRounds = lazy(() =>
+  import("./Dateguessr/DateguessrRounds").then((m) => ({ default: m.DateguessrRounds })),
+)
+const GeoguessrGame = lazy(() =>
+  import("./Geoguessr/GeoguessrGame").then((m) => ({ default: m.GeoguessrGame })),
+)
+const GeoguessrRounds = lazy(() =>
+  import("./Geoguessr/GeoguessrRounds").then((m) => ({ default: m.GeoguessrRounds })),
+)
+const ImmichdleGame = lazy(() =>
+  import("./Immichdle/ImmichdleGame").then((m) => ({ default: m.ImmichdleGame })),
+)
+const ImmichdleRounds = lazy(() =>
+  import("./Immichdle/ImmichdleRounds").then((m) => ({ default: m.ImmichdleRounds })),
+)
+const MoreOrLessGame = lazy(() =>
+  import("./MoreOrLess/MoreOrLessGame").then((m) => ({ default: m.MoreOrLessGame })),
+)
+const MoreOrLessRounds = lazy(() =>
+  import("./MoreOrLess/MoreOrLessRounds").then((m) => ({ default: m.MoreOrLessRounds })),
+)
+const TimelineGame = lazy(() =>
+  import("./Timeline/TimelineGame").then((m) => ({ default: m.TimelineGame })),
+)
+const TimelineRounds = lazy(() =>
+  import("./Timeline/TimelineRounds").then((m) => ({ default: m.TimelineRounds })),
+)
+const WhosThatPersonGame = lazy(() =>
+  import("./WhosThatPerson/WhosThatPersonGame").then((m) => ({ default: m.WhosThatPersonGame })),
+)
+const WhosThatPersonRounds = lazy(() =>
+  import("./WhosThatPerson/WhosThatPersonRounds").then((m) => ({
+    default: m.WhosThatPersonRounds,
+  })),
+)
 
 // Mirrors backend/src/services/game_registry.py's GAMES by hand - same
 // manual-sync convention already used for api/types.ts vs api/dto/. Add an entry here whenever a
