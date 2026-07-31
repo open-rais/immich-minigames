@@ -19,7 +19,8 @@ from api.admin_invites_api import router as admin_invites_router
 from api.auth_api import get_current_user
 from api.auth_api import router as auth_router
 from api.daily_api import router as daily_router
-from api.deps import get_games_service, get_immich_service
+from api.deps import get_games_service, get_immich_service, get_scores_service
+from api.dto.albums import AlbumSearchOut
 from api.dto.common import CreateGameIn, CurrentGameOut, GameOut, PlayRoundOut, RecentGamesOut, parse_guess
 from api.dto.config import ConfigOut
 from api.dto.leaderboard import LeaderboardOut, LeaderboardWindow
@@ -29,7 +30,8 @@ from api.rate_limit import GAME_ACTION_LIMIT, SEARCH_LIMIT, THUMBNAIL_LIMIT, lim
 from config import Settings, get_settings
 from persistence.users import UserModel
 from services.games_service import GamesService
-from services.immich_service import ImmichService
+from services.immich import ImmichService
+from services.scores_service import ScoresService
 
 router = APIRouter(prefix="/api/v1")
 router.include_router(auth_router)
@@ -43,9 +45,9 @@ router.include_router(daily_router)
 @router.get("/config", response_model=ConfigOut)
 def get_config(settings: Annotated[Settings, Depends(get_settings)]) -> ConfigOut:
     # No rate limit of its own (static config, no DB/Immich call) - used by the frontend's "Ver en
-    # Immich" buttons (ROUNDS-VIEW.md roadmap point #10). Requires a session like everything else
-    # now (roadmap #H, F3's default-deny middleware), even though this route declares no auth
-    # dependency itself. Depends() rather than calling get_settings() inline (see auth_api.py) so
+    # Immich" buttons. Requires a session like everything else now (the default-deny middleware),
+    # even though this route declares no auth dependency itself. Depends() rather than calling
+    # get_settings() inline (see auth_api.py) so
     # tests can override this one dependency without touching the lru_cache singleton every other
     # module shares.
     return ConfigOut(immich_external_url=settings.immich_public_url)
@@ -66,9 +68,9 @@ def create_game(
 @router.get("/games/records", response_model=GameRecordsOut)
 def get_game_records(
     user: Annotated[UserModel, Depends(get_current_user)],
-    games_service: Annotated[GamesService, Depends(get_games_service)],
+    scores_service: Annotated[ScoresService, Depends(get_scores_service)],
 ) -> GameRecordsOut:
-    records = games_service.get_personal_records(user.id)
+    records = scores_service.get_personal_records(user.id)
     return GameRecordsOut.from_records(records)
 
 
@@ -79,7 +81,7 @@ def get_current_game(
     user: Annotated[UserModel, Depends(get_current_user)],
     games_service: Annotated[GamesService, Depends(get_games_service)],
 ) -> CurrentGameOut:
-    # Idle-screen "Continuar" lookup (roadmap #e). Declared before GET /games/{game_id} (same
+    # Idle-screen "Continuar" lookup. Declared before GET /games/{game_id} (same
     # reason /games/records already is): a static path must precede a {game_id}: UUID catch-all or
     # it 422s trying to parse "current" as a UUID.
     game = games_service.get_current_game(game_type, mode, user.id)
@@ -89,12 +91,11 @@ def get_current_game(
 @router.get("/games/recent", response_model=RecentGamesOut)
 def get_recent_games(
     user: Annotated[UserModel, Depends(get_current_user)],
-    games_service: Annotated[GamesService, Depends(get_games_service)],
+    scores_service: Annotated[ScoresService, Depends(get_scores_service)],
 ) -> RecentGamesOut:
-    # "Ver juegos" profile modal (roadmap #e) - login required (unlike get_current_game above),
-    # matching the roadmap's "del jugador con sesión iniciada" - there's no anonymous equivalent of
-    # a persistent game history to look up.
-    games = games_service.get_recent_games(user.id)
+    # "Ver juegos" profile modal - login required (unlike get_current_game above): there's no
+    # anonymous equivalent of a persistent game history to look up.
+    games = scores_service.get_recent_games(user.id)
     return RecentGamesOut.from_recent_games(games)
 
 
@@ -102,13 +103,12 @@ def get_recent_games(
 def get_leaderboard(
     game_type: str,
     mode: str,
-    games_service: Annotated[GamesService, Depends(get_games_service)],
+    scores_service: Annotated[ScoresService, Depends(get_scores_service)],
     window: LeaderboardWindow = "all",
 ) -> LeaderboardOut:
-    # No auth dependency of its own, but roadmap #H, F3's default-deny middleware now requires a
-    # session for every route regardless ("sin sesión no se ve nada: ni... leaderboards", see
-    # docs/TODO/NEW-AUTH.md §2) - this route just never needed one on top of that.
-    entries = games_service.get_leaderboard(game_type, mode, window)
+    # No auth dependency of its own, but the default-deny middleware now requires a session for
+    # every route regardless - this route just never needed one on top of that.
+    entries = scores_service.get_leaderboard(game_type, mode, window)
     return LeaderboardOut.from_entries(window, entries)
 
 
@@ -180,6 +180,21 @@ def search_persons(
     # small batches (default 3) for infinite-scroll UIs. See ImmichService.search_persons.
     persons = immich_service.search_persons(query, offset=offset, limit=limit)
     return PersonSearchOut.from_persons(persons)
+
+
+@router.get("/albums/search", response_model=AlbumSearchOut)
+@limiter.limit(SEARCH_LIMIT)
+def search_albums(
+    request: Request,
+    query: Annotated[str, Query(min_length=1)],
+    immich_service: Annotated[ImmichService, Depends(get_immich_service)],
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=50)] = 3,
+) -> AlbumSearchOut:
+    # Albumdle's guess-input autocomplete (roadmap #14) - mirrors search_persons above exactly.
+    # See ImmichService.search_albums.
+    albums = immich_service.search_albums(query, offset=offset, limit=limit)
+    return AlbumSearchOut.from_albums(albums)
 
 
 @router.get("/people/{person_id}/thumbnail")

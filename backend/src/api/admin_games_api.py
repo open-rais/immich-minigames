@@ -1,5 +1,5 @@
-"""Admin REST endpoints (ADMIN-FEATURE.md point #4) - lets an is_admin account view/edit/reset the
-scoring/difficulty settings each game exposes (see services/game_settings.py's GAME_SETTING_SPECS
+"""Admin REST endpoints that let an is_admin account view/edit/reset the scoring/difficulty settings
+each game exposes (see games/settings_registry.py's GAME_SETTING_SPECS
 for what's configurable and why). Mounted under /admin/games by api/api.py. Reuses admin_api.py's
 get_current_admin_user dependency rather than reimplementing the is_admin check."""
 
@@ -11,8 +11,9 @@ from sqlalchemy.orm import Session
 from api.admin_api import get_current_admin_user
 from api.deps import get_db_session
 from api.dto.admin import GameSettingsOut
+from games.settings_registry import GAME_SETTING_SPECS
 from persistence.users import UserModel
-from services.game_settings import GAME_SETTING_SPECS, GameSettingsService
+from services.game_settings_service import GameSettingsService
 
 router = APIRouter(prefix="/admin/games", tags=["admin"])
 

@@ -1,15 +1,16 @@
-"""Roadmap #G (daily games) - Dateguessr's DailySupport implementation (games/daily.py's
-contract): generates a day's shared content, decides which ids future days must avoid repeating,
-and builds the kwargs to replay it against the *same* DateguessrGame class a normal game uses (see
-docs/TODO/DECOUPLING.md decision C)."""
+"""Dateguessr's DailySupport implementation (games/daily.py's contract): generates a day's shared
+content, decides which ids future days must avoid repeating, and builds the kwargs to replay it
+against the *same* DateguessrGame class a normal game uses."""
 
 from datetime import date, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
 from domain.asset import Asset
-from games.dateguessr.game import AssetSnapshot, DateguessrGame, LiveContent
-from services.immich_service import ImmichService
+from games.dateguessr.content import LiveContent
+from games.dateguessr.game import DateguessrGame
+from games.dateguessr.round import AssetSnapshot
+from services.immich import ContentQueries, ImmichService
 from services.ml_service import MLService
 
 
@@ -65,7 +66,7 @@ class ScriptedContent:
         return self._next_index < len(self._rounds_spec)
 
 
-def build_spec(mode: str, immich_service: ImmichService, settings: dict[str, float]) -> dict[str, Any]:
+def build_spec(mode: str, immich_service: ContentQueries, settings: dict[str, float]) -> dict[str, Any]:
     # DateguessrGame.has_next_round() never looks at the previous round's guess - it's already
     # guess-independent, so the real has_next_round()/create_next_round() pair can drive this loop
     # as-is, on a throwaway game built from live content.

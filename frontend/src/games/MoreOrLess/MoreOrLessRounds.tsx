@@ -1,11 +1,13 @@
+import { useTranslation } from "react-i18next"
 import { useParams } from "react-router-dom"
 
-import { GameType, Mode } from "../../api/types"
-import type { MoreOrLessRoundOut } from "../../api/types"
+import { GameType, Mode } from "../../api/types/common"
+import type { MoreOrLessRoundOut } from "../../api/types/moreOrLess"
 import type { RoundsComponentProps } from "../catalog"
 import { EntryOptionsMenu } from "../shared/EntryOptionsMenu"
 import { ImmichLink } from "../shared/ImmichLink"
 import { PersonAvatar } from "../shared/PersonAvatar"
+import { formatBirthDate } from "./birthDate"
 import { MODE_CONFIG } from "./modeConfig"
 
 type ChainVariant = "neutral" | "correct" | "incorrect"
@@ -13,7 +15,7 @@ type ChainVariant = "neutral" | "correct" | "incorrect"
 interface ChainEntry {
   id: string
   name: string
-  assetCount: number
+  value: number | string
   variant: ChainVariant
 }
 
@@ -28,18 +30,18 @@ const COUNT_COLOR_CLASS: Record<ChainVariant, string> = {
 }
 
 // The chain of entities the player walked through: [round[0].reference, ...rounds.map(candidate)],
-// colored by the round that had it as its candidate (ROUNDS-VIEW.md §4.6) - the first entry was
+// colored by the round that had it as its candidate - the first entry was
 // never guessed, so it stays neutral. A round still pending an answer (a game reached mid-play by
 // URL) is dropped first: its candidate never got a score, so it can't take a place in the chain.
 function buildChain(rounds: MoreOrLessRoundOut[]): ChainEntry[] {
-  const answered = rounds.filter((r) => r.candidate_asset_count !== null)
+  const answered = rounds.filter((r) => r.candidate_value !== null)
   if (answered.length === 0) return []
 
   const chain: ChainEntry[] = [
     {
       id: answered[0].reference_id,
       name: answered[0].reference_name,
-      assetCount: answered[0].reference_asset_count,
+      value: answered[0].reference_value,
       variant: "neutral",
     },
   ]
@@ -47,7 +49,7 @@ function buildChain(rounds: MoreOrLessRoundOut[]): ChainEntry[] {
     chain.push({
       id: round.candidate_id,
       name: round.candidate_name,
-      assetCount: round.candidate_asset_count as number,
+      value: round.candidate_value as number | string,
       variant: round.correct ? "correct" : "incorrect",
     })
   }
@@ -55,9 +57,12 @@ function buildChain(rounds: MoreOrLessRoundOut[]): ChainEntry[] {
 }
 
 export function MoreOrLessRounds({ game }: RoundsComponentProps) {
+  const { i18n } = useTranslation()
   const { mode = Mode.PersonAssets } = useParams<{ mode: string }>()
   const config = MODE_CONFIG[mode] ?? MODE_CONFIG[Mode.PersonAssets]
-  const rounds = game.rounds.filter((r): r is MoreOrLessRoundOut => r.game_type === GameType.MoreOrLess)
+  const rounds = game.rounds.filter(
+    (r): r is MoreOrLessRoundOut => r.game_type === GameType.MoreOrLess,
+  )
   const chain = buildChain(rounds)
 
   return (
@@ -69,7 +74,11 @@ export function MoreOrLessRounds({ game }: RoundsComponentProps) {
         >
           <PersonAvatar src={config.thumbnailUrl(entry.id)} alt="" />
           <span className="line-clamp-2 min-w-0 flex-1 font-semibold text-ink">{entry.name}</span>
-          <span className={`flex-none font-mono font-bold ${COUNT_COLOR_CLASS[entry.variant]}`}>{entry.assetCount}</span>
+          <span className={`flex-none font-mono font-bold ${COUNT_COLOR_CLASS[entry.variant]}`}>
+            {config.valueKind === "date"
+              ? formatBirthDate(entry.value as string, i18n.language)
+              : entry.value}
+          </span>
           <EntryOptionsMenu>
             <ImmichLink kind={config.linkKind} id={entry.id} />
           </EntryOptionsMenu>

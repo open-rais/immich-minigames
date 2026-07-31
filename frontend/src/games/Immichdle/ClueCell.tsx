@@ -68,15 +68,22 @@ export function ClueCell({ clue, pending = false }: ClueCellProps) {
             // time component) - `new Date(...)` parses that as UTC midnight, so formatting must
             // stay in UTC too, or it silently shifts a day backward in any timezone behind UTC.
             // Same pitfall Dateguessr's timeMath.ts already guards against.
-            new Intl.DateTimeFormat(i18n.language, { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" }).format(
-              new Date(clue.value!),
-            )
+            new Intl.DateTimeFormat(i18n.language, {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+              timeZone: "UTC",
+            }).format(new Date(clue.value!))
           : String(clue.value)
 
   return (
-    <div className={`relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl ${variantClass[clue.variant]}`}>
+    <div
+      className={`relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl ${variantClass[clue.variant]}`}
+    >
       <BackgroundGlyph background={clue.background} />
-      <span className="relative z-10 px-1 text-center font-mono text-sm leading-tight font-bold text-white md:px-2 md:text-lg">{text}</span>
+      <span className="relative z-10 px-1 text-center font-mono text-sm leading-tight font-bold text-white md:px-2 md:text-lg">
+        {text}
+      </span>
     </div>
   )
 }

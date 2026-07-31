@@ -3,18 +3,14 @@ avoid near-duplicate answers across rounds (Geoguessr/Dateguessr today) - see ga
 docstring for what belongs here and why."""
 
 from collections.abc import Callable
-from typing import TypeVar
-
-_Candidate = TypeVar("_Candidate")
-_Answer = TypeVar("_Answer")
 
 
-def pick_spread_asset(
-    candidates: list[_Candidate],
-    previous_answers: list[_Answer],
-    separation: Callable[[_Candidate, _Answer], float],
+def pick_spread_asset[Candidate, Answer](
+    candidates: list[Candidate],
+    previous_answers: list[Answer],
+    separation: Callable[[Candidate, Answer], float],
     min_separation: float,
-) -> _Candidate | None:
+) -> Candidate | None:
     """Prefers the first candidate at least `min_separation` away (by `separation`) from every
     previous round's answer, so rounds don't test near-duplicate answers. Falls back to the first
     candidate if none qualifies, or None if there are no candidates at all."""

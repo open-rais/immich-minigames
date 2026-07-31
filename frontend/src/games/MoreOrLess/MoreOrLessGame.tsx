@@ -3,17 +3,16 @@ import type { TransitionEvent } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate, useParams } from "react-router-dom"
 
-import { createDailyGame, getDailyStatus } from "../../api/daily"
-import { apiErrorStatus } from "../../api/errors"
-import { createGame, getCurrentGame, getGame, playRound } from "../../api/games"
-import { GameType, Mode } from "../../api/types"
-import type { GameOut, MoreOrLessGuess, MoreOrLessRoundOut, RoundOut } from "../../api/types"
+import { playRound } from "../../api/games"
+import { GameType, Mode } from "../../api/types/common"
+import type { GameOut, RoundOut } from "../../api/types/common"
+import type { MoreOrLessGuess, MoreOrLessRoundOut } from "../../api/types/moreOrLess"
 import type { GameComponentProps } from "../catalog"
 import { ErrorScreen, FinishedScreen, IdleScreen } from "../shared/GameScreens"
 import { GuardedBackButton } from "../shared/GuardedBackButton"
 import { ScoreBadge } from "../shared/ScoreBadge"
 import { useCountUp } from "../shared/useCountUp"
-import { useGuardedRequests } from "../shared/useGuardedRequests"
+import { useGameSession } from "../shared/useGameSession"
 import type { CandidatePhase } from "./CandidateCard"
 import { CandidateCard } from "./CandidateCard"
 import { MODE_CONFIG } from "./modeConfig"
@@ -29,14 +28,14 @@ const MOBILE_BREAKPOINT_QUERY = "(min-width: 768px)" // matches Tailwind's `md:`
 const DESKTOP_GAP_PX = 40
 const MOBILE_GAP_PX = 16
 
-type Screen = "idle" | "playing" | "finished" | "error"
 type PersonRef = { id: string; name: string }
 
 // This component only ever creates/plays "more-or-less" games (see GAME_TYPE/MODE above), so a
-// mismatched game_type here means the backend returned something unexpected - fail loudly instead
-// of accessing MoreOrLess-only fields on a round the union type says might not have them.
-function assertMoreOrLess(round: RoundOut): asserts round is MoreOrLessRoundOut {
-  if (round.game_type !== GameType.MoreOrLess) throw new Error(`expected a more-or-less round, got ${round.game_type}`)
+// mismatched game_type here means the backend returned something unexpected - the error screen
+// (via useGameSession's applyGame contract), not a thrown exception (D-4: this used to throw via
+// an assertMoreOrLess, the odd one out next to every other game's type-guard convention).
+function isMoreOrLessRound(round: RoundOut): round is MoreOrLessRoundOut {
+  return round.game_type === GameType.MoreOrLess
 }
 
 export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameComponentProps) {
@@ -50,14 +49,14 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameC
   const config = MODE_CONFIG[mode] ?? MODE_CONFIG[Mode.PersonAssets]
   const thumbnailUrl = config.thumbnailUrl
 
-  const [screen, setScreen] = useState<Screen>("idle")
-  const [busy, setBusy] = useState(false)
-
   const [game, setGame] = useState<GameOut | null>(null)
-  const [reference, setReference] = useState<(PersonRef & { assetCount: number }) | null>(null)
+  const [reference, setReference] = useState<(PersonRef & { value: number | string }) | null>(null)
   const [candidate, setCandidate] = useState<(PersonRef & { roundId: string }) | null>(null)
   const [candidatePhase, setCandidatePhase] = useState<CandidatePhase>("guessing")
   const [countTarget, setCountTarget] = useState<number | null>(null)
+  // Only used for valueKind "date" - unlike countTarget/useCountUp, a date is never animated, so
+  // this just holds the final value to show once revealed (see handleGuess/handleSlideEnd).
+  const [revealValue, setRevealValue] = useState<string | null>(null)
   // Set together once a guess resolves, reset together once the next round starts - see
   // handleGuess/handleSlideEnd.
   const [revealResult, setRevealResult] = useState<{
@@ -69,25 +68,48 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameC
   const [slideOffset, setSlideOffset] = useState({ x: 0, y: 0 })
   const slidingCardRef = useRef<HTMLDivElement>(null)
 
-  // Roadmap #e - whether the current player has an unfinished game for this mode; null while the
-  // idle-screen check below is still in flight (IdleScreen treats that the same as false).
-  const [hasCurrentGame, setHasCurrentGame] = useState<boolean | null>(null)
-  // Roadmap #G - the daily game's id, known from GET /daily's status before the player has done
-  // anything - resumeGame() reads this instead of calling getCurrentGame (which never returns a
-  // daily game, see docs/TODO/DAILY-GAMES.md §4.5).
-  const dailyGameIdRef = useRef<string | null>(null)
-  // Bumped when the idle-screen status needs re-fetching while the screen is already "idle" -
-  // today only the daily 409 fallback in startGame below (docs/TODO/DAILY-GAMES.md §4.7).
-  const [idleRefresh, setIdleRefresh] = useState(0)
-
-  const { isCurrent, guarded, discardInFlight } = useGuardedRequests()
-  // One in-flight ref per action - start vs guess don't need to block each other, but each needs its
-  // own re-entrancy guard against a fast double-click firing before React re-renders (state like
-  // `candidatePhase`/`busy` alone isn't enough to stop a second network call).
+  // One in-flight ref for guesses - start/resume have their own inside useGameSession.
   const guessInFlightRef = useRef(false)
-  const startInFlightRef = useRef(false)
 
   const { value: displayCount, done: countDone } = useCountUp(countTarget, COUNT_DURATION_MS)
+
+  // Shared by startGame (fresh GameOut from createGame) and resumeGame (an existing one from
+  // getCurrentGame) - both hand off a GameOut whose last round is the current pending one. isResume
+  // is unused: nothing here differs between a fresh game and a resumed one.
+  function applyGame(g: GameOut, _isResume: boolean): boolean {
+    const round = g.rounds[g.rounds.length - 1]
+    if (!isMoreOrLessRound(round)) return false
+    setGame(g)
+    setReference({
+      id: round.reference_id,
+      name: round.reference_name,
+      value: round.reference_value,
+    })
+    setCandidate({ id: round.candidate_id, name: round.candidate_name, roundId: round.id })
+    setCandidatePhase("guessing")
+    setCountTarget(null)
+    setRevealValue(null)
+    setRevealResult(null)
+    setSliding(false)
+    return true
+  }
+
+  function hydrateFinishedDaily(g: GameOut): boolean {
+    setGame(g)
+    return true
+  }
+
+  const {
+    screen,
+    setScreen,
+    busy,
+    hasCurrentGame,
+    startGame,
+    resumeGame,
+    backToIdle,
+    isCurrent,
+    guarded,
+  } = useGameSession({ gameType: GAME_TYPE, mode, daily, applyGame, hydrateFinishedDaily })
 
   useEffect(() => {
     if (countDone && candidatePhase === "counting") {
@@ -114,7 +136,7 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameC
       }
     }, REVEAL_HOLD_MS)
     return () => clearTimeout(timer)
-  }, [candidatePhase, revealResult])
+  }, [candidatePhase, revealResult, setScreen])
 
   useEffect(() => {
     if (transitionEnabled) return
@@ -122,125 +144,35 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameC
     return () => cancelAnimationFrame(raf)
   }, [transitionEnabled])
 
-  // Re-checked every time the idle screen is (re-)shown - roadmap #e's "Continuar" affordance.
-  useEffect(() => {
-    if (screen !== "idle") return
-    let cancelled = false
-
-    if (daily) {
-      getDailyStatus()
-        .then((status) => {
-          if (cancelled) return
-          const modeStatus = status.modes.find((m) => m.game_type === GAME_TYPE && m.mode === mode)
-          dailyGameIdRef.current = modeStatus?.game_id ?? null
-
-          if (modeStatus?.status === "finished" && modeStatus.game_id) {
-            setHasCurrentGame(false)
-            getGame(modeStatus.game_id)
-              .then((g) => {
-                if (!cancelled) {
-                  setGame(g)
-                  setScreen("finished")
-                }
-              })
-              .catch(() => {
-                if (!cancelled) setScreen("error")
-              })
-            return
-          }
-          setHasCurrentGame(modeStatus?.status === "in_progress")
-        })
-        .catch(() => {
-          if (!cancelled) setHasCurrentGame(false)
-        })
-      return () => {
-        cancelled = true
-      }
-    }
-
-    getCurrentGame(GAME_TYPE, mode)
-      .then((g) => {
-        if (!cancelled) setHasCurrentGame(g !== null)
-      })
-      .catch(() => {
-        if (!cancelled) setHasCurrentGame(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [screen, mode, daily, idleRefresh])
-
-  // Shared by startGame (fresh GameOut from createGame) and resumeGame (an existing one from
-  // getCurrentGame) - both hand off a GameOut whose last round is the current pending one.
-  function applyGame(g: GameOut) {
-    const round = g.rounds[g.rounds.length - 1]
-    assertMoreOrLess(round)
-    setGame(g)
-    setReference({ id: round.reference_id, name: round.reference_name, assetCount: round.reference_asset_count })
-    setCandidate({ id: round.candidate_id, name: round.candidate_name, roundId: round.id })
-    setCandidatePhase("guessing")
-    setCountTarget(null)
-    setRevealResult(null)
-    setSliding(false)
-    setScreen("playing")
-  }
-
-  async function startGame() {
-    await guarded(startInFlightRef, async (token) => {
-      setBusy(true)
-      try {
-        const g = daily ? await createDailyGame(GAME_TYPE, mode) : await createGame(GAME_TYPE, mode)
-        if (!isCurrent(token)) return
-        applyGame(g)
-      } catch (err) {
-        if (!isCurrent(token)) return
-        if (daily && apiErrorStatus(err) === 409) {
-          // Today's attempt was consumed between the idle status check and this create (another
-          // tab/device) - re-run the status check instead of showing a generic error; it lands on
-          // the finished (or in-progress) state, the "ya jugado" behavior of DAILY-GAMES.md §4.7.
-          setHasCurrentGame(null)
-          setIdleRefresh((n) => n + 1)
-          return
-        }
-        setScreen("error")
-      } finally {
-        if (isCurrent(token)) setBusy(false)
-      }
-    })
-  }
-
-  // Roadmap #e - "Continuar" button's action: picks the player's existing unfinished game back up.
-  async function resumeGame() {
-    await guarded(startInFlightRef, async (token) => {
-      setBusy(true)
-      try {
-        const g = daily
-          ? dailyGameIdRef.current
-            ? await getGame(dailyGameIdRef.current)
-            : null
-          : await getCurrentGame(GAME_TYPE, mode)
-        if (!isCurrent(token) || !g) return
-        applyGame(g)
-      } catch {
-        if (isCurrent(token)) setScreen("error")
-      } finally {
-        if (isCurrent(token)) setBusy(false)
-      }
-    })
-  }
-
   async function handleGuess(guess: MoreOrLessGuess) {
     if (!game || !candidate || candidatePhase !== "guessing") return
     await guarded(guessInFlightRef, async (token) => {
-      setCandidatePhase("counting")
+      // "count" gets an animated count-up on reveal (see the countDone effect below), so it shows
+      // an intermediate "counting" phase right away. "date" has no such animation - it stays
+      // "guessing" through the request and jumps straight to "revealed" once the answer is known
+      // (guessInFlightRef above still blocks a second submit in the meantime).
+      if (config.valueKind === "count") {
+        setCandidatePhase("counting")
+      }
       try {
         const result = await playRound(game.id, candidate.roundId, { guess })
         if (!isCurrent(token)) return
-        assertMoreOrLess(result.answered_round)
-        if (result.next_round) assertMoreOrLess(result.next_round)
+        if (!isMoreOrLessRound(result.answered_round)) {
+          setScreen("error")
+          return
+        }
+        if (result.next_round && !isMoreOrLessRound(result.next_round)) {
+          setScreen("error")
+          return
+        }
         setGame((g) => (g ? { ...g, score: result.score, finished: result.finished } : g))
         setRevealResult({ correct: result.correct, nextRound: result.next_round })
-        setCountTarget(result.answered_round.candidate_asset_count)
+        if (config.valueKind === "count") {
+          setCountTarget(result.answered_round.candidate_value as number)
+        } else {
+          setRevealValue(result.answered_round.candidate_value as string)
+          setCandidatePhase("revealed")
+        }
       } catch {
         if (isCurrent(token)) setScreen("error")
       }
@@ -249,22 +181,28 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameC
 
   function handleSlideEnd(e: TransitionEvent<HTMLDivElement>) {
     if (e.target !== e.currentTarget || e.propertyName !== "transform") return
-    if (!revealResult?.nextRound || countTarget === null || !candidate) return
+    const finalValue = config.valueKind === "count" ? countTarget : revealValue
+    if (!revealResult?.nextRound || finalValue === null || !candidate) return
     const nextRound = revealResult.nextRound
 
     setTransitionEnabled(false)
     setSliding(false)
-    setReference({ id: candidate.id, name: candidate.name, assetCount: countTarget })
-    setCandidate({ id: nextRound.candidate_id, name: nextRound.candidate_name, roundId: nextRound.id })
+    setReference({ id: candidate.id, name: candidate.name, value: finalValue })
+    setCandidate({
+      id: nextRound.candidate_id,
+      name: nextRound.candidate_name,
+      roundId: nextRound.id,
+    })
     setCandidatePhase("guessing")
     setCountTarget(null)
+    setRevealValue(null)
     setRevealResult(null)
   }
 
-  function backToIdle() {
-    discardInFlight() // discard any in-flight guess/start response that arrives later
-    setScreen("idle")
-  }
+  // Daily's "already played today" check (useGameSession's idle effect) resolves async -
+  // hasCurrentGame stays null until it does, so this avoids a beat of the idle/start screen before
+  // screen flips to "finished".
+  if (daily && hasCurrentGame === null) return <div className="min-h-dvh bg-app-bg" />
 
   if (screen === "idle") {
     return (
@@ -299,7 +237,13 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameC
         allowPlayAgain={!daily}
         dailyShare={
           daily && game
-            ? { gameId: game.id, gameType: GAME_TYPE, mode, gameTitle: t("moreOrLess.title"), modeTitle: t(config.modeTitleKey) }
+            ? {
+                gameId: game.id,
+                gameType: GAME_TYPE,
+                mode,
+                gameTitle: t("moreOrLess.title"),
+                modeTitle: t(config.modeTitleKey),
+              }
             : undefined
         }
       />
@@ -307,6 +251,10 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameC
   }
 
   if (!game || !reference || !candidate) return null
+
+  const displayValue = config.valueKind === "count" ? displayCount : (revealValue ?? "")
+  const primaryLabel = t(config.primaryLabelKey)
+  const secondaryLabel = t(config.secondaryLabelKey)
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-app-bg px-[18px] py-[22px] md:px-10 md:py-7">
@@ -320,7 +268,9 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameC
           <PersonCard
             key={reference.id}
             name={reference.name}
-            assetCount={reference.assetCount}
+            value={reference.value}
+            valueKind={config.valueKind}
+            subtitle={t(config.hasLabelKey)}
             thumbnailUrl={thumbnailUrl(reference.id)}
           />
         </div>
@@ -333,7 +283,12 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameC
                 name={revealResult.nextRound.candidate_name}
                 thumbnailUrl={thumbnailUrl(revealResult.nextRound.candidate_id)}
                 phase="guessing"
-                displayCount={0}
+                displayValue={0}
+                valueKind={config.valueKind}
+                subtitle={t(config.questionKey, { name: revealResult.nextRound.candidate_name })}
+                primaryGuess={config.primaryGuess}
+                primaryLabel={primaryLabel}
+                secondaryLabel={secondaryLabel}
                 correct={null}
                 onGuess={() => {}}
               />
@@ -343,7 +298,9 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameC
             ref={slidingCardRef}
             className="relative z-10 flex h-full min-h-0 flex-col md:h-auto"
             style={{
-              transform: sliding ? `translate(${slideOffset.x}px, ${slideOffset.y}px)` : "translate(0px, 0px)",
+              transform: sliding
+                ? `translate(${slideOffset.x}px, ${slideOffset.y}px)`
+                : "translate(0px, 0px)",
               transition: transitionEnabled ? "transform 450ms ease-out" : "none",
             }}
             onTransitionEnd={handleSlideEnd}
@@ -353,7 +310,12 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameC
               name={candidate.name}
               thumbnailUrl={thumbnailUrl(candidate.id)}
               phase={candidatePhase}
-              displayCount={displayCount}
+              displayValue={displayValue}
+              valueKind={config.valueKind}
+              subtitle={t(config.questionKey, { name: candidate.name })}
+              primaryGuess={config.primaryGuess}
+              primaryLabel={primaryLabel}
+              secondaryLabel={secondaryLabel}
               correct={revealResult?.correct ?? null}
               onGuess={handleGuess}
             />

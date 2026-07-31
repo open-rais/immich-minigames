@@ -4,8 +4,9 @@ import { useNavigate } from "react-router-dom"
 
 import { getDailyStatus } from "../api/daily"
 import { getGame } from "../api/games"
-import type { DailyModeStatusOut, DailyStatusOut, GameOut } from "../api/types"
-import { findCatalogMode } from "../games/catalog"
+import type { GameOut } from "../api/types/common"
+import type { DailyModeStatusOut, DailyStatusOut } from "../api/types/daily"
+import { findCatalogMode, GAME_CATALOG } from "../games/catalog"
 import { buildDailyShareAllMessage } from "../games/shared/dailyShareText"
 import { ShareModal } from "../games/shared/ShareModal"
 import { DailyCountdown } from "./DailyCountdown"
@@ -13,7 +14,16 @@ import { ModeCard } from "./ModeCard"
 
 function ShareIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <circle cx="18" cy="5" r="3" />
       <circle cx="6" cy="12" r="3" />
       <circle cx="18" cy="19" r="3" />
@@ -23,10 +33,10 @@ function ShareIcon() {
   )
 }
 
-// Roadmap #G - "Daily" menu section: same collapsible-group shape as a normal GameSection (chevron
+// "Daily" menu section: same collapsible-group shape as a normal GameSection (chevron
 // + title, grid-rows collapse animation, see menu/GameSection.tsx), but listing every enabled
-// daily mode instead of one game's own modes, with a countdown to the next reset next to the title
-// (decision [G]). Renders nothing once loaded if no mode is enabled - an empty section header
+// daily mode instead of one game's own modes, with a countdown to the next reset next to the
+// title. Renders nothing once loaded if no mode is enabled - an empty section header
 // would be worse than no section.
 export function DailySection() {
   const { t } = useTranslation()
@@ -46,16 +56,46 @@ export function DailySection() {
     load()
   }, [])
 
-  if (!status || status.modes.length === 0) return null
+  // Reserves this section's space from first paint instead of popping in once getDailyStatus()
+  // resolves (a stutter that shifts every GameSection below it down) - same header shape and a
+  // ModeCard-shaped placeholder grid, so there's no layout jump once the real content lands.
+  if (!status) {
+    return (
+      <section className="animate-pulse">
+        <div className="mb-1 flex items-center gap-2">
+          <div className="h-5 w-5 flex-none rounded bg-line-soft" />
+          <div className="h-8 w-40 rounded bg-line-soft md:h-9 md:w-48" />
+        </div>
+        <hr className="mb-6 border-line" />
+        <div className="grid grid-cols-1 gap-2 pb-1 md:grid-cols-4 md:gap-4 lg:grid-cols-5 xl:grid-cols-6">
+          {Array.from({ length: 4 }, (_, i) => (
+            <div
+              key={i}
+              className="flex w-full items-center gap-4 p-2 md:flex-col md:items-stretch md:gap-3 md:p-3"
+            >
+              <div className="h-16 w-16 flex-none rounded-lg bg-line-soft md:aspect-square md:h-auto md:w-full md:rounded-xl" />
+              <div className="min-w-0 flex-1 md:w-full md:flex-none">
+                <div className="h-4 w-3/4 rounded bg-line-soft" />
+                <div className="mt-2 h-3 w-1/2 rounded bg-line-soft" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  if (status.modes.length === 0) return null
 
   function subtitleFor(modeStatus: DailyModeStatusOut): string {
-    if (modeStatus.status === "finished") return t("mainMenu.bestScore", { score: modeStatus.score ?? 0 })
+    if (modeStatus.status === "finished")
+      return t("mainMenu.bestScore", { score: modeStatus.score ?? 0 })
     if (modeStatus.status === "in_progress") return t("common.continueCta")
     return t("mainMenu.notPlayed")
   }
 
-  // Roadmap #G, F6 - "Si se comparte total: Todos resumidos a una linea" (docs/TODO/ROADMAP.md) -
-  // only offered once every enabled mode has been played, fetching each one's full GameOut (rounds)
+  // A combined "share all results" summary line - only offered once every enabled mode has been
+  // played, fetching each one's full GameOut (rounds)
   // on demand rather than keeping them all loaded just in case.
   const allFinished = status.modes.every((m) => m.status === "finished")
 
@@ -64,14 +104,25 @@ export function DailySection() {
     setShareBusy(true)
     try {
       const entries = await Promise.all(
-        status.modes.map(async (modeStatus): Promise<{ modeTitle: string; game: GameOut } | null> => {
-          if (!modeStatus.game_id) return null
-          const catalogMode = findCatalogMode(modeStatus.game_type, modeStatus.mode)
-          const game = await getGame(modeStatus.game_id)
-          return { modeTitle: catalogMode ? t(catalogMode.modeTitleKey) : modeStatus.mode, game }
-        }),
+        status.modes.map(
+          async (
+            modeStatus,
+          ): Promise<{ gameTitle: string; modeTitle: string; game: GameOut } | null> => {
+            if (!modeStatus.game_id) return null
+            const catalogGame = GAME_CATALOG.find((g) => g.gameType === modeStatus.game_type)
+            const catalogMode = findCatalogMode(modeStatus.game_type, modeStatus.mode)
+            const game = await getGame(modeStatus.game_id)
+            return {
+              gameTitle: catalogGame ? t(catalogGame.gameTitleKey) : modeStatus.game_type,
+              modeTitle: catalogMode ? t(catalogMode.modeTitleKey) : modeStatus.mode,
+              game,
+            }
+          },
+        ),
       )
-      const nonNull = entries.filter((e): e is { modeTitle: string; game: GameOut } => e !== null)
+      const nonNull = entries.filter(
+        (e): e is { gameTitle: string; modeTitle: string; game: GameOut } => e !== null,
+      )
       const link = `${window.location.origin}/`
       setShareText(buildDailyShareAllMessage(t, nonNull, link))
     } catch {
@@ -107,14 +158,22 @@ export function DailySection() {
         {/* Keyed by resets_at so a day rollover's re-fetch remounts the countdown - its offset/
             fired refs are fixed at mount, so without the remount it would stay frozen at 00:00:00
             even though the cards themselves already switched to the new day. */}
-        <DailyCountdown key={status.resets_at} resetsAt={status.resets_at} serverNow={status.server_now} onExpire={load} />
+        <DailyCountdown
+          key={status.resets_at}
+          resetsAt={status.resets_at}
+          serverNow={status.server_now}
+          onExpire={load}
+        />
         {allFinished && (
           <button
             type="button"
             onClick={handleShareAll}
             disabled={shareBusy}
             aria-label={t("daily.share.button")}
-            className="ml-auto flex-none rounded-full p-2 text-ink transition-colors hover:bg-hover-tint disabled:opacity-50"
+            // inline-flex items-center justify-center: without it the inline <svg> sits per the
+            // default inline-baseline box model, which leaves asymmetric space below it, so the
+            // icon reads off-center inside the hover circle.
+            className="ml-auto flex flex-none items-center justify-center rounded-full p-2 text-ink transition-colors hover:bg-hover-tint disabled:opacity-50"
           >
             <ShareIcon />
           </button>
@@ -129,12 +188,16 @@ export function DailySection() {
         <div className="overflow-hidden">
           <div className="grid grid-cols-1 gap-2 pb-1 md:grid-cols-4 md:gap-4 lg:grid-cols-5 xl:grid-cols-6">
             {status.modes.map((modeStatus) => {
+              const catalogGame = GAME_CATALOG.find((g) => g.gameType === modeStatus.game_type)
               const catalogMode = findCatalogMode(modeStatus.game_type, modeStatus.mode)
-              if (!catalogMode) return null
+              if (!catalogGame || !catalogMode) return null
               return (
                 <ModeCard
                   key={`${modeStatus.game_type}:${modeStatus.mode}`}
-                  title={t(catalogMode.modeTitleKey)}
+                  // Cards from different games sit in one ungrouped grid here (unlike
+                  // GameSection.tsx, where the game name is the section header) - so each card
+                  // needs its own game name for context.
+                  title={`${t(catalogGame.gameTitleKey)} - ${t(catalogMode.modeTitleKey)}`}
                   coverUrl={catalogMode.coverUrl}
                   subtitle={subtitleFor(modeStatus)}
                   onClick={() => navigate(`/daily/${modeStatus.game_type}/${modeStatus.mode}`)}

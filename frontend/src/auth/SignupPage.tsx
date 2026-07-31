@@ -25,15 +25,21 @@ export function SignupPage() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  if (!loading && user) return <Navigate to="/profile" replace />
+  if (!loading && user) return <Navigate to="/" replace />
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setBusy(true)
     setError(null)
     try {
-      await register({ email, username, full_name: fullName, password, invite_code: inviteCode || undefined })
-      navigate("/profile")
+      await register({
+        email,
+        username,
+        full_name: fullName,
+        password,
+        invite_code: inviteCode || undefined,
+      })
+      navigate("/")
     } catch (err) {
       setError(apiErrorMessage(err) ?? t("auth.error.generic"))
     } finally {
@@ -72,7 +78,7 @@ export function SignupPage() {
           autoComplete="username"
           minLength={3}
           maxLength={32}
-          pattern="^[a-zA-Z0-9_-]+$"
+          pattern="^[a-zA-Z0-9_\-]+$"
           required
           value={username}
           onChange={(e) => setUsername(e.target.value)}
@@ -100,8 +106,8 @@ export function SignupPage() {
           id="inviteCode"
           type="text"
           label={t("auth.signup.inviteCode")}
-          // Not `required` - the very first account on a fresh install registers without one
-          // (roadmap #H decision [H]); the backend is the source of truth and rejects a missing/
+          // Not `required` - the very first account on a fresh install registers without one;
+          // the backend is the source of truth and rejects a missing/
           // invalid code with a normal inline error either way.
           value={inviteCode}
           onChange={(e) => setInviteCode(e.target.value)}

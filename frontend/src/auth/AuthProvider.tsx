@@ -12,7 +12,13 @@ import {
   updateSkin as apiUpdateSkin,
 } from "../api/auth"
 import { apiClient } from "../api/client"
-import type { ChangePasswordIn, LoginIn, RegisterIn, UpdateProfileIn, User } from "../api/types"
+import type {
+  ChangePasswordIn,
+  LoginIn,
+  RegisterIn,
+  UpdateProfileIn,
+  User,
+} from "../api/types/auth"
 import { AuthContext } from "./authContext"
 import { setPendingRedirectFrom } from "./pendingRedirect"
 
@@ -28,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false))
   }, [])
 
-  // Roadmap #H, F0 (updated F3) - a session that dies mid-use (expired, or revoked by a password
+  // A session that dies mid-use (expired, or revoked by a password
   // change on another device) surfaces as a 401 on whatever request happens to be in flight next;
   // catch it globally here rather than in every screen that calls the API. login/getMe opt out via
   // skipAuthRedirect (see client.ts) - their 401s are normal control flow, handled locally.
@@ -42,7 +48,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const id = apiClient.interceptors.response.use(
       (response) => response,
       (error: unknown) => {
-        if (axios.isAxiosError(error) && error.response?.status === 401 && !error.config?.skipAuthRedirect) {
+        if (
+          axios.isAxiosError(error) &&
+          error.response?.status === 401 &&
+          !error.config?.skipAuthRedirect
+        ) {
           setPendingRedirectFrom(window.location.pathname)
           setUser(null)
         }

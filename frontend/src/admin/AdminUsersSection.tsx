@@ -1,19 +1,24 @@
 import { useTranslation } from "react-i18next"
 
 import { listUsers } from "../api/admin"
-import type { User } from "../api/types"
+import type { User } from "../api/types/auth"
 import { AdminUserRow } from "./AdminUserRow"
 import { useInfiniteAdminList } from "./useInfiniteAdminList"
 
-// Admin feature (ADMIN-FEATURE.md point #3) - content of the "Usuarios" top-level accordion in
+// Content of the "Usuarios" top-level accordion in
 // AdminPage.tsx. Mounts lazily (SettingAccordion only mounts children on first expand), so the
 // list isn't fetched until the admin actually opens this section. Infinite-scroll paginated (see
 // useInfiniteAdminList.ts) - capped at ~5 rows tall, scrolling near the bottom loads the next page.
 export function AdminUsersSection() {
   const { t } = useTranslation()
-  const { items: users, error, loadingMore, containerRef, onScroll, setItems: setUsers } = useInfiniteAdminList<User>(
-    (offset, limit) => listUsers({ offset, limit }),
-  )
+  const {
+    items: users,
+    error,
+    loadingMore,
+    containerRef,
+    onScroll,
+    setItems: setUsers,
+  } = useInfiniteAdminList<User>((offset, limit) => listUsers({ offset, limit }))
 
   function handleUpdated(updated: User) {
     setUsers((prev) => prev?.map((u) => (u.id === updated.id ? updated : u)) ?? prev)

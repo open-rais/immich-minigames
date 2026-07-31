@@ -1,5 +1,5 @@
-"""Leaderboard DTOs (roadmap point F, see GamesService.get_leaderboard) plus the daily-challenge
-leaderboard (roadmap point #G, F5 - see GamesService.get_daily_leaderboard)."""
+"""Leaderboard DTOs (see ScoresService.get_leaderboard) plus the daily-challenge
+leaderboard (see ScoresService.get_daily_leaderboard)."""
 
 from datetime import date
 from typing import Literal
@@ -7,7 +7,7 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-from services.games_service import LeaderboardEntry
+from services.scores_service import LeaderboardEntry
 
 LeaderboardWindow = Literal["all", "weekly", "daily"]
 

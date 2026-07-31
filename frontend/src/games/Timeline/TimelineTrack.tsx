@@ -5,15 +5,16 @@ import { useTranslation } from "react-i18next"
 import type { TimelineCardSize, TimelineCardVariant } from "./TimelineCard"
 import { TimelineCard } from "./TimelineCard"
 
-// The strip is a plain scrollable list, NOT a proportional timeline ruler (docs/TODO/TIMELINE.md
-// decision [K]): fixed card width and fixed gap between every pair of cards, no matter how far
+// The strip is a plain scrollable list, NOT a proportional timeline ruler: fixed card width and
+// fixed gap between every pair of cards, no matter how far
 // apart their real dates are. Nothing here reuses Dateguessr/TimelineRuler.tsx or any of its
 // scale/zoom math.
 const TRACK_GAP_CLASS = "gap-2.5 md:gap-3.5"
-// Every gap's height matches the track's own card size so the row stays visually aligned.
+// Every gap's height matches the track's own card size (TimelineCard.tsx's SIZE_CLASS) so the row
+// stays visually aligned.
 const GAP_HEIGHT_CLASS: Record<"sm" | "md", string> = {
-  sm: "h-[126px] md:h-[150px]",
-  md: "h-56 md:h-64",
+  sm: "h-40 md:h-44",
+  md: "h-64 md:h-72",
 }
 // Full width: every gap is the same size regardless of position - the two extremes included - so
 // no slot is an easier or harder tap target than another, and deliberately generous (well past the
@@ -37,7 +38,7 @@ export interface TrackCard {
   // the fly-in animation target in TimelineGame.tsx renders it invisible for one frame so its final
   // position can be measured before the floating "big card" animates toward it.
   visible?: boolean
-  // "Ver rondas" only (roadmap #10) - forwarded straight to TimelineCard's own badge/actions props.
+  // "Ver rondas" only - forwarded straight to TimelineCard's own badge/actions props.
   badge?: string
   actions?: ReactNode
 }
@@ -49,8 +50,7 @@ interface TimelineTrackProps {
   selectedSlot: number | null
   onSelectSlot: (slot: number) => void
   selectable: boolean
-  // Extra highlighted gap with no card in it - the real insertion point on a missed guess
-  // (docs/TODO/TIMELINE.md §5.2's "hueco correcto en verde").
+  // Extra highlighted gap with no card in it - the real insertion point on a missed guess.
   markerSlot?: number | null
   // "Ver rondas" only - every other (non-marker, non-selected) gap renders as empty space instead
   // of its neutral bordered square, since there's nothing to pick in a read-only board.
@@ -63,6 +63,9 @@ interface TimelineTrackProps {
   // target itself didn't change (e.g. re-focusing the same slot after a resize).
   focusToken?: number
   focusTarget?: { kind: TrackSlotKind; index: number } | null
+  // Live play only (TimelineGame.tsx) - opens a full-photo modal for an already-placed card.
+  // Undefined in "Ver rondas" (TimelineRounds.tsx already has its own per-card actions menu).
+  onCardClick?: (assetId: string) => void
 }
 
 export function TimelineTrack({
@@ -76,6 +79,7 @@ export function TimelineTrack({
   registerSlotRef,
   focusToken,
   focusTarget,
+  onCardClick,
 }: TimelineTrackProps) {
   const { t } = useTranslation()
   const elementsRef = useRef<Map<string, HTMLDivElement>>(new Map())
@@ -96,10 +100,13 @@ export function TimelineTrack({
   }
 
   return (
-    <div className={`flex w-full items-center overflow-x-auto px-4 py-3 [scrollbar-width:thin] md:px-8 ${TRACK_GAP_CLASS}`}>
+    <div
+      className={`flex w-full items-center overflow-x-auto px-4 py-3 [scrollbar-width:thin] md:px-8 ${TRACK_GAP_CLASS}`}
+    >
       {Array.from({ length: cards.length + 1 }, (_, gapIndex) => gapIndex).map((gapIndex) => {
         const highlighted = selectedSlot === gapIndex || markerSlot === gapIndex
-        const gapWidthClass = hideNeutralGaps && !highlighted ? GAP_NEUTRAL_WIDTH_CLASS : GAP_FULL_WIDTH_CLASS[cardSize]
+        const gapWidthClass =
+          hideNeutralGaps && !highlighted ? GAP_NEUTRAL_WIDTH_CLASS : GAP_FULL_WIDTH_CLASS[cardSize]
         return (
           <div key={`slot-${gapIndex}`} className="flex flex-none items-center">
             <div
@@ -127,7 +134,10 @@ export function TimelineTrack({
               </button>
             </div>
             {cards[gapIndex] && (
-              <div ref={(el) => setRef("card", gapIndex, el)} className={cards[gapIndex].visible === false ? "opacity-0" : ""}>
+              <div
+                ref={(el) => setRef("card", gapIndex, el)}
+                className={cards[gapIndex].visible === false ? "opacity-0" : ""}
+              >
                 <TimelineCard
                   key={cards[gapIndex].assetId}
                   assetId={cards[gapIndex].assetId}
@@ -136,6 +146,7 @@ export function TimelineTrack({
                   variant={cards[gapIndex].variant ?? "default"}
                   badge={cards[gapIndex].badge}
                   actions={cards[gapIndex].actions}
+                  onClick={onCardClick ? () => onCardClick(cards[gapIndex].assetId) : undefined}
                 />
               </div>
             )}

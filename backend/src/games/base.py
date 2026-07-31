@@ -29,11 +29,10 @@ class BaseRound(ABC):
     @abstractmethod
     def calculate_score(self, settings: Mapping[str, float] | None = None) -> int:
         """Score delta to apply to the game's total. Only called once `guess` has been set.
-        `settings` is this game's live admin-configurable values (ADMIN-FEATURE.md point #4, see
-        services/game_settings.py) - implementations without any configurable score knob
+        `settings` is this game's live admin-configurable values (see
+        services/game_settings_service.py) - implementations without any configurable score knob
         (MoreOrLess, WhosThatPerson today) just ignore it. Defaults to None/{} so direct
-        construction (tests, a one-off script) doesn't have to pass one to get the same behavior
-        as before this param existed."""
+        construction (tests, a one-off script) doesn't have to pass one to get the same behavior."""
 
     @abstractmethod
     def to_payload(self) -> dict[str, Any]:
@@ -77,14 +76,14 @@ class BaseGame(ABC):
         self.rounds = rounds
         self.score = score
         self.finished = finished
-        # Admin feature (ADMIN-FEATURE.md point #4) - this game_type's live admin-configurable
-        # values (services/game_settings.py), injected by GamesService. Read fresh on every
-        # request (see GamesService._game_kwargs), never snapshotted onto a round, so a change
-        # takes effect on the very next round played rather than only on new games.
+        # This game_type's live admin-configurable values (services/game_settings_service.py),
+        # injected by GamesService. Read fresh on every request (see GamesService._game_kwargs),
+        # never snapshotted onto a round, so a change takes effect on the very next round played
+        # rather than only on new games.
         self._settings: Mapping[str, float] = settings or {}
-        # Roadmap #G - set by GamesService (never a constructor param - it's pure persistence
-        # metadata this domain layer doesn't otherwise care about) right after building a daily
-        # game, to the challenge's date. None for every normal game.
+        # Set by GamesService (never a constructor param - it's pure persistence metadata this
+        # domain layer doesn't otherwise care about) right after building a daily game, to the
+        # challenge's date. None for every normal game.
         self.daily_challenge_date: date | None = None
 
     @property
@@ -93,17 +92,17 @@ class BaseGame(ABC):
 
     @property
     def total_rounds(self) -> int | None:
-        """Live fixed round count (ADMIN-FEATURE.md point #4), for games that have one
-        (Geoguessr/Dateguessr) - None for every other game. Overridden by whoever has it; see
-        api/dto/common.py's GameOut for why this is public. Living here (rather than an
-        `isinstance` check in the DTO layer) is what lets each game define this independently
-        without the DTO layer knowing which games happen to share the concept."""
+        """Live fixed round count, for games that have one (Geoguessr/Dateguessr) - None for every
+        other game. Overridden by whoever has it; see api/dto/common.py's GameOut for why this is
+        public. Living here (rather than an `isinstance` check in the DTO layer) is what lets each
+        game define this independently without the DTO layer knowing which games happen to share
+        the concept."""
         return None
 
     @property
     def total_people(self) -> int | None:
-        """Live target headcount (ADMIN-FEATURE.md point #4) for WhosThatPerson - None for every
-        other game. Same rationale as total_rounds above."""
+        """Live target headcount for WhosThatPerson - None for every other game. Same rationale as
+        total_rounds above."""
         return None
 
     def play_round(self, guess: Any) -> PlayRoundResult:

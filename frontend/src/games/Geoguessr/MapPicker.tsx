@@ -64,7 +64,13 @@ function removeRevealLine(map: MapLibreMap) {
   if (map.getSource(REVEAL_LINE_SOURCE_ID)) map.removeSource(REVEAL_LINE_SOURCE_ID)
 }
 
-export function MapPicker({ pin, onPinChange, actual = null, disabled = false, forceExpanded = false }: MapPickerProps) {
+export function MapPicker({
+  pin,
+  onPinChange,
+  actual = null,
+  disabled = false,
+  forceExpanded = false,
+}: MapPickerProps) {
   const { resolved } = useTheme()
   const containerRef = useRef<HTMLDivElement>(null)
   const mapContainerRef = useRef<HTMLDivElement>(null)

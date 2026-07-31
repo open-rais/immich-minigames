@@ -27,7 +27,7 @@ if config.config_file_name is not None:
     # image's `alembic upgrade head` (its own process, exits right after), but this module also
     # runs in-process inside the main app (scripts/bootstrap_db_role.py, tests/test_legacy_
     # migration.py, tests/conftest.py's own alembic-driven schema setup) - there, the default
-    # would silently kill logging_setup.py's "access"/"audit" loggers (docs/TODO/LOGGING.md) for
+    # would silently kill logging_setup.py's "access"/"audit" loggers for
     # the rest of that process the moment this file is imported.
     fileConfig(config.config_file_name, disable_existing_loggers=False)
 

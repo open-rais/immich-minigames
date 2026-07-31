@@ -1,4 +1,4 @@
-"""add game_settings table (ADMIN-FEATURE.md point #4)
+"""add game_settings table
 
 One row per game_type, `values` JSONB holds only the overridden keys - a game_type with no row
 (or a key missing from `values`) falls back to that game module's hardcoded default, see

@@ -11,7 +11,7 @@ import { AuthField } from "./AuthField"
 import { ProfileAvatar, ProfileAvatarPlaceholder } from "./ProfileAvatar"
 import { useAuth } from "./useAuth"
 
-// Edit form (roadmap point E) - reached from ProfilePage's "Edit profile" button, separate from
+// Edit form - reached from ProfilePage's "Edit profile" button, separate from
 // the read-only profile view so that page can stay a plain "here's your account" display.
 // Editable username/full name, plus the cosmetic skin (avatar) picker; email stays read-only (no
 // endpoint to change it - would need re-verification this app doesn't have yet).
@@ -40,7 +40,7 @@ export function EditProfilePage() {
     }
   }, [user])
 
-  // Roadmap #H, F3 - RequireAuth (App.tsx) already guarantees a session before this page ever
+  // RequireAuth (App.tsx) already guarantees a session before this page ever
   // mounts; this is just a TypeScript narrowing helper (user: User | null), not reachable at
   // runtime.
   if (!user) return null
@@ -75,7 +75,11 @@ export function EditProfilePage() {
   }
 
   return (
-    <AuthCard title={t("auth.profile.edit")} backLabel={t("common.back")} onBack={() => navigate("/profile")}>
+    <AuthCard
+      title={t("auth.profile.edit")}
+      backLabel={t("common.back")}
+      onBack={() => navigate("/profile")}
+    >
       <div className="mb-6 flex items-center justify-center gap-3">
         {user.skin_person_id ? (
           <ProfileAvatar key={user.skin_person_id} personId={user.skin_person_id} />
@@ -115,7 +119,7 @@ export function EditProfilePage() {
           autoComplete="username"
           minLength={3}
           maxLength={32}
-          pattern="^[a-zA-Z0-9_-]+$"
+          pattern="^[a-zA-Z0-9_\-]+$"
           required
           value={username}
           onChange={(e) => {
@@ -128,7 +132,9 @@ export function EditProfilePage() {
           <PersonSearchInput excludeIds={excludeIds} onSelect={applySkin} disabled={busy} />
         </div>
         {error && <p className="text-sm font-semibold text-rose-600">{error}</p>}
-        {saved && !error && <p className="text-sm font-semibold text-emerald-600">{t("auth.profile.saved")}</p>}
+        {saved && !error && (
+          <p className="text-sm font-semibold text-emerald-600">{t("auth.profile.saved")}</p>
+        )}
         <Button type="submit" variant="primary" className="w-full py-2.5" disabled={busy}>
           {t("auth.profile.save")}
         </Button>

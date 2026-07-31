@@ -1,4 +1,4 @@
-"""Access log (docs/TODO/LOGGING.md §4.3, phase F1) - replaces uvicorn's own access log (disabled
+"""Access log - replaces uvicorn's own access log (disabled
 in logging_setup.py) with one that knows the request's user. Registered as the outermost
 middleware (last `add_middleware` call in main.py - Starlette wraps in reverse registration order,
 same reasoning as AuthMiddleware's own comment there) so it also measures/logs the 401s
@@ -21,7 +21,7 @@ _access_logger = logging.getLogger("access")
 
 
 def _path_with_query(request: Request) -> str:
-    # Query included (decision in §4.3): no endpoint today puts a secret in a query string - reset
+    # Query included: no endpoint today puts a secret in a query string - reset
     # tokens/invitation codes travel in the request body, not the URL.
     if request.url.query:
         return f"{request.url.path}?{request.url.query}"

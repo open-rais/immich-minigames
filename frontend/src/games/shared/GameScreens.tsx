@@ -11,7 +11,7 @@ import { ShareModal } from "./ShareModal"
 
 // Every game is always rendered under the /:gameType/:mode route (see menu/GameRoute.tsx), so
 // IdleScreen/FinishedScreen can read these directly instead of every one of the 5 game components
-// having to thread them down as new props. Roadmap #G - a daily game is rendered under
+// having to thread them down as new props. A daily game is rendered under
 // /daily/:gameType/:mode instead (menu/DailyGameRoute.tsx) and needs its own leaderboard route
 // (/daily/:gameType/:mode/leaderboard, menu/DailyLeaderboardPage.tsx) - detected off the actual
 // matched path rather than threading a `daily` prop through every *Game.tsx's IdleScreen/
@@ -23,12 +23,15 @@ function useLeaderboardHref(): string {
   return `${prefix}/${gameType}/${mode}/leaderboard`
 }
 
-// Roadmap #10 (rounds review) - null unless the caller says this mode has a roundsComponent
+// Null unless the caller says this mode has a roundsComponent
 // registered (see games/catalog.ts's CatalogMode) *and* passed a gameId. Whether a roundsComponent
 // exists is looked up once in GameRoute.tsx and threaded down as `hasRoundsView`, the same way
 // GameRoute already threads down `coverUrl` - not looked up here directly, which would make this
 // game-tree module import games/catalog.ts, which imports every *Game.tsx (a cycle).
-function useRoundsHref(gameId: string | undefined, hasRoundsView: boolean | undefined): string | null {
+function useRoundsHref(
+  gameId: string | undefined,
+  hasRoundsView: boolean | undefined,
+): string | null {
   const { gameType, mode } = useParams<{ gameType: string; mode: string }>()
   if (!gameId || !hasRoundsView || !gameType || !mode) return null
   return `/${gameType}/${mode}/game/${gameId}/rounds`
@@ -47,16 +50,16 @@ interface IdleScreenProps {
   onStart: () => void
   onBack: () => void
   busy: boolean
-  // Roadmap #e - whether the current player (owner or account) has an unfinished game for this
-  // mode. Both optional/default-omitted (undefined behaves like false) so this stays fully
-  // backward-compatible for any caller that hasn't wired resuming up yet. `null` (still checking)
+  // Whether the current player (owner or account) has an unfinished game for this
+  // mode. Both optional/default-omitted (undefined behaves like false), so a caller with no
+  // resuming wired up simply never shows "Continuar". `null` (still checking)
   // also renders like false - an accepted brief "plain layout, then Continue pops in" flash rather
-  // than a loading spinner, which would be a bigger UX change than this roadmap item asks for.
+  // than a loading spinner.
   hasCurrentGame?: boolean | null
   onContinue?: () => void
-  // Roadmap #G - daily games have no "Nuevo juego" concept (one attempt only, see
-  // docs/TODO/DAILY-GAMES.md decision [C]) - hides that secondary action even when hasCurrentGame
-  // is true, leaving just "Continuar". Every normal game keeps the default (true).
+  // Daily games have no "Nuevo juego" concept (one attempt only) - hides that secondary action
+  // even when hasCurrentGame is true, leaving just "Continuar". Every normal game keeps the
+  // default (true).
   allowNewGame?: boolean
 }
 
@@ -94,7 +97,12 @@ export function IdleScreen({
           </Button>
         )}
         {(!canContinue || allowNewGame) && (
-          <Button variant={canContinue ? "secondary" : "primary"} className="w-56 py-3" onClick={onStart} disabled={busy}>
+          <Button
+            variant={canContinue ? "secondary" : "primary"}
+            className="w-56 py-3"
+            onClick={onStart}
+            disabled={busy}
+          >
             {t(canContinue ? "common.newGameCta" : "common.startCta")}
           </Button>
         )}
@@ -136,21 +144,27 @@ interface FinishedScreenProps {
   // Extra content shown between the title and the score line - e.g. Immichdle's revealed target
   // person (face + name). Undefined for every other game.
   children?: ReactNode
-  // The just-finished game's id (roadmap #10) - shows a "Ver rondas" button when present *and*
+  // The just-finished game's id - shows a "Ver rondas" button when present *and*
   // hasRoundsView is true (see useRoundsHref above). Every game passes gameId now; the button
-  // itself only lights up once each phase of ROUNDS-VIEW.md registers that mode's roundsComponent.
+  // itself only lights up once a mode registers its roundsComponent.
   gameId?: string
   // Forwarded from GameComponentProps (see games/catalog.ts/GameRoute.tsx) - whether the current
   // mode has a roundsComponent registered at all.
   hasRoundsView?: boolean
-  // Roadmap #G - daily games have no replay (one attempt only) - hides "Jugar de nuevo" entirely.
+  // Daily games have no replay (one attempt only) - hides "Jugar de nuevo" entirely.
   // Every normal game keeps the default (true).
   allowPlayAgain?: boolean
-  // Roadmap #G, F6 - shows a "Compartir" button when set (daily games only, see each *Game.tsx's
+  // Shows a "Compartir" button when set (daily games only, see each *Game.tsx's
   // FinishedScreen call). gameTitle/modeTitle are passed in already-translated (the same strings
   // each *Game.tsx already computes for its own IdleScreen title) rather than looked up here via
   // games/catalog.ts, which would cycle back through every *Game.tsx (see useRoundsHref above).
-  dailyShare?: { gameId: string; gameType: string; mode: string; gameTitle: string; modeTitle: string }
+  dailyShare?: {
+    gameId: string
+    gameType: string
+    mode: string
+    gameTitle: string
+    modeTitle: string
+  }
 }
 
 export function FinishedScreen({
@@ -167,6 +181,7 @@ export function FinishedScreen({
 }: FinishedScreenProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const leaderboardHref = useLeaderboardHref()
   const roundsHref = useRoundsHref(gameId, hasRoundsView)
   const [shareBusy, setShareBusy] = useState(false)
@@ -201,12 +216,27 @@ export function FinishedScreen({
           </Button>
         )}
         {dailyShare && (
-          <Button variant="primary" className="w-56 py-3" onClick={handleShare} disabled={shareBusy}>
+          <Button
+            variant="primary"
+            className="w-56 py-3"
+            onClick={handleShare}
+            disabled={shareBusy}
+          >
             {t("daily.share.button")}
           </Button>
         )}
         {roundsHref && (
-          <Button variant="secondary" className="w-56 py-3" onClick={() => navigate(roundsHref)}>
+          <Button
+            variant="secondary"
+            className="w-56 py-3"
+            // Threads whether this game was reached via /daily/... through router state, so
+            // RoundsPage.tsx's back button can return to the right screen - there's a single
+            // rounds route for both daily and non-daily games, so this can't be told apart from
+            // the URL alone once we're already on it.
+            onClick={() =>
+              navigate(roundsHref, { state: { daily: pathname.startsWith("/daily/") } })
+            }
+          >
             {t("common.viewRounds")}
           </Button>
         )}
@@ -214,7 +244,9 @@ export function FinishedScreen({
           {t("common.leaderboards")}
         </Button>
       </div>
-      {shareError && <p className="text-sm font-semibold text-rose-600">{t("daily.share.error")}</p>}
+      {shareError && (
+        <p className="text-sm font-semibold text-rose-600">{t("daily.share.error")}</p>
+      )}
       {shareText && <ShareModal text={shareText} onClose={() => setShareText(null)} />}
     </div>
   )

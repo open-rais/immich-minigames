@@ -4,7 +4,7 @@ import { UserMenu } from "./UserMenu"
 
 // Same bar shape as Immich's own top header (height/padding/border) - no search bar/upload/
 // notifications since those features don't exist here yet. The right side is a single UserMenu
-// trigger (roadmap points B/C/D) holding profile/login, language, and theme in one popover, so
+// trigger holding profile/login, settings, and admin panel in one popover, so
 // this bar itself stays minimal.
 //
 // The surface background extends up through `env(safe-area-inset-top)` (needs `viewport-fit=cover`

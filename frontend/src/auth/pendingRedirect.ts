@@ -1,4 +1,4 @@
-// Roadmap #H, F0 (still used post-F3) - carries "where to go back to after logging in" between
+// Carries "where to go back to after logging in" between
 // whichever of AuthProvider's global 401 interceptor / RequireAuth.tsx (App.tsx's centralized
 // route guard) triggers the redirect to /login, and LoginPage, which consumes it after a
 // successful login. Originally a plain module variable rather than react-router's own

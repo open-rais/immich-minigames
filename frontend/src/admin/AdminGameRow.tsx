@@ -2,9 +2,14 @@ import { useState } from "react"
 import type { FormEvent } from "react"
 import { useTranslation } from "react-i18next"
 
-import { resetDailySettings, resetGameSettings, updateDailySettings, updateGameSettings } from "../api/admin"
+import {
+  resetDailySettings,
+  resetGameSettings,
+  updateDailySettings,
+  updateGameSettings,
+} from "../api/admin"
 import { apiErrorMessage } from "../api/errors"
-import type { DailySettingsOut, GameSettingsOut } from "../api/types"
+import type { DailySettingsOut, GameSettingsOut } from "../api/types/admin"
 import { Button } from "../games/shared/Button"
 import { SettingAccordion } from "./SettingAccordion"
 
@@ -25,8 +30,8 @@ interface AdminGameRowProps {
   title: string
   settings: GameSettingsOut
   onUpdated: (updated: GameSettingsOut) => void
-  // Roadmap #G - the same mode's daily config, rendered inline below the normal settings form
-  // (not a separate accordion) so admins see both together.
+  // The same mode's daily config, rendered inline below the normal settings form (not a separate
+  // accordion) so admins see both together.
   dailySettings: DailySettingsOut
   onDailyUpdated: (updated: DailySettingsOut) => void
 }
@@ -58,7 +63,10 @@ function SettingsForm({
       <form onSubmit={onSave} className="flex flex-col gap-4">
         {fields.map((setting) => (
           <div key={setting.key} className="flex flex-col gap-1.5">
-            <label htmlFor={`${idPrefix}-${setting.key}`} className="text-sm font-semibold text-body">
+            <label
+              htmlFor={`${idPrefix}-${setting.key}`}
+              className="text-sm font-semibold text-body"
+            >
               {settingLabel(t, setting.key)}
             </label>
             <input
@@ -78,20 +86,28 @@ function SettingsForm({
           <Button type="submit" variant="primary" className="flex-1 py-2.5" disabled={busy}>
             {t("auth.profile.save")}
           </Button>
-          <Button type="button" variant="secondary" className="flex-1 py-2.5" onClick={onReset} disabled={busy}>
+          <Button
+            type="button"
+            variant="secondary"
+            className="flex-1 py-2.5"
+            onClick={onReset}
+            disabled={busy}
+          >
             {t("admin.games.reset")}
           </Button>
         </div>
       </form>
       {error && <p className="mt-4 text-sm font-semibold text-rose-600">{error}</p>}
-      {saved && !error && <p className="mt-4 text-sm font-semibold text-emerald-600">{t("auth.profile.saved")}</p>}
+      {saved && !error && (
+        <p className="mt-4 text-sm font-semibold text-emerald-600">{t("auth.profile.saved")}</p>
+      )}
     </>
   )
 }
 
-// Admin feature (ADMIN-FEATURE.md point #4) - one numeric field per admin-configurable setting
-// (services/game_settings.py's GAME_SETTING_SPECS), plus Save/reset-to-defaults. Nested under a
-// per-game accordion (roadmap #f), one row per mode. MoreOrLess's modes have no configurable
+// One numeric field per admin-configurable setting (services/game_settings.py's
+// GAME_SETTING_SPECS), plus Save/reset-to-defaults. Nested under a per-game accordion, one row
+// per mode. MoreOrLess's modes have no configurable
 // settings today, so their rows just show a "nothing to configure" message instead of a form -
 // the daily block below still renders regardless, since a daily config always has at least one
 // setting (no_repeat_days or chain_length, see services/daily_settings.py).

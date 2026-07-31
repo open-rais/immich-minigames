@@ -21,8 +21,8 @@ the backend's `_GAMES` dict. An unknown `:gameType/:mode` bounces to `/` rather 
 
 ## API layer
 
-`api/client.ts` is a single axios instance with `baseURL: "/api/v1"` and a 10s timeout. A request
-interceptor attaches `X-Owner-Id` from `api/ownerId.ts` to every request.
+`api/client.ts` is a single axios instance with `baseURL: "/api/v1"` and a 10s timeout. The httpOnly
+session cookie rides along with every request automatically; no header wiring needed.
 
 **Everything is same-origin**: Vite proxies `/api` in dev, nginx proxies it in prod. That is why
 there is no CORS config anywhere and why the httpOnly session cookie just works with no
@@ -49,8 +49,7 @@ round count is fixed or open-ended. The component keeps only its own guess-input
 - **Reveal hold** — a timer that auto-advances to the next round (or the finished screen) after
   `revealHoldMs`, with no explicit "next" click.
 
-> MoreOrLess and Immichdle predate the hook and reimplement the same three mechanisms inline. See
-> finding #17.
+> MoreOrLess and Immichdle predate the hook and reimplement the same three mechanisms inline.
 
 Reveal-hold durations differ on purpose: MoreOrLess 1400ms, Geoguessr/Dateguessr 2400ms (the map's
 own 600ms `fitBounds` animation plus reading two numbers), Who'sThatPerson 2800ms (several faces to
@@ -114,7 +113,7 @@ literal hex in its style JSON, so `mapStyle.ts` keeps hand-synced constants.
 
 > The system is well-disciplined but not universally applied — raw Tailwind palette colors
 > (`text-rose-600`, `text-emerald-600`, `#e11d48`) appear in seven files for error/success/incorrect
-> states, with no dark-mode variant. See findings #22 and #23.
+> states, with no dark-mode variant.
 
 ## Responsive conventions
 
@@ -133,7 +132,7 @@ The in-game chrome is `fixed`-positioned and floats over the content rather than
 bottom-left. On mobile this frees the vertical space the cards need for the no-scroll budget.
 
 > Those three top badges can collide on screens narrower than ~360px, and Geoguessr's confirm
-> button overlaps the expanded map on mobile. See findings #24 and #25.
+> button overlaps the expanded map on mobile.
 
 Safe areas: `viewport-fit=cover` in the viewport meta, `pt-[env(safe-area-inset-top)]` on headers,
 and an `html` background gradient so iOS overscroll rubber-banding reveals matching colors rather
@@ -158,7 +157,7 @@ with full keyboard navigation, infinite scroll, and an auto-load loop for when a
 overflow the box. Shared by Immichdle, Who'sThatPerson and both skin pickers.
 
 > Its search effect depends on the `excludeIds` **Set by reference**. Two of the four call sites
-> `useMemo` it; two construct it inline per render. See finding #18.
+> `useMemo` it; two construct it inline per render.
 
 **`games/Geoguessr/MapPicker.tsx`** — MapLibre map, collapsed to a corner thumbnail and expanded on
 hover (desktop) / tap (mobile). Remounts entirely on theme change because MapLibre style JSON cannot
@@ -176,4 +175,4 @@ names in the picker are deliberately **not** translated — a language's own nam
 based on the active language, matching how browsers and OSes do it.
 
 Note that backend error `detail` strings are surfaced raw to the user by `api/errors.ts` and are
-English-only regardless of the selected language (finding #12).
+English-only regardless of the selected language.

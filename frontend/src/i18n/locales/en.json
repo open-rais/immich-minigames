@@ -4,7 +4,11 @@
   },
   "userMenu": {
     "trigger": "Account menu",
-    "adminPanel": "Admin",
+    "settings": "Settings",
+    "adminPanel": "Admin"
+  },
+  "settings": {
+    "title": "Settings",
     "language": "Language",
     "theme": "Theme",
     "themeOptions": {
@@ -93,18 +97,24 @@
     "title": "More or Less",
     "modes": {
       "personAssets": "Person assets",
-      "albumAssets": "Album assets"
+      "albumAssets": "Album assets",
+      "personBirthDate": "Person birth date"
     },
     "start": {
       "personAssets": "Guess whether the next person has more or fewer assets than the last. One wrong guess ends the run.",
-      "albumAssets": "Guess whether the next album has more or fewer assets than the last. One wrong guess ends the run."
+      "albumAssets": "Guess whether the next album has more or fewer assets than the last. One wrong guess ends the run.",
+      "personBirthDate": "Guess whether the next person was born before or after the last. One wrong guess ends the run."
     },
     "has": "has",
+    "bornOn": "was born on",
     "unit_one": "asset",
     "unit_other": "assets",
     "question": "Does {{name}} have more or fewer assets?",
+    "birthDateQuestion": "Was {{name}} born before or after?",
     "guessMore": "More",
     "guessLess": "Fewer",
+    "guessAfter": "After",
+    "guessBefore": "Before",
     "result": {
       "correct": "Correct!",
       "incorrect": "Not quite.",
@@ -141,7 +151,8 @@
   "immichdle": {
     "title": "Immichdle",
     "modes": {
-      "person": "Persondle"
+      "person": "Persondle",
+      "album": "Albumdle"
     },
     "start": {
       "description": "Guess the mystery person. Every guess reveals comparative clues - green means a match, amber means close, red means far off."
@@ -161,6 +172,20 @@
     "finished": {
       "won": "You got it!",
       "lost": "Game over"
+    },
+    "album": {
+      "start": {
+        "description": "Guess the mystery album. Every guess reveals comparative clues - green means a match, amber means close, red means far off."
+      },
+      "searchPlaceholder": "Search an album by name...",
+      "clues": {
+        "firstAssetDate": "First seen",
+        "assetCount": "Assets",
+        "dominantFace": "Top face",
+        "commonNames": "Common names",
+        "similarity": "Similarity",
+        "uniqueFaceCount": "Unique faces"
+      }
     }
   },
   "whosThatPerson": {

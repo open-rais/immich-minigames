@@ -1,4 +1,4 @@
-"""add games.user_id and users.skin_person_id (roadmap point E)
+"""add games.user_id and users.skin_person_id
 
 Both columns are nullable, so existing rows need no backfill: games.user_id stays null for
 anonymous play (see services/games_service.py), users.skin_person_id stays null until an account

@@ -1,15 +1,16 @@
-"""Roadmap #G (daily games) - Timeline's DailySupport implementation (games/daily.py's contract):
-generates a day's shared content, decides which ids future days must avoid repeating, and builds
-the kwargs to replay it against the *same* TimelineGame class a normal game uses (see
-docs/TODO/DECOUPLING.md decision C)."""
+"""Timeline's DailySupport implementation (games/daily.py's contract): generates a day's shared
+content, decides which ids future days must avoid repeating, and builds the kwargs to replay it
+against the *same* TimelineGame class a normal game uses."""
 
 from datetime import date, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
 from domain.asset import Asset
-from games.timeline.game import CardSnapshot, LiveContent, TimelineGame
-from services.immich_service import ImmichService
+from games.timeline.content import LiveContent
+from games.timeline.game import TimelineGame
+from games.timeline.round import CardSnapshot
+from services.immich import ContentQueries, ImmichService
 from services.ml_service import MLService
 
 
@@ -59,7 +60,7 @@ class ScriptedContent:
         return self._next_index < len(self._cards)
 
 
-def build_spec(mode: str, immich_service: ImmichService, settings: dict[str, float]) -> dict[str, Any]:
+def build_spec(mode: str, immich_service: ContentQueries, settings: dict[str, float]) -> dict[str, Any]:
     # TimelineGame.has_next_round() checks the *previous* round's score_delta (a real guess) -
     # meaningless for a precomputed chain, so this drives create_next_round() directly for a fixed
     # length instead, the same reason (and shape) as games/more_or_less/daily.py's own build_spec.

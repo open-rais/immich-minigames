@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react"
 
-// Shared by IncognitoPhoto.tsx's live FaceBox and FaceBoxReadOnly.tsx's rounds-review counterpart
-// (ROUNDS-VIEW.md roadmap #10) - the box geometry itself, no popover/anchor/tap logic (that stays
+// Shared by IncognitoPhoto.tsx's live FaceBox and FaceBoxReadOnly.tsx's rounds-review counterpart -
+// the box geometry itself, no popover/anchor/tap logic (that stays
 // in IncognitoPhoto.tsx, which the review doesn't need at all).
 
 // Only the box-geometry fields are touched here - both HiddenFaceOut and any future caller already

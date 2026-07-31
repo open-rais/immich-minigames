@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next"
 
 import { revokeInvite } from "../api/admin"
 import { apiErrorMessage } from "../api/errors"
-import type { InviteOut, InviteStatus } from "../api/types"
+import type { InviteOut, InviteStatus } from "../api/types/admin"
 import { Button } from "../games/shared/Button"
 
 // Same green/amber/red semantic tokens the game clues already use (Immichdle/MoreOrLess) - reused
@@ -19,7 +19,7 @@ interface AdminInviteRowProps {
   onRevoked: (id: string) => void
 }
 
-// Roadmap #H, F1 - one row per invite in AdminInvitesSection.tsx's list. Only a pending invite can
+// One row per invite in AdminInvitesSection.tsx's list. Only a pending invite can
 // be revoked (mirrors backend/src/services/invite_service.py's revoke_invite - already-used ones
 // are history, not actionable).
 export function AdminInviteRow({ invite, onRevoked }: AdminInviteRowProps) {
@@ -29,8 +29,12 @@ export function AdminInviteRow({ invite, onRevoked }: AdminInviteRowProps) {
 
   const dateLabel =
     invite.status === "used" && invite.used_at
-      ? t("admin.invites.usedAt", { date: new Date(invite.used_at).toLocaleDateString(i18n.language) })
-      : t("admin.invites.expiresAt", { date: new Date(invite.expires_at).toLocaleDateString(i18n.language) })
+      ? t("admin.invites.usedAt", {
+          date: new Date(invite.used_at).toLocaleDateString(i18n.language),
+        })
+      : t("admin.invites.expiresAt", {
+          date: new Date(invite.expires_at).toLocaleDateString(i18n.language),
+        })
 
   async function handleRevoke() {
     setBusy(true)
@@ -54,7 +58,12 @@ export function AdminInviteRow({ invite, onRevoked }: AdminInviteRowProps) {
         {error && <p className="mt-1 text-xs font-semibold text-rose-600">{error}</p>}
       </div>
       {invite.status === "pending" && (
-        <Button variant="secondary" className="px-4 py-2 text-sm" onClick={handleRevoke} disabled={busy}>
+        <Button
+          variant="secondary"
+          className="px-4 py-2 text-sm"
+          onClick={handleRevoke}
+          disabled={busy}
+        >
           {t("admin.invites.revoke")}
         </Button>
       )}

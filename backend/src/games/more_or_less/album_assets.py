@@ -1,13 +1,14 @@
-"""albumAssets mode - see games/more_or_less/game.py's CandidateProvider."""
+"""albumAssets mode - see games/more_or_less/content.py's CandidateProvider."""
 
 from uuid import UUID
 
-from games.more_or_less.game import CandidateProvider, EntitySnapshot
-from services.immich_service import ImmichService
+from games.more_or_less.content import CandidateProvider
+from games.more_or_less.round import EntitySnapshot
+from services.immich import ContentQueries
 
 
 class AlbumAssetsProvider(CandidateProvider):
-    def __init__(self, immich_service: ImmichService) -> None:
+    def __init__(self, immich_service: ContentQueries) -> None:
         self._immich_service = immich_service
 
     def sample(self, *, limit: int, exclude_ids: frozenset[UUID]) -> list[EntitySnapshot]:

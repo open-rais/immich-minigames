@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next"
 import { createPasswordReset, updateUser, updateUserSkin } from "../api/admin"
 import { apiErrorMessage } from "../api/errors"
 import { personThumbnailUrl } from "../api/games"
-import type { User } from "../api/types"
+import type { User } from "../api/types/auth"
 import { AuthField } from "../auth/AuthField"
 import { Button } from "../games/shared/Button"
 import { PersonAvatar } from "../games/shared/PersonAvatar"
@@ -20,7 +20,7 @@ interface AdminUserRowProps {
   onUpdated: (updated: User) => void
 }
 
-// Admin feature (ADMIN-FEATURE.md point #3) - editing (full name/username/skin) for an arbitrary
+// Editing (full name/username/skin) for an arbitrary
 // account, mirroring auth/EditProfilePage.tsx's fields and flow but against api/admin.ts instead
 // of the self-service api/auth.ts, and operating on the `user` prop instead of useAuth()'s own
 // account. The row's own skin doubles as the accordion header's icon (left of the user's name),
@@ -83,7 +83,12 @@ export function AdminUserRow({ user, onUpdated }: AdminUserRowProps) {
   return (
     <SettingAccordion
       nested
-      icon={<PersonAvatar src={user.skin_person_id ? personThumbnailUrl(user.skin_person_id) : null} alt="" />}
+      icon={
+        <PersonAvatar
+          src={user.skin_person_id ? personThumbnailUrl(user.skin_person_id) : null}
+          alt=""
+        />
+      }
       title={user.full_name}
       description={user.email}
     >
@@ -105,7 +110,7 @@ export function AdminUserRow({ user, onUpdated }: AdminUserRowProps) {
           label={t("auth.fields.username")}
           minLength={3}
           maxLength={32}
-          pattern="^[a-zA-Z0-9_-]+$"
+          pattern="^[a-zA-Z0-9_\-]+$"
           required
           value={username}
           onChange={(e) => {
@@ -133,13 +138,20 @@ export function AdminUserRow({ user, onUpdated }: AdminUserRowProps) {
           </div>
         </div>
         {error && <p className="text-sm font-semibold text-rose-600">{error}</p>}
-        {saved && !error && <p className="text-sm font-semibold text-emerald-600">{t("auth.profile.saved")}</p>}
+        {saved && !error && (
+          <p className="text-sm font-semibold text-emerald-600">{t("auth.profile.saved")}</p>
+        )}
         <Button type="submit" variant="primary" className="w-full py-2.5" disabled={busy}>
           {t("auth.profile.save")}
         </Button>
       </form>
 
-      <Button variant="secondary" className="mt-3 w-full py-2.5" onClick={handleResetPassword} disabled={busy}>
+      <Button
+        variant="secondary"
+        className="mt-3 w-full py-2.5"
+        onClick={handleResetPassword}
+        disabled={busy}
+      >
         {t("auth.profile.resetPassword")}
       </Button>
 

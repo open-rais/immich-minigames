@@ -1,6 +1,6 @@
 import axios from "axios"
 
-// Roadmap #H, F0 - lets a specific call opt out of AuthProvider.tsx's global 401-redirect
+// Lets a specific call opt out of AuthProvider.tsx's global 401-redirect
 // interceptor (auth.ts's login/getMe: a 401 there is normal control flow, not an expired session).
 declare module "axios" {
   export interface AxiosRequestConfig {

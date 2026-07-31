@@ -7,33 +7,40 @@ back `game_type` in the guess body would be redundant - and worse, if it disagre
 actual type, nothing would catch the mismatch before it reached the domain layer as a
 wrongly-shaped guess.
 
+`_round_out_tag` (not a plain `Field(discriminator="game_type")`) exists because Immichdle now has
+two modes with two different round shapes sharing one `game_type` ("immichdle") - a plain
+single-field discriminator can't map one literal value to two classes (pydantic raises at class-
+definition time: "Value 'immichdle' for discriminator 'game_type' mapped to multiple choices").
+Both `ImmichdleRoundOut`/`AlbumdleRoundOut` carry a `mode` field for exactly this reason; every
+other game/mode still discriminates on `game_type` alone.
+
 Everything that doesn't spread across every game/mode lives in a sibling module instead
-(api/dto/persons.py, records.py, leaderboard.py, daily.py, admin.py, config.py) - this file used to
-hold all of it, split apart since each section had nothing to do with the others beyond living in
-the same file.
+(api/dto/persons.py, albums.py, records.py, leaderboard.py, daily.py, admin.py, config.py),
+keeping this file scoped to what's genuinely cross-game.
 """
 
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Annotated, Any, Union
+from typing import Annotated, Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Discriminator, Tag
 
 from api.dto.dateguessr import DateguessrPlayRoundIn, DateguessrRoundOut
 from api.dto.geoguessr import GeoguessrPlayRoundIn, GeoguessrRoundOut
-from api.dto.immichdle import ImmichdlePlayRoundIn, ImmichdleRoundOut
+from api.dto.immichdle import AlbumdlePlayRoundIn, AlbumdleRoundOut, ImmichdlePlayRoundIn, ImmichdleRoundOut
 from api.dto.more_or_less import MoreOrLessPlayRoundIn, MoreOrLessRoundOut
 from api.dto.timeline import TimelinePlayRoundIn, TimelineRoundOut
 from api.dto.whos_that_person import WhosThatPersonPlayRoundIn, WhosThatPersonRoundOut
 from games.base import BaseGame, BaseRound
 from games.dateguessr import DateguessrRound
 from games.geoguessr import GeoguessrRound
-from games.immichdle import ImmichdleGame, ImmichdleRound
+from games.immichdle import AlbumdleGame, AlbumdleRound, PersondleGame, PersondleRound
 from games.more_or_less import MoreOrLessRound
 from games.timeline import TimelineRound
 from games.whos_that_person import WhosThatPersonRound
-from services.games_service import RecentGame, UnsupportedGameError
+from services.errors import UnsupportedGameError
+from services.scores_service import RecentGame
 
 
 class CreateGameIn(BaseModel):
@@ -41,26 +48,36 @@ class CreateGameIn(BaseModel):
     mode: str
 
 
+def _round_out_tag(v: Any) -> str:
+    """Discriminator callable for RoundOut - see module docstring. Every game_type except
+    "immichdle" is tagged by game_type alone; "immichdle" is tagged by "immichdle:<mode>" since
+    that's the one game_type shared by two differently-shaped round DTOs."""
+    game_type = v.get("game_type") if isinstance(v, dict) else v.game_type
+    if game_type != "immichdle":
+        return game_type
+    mode = v.get("mode") if isinstance(v, dict) else v.mode
+    return f"immichdle:{mode}"
+
+
 RoundOut = Annotated[
-    Union[
-        MoreOrLessRoundOut,
-        GeoguessrRoundOut,
-        DateguessrRoundOut,
-        ImmichdleRoundOut,
-        WhosThatPersonRoundOut,
-        TimelineRoundOut,
-    ],
-    Field(discriminator="game_type"),
+    Annotated[MoreOrLessRoundOut, Tag("more-or-less")]
+    | Annotated[GeoguessrRoundOut, Tag("geoguessr")]
+    | Annotated[DateguessrRoundOut, Tag("dateguessr")]
+    | Annotated[ImmichdleRoundOut, Tag("immichdle:person")]
+    | Annotated[AlbumdleRoundOut, Tag("immichdle:album")]
+    | Annotated[WhosThatPersonRoundOut, Tag("whos-that-person")]
+    | Annotated[TimelineRoundOut, Tag("timeline")],
+    Discriminator(_round_out_tag),
 ]
 
 
 @dataclass(frozen=True)
 class _RoundSpec:
     """One registry entry per concrete Round class - single source of truth for what this API
-    layer needs per game (used to be three separate structures that had to stay in sync: a
-    (game_type, mode)-keyed guess-schema dict here, an isinstance ladder in round_out_from_round
-    picking the right *RoundOut DTO, and another isinstance check in PlayRoundOut.from_answered for
-    whether "correct" is even a meaningful concept for this game)."""
+    layer needs per game, avoiding three separate structures that would otherwise have to stay in
+    sync: a (game_type, mode)-keyed guess-schema dict here, an isinstance ladder in
+    round_out_from_round picking the right *RoundOut DTO, and another isinstance check in
+    PlayRoundOut.from_answered for whether "correct" is even a meaningful concept for this game."""
 
     guess_schema: type[BaseModel]
     out_class: type[BaseModel]
@@ -73,10 +90,9 @@ _ROUND_SPECS: dict[type[BaseRound], _RoundSpec] = {
     MoreOrLessRound: _RoundSpec(MoreOrLessPlayRoundIn, MoreOrLessRoundOut, has_binary_correctness=True),
     GeoguessrRound: _RoundSpec(GeoguessrPlayRoundIn, GeoguessrRoundOut, has_binary_correctness=False),
     DateguessrRound: _RoundSpec(DateguessrPlayRoundIn, DateguessrRoundOut, has_binary_correctness=False),
-    ImmichdleRound: _RoundSpec(ImmichdlePlayRoundIn, ImmichdleRoundOut, has_binary_correctness=True),
-    WhosThatPersonRound: _RoundSpec(
-        WhosThatPersonPlayRoundIn, WhosThatPersonRoundOut, has_binary_correctness=True
-    ),
+    PersondleRound: _RoundSpec(ImmichdlePlayRoundIn, ImmichdleRoundOut, has_binary_correctness=True),
+    AlbumdleRound: _RoundSpec(AlbumdlePlayRoundIn, AlbumdleRoundOut, has_binary_correctness=True),
+    WhosThatPersonRound: _RoundSpec(WhosThatPersonPlayRoundIn, WhosThatPersonRoundOut, has_binary_correctness=True),
     TimelineRound: _RoundSpec(TimelinePlayRoundIn, TimelineRoundOut, has_binary_correctness=True),
 }
 
@@ -95,6 +111,7 @@ def round_out_from_round(
     | GeoguessrRoundOut
     | DateguessrRoundOut
     | ImmichdleRoundOut
+    | AlbumdleRoundOut
     | WhosThatPersonRoundOut
     | TimelineRoundOut
 ):
@@ -118,28 +135,37 @@ class GameOut(BaseModel):
     score: int
     finished: bool
     rounds: list[RoundOut]
-    # Only ever populated for a finished Immichdle game (see ImmichdleGame.target) - the mystery
+    # Only ever populated for a finished Persondle game (see PersondleGame.target) - the mystery
     # person is revealed once the game is over, win or lose. Null for every other game/mode and for
-    # an Immichdle game still in progress, where revealing it would be a straight cheat.
+    # a Persondle game still in progress, where revealing it would be a straight cheat.
     target_person_id: UUID | None = None
     target_person_name: str | None = None
-    # Roadmap #10 (rounds review) - the target row in the post-game GuessTable (ROUNDS-VIEW.md §4.6).
-    # Same redaction condition as target_person_id/name above - PersonSnapshot already carries these,
-    # just not previously surfaced here.
+    # The target row in the post-game GuessTable. Same redaction condition as target_person_id/name
+    # above - PersonSnapshot already carries these; surfaced here too for that table.
     target_asset_count: int | None = None
     target_birth_date: date | None = None
     target_first_asset_date: date | None = None
-    # Admin feature (ADMIN-FEATURE.md point #4) - the *live* configured total for this game
+    # Same role as target_person_* above, but for a finished Albumdle game (roadmap #14) -
+    # AlbumSnapshot's own fields, surfaced for that mode's post-game GuessTable target row.
+    target_album_id: UUID | None = None
+    target_album_name: str | None = None
+    target_album_asset_count: int | None = None
+    target_album_first_asset_date: date | None = None
+    target_album_dominant_person_id: UUID | None = None
+    target_album_dominant_person_name: str | None = None
+    target_album_dominant_extra_count: int | None = None
+    target_album_unique_named_person_count: int | None = None
+    # The *live* configured total for this game
     # instance (BaseGame.total_rounds/total_people, overridden by Geoguessr/Dateguessr and
     # WhosThatPerson respectively), so the frontend's round counter (e.g. "Round 2 of 5") reflects
     # an admin override instead of a hardcoded display-only constant. Null for every other game,
     # which has no such fixed/counted total.
     total_rounds: int | None = None
     total_people: int | None = None
-    # Roadmap #G - set only for a daily-challenge game (see games/base.py's BaseGame.
+    # Set only for a daily-challenge game (see games/base.py's BaseGame.
     # daily_challenge_date), null for every normal game. Lets the frontend tell a resumed/loaded
     # game is a daily one on a fresh page load (no separate "Nuevo juego" affordance, no re-offer
-    # to play) and titles the rounds-review page (docs/TODO/DAILY-GAMES.md §5).
+    # to play) and titles the rounds-review page.
     daily_challenge_date: date | None = None
 
     @classmethod
@@ -149,12 +175,32 @@ class GameOut(BaseModel):
         target_asset_count = None
         target_birth_date = None
         target_first_asset_date = None
-        if isinstance(game, ImmichdleGame) and game.finished:
+        if isinstance(game, PersondleGame) and game.finished:
             target_id = game.target.id
             target_name = game.target.name
             target_asset_count = game.target.asset_count
             target_birth_date = game.target.birth_date
             target_first_asset_date = game.target.first_asset_date
+
+        target_album_id = None
+        target_album_name = None
+        target_album_asset_count = None
+        target_album_first_asset_date = None
+        target_album_dominant_person_id = None
+        target_album_dominant_person_name = None
+        target_album_dominant_extra_count = None
+        target_album_unique_named_person_count = None
+        if isinstance(game, AlbumdleGame) and game.finished:
+            target = game.target
+            target_album_id = target.id
+            target_album_name = target.name
+            target_album_asset_count = target.asset_count
+            target_album_first_asset_date = target.first_asset_date
+            target_album_dominant_person_id = target.dominant_person_ids[0] if target.dominant_person_ids else None
+            target_album_dominant_person_name = target.dominant_person_name
+            target_album_dominant_extra_count = max(0, len(target.dominant_person_ids) - 1)
+            target_album_unique_named_person_count = target.unique_named_person_count
+
         return cls(
             id=game.id,
             type=game.game_type,
@@ -167,13 +213,21 @@ class GameOut(BaseModel):
             target_asset_count=target_asset_count,
             target_birth_date=target_birth_date,
             target_first_asset_date=target_first_asset_date,
+            target_album_id=target_album_id,
+            target_album_name=target_album_name,
+            target_album_asset_count=target_album_asset_count,
+            target_album_first_asset_date=target_album_first_asset_date,
+            target_album_dominant_person_id=target_album_dominant_person_id,
+            target_album_dominant_person_name=target_album_dominant_person_name,
+            target_album_dominant_extra_count=target_album_dominant_extra_count,
+            target_album_unique_named_person_count=target_album_unique_named_person_count,
             total_rounds=game.total_rounds,
             total_people=game.total_people,
             daily_challenge_date=game.daily_challenge_date,
         )
 
 
-# -- resumable games (roadmap point #e, see GamesService.get_current_game/get_recent_games) ---
+# -- resumable games (see GamesService.get_current_game/get_recent_games) ---
 
 
 class CurrentGameOut(BaseModel):
@@ -194,7 +248,7 @@ class RecentGameOut(BaseModel):
     finished: bool
     abandoned: bool
     created_at: datetime
-    # Roadmap #G - whether this was a daily-challenge game (see GamesService.get_recent_games).
+    # Whether this was a daily-challenge game (see GamesService.get_recent_games).
     is_daily: bool
 
     @classmethod

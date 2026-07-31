@@ -9,16 +9,23 @@ from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
 from persistence.base import get_session_factory
+from persistence.games_repository import GameRepository
+from services.daily_challenge_service import DailyChallengeService
+from services.daily_games_service import DailyGamesService
+from services.daily_settings import DailySettingsService
+from services.game_factory import GameFactory
+from services.game_settings_service import GameSettingsService
 from services.games_service import GamesService
-from services.immich_service import ImmichService
+from services.immich import ImmichService
 from services.invite_service import InviteService
 from services.ml_service import MLService
+from services.scores_service import ScoresService
 
 _session_factory = get_session_factory()
 
 
 def get_db_session(request: Request) -> Iterator[Session]:
-    # Roadmap #H, F3 - api/auth_middleware.py resolves request.state.user via its own session
+    # api/auth_middleware.py resolves request.state.user via its own session
     # *before* routing even happens, and stashes that same session on request.state.db_session.
     # Reusing it here (rather than opening a second one) isn't just an optimization: state.user is
     # a UserModel loaded on that session, and a route that mutates it (e.g. change_password) needs
@@ -38,7 +45,7 @@ def get_db_session(request: Request) -> Iterator[Session]:
         session.close()
 
 
-# Moved here (from api/api.py) so api/auth_api.py can also depend on ImmichService (to validate a
+# Here (not api/api.py) so api/auth_api.py can also depend on ImmichService (to validate a
 # skin's person_id, see PUT /auth/me/skin) without a circular import - api.py already imports
 # auth_api.py's router, so the reverse import would loop.
 @lru_cache(maxsize=1)
@@ -51,20 +58,45 @@ def get_ml_service() -> MLService:
     return MLService()
 
 
-# Roadmap #H, F1/F2 - moved here (from api/admin_invites_api.py, where it started) so
-# api/admin_api.py can also depend on it (the new password-reset endpoint, F2) without
-# admin_api.py <-> admin_invites_api.py becoming a circular import (admin_invites_api.py already
-# imports get_current_admin_user *from* admin_api.py).
+# Here (not api/admin_invites_api.py) so api/admin_api.py can also depend on it (the
+# password-reset endpoint) without admin_api.py <-> admin_invites_api.py becoming a circular
+# import (admin_invites_api.py already imports get_current_admin_user *from* admin_api.py).
 def get_invite_service(session: Annotated[Session, Depends(get_db_session)]) -> InviteService:
     return InviteService(session)
 
 
-# Roadmap #G - moved here (rather than staying private to api/api.py, as it originally was) so
-# api/daily_api.py can also depend on it without api.py <-> daily_api.py becoming a circular import
-# (api.py already imports daily_api.py's router to mount it).
-def get_games_service(
+def get_game_repository(session: Annotated[Session, Depends(get_db_session)]) -> GameRepository:
+    return GameRepository(session)
+
+
+def get_game_factory(
     session: Annotated[Session, Depends(get_db_session)],
     immich_service: Annotated[ImmichService, Depends(get_immich_service)],
     ml_service: Annotated[MLService, Depends(get_ml_service)],
+) -> GameFactory:
+    return GameFactory(session, immich_service, ml_service, GameSettingsService(session))
+
+
+# Here (not private to api/api.py) so api/daily_api.py can also depend on it without api.py <->
+# daily_api.py becoming a circular import (api.py already imports daily_api.py's router to mount
+# it).
+def get_games_service(
+    repository: Annotated[GameRepository, Depends(get_game_repository)],
+    factory: Annotated[GameFactory, Depends(get_game_factory)],
 ) -> GamesService:
-    return GamesService(session, immich_service, ml_service)
+    return GamesService(repository, factory)
+
+
+def get_daily_games_service(
+    session: Annotated[Session, Depends(get_db_session)],
+    repository: Annotated[GameRepository, Depends(get_game_repository)],
+    factory: Annotated[GameFactory, Depends(get_game_factory)],
+    immich_service: Annotated[ImmichService, Depends(get_immich_service)],
+) -> DailyGamesService:
+    return DailyGamesService(
+        repository, factory, DailySettingsService(session), DailyChallengeService(session, immich_service)
+    )
+
+
+def get_scores_service(repository: Annotated[GameRepository, Depends(get_game_repository)]) -> ScoresService:
+    return ScoresService(repository)

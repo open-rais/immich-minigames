@@ -1,7 +1,7 @@
 import { personThumbnailUrl } from "../../api/games"
 import { PersonAvatar } from "../shared/PersonAvatar"
 
-// Identifies one person within a GuessTable row (a guess, or - roadmap #10 - the target row) - face
+// Identifies one person within a GuessTable row (a guess, or the target row) - face
 // above name on mobile (a compact vertical header - tried face-beside-name there too, but PERSON_COL
 // is too narrow on mobile for that to breathe), face beside name on desktop (where PERSON_COL now
 // grows to fill leftover width - see guessTableColumns.ts - so there's room to spare).

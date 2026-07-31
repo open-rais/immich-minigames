@@ -4,7 +4,11 @@
   },
   "userMenu": {
     "trigger": "Menú de cuenta",
-    "adminPanel": "Admin",
+    "settings": "Ajustes",
+    "adminPanel": "Admin"
+  },
+  "settings": {
+    "title": "Ajustes",
     "language": "Idioma",
     "theme": "Tema",
     "themeOptions": {
@@ -93,18 +97,24 @@
     "title": "More or Less",
     "modes": {
       "personAssets": "Fotos de personas",
-      "albumAssets": "Fotos de álbumes"
+      "albumAssets": "Fotos de álbumes",
+      "personBirthDate": "Fecha de nacimiento"
     },
     "start": {
       "personAssets": "Adivina si la siguiente persona tiene más o menos fotos que la anterior. Una respuesta incorrecta termina la partida.",
-      "albumAssets": "Adivina si el siguiente álbum tiene más o menos fotos que el anterior. Una respuesta incorrecta termina la partida."
+      "albumAssets": "Adivina si el siguiente álbum tiene más o menos fotos que el anterior. Una respuesta incorrecta termina la partida.",
+      "personBirthDate": "Adivina si la siguiente persona nació antes o después que la anterior. Una respuesta incorrecta termina la partida."
     },
     "has": "tiene",
+    "bornOn": "nació el",
     "unit_one": "foto",
     "unit_other": "fotos",
     "question": "¿{{name}} tiene más o menos fotos?",
+    "birthDateQuestion": "¿{{name}} nació antes o después?",
     "guessMore": "Más",
     "guessLess": "Menos",
+    "guessAfter": "Después",
+    "guessBefore": "Antes",
     "result": {
       "correct": "¡Correcto!",
       "incorrect": "No es así.",
@@ -141,7 +151,8 @@
   "immichdle": {
     "title": "Immichdle",
     "modes": {
-      "person": "Persondle"
+      "person": "Persondle",
+      "album": "Albumdle"
     },
     "start": {
       "description": "Adivina a la persona misteriosa. Cada intento revela pistas comparativas - verde es coincidencia, amarillo es cerca, rojo es lejos."
@@ -161,6 +172,20 @@
     "finished": {
       "won": "¡La adivinaste!",
       "lost": "Juego terminado"
+    },
+    "album": {
+      "start": {
+        "description": "Adivina el álbum misterioso. Cada intento revela pistas comparativas - verde es coincidencia, amarillo es cerca, rojo es lejos."
+      },
+      "searchPlaceholder": "Busca un álbum por nombre...",
+      "clues": {
+        "firstAssetDate": "Primera foto",
+        "assetCount": "Fotos",
+        "dominantFace": "Cara principal",
+        "commonNames": "Nombres en común",
+        "similarity": "Similitud",
+        "uniqueFaceCount": "Caras únicas"
+      }
     }
   },
   "whosThatPerson": {

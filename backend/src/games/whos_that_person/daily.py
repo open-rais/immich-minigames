@@ -1,13 +1,14 @@
-"""Roadmap #G (daily games) - Who'sThatPerson's DailySupport implementation (games/daily.py's
-contract): generates a day's shared content, decides which ids future days must avoid repeating,
-and builds the kwargs to replay it against the *same* WhosThatPersonGame class a normal game uses
-(see docs/TODO/DECOUPLING.md decision C)."""
+"""Who'sThatPerson's DailySupport implementation (games/daily.py's contract): generates a day's
+shared content, decides which ids future days must avoid repeating, and builds the kwargs to
+replay it against the *same* WhosThatPersonGame class a normal game uses."""
 
 from typing import Any
 from uuid import UUID, uuid4
 
-from games.whos_that_person.game import HiddenFace, LiveContent, WhosThatPersonGame
-from services.immich_service import ImmichService
+from games.whos_that_person.content import LiveContent
+from games.whos_that_person.game import WhosThatPersonGame
+from games.whos_that_person.round import HiddenFace
+from services.immich import ContentQueries, ImmichService
 from services.ml_service import MLService
 
 
@@ -33,7 +34,7 @@ class ScriptedContent:
         return UUID(round_spec["asset_id"]), [HiddenFace.from_dict(f) for f in round_spec["faces"]]
 
 
-def build_spec(mode: str, immich_service: ImmichService, settings: dict[str, float]) -> dict[str, Any]:
+def build_spec(mode: str, immich_service: ContentQueries, settings: dict[str, float]) -> dict[str, Any]:
     game = WhosThatPersonGame.start(
         id=uuid4(), immich_service=immich_service, content=LiveContent(immich_service), settings=settings
     )
@@ -41,12 +42,11 @@ def build_spec(mode: str, immich_service: ImmichService, settings: dict[str, flo
     while sum(len(r.faces) for r in game.rounds) < total_people:
         if not game.has_next_round():
             raise ValueError(f"not enough named faces to fill {total_people} daily people for whos-that-person")
-        # create_next_round() reads the previous round's ending_streak (normally set by
-        # calculate_score() during real play) to seed the next round's incoming_streak - streak is
-        # per-player *scoring* state, never part of the shared spec content itself
-        # (WhosThatPersonRound.asset_id/faces don't depend on it), so a placeholder unblocks the
-        # picking logic without affecting what actually gets picked.
-        game.current_round.ending_streak = 0
+        # create_next_round() reads the previous round's ending_streak to seed the next round's
+        # incoming_streak - it's 0 here since these rounds are never played (no guess set) while
+        # building the spec. Streak is per-player *scoring* state, never part of the shared spec
+        # content itself (WhosThatPersonRound.asset_id/faces don't depend on it), so this doesn't
+        # affect what actually gets picked.
         game.rounds.append(game.create_next_round())
     return {
         "rounds": [
@@ -58,7 +58,8 @@ def build_spec(mode: str, immich_service: ImmichService, settings: dict[str, flo
 
 def exclusion_ids(spec: dict[str, Any]) -> set[UUID]:
     # Only the shown asset, not the hidden faces' person ids - get_random_asset_with_named_faces
-    # only supports excluding assets (see services/daily_service.py's _ExcludingImmichService), and
+    # only supports excluding assets (see services/daily_challenge_service.py's
+    # _ExcludingImmichService), and
     # repeating the same asset is what actually gives away/duplicates a round; a person reappearing
     # in a *different* photo is fine.
     return {UUID(round_["asset_id"]) for round_ in spec["rounds"]}

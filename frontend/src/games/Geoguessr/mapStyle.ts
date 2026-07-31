@@ -13,7 +13,7 @@ import type { ResolvedTheme } from "../../theme/themeContext"
  *
  * Colors are the hex equivalents of index.css's `--color-*` tokens, light and dark (MapLibre's
  * style JSON needs literal color strings, not CSS `var()`) - kept in sync by hand, same
- * manual-sync convention already used for api/types.ts vs backend/src/api/schemas.py. Roads/rail/
+ * manual-sync convention already used for api/types.ts vs backend/src/api/dto/. Roads/rail/
  * aeroway layers and the sprite-based place-dot icons are dropped entirely (irrelevant clutter at
  * the world-guess zoom levels this map is used at) - only land/water/boundaries/place labels
  * remain.
@@ -114,7 +114,11 @@ export function buildGeoguessrMapStyle(resolved: ResolvedTheme): StyleSpecificat
         source: "openmaptiles",
         "source-layer": "building",
         minzoom: 12,
-        paint: { "fill-antialias": true, "fill-color": MAP_LAND, "fill-outline-color": MAP_LAND_DARK },
+        paint: {
+          "fill-antialias": true,
+          "fill-color": MAP_LAND,
+          "fill-outline-color": MAP_LAND_DARK,
+        },
       },
       {
         id: "boundary_2",
@@ -175,7 +179,12 @@ export function buildGeoguessrMapStyle(resolved: ResolvedTheme): StyleSpecificat
           "text-font": ["Noto Sans Bold"],
           "text-size": ["interpolate", ["linear"], ["zoom"], 1, 9, 4, 17],
         },
-        paint: { "text-color": INK, "text-halo-blur": 1, "text-halo-color": MAP_BG, "text-halo-width": 1 },
+        paint: {
+          "text-color": INK,
+          "text-halo-blur": 1,
+          "text-halo-color": MAP_BG,
+          "text-halo-width": 1,
+        },
       },
       {
         id: "label_country_2",
@@ -188,7 +197,12 @@ export function buildGeoguessrMapStyle(resolved: ResolvedTheme): StyleSpecificat
           "text-font": ["Noto Sans Bold"],
           "text-size": ["interpolate", ["linear"], ["zoom"], 2, 9, 5, 17],
         },
-        paint: { "text-color": INK, "text-halo-blur": 1, "text-halo-color": MAP_BG, "text-halo-width": 1 },
+        paint: {
+          "text-color": INK,
+          "text-halo-blur": 1,
+          "text-halo-color": MAP_BG,
+          "text-halo-width": 1,
+        },
       },
       {
         id: "label_country_3",
@@ -202,7 +216,12 @@ export function buildGeoguessrMapStyle(resolved: ResolvedTheme): StyleSpecificat
           "text-font": ["Noto Sans Bold"],
           "text-size": ["interpolate", ["linear"], ["zoom"], 3, 9, 7, 17],
         },
-        paint: { "text-color": INK, "text-halo-blur": 1, "text-halo-color": MAP_BG, "text-halo-width": 1 },
+        paint: {
+          "text-color": INK,
+          "text-halo-blur": 1,
+          "text-halo-color": MAP_BG,
+          "text-halo-width": 1,
+        },
       },
       {
         id: "label_state",
@@ -218,7 +237,12 @@ export function buildGeoguessrMapStyle(resolved: ResolvedTheme): StyleSpecificat
           "text-size": ["interpolate", ["linear"], ["zoom"], 5, 10, 8, 14],
           "text-transform": "uppercase",
         },
-        paint: { "text-color": MUTED, "text-halo-blur": 1, "text-halo-color": MAP_BG, "text-halo-width": 1 },
+        paint: {
+          "text-color": MUTED,
+          "text-halo-blur": 1,
+          "text-halo-color": MAP_BG,
+          "text-halo-width": 1,
+        },
       },
       {
         id: "label_city",
@@ -232,7 +256,12 @@ export function buildGeoguessrMapStyle(resolved: ResolvedTheme): StyleSpecificat
           "text-font": ["Noto Sans Regular"],
           "text-size": ["interpolate", ["exponential", 1.2], ["zoom"], 4, 11, 7, 13, 11, 18],
         },
-        paint: { "text-color": INK, "text-halo-blur": 1, "text-halo-color": MAP_BG, "text-halo-width": 1 },
+        paint: {
+          "text-color": INK,
+          "text-halo-blur": 1,
+          "text-halo-color": MAP_BG,
+          "text-halo-width": 1,
+        },
       },
       {
         id: "label_city_capital",
@@ -246,7 +275,12 @@ export function buildGeoguessrMapStyle(resolved: ResolvedTheme): StyleSpecificat
           "text-font": ["Noto Sans Bold"],
           "text-size": ["interpolate", ["exponential", 1.2], ["zoom"], 4, 12, 7, 14, 11, 20],
         },
-        paint: { "text-color": INK, "text-halo-blur": 1, "text-halo-color": MAP_BG, "text-halo-width": 1 },
+        paint: {
+          "text-color": INK,
+          "text-halo-blur": 1,
+          "text-halo-color": MAP_BG,
+          "text-halo-width": 1,
+        },
       },
       {
         id: "label_town",
@@ -260,7 +294,12 @@ export function buildGeoguessrMapStyle(resolved: ResolvedTheme): StyleSpecificat
           "text-font": ["Noto Sans Regular"],
           "text-size": ["interpolate", ["exponential", 1.2], ["zoom"], 7, 12, 11, 14],
         },
-        paint: { "text-color": BODY, "text-halo-blur": 1, "text-halo-color": MAP_BG, "text-halo-width": 1 },
+        paint: {
+          "text-color": BODY,
+          "text-halo-blur": 1,
+          "text-halo-color": MAP_BG,
+          "text-halo-width": 1,
+        },
       },
       {
         id: "label_other",
@@ -275,7 +314,12 @@ export function buildGeoguessrMapStyle(resolved: ResolvedTheme): StyleSpecificat
           "text-size": ["interpolate", ["linear"], ["zoom"], 8, 9, 12, 10],
           "text-transform": "uppercase",
         },
-        paint: { "text-color": MUTED, "text-halo-blur": 1, "text-halo-color": MAP_BG, "text-halo-width": 1 },
+        paint: {
+          "text-color": MUTED,
+          "text-halo-blur": 1,
+          "text-halo-color": MAP_BG,
+          "text-halo-width": 1,
+        },
       },
     ],
   }

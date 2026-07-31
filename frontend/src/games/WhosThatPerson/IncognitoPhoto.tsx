@@ -3,7 +3,7 @@ import { useLayoutEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 
 import { assetThumbnailUrl, personThumbnailUrl } from "../../api/games"
-import type { HiddenFaceOut } from "../../api/types"
+import type { HiddenFaceOut } from "../../api/types/whosThatPerson"
 import { AssetPhoto } from "../shared/AssetPhoto"
 import type { RoundPhase } from "../shared/useRoundGame"
 import { boxStyle } from "./faceBoxMath"
@@ -114,7 +114,11 @@ function FaceBox({
   phase: RoundPhase
 }) {
   const revealed = phase === "revealed"
-  const borderClass = !revealed ? "border-white/80" : face.correct ? "border-clue-match" : "border-clue-miss"
+  const borderClass = !revealed
+    ? "border-white/80"
+    : face.correct
+      ? "border-clue-match"
+      : "border-clue-miss"
 
   const buttonRef = useRef<HTMLButtonElement>(null)
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null)
@@ -123,7 +127,11 @@ function FaceBox({
   // on the photo both pans it (AssetPhoto) and closes the popover (FaceGuessPopover's own outside-
   // pointerdown listener), so the anchor can't go stale while the popover stays open.
   useLayoutEffect(() => {
-    setAnchorRect(active && phase === "guessing" && buttonRef.current ? buttonRef.current.getBoundingClientRect() : null)
+    setAnchorRect(
+      active && phase === "guessing" && buttonRef.current
+        ? buttonRef.current.getBoundingClientRect()
+        : null,
+    )
   }, [active, phase])
 
   return (
@@ -136,9 +144,15 @@ function FaceBox({
           onClick={() => onSelectFace(active ? null : face.face_id)}
           className={`h-full w-full overflow-hidden rounded-md border-2 transition-colors duration-500 disabled:cursor-default ${borderClass}`}
         >
-          <div className={`h-full w-full transition-opacity duration-700 ease-out ${revealed ? "opacity-0" : "opacity-100"}`}>
+          <div
+            className={`h-full w-full transition-opacity duration-700 ease-out ${revealed ? "opacity-0" : "opacity-100"}`}
+          >
             {guessedPersonId ? (
-              <img src={personThumbnailUrl(guessedPersonId)} alt="" className="h-full w-full object-cover" />
+              <img
+                src={personThumbnailUrl(guessedPersonId)}
+                alt=""
+                className="h-full w-full object-cover"
+              />
             ) : (
               <div className="h-full w-full bg-blackout" />
             )}
@@ -170,7 +184,15 @@ function FaceBox({
 // Fullscreen, zoomable/pannable photo (same presentation as Geoguessr/Dateguessr's AssetCarousel,
 // via the shared AssetPhoto) with the round's hidden faces overlaid on top, pixel-aligned at any
 // zoom/pan state via AssetPhoto's `overlay` slot.
-export function IncognitoPhoto({ assetId, faces, guesses, activeFaceId, onSelectFace, onGuess, phase }: IncognitoPhotoProps) {
+export function IncognitoPhoto({
+  assetId,
+  faces,
+  guesses,
+  activeFaceId,
+  onSelectFace,
+  onGuess,
+  phase,
+}: IncognitoPhotoProps) {
   return (
     <AssetPhoto
       src={assetThumbnailUrl(assetId)}
@@ -180,7 +202,11 @@ export function IncognitoPhoto({ assetId, faces, guesses, activeFaceId, onSelect
           {/* Sits above the raw photo but below the face boxes - blocks right-click "save/open
               image" and dragging the underlying photo out, both of which would let a player see a
               hidden face without ever guessing it. */}
-          <div className="absolute inset-0" onContextMenu={(e) => e.preventDefault()} onDragStart={(e) => e.preventDefault()} />
+          <div
+            className="absolute inset-0"
+            onContextMenu={(e) => e.preventDefault()}
+            onDragStart={(e) => e.preventDefault()}
+          />
           {faces.map((face) => (
             <FaceBox
               key={face.face_id}

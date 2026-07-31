@@ -92,9 +92,7 @@ def _columns(conn: psycopg.Connection, schema: str, table: str) -> list[str]:
 
 def _count(conn: psycopg.Connection, schema: str, table: str) -> int:
     with conn.cursor() as cur:
-        cur.execute(sql.SQL("SELECT count(*) FROM {}.{}").format(
-            sql.Identifier(schema), sql.Identifier(table)
-        ))
+        cur.execute(sql.SQL("SELECT count(*) FROM {}.{}").format(sql.Identifier(schema), sql.Identifier(table)))
         return cur.fetchone()[0]
 
 
@@ -187,9 +185,7 @@ def _copy_game_settings(
         return
 
     with source.cursor() as src_cur:
-        src_cur.execute(
-            sql.SQL("SELECT game_type, values FROM {}.game_settings").format(sql.Identifier(source_schema))
-        )
+        src_cur.execute(sql.SQL("SELECT game_type, values FROM {}.game_settings").format(sql.Identifier(source_schema)))
         rows = src_cur.fetchall()
 
     with target.cursor() as dst_cur:
@@ -396,9 +392,7 @@ def migrate_legacy_schema(
                 source_database=source_database,
             )
 
-        _drop_legacy_schema(
-            source, report=report, schema=source_schema, database=source_database
-        )
+        _drop_legacy_schema(source, report=report, schema=source_schema, database=source_database)
 
     return report
 
@@ -501,9 +495,9 @@ def _copy_legacy_data(
 
         with target.cursor() as cur:
             cur.execute(
-                sql.SQL(
-                    "INSERT INTO {}.{} (id, source_database, rows_copied) VALUES (%s, %s, %s)"
-                ).format(sql.Identifier(target_schema), sql.Identifier(MARKER_TABLE)),
+                sql.SQL("INSERT INTO {}.{} (id, source_database, rows_copied) VALUES (%s, %s, %s)").format(
+                    sql.Identifier(target_schema), sql.Identifier(MARKER_TABLE)
+                ),
                 (uuid4(), source_database, Jsonb(copied)),
             )
         target.commit()
@@ -522,11 +516,7 @@ def _copy_legacy_data(
     # backstop for connections it had already opened.)
     source.rollback()
     recounted = {table: _count(source, source_schema, table) for table in source_counts}
-    drifted = {
-        table: (count, recounted[table])
-        for table, count in source_counts.items()
-        if recounted[table] != count
-    }
+    drifted = {table: (count, recounted[table]) for table, count in source_counts.items() if recounted[table] != count}
     if drifted:
         raise LegacyMigrationError(
             f"Refusing to drop `{source_schema}`: it changed while being copied "
@@ -537,13 +527,9 @@ def _copy_legacy_data(
         )
 
 
-def _drop_legacy_schema(
-    source: psycopg.Connection, *, report: Report, schema: str, database: str
-) -> None:
+def _drop_legacy_schema(source: psycopg.Connection, *, report: Report, schema: str, database: str) -> None:
     relations = _relations(source, schema)
-    unexpected = [
-        (name, kind) for name, kind in relations if kind != "r" or name not in KNOWN_LEGACY_TABLES
-    ]
+    unexpected = [(name, kind) for name, kind in relations if kind != "r" or name not in KNOWN_LEGACY_TABLES]
     if unexpected:
         raise LegacyMigrationError(
             f"Refusing to drop `{schema}` from `{database}`: it contains objects this migration "

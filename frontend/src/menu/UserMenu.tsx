@@ -4,27 +4,27 @@ import { Link, useLocation } from "react-router-dom"
 
 import { personThumbnailUrl } from "../api/games"
 import { useAuth } from "../auth/useAuth"
-import { SegmentedControl } from "../games/shared/SegmentedControl"
-import i18n from "../i18n"
-import type { ThemePreference } from "../theme/themeContext"
-import { useTheme } from "../theme/useTheme"
-
-// Language names are NOT run through i18next on purpose - a language's own display name
-// shouldn't change depending on which language is currently active (same reason browsers/OSes
-// show language pickers untranslated).
-const LANGUAGE_LABELS: Record<"en" | "es", string> = { en: "English", es: "Español" }
 
 function UserIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <circle cx="12" cy="8" r="4" />
       <path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8" />
     </svg>
   )
 }
 
-// Cosmetic skin (roadmap point E) - same img+onError fallback convention as
-// games/shared/PersonAvatar.tsx, just sized to fill this button's existing 40px circle instead of
+// Cosmetic skin - same img+onError fallback convention as
+// games/shared/PersonAvatar.tsx, just sized to fill this button's existing circle instead of
 // that component's own fixed h-10/md:h-14 sizing. Rendered with `key={personId}` by the caller so
 // switching skins resets `failed` instead of keeping a stale placeholder around.
 function SkinAvatar({ personId }: { personId: string }) {
@@ -40,35 +40,10 @@ function SkinAvatar({ personId }: { personId: string }) {
   )
 }
 
-function LanguageSelector() {
-  const current = i18n.language === "es" ? "es" : "en"
-  return (
-    <SegmentedControl
-      options={(["en", "es"] as const).map((lang) => ({ value: lang, label: LANGUAGE_LABELS[lang] }))}
-      value={current}
-      onChange={(lang) => {
-        localStorage.setItem("minigames-lang", lang)
-        i18n.changeLanguage(lang)
-      }}
-    />
-  )
-}
-
-function ThemeSelector() {
-  const { t } = useTranslation()
-  const { preference, setPreference } = useTheme()
-  const options: { value: ThemePreference; label: string }[] = [
-    { value: "light", label: t("userMenu.themeOptions.light") },
-    { value: "dark", label: t("userMenu.themeOptions.dark") },
-    { value: "system", label: t("userMenu.themeOptions.system") },
-  ]
-  return <SegmentedControl options={options} value={preference} onChange={setPreference} />
-}
-
 // Replaces AppHeader's old inline "Log in"/username link with a circular trigger that opens a
-// popover holding all 3 account-adjacent controls: the profile/login link, language, and theme -
-// keeps the header bar itself minimal while giving each of those its own row instead of cramming
-// them into the bar.
+// popover holding the account-adjacent nav links (profile, settings, admin panel) - language/theme
+// moved out to their own settings page (roadmap #g), reached via the "Settings" row here rather
+// than living inline in this popover.
 export function UserMenu() {
   const { t } = useTranslation()
   const { user } = useAuth()
@@ -97,7 +72,7 @@ export function UserMenu() {
     setOpen(false)
   }, [location.pathname])
 
-  // Roadmap #H, F3 - RequireAuth (App.tsx) already guarantees a session before AppHeader (this
+  // RequireAuth (App.tsx) already guarantees a session before AppHeader (this
   // trigger's only caller) ever mounts; this is just a TypeScript narrowing helper (user: User |
   // null), not reachable at runtime. The trigger no longer has an anonymous state to render at all
   // - login/logged-out are the same "not here" case RequireAuth already redirects away from.
@@ -110,30 +85,37 @@ export function UserMenu() {
         onClick={() => setOpen((o) => !o)}
         aria-label={t("userMenu.trigger")}
         aria-expanded={open}
-        className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-line-strong bg-surface text-body shadow-card transition-colors hover:bg-hover-tint"
+        className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-line-strong bg-surface text-body shadow-card transition-colors hover:bg-hover-tint"
       >
-        {user.skin_person_id ? <SkinAvatar key={user.skin_person_id} personId={user.skin_person_id} /> : <UserIcon />}
+        {user.skin_person_id ? (
+          <SkinAvatar key={user.skin_person_id} personId={user.skin_person_id} />
+        ) : (
+          <UserIcon />
+        )}
       </button>
 
       {open && (
         <div className="absolute top-[calc(100%+8px)] right-0 z-40 w-64 rounded-2xl border border-line bg-surface p-2 shadow-card">
-          <Link to="/profile" className="block rounded-xl px-3 py-2.5 text-sm font-semibold text-body hover:bg-hover-tint">
+          <Link
+            to="/profile"
+            className="block rounded-xl px-3 py-2.5 text-sm font-semibold text-body hover:bg-hover-tint"
+          >
             {user.username}
           </Link>
+          <Link
+            to="/settings"
+            className="block rounded-xl px-3 py-2.5 text-sm font-semibold text-body hover:bg-hover-tint"
+          >
+            {t("userMenu.settings")}
+          </Link>
           {user.is_admin && (
-            <Link to="/admin" className="block rounded-xl px-3 py-2.5 text-sm font-semibold text-body hover:bg-hover-tint">
+            <Link
+              to="/admin"
+              className="block rounded-xl px-3 py-2.5 text-sm font-semibold text-body hover:bg-hover-tint"
+            >
               {t("userMenu.adminPanel")}
             </Link>
           )}
-          <div className="my-1 border-t border-line" />
-          <div className="px-3 py-2">
-            <p className="mb-1.5 text-xs font-semibold tracking-wide text-faint uppercase">{t("userMenu.language")}</p>
-            <LanguageSelector />
-          </div>
-          <div className="px-3 py-2">
-            <p className="mb-1.5 text-xs font-semibold tracking-wide text-faint uppercase">{t("userMenu.theme")}</p>
-            <ThemeSelector />
-          </div>
         </div>
       )}
     </div>

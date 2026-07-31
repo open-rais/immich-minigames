@@ -6,7 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from games.geoguessr import GAME_TYPE as GEOGUESSR_TYPE
-from games.geoguessr import LatLng, GeoguessrRound
+from games.geoguessr import GeoguessrRound, LatLng
 
 
 class GeoguessrRoundOut(BaseModel):
@@ -19,7 +19,7 @@ class GeoguessrRoundOut(BaseModel):
     guess_latitude: float | None
     guess_longitude: float | None
     # Redacted (null) until this round has been answered - same rationale as
-    # MoreOrLessRoundOut.candidate_asset_count.
+    # MoreOrLessRoundOut.candidate_value.
     actual_latitude: float | None
     actual_longitude: float | None
     distance_km: float | None

@@ -1,22 +1,61 @@
 import type { ComponentType } from "react"
+import { lazy } from "react"
 
-import type { GameOut } from "../api/types"
-import { GameType, Mode } from "../api/types"
-import { DateguessrGame } from "./Dateguessr/DateguessrGame"
-import { DateguessrRounds } from "./Dateguessr/DateguessrRounds"
-import { GeoguessrGame } from "./Geoguessr/GeoguessrGame"
-import { GeoguessrRounds } from "./Geoguessr/GeoguessrRounds"
-import { ImmichdleGame } from "./Immichdle/ImmichdleGame"
-import { ImmichdleRounds } from "./Immichdle/ImmichdleRounds"
-import { MoreOrLessGame } from "./MoreOrLess/MoreOrLessGame"
-import { MoreOrLessRounds } from "./MoreOrLess/MoreOrLessRounds"
-import { TimelineGame } from "./Timeline/TimelineGame"
-import { TimelineRounds } from "./Timeline/TimelineRounds"
-import { WhosThatPersonGame } from "./WhosThatPerson/WhosThatPersonGame"
-import { WhosThatPersonRounds } from "./WhosThatPerson/WhosThatPersonRounds"
+import type { GameOut } from "../api/types/common"
+import { GameType, Mode } from "../api/types/common"
 
-// Mirrors backend/src/services/games_service.py's _GAME_CLASSES/_ROUND_CLASSES by hand - same
-// manual-sync convention already used for api/types.ts vs schemas.py. Add an entry here whenever a
+// Every game/rounds component is lazy-loaded - this is what
+// keeps maplibre-gl (Geoguessr's map, ~1 MB minified) and the other 5 games out of the initial
+// bundle, since this catalog is imported eagerly from the app's entry routes. Callers that render
+// `component`/`roundsComponent` need a <Suspense> boundary above them (see menu/GameRoute.tsx,
+// menu/DailyGameRoute.tsx, games/rounds/RoundsPage.tsx).
+const DateguessrGame = lazy(() =>
+  import("./Dateguessr/DateguessrGame").then((m) => ({ default: m.DateguessrGame })),
+)
+const DateguessrRounds = lazy(() =>
+  import("./Dateguessr/DateguessrRounds").then((m) => ({ default: m.DateguessrRounds })),
+)
+const GeoguessrGame = lazy(() =>
+  import("./Geoguessr/GeoguessrGame").then((m) => ({ default: m.GeoguessrGame })),
+)
+const GeoguessrRounds = lazy(() =>
+  import("./Geoguessr/GeoguessrRounds").then((m) => ({ default: m.GeoguessrRounds })),
+)
+const ImmichdleGame = lazy(() =>
+  import("./Immichdle/ImmichdleGame").then((m) => ({ default: m.ImmichdleGame })),
+)
+const ImmichdleRounds = lazy(() =>
+  import("./Immichdle/ImmichdleRounds").then((m) => ({ default: m.ImmichdleRounds })),
+)
+const AlbumdleGame = lazy(() =>
+  import("./Immichdle/AlbumdleGame").then((m) => ({ default: m.AlbumdleGame })),
+)
+const AlbumdleRounds = lazy(() =>
+  import("./Immichdle/AlbumdleRounds").then((m) => ({ default: m.AlbumdleRounds })),
+)
+const MoreOrLessGame = lazy(() =>
+  import("./MoreOrLess/MoreOrLessGame").then((m) => ({ default: m.MoreOrLessGame })),
+)
+const MoreOrLessRounds = lazy(() =>
+  import("./MoreOrLess/MoreOrLessRounds").then((m) => ({ default: m.MoreOrLessRounds })),
+)
+const TimelineGame = lazy(() =>
+  import("./Timeline/TimelineGame").then((m) => ({ default: m.TimelineGame })),
+)
+const TimelineRounds = lazy(() =>
+  import("./Timeline/TimelineRounds").then((m) => ({ default: m.TimelineRounds })),
+)
+const WhosThatPersonGame = lazy(() =>
+  import("./WhosThatPerson/WhosThatPersonGame").then((m) => ({ default: m.WhosThatPersonGame })),
+)
+const WhosThatPersonRounds = lazy(() =>
+  import("./WhosThatPerson/WhosThatPersonRounds").then((m) => ({
+    default: m.WhosThatPersonRounds,
+  })),
+)
+
+// Mirrors backend/src/services/game_registry.py's GAMES by hand - same
+// manual-sync convention already used for api/types.ts vs api/dto/. Add an entry here whenever a
 // new game/mode is wired up on the backend, so it shows up on the main menu.
 
 // Every <Name>Game component takes this same (optional) prop shape - GameRoute passes the
@@ -24,18 +63,18 @@ import { WhosThatPersonRounds } from "./WhosThatPerson/WhosThatPersonRounds"
 // itself up in the catalog.
 export interface GameComponentProps {
   coverUrl?: string
-  // Roadmap #10 - whether this mode has a roundsComponent registered (see CatalogMode below),
+  // Whether this mode has a roundsComponent registered (see CatalogMode below),
   // resolved once by GameRoute.tsx and threaded down so FinishedScreen can decide whether to show
   // its "Ver rondas" button without any game-tree module importing this catalog file itself (that
   // would cycle back through the *Game.tsx components this file already imports).
   hasRoundsView?: boolean
-  // Roadmap #G - true when this instance is playing today's daily challenge (resolved by
+  // True when this instance is playing today's daily challenge (resolved by
   // menu/DailyGameRoute.tsx from the /daily/:gameType/:mode route) instead of a normal game.
   // Threaded into useRoundGame's `daily` config - see that hook for what changes.
   daily?: boolean
 }
 
-// Roadmap #10 (rounds review) - every <Name>Rounds component takes the finished GameOut it reviews,
+// Every <Name>Rounds component takes the finished GameOut it reviews,
 // already loaded by RoundsPage.tsx. onBack is only used by the "fullscreen" family below (the
 // "list" family's RoundsShell already renders its own back button, so MoreOrLessRounds/
 // ImmichdleRounds just ignore it).
@@ -54,12 +93,12 @@ export interface CatalogMode {
   // falls back to the plain bg-primary block and IdleScreen just skips the image if omitted, for
   // any future game/mode added before its art is ready.
   coverUrl?: string
-  // Roadmap #10 - which component reviews a finished game of this mode (games/rounds/RoundsPage.tsx).
+  // Which component reviews a finished game of this mode (games/rounds/RoundsPage.tsx).
   // Every mode has one today, but stays optional so a future new game/mode can land before its
   // rounds review is built (same reasoning as coverUrl above) - GameScreens.tsx's FinishedScreen
   // only shows its "Ver rondas" button once a mode has one registered here.
   roundsComponent?: ComponentType<RoundsComponentProps>
-  // Which of ROUNDS-VIEW.md §2's two visual families that roundsComponent belongs to - "list"
+  // Which of the two visual families that roundsComponent belongs to - "list"
   // (default, unset) is a normal scrolling page wrapped in RoundsShell (MoreOrLess, Immichdle);
   // "fullscreen" (Geoguessr, Dateguessr, Who'sThatPerson) skips RoundsShell entirely and lets the
   // component own the whole viewport itself, the same way *Game.tsx already does - RoundsShell is
@@ -93,6 +132,15 @@ export const GAME_CATALOG: CatalogGame[] = [
         modeTitleKey: "moreOrLess.modes.albumAssets",
         component: MoreOrLessGame,
         coverUrl: "/covers/more-or-less-albums.webp",
+        roundsComponent: MoreOrLessRounds,
+      },
+      {
+        // Same component again - swaps its data source to birth dates (MODE_CONFIG's valueKind
+        // "date").
+        mode: Mode.PersonBirthDate,
+        modeTitleKey: "moreOrLess.modes.personBirthDate",
+        component: MoreOrLessGame,
+        coverUrl: "/covers/more-or-less-birthdate.webp",
         roundsComponent: MoreOrLessRounds,
       },
     ],
@@ -135,6 +183,13 @@ export const GAME_CATALOG: CatalogGame[] = [
         component: ImmichdleGame,
         coverUrl: "/covers/persondle.webp",
         roundsComponent: ImmichdleRounds,
+      },
+      {
+        mode: Mode.Album,
+        modeTitleKey: "immichdle.modes.album",
+        component: AlbumdleGame,
+        coverUrl: "/covers/albumdle.webp",
+        roundsComponent: AlbumdleRounds,
       },
     ],
   },

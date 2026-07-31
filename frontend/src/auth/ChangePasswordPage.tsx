@@ -9,14 +9,14 @@ import { AuthCard } from "./AuthCard"
 import { AuthField } from "./AuthField"
 import { useAuth } from "./useAuth"
 
-// Roadmap #H, F0 - self-service password change, reached from ProfilePage's "Change password"
+// Self-service password change, reached from ProfilePage's "Change password"
 // button. Same shell/state shape as EditProfilePage.tsx; kept as its own page (rather than a
 // section on EditProfilePage) since it's a distinct action with its own current/new-password
 // fields, not a profile field being edited in place.
 export function ChangePasswordPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  // Roadmap #H, F3 - no more session guard here at all: RequireAuth (App.tsx) already guarantees
+  // No session guard here at all: RequireAuth (App.tsx) already guarantees
   // one before this page mounts, and unlike ProfilePage/EditProfilePage this page never reads
   // `user` itself, so there's nothing left needing a TypeScript narrowing check either.
   const { changePassword } = useAuth()
@@ -77,7 +77,11 @@ export function ChangePasswordPage() {
           }}
         />
         {error && <p className="text-sm font-semibold text-rose-600">{error}</p>}
-        {saved && !error && <p className="text-sm font-semibold text-emerald-600">{t("auth.profile.changePassword.saved")}</p>}
+        {saved && !error && (
+          <p className="text-sm font-semibold text-emerald-600">
+            {t("auth.profile.changePassword.saved")}
+          </p>
+        )}
         <Button type="submit" variant="primary" className="w-full py-2.5" disabled={busy}>
           {t("auth.profile.changePassword.save")}
         </Button>

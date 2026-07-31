@@ -43,7 +43,7 @@ Routes **do not** try/except their own domain exceptions. Each service raises a 
 Adding a game exception means adding one line in `main.py`, not a try/except in a route.
 
 > The handler serializes `str(exc)` straight into `{"detail": ...}`, and the frontend renders that
-> string to the user verbatim. See findings #11 and #12.
+> string to the user verbatim.
 
 ## The game abstraction
 
@@ -54,8 +54,8 @@ later rounds don't repeat them), `guess`, `score_delta`. Implements:
 - `calculate_score(settings)` → the score delta for this round's guess
 - `to_payload()` / `from_payload(...)` → the JSONB round trip
 
-**`BaseGame`** — holds `id`, `owner`, `score`, `rounds`, `finished`, `_settings`. `current_round` is
-`rounds[-1]`. The shared loop is `play_round(guess)`:
+**`BaseGame`** — holds `id`, `game_type`, `mode`, `score`, `rounds`, `finished`, `_settings`,
+`daily_challenge_date`. `current_round` is `rounds[-1]`. The shared loop is `play_round(guess)`:
 
 ```
 if finished: error
@@ -70,8 +70,11 @@ Concrete games fill in `has_next_round()` (when does it end) and `create_next_ro
 next question, avoiding what's been shown).
 
 Two games override `play_round` itself, because their guess needs resolving before it can be
-scored: **Immichdle** (the guess is a person id that must be validated and turned into clues) and
-**Who'sThatPerson** (validates the guess covers exactly the round's hidden faces).
+scored: **Immichdle** (the guess is a person or album id - depending on mode - that must be
+validated and turned into clues; the override itself lives once in `games/immichdle/game.py`'s
+shared `BaseImmichdleGame`, with `PersondleGame`/`AlbumdleGame` each only filling in *how* to
+resolve a guess) and **Who'sThatPerson** (validates the guess covers exactly the round's hidden
+faces).
 
 ### Per-game rules
 
@@ -118,7 +121,7 @@ base de datos separada" below. Inside it they sit in a `minigames` schema rather
 with the app owning the whole database that's cosmetic, but it keeps every already-applied
 migration (which hardcodes `schema=`) valid and untouched.
 
-Alembic owns the schema (`backend/alembic/versions/`, currently 0001–0011); `docker-entrypoint.sh`
+Alembic owns the schema (`backend/alembic/versions/`, currently 0001–0012); `docker-entrypoint.sh`
 runs `alembic upgrade head` on every container start, and `db-init` runs it too — as the app role,
 so the tables end up owned by the role that later has to `ALTER` them. `init_db`/`reset_db` in
 `persistence/base.py` exist only for tests.
@@ -131,7 +134,8 @@ so the tables end up owned by the role that later has to `ALTER` them. `init_db`
 | `invites` | Roadmap #H, F1. `token_hash` (SHA-256, never the raw token), `kind` (`'invite'` \| `'password_reset'`, one table for both), `used_at`, `expires_at`, `user_id` (nullable — set once consumed, or always for a password-reset invite). Consumed via a single atomic `UPDATE ... RETURNING`. |
 | `game_settings` | `(game_type, mode)` PK, `values` JSONB. One row per (game type, mode); a missing row or key falls back to the module constant. |
 | `legacy_import` | Marker written by the one-time move out of Immich's database. Its presence means that copy committed — see below. |
-| `person_face_embedding_cache` | `person_id` PK, `embedding vector(512)`, `face_count`, `computed_at`. Caches Immichdle's `MLSimilarity` clue's per-person representative embedding (average across that person's visible faces) - see `docs/ARCHITECTURE/IMMICH.md`'s "Face similarity" section. The only own table with a non-JSON/UUID/text column type, hence `persistence/ml_cache.py`'s hand-rolled `Vector` SQLAlchemy type instead of a plain `mapped_column`. |
+| `person_face_embedding_cache` | `person_id` PK, `embedding vector(512)`, `face_count`, `computed_at`. Caches Persondle's `MLSimilarity` clue's per-person representative embedding (average across that person's visible faces) - see `docs/ARCHITECTURE/IMMICH.md`'s "Face similarity" section. The only own table with a non-JSON/UUID/text column type, hence `persistence/ml_cache.py`'s hand-rolled `Vector` SQLAlchemy type instead of a plain `mapped_column`. |
+| `album_embedding_cache` | Roadmap #14. `album_id` PK, `embedding vector(512)`, `asset_count`, `computed_at`. Caches Albumdle's `Similarity` clue's per-album representative CLIP embedding (average across that album's assets, from Immich's `smart_search` table - not face-based) - see `docs/ARCHITECTURE/IMMICH.md`'s "Album similarity" section. Reuses `persistence/ml_cache.py`'s `Vector` type rather than a second hand-rolled one. |
 | `daily_configs` | Roadmap #G. `(game_type, mode)` PK, `enabled` bool, `values` JSONB - whether a mode is in the daily rotation plus its daily-only setting overrides. |
 | `daily_challenges` | Roadmap #G. `id` PK, unique `(challenge_date, game_type, mode)`, `spec` JSONB (the pre-generated shared content), `settings` JSONB (frozen effective settings for that day). `games.daily_challenge_id` (nullable FK, one partial unique index on `(daily_challenge_id, user_id)` for "one attempt per player") points into this. |
 
@@ -256,16 +260,17 @@ cached and never snapshotted onto a round, so an admin change takes effect on th
 played. Resetting deletes the row rather than writing defaults back.
 
 > `update_settings` validates a lower bound but no upper bound, and `dict[str, float]` accepts
-> `Infinity`/`NaN`. See finding #7.
+> `Infinity`/`NaN`.
 
 ## Request lifecycle: playing a round
 
 `POST /api/v1/games/{game_id}/rounds/{round_id}` is the most involved path:
 
-1. `get_owner_id` reads the `X-Owner-Id` header (required; no validation).
-2. `games_service.get_game(game_id, owner)` → `_load_game`: fetch `GameModel`, compare `owner`
-   (raise `GameOwnershipError` on mismatch), look up the `(game_type, mode)` spec, rebuild every
-   round via `from_payload`, construct the game with live admin settings.
+1. `get_current_user` (an `api/deps.py` dependency) resolves the account from the session's httpOnly
+   JWT cookie, already validated by the default-deny `auth_middleware`.
+2. `games_service.get_game(game_id, user)` → `_load_game`: fetch `GameModel`, compare `user.id` to
+   `user_id` (raise `GameOwnershipError` on mismatch), look up the `(game_type, mode)` spec, rebuild
+   every round via `from_payload`, construct the game with live admin settings.
 3. `parse_guess(existing_game.current_round, body)` picks the right pydantic schema from
    `_ROUND_SPECS` keyed on the round's concrete class, validates, and converts to a domain guess.
    The client never states its own `game_type` — `game_id` already fixes it, so there is nothing to
@@ -276,7 +281,7 @@ played. Resetting deletes the row rather than writing defaults back.
 5. `PlayRoundOut.from_answered` serializes, redacting anything that would spoil an unanswered round.
 
 > Step 4 is not concurrency-safe: two simultaneous requests for the same round can both pass the
-> pending check. See finding #6.
+> pending check.
 
 ### Redaction
 
@@ -290,13 +295,13 @@ the player guessed, frozen at guess time in `WhosThatPersonRound.guess_names` �
 the same `answered`-gated redaction as `person_id`/`person_name`.
 
 This layer is well-disciplined. Note that it is defeated for Who'sThatPerson by the unauthenticated
-thumbnail proxy (finding #4): the faces are hidden by a DOM overlay, not by altering the image.
+thumbnail proxy: the faces are hidden by a DOM overlay, not by altering the image.
 
 ## Rounds review (roadmap #10)
 
 `GET /api/v1/games/{game_id}` already returns every round of a finished game, redacted exactly as
 above — the post-game "Ver rondas"/"Ver juego" review is a pure GET + render, no new endpoint per
-game. `GamesService._load_game`'s existing ownership check (`owner`/`user_id` match, else
+game. `GamesService._load_game`'s existing ownership check (`user_id` match, else
 `GameOwnershipError`/`GameNotFoundError`) is inherited for free.
 
 The one new endpoint is `GET /api/v1/config` (`api/api.py`, public, unauthenticated, no rate limit —
@@ -344,9 +349,11 @@ treats two NULLs as equal). A daily game is the *exact same game class* a normal
 content source differs, via each game's own `game_kwargs()`: MoreOrLess's `ScriptedCandidateProvider`
 replays a pre-generated chain (mirroring its normal `CandidateProvider` seam); Geoguessr/Dateguessr/
 WhosThatPerson/Timeline each get a `ScriptedContent` implementing that game's own `<Name>Content`
-protocol (mirroring their normal `LiveContent`); `ImmichdleGame.start()` takes an optional `target`
-(no content protocol needed - Immichdle's only precomputed content *is* the target, guesses stay
-live either way). Timeline's `build_spec()` is chain-shaped like MoreOrLess's (it drives
+protocol (mirroring their normal `LiveContent`); `PersondleGame.start()`/`AlbumdleGame.start()` each
+take an optional `target` (no content protocol needed - Immichdle's only precomputed content *is*
+the target, guesses stay live either way; `games/immichdle/daily.py` dispatches both modes' own
+`build_spec`/`game_kwargs` by `mode`, mirroring how `games/more_or_less/daily.py` dispatches its
+three modes' `CandidateProvider`s from one shared `daily.py`). Timeline's `build_spec()` is chain-shaped like MoreOrLess's (it drives
 `create_next_round()` directly in a loop, since `has_next_round()` depends on a guess that a
 throwaway spec-generation game never makes) but its `exclusion_ids()`/`no_repeat_days` behave like
 every other content-protocol game's, since its cards are concrete assets, not a value chain - the

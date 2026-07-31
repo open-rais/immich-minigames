@@ -10,10 +10,10 @@ function pad(n: number): string {
   return String(n).padStart(2, "0")
 }
 
-// Roadmap #G, decision [G] - HH:mm:ss countdown to the next daily reset, computed off the
+// HH:mm:ss countdown to the next daily reset, computed off the
 // backend's own resets_at/server_now rather than the client's clock alone (a skewed client clock
-// would otherwise show a wrong countdown, or one that never reaches zero - docs/TODO/
-// DAILY-GAMES.md §5). The offset between the two is fixed once at mount; from then on the ticking
+// would otherwise show a wrong countdown, or one that never reaches zero). The offset between the
+// two is fixed once at mount; from then on the ticking
 // is driven by the *local* clock's elapsed time, not repeated server reads.
 export function DailyCountdown({ resetsAt, serverNow, onExpire }: DailyCountdownProps) {
   const offsetMsRef = useRef(new Date(resetsAt).getTime() - new Date(serverNow).getTime())

@@ -1,6 +1,6 @@
-"""Admin promotion (ADMIN-FEATURE.md point #1) - run once per backend startup (see main.py's
-startup event), not tied to any request. Promotion only: never creates an account, only flips
-is_admin on one that already registered normally via AuthService.register."""
+"""Admin promotion - run once per backend startup (see main.py's startup event), not tied to any
+request. Promotion only: never creates an account, only flips is_admin on one that already
+registered normally via AuthService.register."""
 
 import logging
 
