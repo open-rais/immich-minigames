@@ -10,7 +10,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from games.base import BaseGame
-from games.immichdle import ImmichdleGame
+from games.immichdle import BaseImmichdleGame
 from games.registry import GAMES, GameSpec
 from games.whos_that_person import WhosThatPersonGame
 from persistence.daily import DailyChallengeModel
@@ -56,7 +56,7 @@ class GameFactory:
             kwargs["content"] = spec.content_factory(self._immich_service)
         else:
             kwargs["immich_service"] = self._immich_service
-        if spec.game_class is ImmichdleGame:
+        if issubclass(spec.game_class, BaseImmichdleGame):
             kwargs["ml_service"] = self._ml_service
         if spec.game_class is WhosThatPersonGame:
             kwargs["immich_service"] = self._immich_service

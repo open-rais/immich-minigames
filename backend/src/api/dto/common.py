@@ -7,9 +7,16 @@ back `game_type` in the guess body would be redundant - and worse, if it disagre
 actual type, nothing would catch the mismatch before it reached the domain layer as a
 wrongly-shaped guess.
 
+`_round_out_tag` (not a plain `Field(discriminator="game_type")`) exists because Immichdle now has
+two modes with two different round shapes sharing one `game_type` ("immichdle") - a plain
+single-field discriminator can't map one literal value to two classes (pydantic raises at class-
+definition time: "Value 'immichdle' for discriminator 'game_type' mapped to multiple choices").
+Both `ImmichdleRoundOut`/`AlbumdleRoundOut` carry a `mode` field for exactly this reason; every
+other game/mode still discriminates on `game_type` alone.
+
 Everything that doesn't spread across every game/mode lives in a sibling module instead
-(api/dto/persons.py, records.py, leaderboard.py, daily.py, admin.py, config.py), keeping this file
-scoped to what's genuinely cross-game.
+(api/dto/persons.py, albums.py, records.py, leaderboard.py, daily.py, admin.py, config.py),
+keeping this file scoped to what's genuinely cross-game.
 """
 
 from dataclasses import dataclass
@@ -17,18 +24,18 @@ from datetime import date, datetime
 from typing import Annotated, Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Discriminator, Tag
 
 from api.dto.dateguessr import DateguessrPlayRoundIn, DateguessrRoundOut
 from api.dto.geoguessr import GeoguessrPlayRoundIn, GeoguessrRoundOut
-from api.dto.immichdle import ImmichdlePlayRoundIn, ImmichdleRoundOut
+from api.dto.immichdle import AlbumdlePlayRoundIn, AlbumdleRoundOut, ImmichdlePlayRoundIn, ImmichdleRoundOut
 from api.dto.more_or_less import MoreOrLessPlayRoundIn, MoreOrLessRoundOut
 from api.dto.timeline import TimelinePlayRoundIn, TimelineRoundOut
 from api.dto.whos_that_person import WhosThatPersonPlayRoundIn, WhosThatPersonRoundOut
 from games.base import BaseGame, BaseRound
 from games.dateguessr import DateguessrRound
 from games.geoguessr import GeoguessrRound
-from games.immichdle import ImmichdleGame, ImmichdleRound
+from games.immichdle import AlbumdleGame, AlbumdleRound, PersondleGame, PersondleRound
 from games.more_or_less import MoreOrLessRound
 from games.timeline import TimelineRound
 from games.whos_that_person import WhosThatPersonRound
@@ -41,14 +48,26 @@ class CreateGameIn(BaseModel):
     mode: str
 
 
+def _round_out_tag(v: Any) -> str:
+    """Discriminator callable for RoundOut - see module docstring. Every game_type except
+    "immichdle" is tagged by game_type alone; "immichdle" is tagged by "immichdle:<mode>" since
+    that's the one game_type shared by two differently-shaped round DTOs."""
+    game_type = v.get("game_type") if isinstance(v, dict) else v.game_type
+    if game_type != "immichdle":
+        return game_type
+    mode = v.get("mode") if isinstance(v, dict) else v.mode
+    return f"immichdle:{mode}"
+
+
 RoundOut = Annotated[
-    MoreOrLessRoundOut
-    | GeoguessrRoundOut
-    | DateguessrRoundOut
-    | ImmichdleRoundOut
-    | WhosThatPersonRoundOut
-    | TimelineRoundOut,
-    Field(discriminator="game_type"),
+    Annotated[MoreOrLessRoundOut, Tag("more-or-less")]
+    | Annotated[GeoguessrRoundOut, Tag("geoguessr")]
+    | Annotated[DateguessrRoundOut, Tag("dateguessr")]
+    | Annotated[ImmichdleRoundOut, Tag("immichdle:person")]
+    | Annotated[AlbumdleRoundOut, Tag("immichdle:album")]
+    | Annotated[WhosThatPersonRoundOut, Tag("whos-that-person")]
+    | Annotated[TimelineRoundOut, Tag("timeline")],
+    Discriminator(_round_out_tag),
 ]
 
 
@@ -71,7 +90,8 @@ _ROUND_SPECS: dict[type[BaseRound], _RoundSpec] = {
     MoreOrLessRound: _RoundSpec(MoreOrLessPlayRoundIn, MoreOrLessRoundOut, has_binary_correctness=True),
     GeoguessrRound: _RoundSpec(GeoguessrPlayRoundIn, GeoguessrRoundOut, has_binary_correctness=False),
     DateguessrRound: _RoundSpec(DateguessrPlayRoundIn, DateguessrRoundOut, has_binary_correctness=False),
-    ImmichdleRound: _RoundSpec(ImmichdlePlayRoundIn, ImmichdleRoundOut, has_binary_correctness=True),
+    PersondleRound: _RoundSpec(ImmichdlePlayRoundIn, ImmichdleRoundOut, has_binary_correctness=True),
+    AlbumdleRound: _RoundSpec(AlbumdlePlayRoundIn, AlbumdleRoundOut, has_binary_correctness=True),
     WhosThatPersonRound: _RoundSpec(WhosThatPersonPlayRoundIn, WhosThatPersonRoundOut, has_binary_correctness=True),
     TimelineRound: _RoundSpec(TimelinePlayRoundIn, TimelineRoundOut, has_binary_correctness=True),
 }
@@ -91,6 +111,7 @@ def round_out_from_round(
     | GeoguessrRoundOut
     | DateguessrRoundOut
     | ImmichdleRoundOut
+    | AlbumdleRoundOut
     | WhosThatPersonRoundOut
     | TimelineRoundOut
 ):
@@ -114,9 +135,9 @@ class GameOut(BaseModel):
     score: int
     finished: bool
     rounds: list[RoundOut]
-    # Only ever populated for a finished Immichdle game (see ImmichdleGame.target) - the mystery
+    # Only ever populated for a finished Persondle game (see PersondleGame.target) - the mystery
     # person is revealed once the game is over, win or lose. Null for every other game/mode and for
-    # an Immichdle game still in progress, where revealing it would be a straight cheat.
+    # a Persondle game still in progress, where revealing it would be a straight cheat.
     target_person_id: UUID | None = None
     target_person_name: str | None = None
     # The target row in the post-game GuessTable. Same redaction condition as target_person_id/name
@@ -124,6 +145,16 @@ class GameOut(BaseModel):
     target_asset_count: int | None = None
     target_birth_date: date | None = None
     target_first_asset_date: date | None = None
+    # Same role as target_person_* above, but for a finished Albumdle game (roadmap #14) -
+    # AlbumSnapshot's own fields, surfaced for that mode's post-game GuessTable target row.
+    target_album_id: UUID | None = None
+    target_album_name: str | None = None
+    target_album_asset_count: int | None = None
+    target_album_first_asset_date: date | None = None
+    target_album_dominant_person_id: UUID | None = None
+    target_album_dominant_person_name: str | None = None
+    target_album_dominant_extra_count: int | None = None
+    target_album_unique_named_person_count: int | None = None
     # The *live* configured total for this game
     # instance (BaseGame.total_rounds/total_people, overridden by Geoguessr/Dateguessr and
     # WhosThatPerson respectively), so the frontend's round counter (e.g. "Round 2 of 5") reflects
@@ -144,12 +175,32 @@ class GameOut(BaseModel):
         target_asset_count = None
         target_birth_date = None
         target_first_asset_date = None
-        if isinstance(game, ImmichdleGame) and game.finished:
+        if isinstance(game, PersondleGame) and game.finished:
             target_id = game.target.id
             target_name = game.target.name
             target_asset_count = game.target.asset_count
             target_birth_date = game.target.birth_date
             target_first_asset_date = game.target.first_asset_date
+
+        target_album_id = None
+        target_album_name = None
+        target_album_asset_count = None
+        target_album_first_asset_date = None
+        target_album_dominant_person_id = None
+        target_album_dominant_person_name = None
+        target_album_dominant_extra_count = None
+        target_album_unique_named_person_count = None
+        if isinstance(game, AlbumdleGame) and game.finished:
+            target = game.target
+            target_album_id = target.id
+            target_album_name = target.name
+            target_album_asset_count = target.asset_count
+            target_album_first_asset_date = target.first_asset_date
+            target_album_dominant_person_id = target.dominant_person_ids[0] if target.dominant_person_ids else None
+            target_album_dominant_person_name = target.dominant_person_name
+            target_album_dominant_extra_count = max(0, len(target.dominant_person_ids) - 1)
+            target_album_unique_named_person_count = target.unique_named_person_count
+
         return cls(
             id=game.id,
             type=game.game_type,
@@ -162,6 +213,14 @@ class GameOut(BaseModel):
             target_asset_count=target_asset_count,
             target_birth_date=target_birth_date,
             target_first_asset_date=target_first_asset_date,
+            target_album_id=target_album_id,
+            target_album_name=target_album_name,
+            target_album_asset_count=target_album_asset_count,
+            target_album_first_asset_date=target_album_first_asset_date,
+            target_album_dominant_person_id=target_album_dominant_person_id,
+            target_album_dominant_person_name=target_album_dominant_person_name,
+            target_album_dominant_extra_count=target_album_dominant_extra_count,
+            target_album_unique_named_person_count=target_album_unique_named_person_count,
             total_rounds=game.total_rounds,
             total_people=game.total_people,
             daily_challenge_date=game.daily_challenge_date,

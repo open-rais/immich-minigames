@@ -27,7 +27,7 @@ from games.geoguessr import GAME_TYPE as GEOGUESSR_TYPE
 from games.geoguessr import MODE_DISTANCE_BETWEEN_GUESS, GeoguessrGame, GeoguessrRound
 from games.geoguessr import LiveContent as GeoguessrLiveContent
 from games.immichdle import GAME_TYPE as IMMICHDLE_TYPE
-from games.immichdle import MODE_PERSON, ImmichdleGame, ImmichdleRound
+from games.immichdle import MODE_ALBUM, MODE_PERSON, AlbumdleGame, AlbumdleRound, PersondleGame, PersondleRound
 from games.more_or_less import GAME_TYPE as MORE_OR_LESS_TYPE
 from games.more_or_less import (
     MODE_ALBUM_ASSETS,
@@ -61,7 +61,7 @@ class GameSpec:
     `<game>Content` protocol (Geoguessr/Dateguessr/WhosThatPerson) - when present, the game gets
     `content` built from it; WhosThatPerson additionally still needs `immich_service` directly (for
     live guess-name resolution, unrelated to content), handled as a per-class special case in
-    services/games_service.py, same pattern already used there for ImmichdleGame's ml_service.
+    services/game_factory.py, same pattern already used there for BaseImmichdleGame's ml_service.
 
     `daily` is the game's `games/<game>/daily.py` module (implementing `DailySupport`) for the
     (game_type, mode) combinations the daily rotation supports - None for a game/mode that doesn't
@@ -90,7 +90,8 @@ GAMES: dict[tuple[str, str], GameSpec] = {
     (DATEGUESSR_TYPE, MODE_DAYS_TO_DATE): GameSpec(
         DateguessrGame, DateguessrRound, content_factory=DateguessrLiveContent, daily=dateguessr_daily
     ),
-    (IMMICHDLE_TYPE, MODE_PERSON): GameSpec(ImmichdleGame, ImmichdleRound, daily=immichdle_daily),
+    (IMMICHDLE_TYPE, MODE_PERSON): GameSpec(PersondleGame, PersondleRound, daily=immichdle_daily),
+    (IMMICHDLE_TYPE, MODE_ALBUM): GameSpec(AlbumdleGame, AlbumdleRound, daily=immichdle_daily),
     (WHOS_THAT_PERSON_TYPE, MODE_NAMED_FACES): GameSpec(
         WhosThatPersonGame,
         WhosThatPersonRound,
