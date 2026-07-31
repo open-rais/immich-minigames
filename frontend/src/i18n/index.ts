@@ -29,16 +29,20 @@ export async function loadLanguage(lang: Language): Promise<void> {
 
 const initialLanguage = readStoredLanguage()
 
-// Resolved once the initial language's bundle is loaded and i18next is initialized - main.tsx
+// i18next only attaches addResourceBundle (and friends) to the instance inside init() - init()
+// must run before loadLanguage() can call it, so init() goes first here, with no resources yet.
+// Resolved once i18next is initialized and the initial language's bundle is loaded - main.tsx
 // waits on this before its first render, so there's no flash of untranslated keys.
-export const i18nReady = loadLanguage(initialLanguage).then(() =>
-  i18n.use(initReactI18next).init({
+export const i18nReady = i18n
+  .use(initReactI18next)
+  .init({
     lng: initialLanguage,
     fallbackLng: "en",
+    resources: {},
     interpolation: {
       escapeValue: false,
     },
-  }),
-)
+  })
+  .then(() => loadLanguage(initialLanguage))
 
 export default i18n
