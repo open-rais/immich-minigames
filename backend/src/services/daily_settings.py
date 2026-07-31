@@ -2,56 +2,56 @@
 that mode is in the daily rotation at all (the "Activar juego diario" checkbox from roadmap #f),
 plus its daily-only setting overrides (see persistence/daily.py's DailyConfigModel).
 
-Mirrors services/game_settings.py closely (same SettingSpec dataclass, same
+Mirrors services/game_settings_service.py closely (same SettingSpec dataclass, same
 get/update/reset-settings shape) with two differences: every (game_type, mode) here starts from
-that same module's GAME_SETTING_SPECS as a base (a daily game plays with the same knobs a normal
-game does, just possibly different values) plus one extra daily-only spec; and there's an
-`enabled` flag alongside the values, which `reset_settings` deliberately leaves untouched (only the
-value overrides reset to defaults - see docs/TODO/DAILY-GAMES.md §4.6, "enabled no se resetea")."""
+games/settings_registry.py's GAME_SETTING_SPECS as a base (a daily game plays with the same knobs
+a normal game does, just possibly different values) plus that game's own extra daily-only spec(s)
+(each game's own `settings.py::DAILY_SETTING_SPECS` - docs/TODO/DECOUPLING.md decision, this module
+never decides *which* game needs `chain_length` vs `no_repeat_days`, only assembles what each game
+already declared); and there's an `enabled` flag alongside the values, which `reset_settings`
+deliberately leaves untouched (only the value overrides reset to defaults - see
+docs/TODO/DAILY-GAMES.md §4.6, "enabled no se resetea")."""
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from games.dateguessr import GAME_TYPE as DATEGUESSR_TYPE
+from games.dateguessr.settings import DAILY_SETTING_SPECS as DATEGUESSR_DAILY_SPECS
+from games.geoguessr import GAME_TYPE as GEOGUESSR_TYPE
+from games.geoguessr.settings import DAILY_SETTING_SPECS as GEOGUESSR_DAILY_SPECS
+from games.immichdle import GAME_TYPE as IMMICHDLE_TYPE
+from games.immichdle.settings import DAILY_SETTING_SPECS as IMMICHDLE_DAILY_SPECS
 from games.more_or_less import GAME_TYPE as MORE_OR_LESS_TYPE
-from games.more_or_less import MODE_ALBUM_ASSETS, MODE_PERSON_ASSETS
+from games.more_or_less.settings import DAILY_SETTING_SPECS as MORE_OR_LESS_DAILY_SPECS
+from games.settings_registry import GAME_SETTING_SPECS
+from games.settings_spec import SettingSpec
 from games.timeline import GAME_TYPE as TIMELINE_TYPE
-from games.timeline import MODE_ARCADE as TIMELINE_MODE_ARCADE
+from games.timeline.settings import DAILY_SETTING_SPECS as TIMELINE_DAILY_SPECS
+from games.whos_that_person import GAME_TYPE as WHOS_THAT_PERSON_TYPE
+from games.whos_that_person.settings import DAILY_SETTING_SPECS as WHOS_THAT_PERSON_DAILY_SPECS
 from persistence.daily import DailyConfigModel
-from services.game_settings import (
-    GAME_SETTING_SPECS,
+from services.game_settings_service import (
     InvalidGameSettingValueError,  # noqa: F401 (re-exported - same error type this service raises)
-    SettingSpec,
     UnknownGameSettingError,
     validate_setting_value,
 )
 
-# Roadmap #G decisions [E]/[F] (docs/TODO/DAILY-GAMES.md §4.2) - every mode except MoreOrLess needs
-# a no-repeat window (assets/persons excluded from the last N days' challenges); MoreOrLess instead
-# gets a cap on its pre-generated candidate chain, since it has no "asset/person" content to avoid
-# repeating within a single day (the roadmap: "ahí solo debe ser otra seed"). Timeline is the first
-# mode that needs *both* (docs/TODO/TIMELINE.md decision [G]): its own content is concrete assets
-# (so it still needs no_repeat_days like every other game), but it's also chain-shaped like
-# MoreOrLess (so it needs chain_length too, to cap how many cards get pre-generated). Composed by
-# set membership rather than an if/else so a mode can land in either, both, or neither.
-_NO_REPEAT_DAYS_SPEC = SettingSpec("no_repeat_days", 30, "int", 0, 365)
-_CHAIN_LENGTH_SPEC = SettingSpec("chain_length", 100, "int", 10, 1000)
-_MORE_OR_LESS_MODES = {(MORE_OR_LESS_TYPE, MODE_PERSON_ASSETS), (MORE_OR_LESS_TYPE, MODE_ALBUM_ASSETS)}
-_CHAIN_MODES = _MORE_OR_LESS_MODES | {(TIMELINE_TYPE, TIMELINE_MODE_ARCADE)}
-_NO_REPEAT_MODES = set(GAME_SETTING_SPECS) - _MORE_OR_LESS_MODES
-
-
-def _daily_specs_for(game_type: str, mode: str) -> list[SettingSpec]:
-    base = GAME_SETTING_SPECS.get((game_type, mode), [])
-    extras: list[SettingSpec] = []
-    if (game_type, mode) in _CHAIN_MODES:
-        extras.append(_CHAIN_LENGTH_SPEC)
-    if (game_type, mode) in _NO_REPEAT_MODES:
-        extras.append(_NO_REPEAT_DAYS_SPEC)
-    return [*base, *extras]
-
+# Each game's own settings.py declares its extra daily-only spec(s) (games/settings_spec.py's
+# NO_REPEAT_DAYS_SPEC/CHAIN_LENGTH_SPEC) - this module only assembles them onto GAME_SETTING_SPECS
+# below, it never decides per-mode which one a game needs (that decision lives with the game
+# itself, see docs/TODO/DECOUPLING.md).
+_EXTRA_DAILY_SPECS_BY_GAME_TYPE: dict[str, list[SettingSpec]] = {
+    GEOGUESSR_TYPE: GEOGUESSR_DAILY_SPECS,
+    DATEGUESSR_TYPE: DATEGUESSR_DAILY_SPECS,
+    IMMICHDLE_TYPE: IMMICHDLE_DAILY_SPECS,
+    WHOS_THAT_PERSON_TYPE: WHOS_THAT_PERSON_DAILY_SPECS,
+    MORE_OR_LESS_TYPE: MORE_OR_LESS_DAILY_SPECS,
+    TIMELINE_TYPE: TIMELINE_DAILY_SPECS,
+}
 
 DAILY_SETTING_SPECS: dict[tuple[str, str], list[SettingSpec]] = {
-    key: _daily_specs_for(*key) for key in GAME_SETTING_SPECS
+    (game_type, mode): [*base, *_EXTRA_DAILY_SPECS_BY_GAME_TYPE[game_type]]
+    for (game_type, mode), base in GAME_SETTING_SPECS.items()
 }
 
 

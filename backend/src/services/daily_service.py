@@ -16,10 +16,10 @@ from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
+from games.registry import GAMES
 from persistence.daily import DailyChallengeModel
 from services.daily_settings import DailySettingsService
 from services.errors import NotEnoughContentError, UnsupportedGameError
-from services.game_registry import GAMES
 from services.immich_service import ImmichService
 
 

@@ -2,13 +2,14 @@
 Games service - creates/loads/plays games. Bridges the game-logic layer (games/*.py, no
 persistence awareness) and this app's own DB (persistence/games.py).
 
-The (game_type, mode) -> game/round-class registry lives in services/game_registry.py, not here -
+The (game_type, mode) -> game/round-class registry lives in games/registry.py, not here -
 services/daily_service.py needs to read it too (to resolve each game's DailySupport module), and
 importing it back from here would cycle (this module also imports DailyService); same reasoning
-for why NotEnoughContentError/UnsupportedGameError live in services/errors.py and are re-exported
-below rather than defined here. Every existing `from services.games_service import
-NotEnoughContentError` call site (main.py, api/dto/common.py, tests/*) keeps working unchanged via
-that re-export.
+for why every exception this service raises (NotEnoughContentError, GameNotFoundError, and the
+rest) lives in services/errors.py and is re-exported below rather than defined here - that lets
+api/error_handlers.py's exception->status table import them without importing this whole service.
+Every existing `from services.games_service import NotEnoughContentError` (or GameNotFoundError,
+etc.) call site (main.py, api/dto/common.py, tests/*) keeps working unchanged via that re-export.
 """
 
 from dataclasses import dataclass
@@ -22,15 +23,23 @@ from sqlalchemy.orm import Session
 
 from games.base import BaseGame, BaseRound
 from games.immichdle import ImmichdleGame
+from games.registry import GAMES, GameSpec
 from games.whos_that_person import WhosThatPersonGame
 from persistence.daily import DailyChallengeModel
 from persistence.games import GameModel, RoundModel
 from persistence.users import UserModel
 from services.daily_service import DailyService
 from services.daily_settings import DailySettingsService
-from services.errors import NotEnoughContentError, UnsupportedGameError  # noqa: F401
-from services.game_registry import GAMES, GameSpec
-from services.game_settings import GameSettingsService
+from services.errors import (  # noqa: F401 (re-exported - see this module's docstring)
+    DailyAlreadyPlayedError,
+    DailyNotEnabledError,
+    GameNotFoundError,
+    GameOwnershipError,
+    NotEnoughContentError,
+    RoundNotPendingError,
+    UnsupportedGameError,
+)
+from services.game_settings_service import GameSettingsService
 from services.immich_service import ImmichService
 from services.ml_service import MLService
 
@@ -90,30 +99,6 @@ class DailyModeStatus:
     score: int | None
 
 
-class GameNotFoundError(Exception):
-    pass
-
-
-class GameOwnershipError(Exception):
-    pass
-
-
-class RoundNotPendingError(Exception):
-    pass
-
-
-class DailyNotEnabledError(Exception):
-    """Roadmap #G - raised by create_daily_game when the (game_type, mode) isn't in today's daily
-    rotation (either genuinely unsupported, or a real mode the admin hasn't enabled) - main.py maps
-    this to a 404, matching docs/TODO/DAILY-GAMES.md §4.6."""
-
-
-class DailyAlreadyPlayedError(Exception):
-    """Roadmap #G - raised by create_daily_game when the caller already has a game for today's
-    challenge of this (game_type, mode) - "1 intento por día" (decision [C]). main.py maps this to
-    a 409."""
-
-
 class GamesService:
     def __init__(
         self,
@@ -154,7 +139,7 @@ class GamesService:
         }
         if spec.provider_factory is not None:
             # The provider fully replaces this game's data source, so it gets provider + mode
-            # instead of immich_service/content (see services/game_registry.py's GameSpec).
+            # instead of immich_service/content (see games/registry.py's GameSpec).
             kwargs["provider"] = spec.provider_factory(self._immich_service)
             kwargs["mode"] = mode
         elif spec.content_factory is not None:
