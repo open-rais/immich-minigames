@@ -3,12 +3,13 @@
 import random
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.engine import Engine
 
 from domain.face import Face
 from persistence.immich_tables import asset, asset_face, person
 
+from ._random import sample_by_id_pivot
 from ._rows import row_to_face
 
 
@@ -43,15 +44,17 @@ def get_random_asset_with_named_faces(
     )
     if exclude_asset_ids:
         asset_id_stmt = asset_id_stmt.where(asset.c.id.notin_(exclude_asset_ids))
-    # GROUP BY (not DISTINCT) - Postgres rejects `SELECT DISTINCT ... ORDER BY random()`
-    # (ORDER BY expressions must appear in the select list for DISTINCT), same reason
-    # get_persons uses GROUP BY + ORDER BY random() instead of DISTINCT.
-    asset_id_stmt = asset_id_stmt.group_by(asset.c.id).order_by(func.random()).limit(1)
+    # GROUP BY (not DISTINCT) - the join produces one row per matching face, so this collapses
+    # back to one row per asset before picking.
+    asset_id_stmt = asset_id_stmt.group_by(asset.c.id)
 
     with engine.connect() as conn:
-        asset_row = conn.execute(asset_id_stmt).first()
-        if asset_row is None:
+        # Pivot on asset.id (see services/immich/_random.py) instead of `ORDER BY random()`,
+        # which would force a full scan+sort of every asset with at least one named face.
+        asset_rows = sample_by_id_pivot(conn, asset_id_stmt, asset.c.id, 1)
+        if not asset_rows:
             return []
+        asset_row = asset_rows[0]
 
         # No SQL-level LIMIT here - every eligible face is fetched so the count to actually
         # hide can be decided in Python below (this asset's face count is at most a handful,

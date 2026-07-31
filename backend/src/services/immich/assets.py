@@ -11,6 +11,7 @@ from sqlalchemy.engine import Engine
 from domain.asset import Asset
 from persistence.immich_tables import asset, asset_exif, asset_file
 
+from ._random import sample_by_id_pivot
 from ._rows import row_to_asset
 
 MediaType = Literal["photo", "video", "any"]
@@ -103,9 +104,12 @@ def get_assets(
     if exclude_ids:
         stmt = stmt.where(asset.c.id.notin_(exclude_ids))
 
-    stmt = stmt.order_by(func.random() if randomize else asset.c.fileCreatedAt).limit(limit)
-
     with engine.connect() as conn:
-        rows = conn.execute(stmt).all()
+        if randomize:
+            # Pivot on asset.id (see ._random's docstring for why that's safe) instead of
+            # `ORDER BY random()`, which would force a full scan+sort of every matching asset.
+            rows = sample_by_id_pivot(conn, stmt, asset.c.id, limit)
+        else:
+            rows = conn.execute(stmt.order_by(asset.c.fileCreatedAt).limit(limit)).all()
 
     return [row_to_asset(row) for row in rows]

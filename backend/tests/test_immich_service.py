@@ -53,6 +53,37 @@ class TestGetAssets:
 
         assert first.id not in {a.id for a in rest}
 
+    def test_random_true_still_respects_limit(self, immich_service):
+        assets = immich_service.get_assets(randomize=True, limit=5)
+
+        assert len(assets) == 5
+
+    def test_random_true_returns_no_duplicates(self, immich_service):
+        # sample_by_id_pivot (services/immich/_random.py, B-1) answers with two disjoint queries
+        # (id >= pivot, then id < pivot to wrap around) - this is the sanity check that they never
+        # overlap.
+        assets = immich_service.get_assets(randomize=True, limit=50)
+
+        assert len({a.id for a in assets}) == len(assets)
+
+    def test_random_true_still_respects_other_filters(self, immich_service):
+        assets = immich_service.get_assets(media_type="photo", randomize=True, limit=20)
+
+        assert assets
+        assert all(a.type == "IMAGE" for a in assets)
+
+    def test_random_true_exhausts_pool_eventually(self, immich_service):
+        # Growing exclude_ids on every call forces sample_by_id_pivot's first (id >= pivot) query
+        # to come up short more and more often, exercising its wraparound (id < pivot) query - same
+        # exhaustion pattern as TestGetRandomAssetWithNamedFaces.test_returns_empty_when_no_eligible_asset_exists.
+        excluded = set()
+        for _ in range(2000):
+            assets = immich_service.get_assets(randomize=True, limit=1, exclude_ids=frozenset(excluded))
+            if not assets:
+                return
+            excluded.add(assets[0].id)
+        pytest.fail("never ran out of eligible assets after excluding 2000 distinct ones")
+
 
 class TestGetPersons:
     def test_named_only_excludes_blank_names(self, immich_service):
