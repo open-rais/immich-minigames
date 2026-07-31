@@ -29,7 +29,7 @@ from persistence.users import UserModel
 from services.auth_service import AuthService
 from services.daily_service import DailyService
 from services.daily_settings import DailySettingsService
-from services.game_settings import GameSettingsService
+from services.game_settings_service import GameSettingsService
 from services.games_service import GamesService
 from services.immich_service import ImmichService
 from services.invite_service import InviteService

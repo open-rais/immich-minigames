@@ -5,7 +5,7 @@ from games.geoguessr import MODE_DISTANCE_BETWEEN_GUESS
 from games.more_or_less import GAME_TYPE as MORE_OR_LESS_TYPE
 from games.more_or_less import MODE_ALBUM_ASSETS, MODE_PERSON_ASSETS
 from persistence.game_settings import GameSettingsModel
-from services.game_settings import InvalidGameSettingValueError, UnknownGameSettingError
+from services.game_settings_service import InvalidGameSettingValueError, UnknownGameSettingError
 
 
 @pytest.fixture(autouse=True)
@@ -142,7 +142,7 @@ class TestResetSettings:
 class TestSettingsAreIndependentPerMode:
     """Roadmap #f - proves the composite (game_type, mode) primary key actually isolates two modes
     of the same game_type, using MoreOrLess (the one real game with two modes today) even though
-    neither mode has a registered SettingSpec (see services/game_settings.py's module docstring) -
+    neither mode has a registered SettingSpec (see games/settings_registry.py's module docstring) -
     inserts raw rows directly via db_session, bypassing update_settings's spec validation, purely
     to exercise the read path (GameSettingsService.get_settings) against the composite key. No
     real game currently has two modes that both accept configurable settings, so this is the
