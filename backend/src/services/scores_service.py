@@ -57,6 +57,20 @@ class LeaderboardEntry:
     best_score: int
 
 
+@dataclass(frozen=True)
+class DailyLeaderboardEntry:
+    """One daily-leaderboard row - same shape as LeaderboardEntry plus that user's current streak
+    of consecutive days (up to and including this leaderboard's challenge_date) having finished
+    this (game_type, mode)'s daily challenge. Kept as its own type rather than reusing
+    LeaderboardEntry so the non-daily leaderboard's shape stays untouched."""
+
+    rank: int
+    username: str
+    skin_person_id: UUID | None
+    best_score: int
+    streak: int
+
+
 class ScoresService:
     def __init__(self, repository: GameRepository) -> None:
         self._repository = repository
@@ -84,10 +98,11 @@ class ScoresService:
             for rank, (username, skin_person_id, score) in enumerate(rows, start=1)
         ]
 
-    def get_daily_leaderboard(self, game_type: str, mode: str, challenge_date: date) -> list[LeaderboardEntry]:
+    def get_daily_leaderboard(self, game_type: str, mode: str, challenge_date: date) -> list[DailyLeaderboardEntry]:
         """Top 15 accounts by score for *one specific day's* challenge, not a
         rolling window like get_leaderboard's all/weekly/daily - a date with no challenge for this
-        (game_type, mode) simply has no entries, not an error."""
+        (game_type, mode) simply has no entries, not an error. Each entry also carries that user's
+        current streak (see GameRepository.daily_streaks)."""
         if (game_type, mode) not in GAMES:
             raise UnsupportedGameError(f"unsupported game/mode: {game_type}/{mode}")
 
@@ -96,9 +111,19 @@ class ScoresService:
             return []
 
         rows = self._repository.daily_leaderboard_rows(challenge_id)
+        user_ids = [user_id for user_id, _, _, _ in rows]
+        streaks = self._repository.daily_streaks(game_type, mode, challenge_date, user_ids)
         return [
-            LeaderboardEntry(rank=rank, username=username, skin_person_id=skin_person_id, best_score=score)
-            for rank, (username, skin_person_id, score) in enumerate(rows, start=1)
+            DailyLeaderboardEntry(
+                rank=rank,
+                username=username,
+                skin_person_id=skin_person_id,
+                best_score=score,
+                # Safe to index directly: every row here has a finished game on exactly
+                # challenge_date, so daily_streaks always has an entry >= 1 for its user_id.
+                streak=streaks[user_id],
+            )
+            for rank, (user_id, username, skin_person_id, score) in enumerate(rows, start=1)
         ]
 
     def get_recent_games(self, user_id: UUID, limit: int = 5) -> list[RecentGame]:

@@ -7,7 +7,7 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-from services.scores_service import LeaderboardEntry
+from services.scores_service import DailyLeaderboardEntry, LeaderboardEntry
 
 LeaderboardWindow = Literal["all", "weekly", "daily"]
 
@@ -37,10 +37,24 @@ class LeaderboardOut(BaseModel):
         return cls(window=window, entries=[LeaderboardEntryOut.from_entry(e) for e in entries])
 
 
-class DailyLeaderboardOut(BaseModel):
-    date: date
-    entries: list[LeaderboardEntryOut]
+class DailyLeaderboardEntryOut(LeaderboardEntryOut):
+    streak: int
 
     @classmethod
-    def from_entries(cls, challenge_date: date, entries: list[LeaderboardEntry]) -> "DailyLeaderboardOut":
-        return cls(date=challenge_date, entries=[LeaderboardEntryOut.from_entry(e) for e in entries])
+    def from_entry(cls, entry: DailyLeaderboardEntry) -> "DailyLeaderboardEntryOut":
+        return cls(
+            rank=entry.rank,
+            username=entry.username,
+            skin_person_id=entry.skin_person_id,
+            best_score=entry.best_score,
+            streak=entry.streak,
+        )
+
+
+class DailyLeaderboardOut(BaseModel):
+    date: date
+    entries: list[DailyLeaderboardEntryOut]
+
+    @classmethod
+    def from_entries(cls, challenge_date: date, entries: list[DailyLeaderboardEntry]) -> "DailyLeaderboardOut":
+        return cls(date=challenge_date, entries=[DailyLeaderboardEntryOut.from_entry(e) for e in entries])
