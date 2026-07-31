@@ -10,10 +10,11 @@ import { TimelineCard } from "./TimelineCard"
 // apart their real dates are. Nothing here reuses Dateguessr/TimelineRuler.tsx or any of its
 // scale/zoom math.
 const TRACK_GAP_CLASS = "gap-2.5 md:gap-3.5"
-// Every gap's height matches the track's own card size so the row stays visually aligned.
+// Every gap's height matches the track's own card size (TimelineCard.tsx's SIZE_CLASS) so the row
+// stays visually aligned.
 const GAP_HEIGHT_CLASS: Record<"sm" | "md", string> = {
-  sm: "h-[126px] md:h-[150px]",
-  md: "h-56 md:h-64",
+  sm: "h-40 md:h-44",
+  md: "h-64 md:h-72",
 }
 // Full width: every gap is the same size regardless of position - the two extremes included - so
 // no slot is an easier or harder tap target than another, and deliberately generous (well past the
@@ -62,6 +63,9 @@ interface TimelineTrackProps {
   // target itself didn't change (e.g. re-focusing the same slot after a resize).
   focusToken?: number
   focusTarget?: { kind: TrackSlotKind; index: number } | null
+  // Live play only (TimelineGame.tsx) - opens a full-photo modal for an already-placed card.
+  // Undefined in "Ver rondas" (TimelineRounds.tsx already has its own per-card actions menu).
+  onCardClick?: (assetId: string) => void
 }
 
 export function TimelineTrack({
@@ -75,6 +79,7 @@ export function TimelineTrack({
   registerSlotRef,
   focusToken,
   focusTarget,
+  onCardClick,
 }: TimelineTrackProps) {
   const { t } = useTranslation()
   const elementsRef = useRef<Map<string, HTMLDivElement>>(new Map())
@@ -141,6 +146,7 @@ export function TimelineTrack({
                   variant={cards[gapIndex].variant ?? "default"}
                   badge={cards[gapIndex].badge}
                   actions={cards[gapIndex].actions}
+                  onClick={onCardClick ? () => onCardClick(cards[gapIndex].assetId) : undefined}
                 />
               </div>
             )}
