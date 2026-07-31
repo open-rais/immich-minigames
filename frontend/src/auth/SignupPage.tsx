@@ -39,7 +39,7 @@ export function SignupPage() {
         password,
         invite_code: inviteCode || undefined,
       })
-      navigate("/profile")
+      navigate("/")
     } catch (err) {
       setError(apiErrorMessage(err) ?? t("auth.error.generic"))
     } finally {
