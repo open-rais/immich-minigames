@@ -10,7 +10,12 @@ import { useTheme } from "../theme/useTheme"
 // Language names are NOT run through i18next on purpose - a language's own display name
 // shouldn't change depending on which language is currently active (same reason browsers/OSes
 // show language pickers untranslated).
-const LANGUAGE_LABELS: Record<"en" | "es", string> = { en: "English", es: "Español" }
+const LANGUAGE_LABELS: Record<"en" | "es" | "fr" | "de", string> = {
+  en: "English",
+  es: "Español",
+  fr: "Français",
+  de: "Deutsch",
+}
 
 function BackArrowIcon() {
   return (
@@ -31,9 +36,9 @@ function BackArrowIcon() {
 }
 
 function LanguageSelector() {
-  const current = i18n.language === "es" ? "es" : "en"
+  const current = (["en", "es", "fr", "de"].includes(i18n.language) ? i18n.language : "en") as "en" | "es" | "fr" | "de"
 
-  function handleChange(lang: "en" | "es") {
+  function handleChange(lang: "en" | "es" | "fr" | "de") {
     // Loaded on demand (see i18n/index.ts) - awaited here so switching to a
     // language not loaded yet doesn't flash the fallback language while its bundle fetches.
     void loadLanguage(lang).then(() => {
@@ -45,10 +50,10 @@ function LanguageSelector() {
   return (
     <select
       value={current}
-      onChange={(e) => handleChange(e.target.value as "en" | "es")}
+      onChange={(e) => handleChange(e.target.value as "en" | "es" | "fr" | "de")}
       className="h-11 w-full cursor-pointer rounded-xl border border-line-soft bg-surface px-3.5 text-[15px] font-semibold text-ink outline-none transition-colors hover:bg-hover-tint focus:border-primary"
     >
-      {(["en", "es"] as const).map((lang) => (
+      {(["en", "es", "fr", "de"] as const).map((lang) => (
         <option key={lang} value={lang}>
           {LANGUAGE_LABELS[lang]}
         </option>
