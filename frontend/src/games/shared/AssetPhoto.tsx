@@ -1,6 +1,10 @@
 import type { ReactNode } from "react"
 import { useEffect, useRef, useState } from "react"
 
+import { fitBox as computeFitBox } from "./fitBox"
+import type { Size } from "./fitBox"
+import { useElementSize } from "./useElementSize"
+
 // Mirrors games/MoreOrLess/PersonPhoto.tsx's failed-image placeholder pattern, fullscreen instead
 // of a card.
 const placeholderStyle = {
@@ -29,8 +33,8 @@ function clamp(value: number, min: number, max: number): number {
 // to fill the viewport).
 //
 // `overlay` (optional) renders inside a layer sized and positioned to exactly match the photo's
-// rendered content box (the object-contain "fit box", not the full letterboxed container) - see
-// fitBox below - and inherits the same pan/zoom transform as the image, so interactive content
+// rendered content box (the object-contain "fit box", not the full letterboxed container, see
+// fitBox.ts) - and inherits the same pan/zoom transform as the image, so interactive content
 // placed on top of the photo (e.g. Who'sThatPerson's face boxes) stays pixel-aligned to it at any
 // zoom/pan state.
 // Fills its parent (`absolute inset-0`) rather than positioning itself against the viewport - the
@@ -54,8 +58,8 @@ export function AssetPhoto({
 
   // Natural (source) image size and the container's own rendered size - both needed to compute
   // fitBox below. Only relevant when `overlay` is used; harmless to always track otherwise.
-  const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null)
-  const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null)
+  const [naturalSize, setNaturalSize] = useState<Size | null>(null)
+  const containerSize = useElementSize(containerRef)
   // Mirrors TimelineRuler.tsx's centerDayIndexRef - lets the native wheel listener (only attached
   // once, on mount) read the latest values without being in its dependency array.
   const scaleRef = useRef(scale)
@@ -79,36 +83,9 @@ export function AssetPhoto({
     anchor: Point
   } | null>(null)
 
-  // Same ResizeObserver convention as Dateguessr/TimelineRuler.tsx's containerWidth tracking.
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-    const observer = new ResizeObserver((entries) => {
-      const { width, height } = entries[0].contentRect
-      setContainerSize({ width, height })
-    })
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [])
-
   // The object-contain "fit box": where the image's actual pixels render within the container,
-  // excluding letterbox padding - standard object-contain-fit math (see
-  // games/WhosThatPerson/IncognitoPhoto.tsx for the original derivation of this formula).
-  const fitBox = (() => {
-    if (!naturalSize || !containerSize) return null
-    const fitScale = Math.min(
-      containerSize.width / naturalSize.width,
-      containerSize.height / naturalSize.height,
-    )
-    const width = naturalSize.width * fitScale
-    const height = naturalSize.height * fitScale
-    return {
-      left: (containerSize.width - width) / 2,
-      top: (containerSize.height - height) / 2,
-      width,
-      height,
-    }
-  })()
+  // excluding letterbox padding - see fitBox.ts.
+  const fitBox = naturalSize && containerSize ? computeFitBox(naturalSize, containerSize) : null
 
   function clampTranslate(nextScale: number, next: Point): Point {
     const rect = containerRef.current?.getBoundingClientRect()

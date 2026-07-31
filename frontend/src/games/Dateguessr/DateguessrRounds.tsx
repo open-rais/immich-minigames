@@ -1,8 +1,7 @@
-import { useState } from "react"
 import { useTranslation } from "react-i18next"
 
 import { GameType } from "../../api/types"
-import type { DateguessrRoundOut } from "../../api/types"
+import type { DateguessrRoundOut, RoundOut } from "../../api/types"
 import type { RoundsComponentProps } from "../catalog"
 import { AssetCarousel } from "../shared/AssetCarousel"
 import { BackButton } from "../shared/BackButton"
@@ -10,7 +9,12 @@ import { EntryOptionsMenu } from "../shared/EntryOptionsMenu"
 import { ImmichLink } from "../shared/ImmichLink"
 import { RevealResultCard } from "../shared/RevealResultCard"
 import { RoundStepper } from "../rounds/RoundStepper"
+import { useRoundStepper } from "../shared/useRoundStepper"
 import { ABOVE_RULER_BOTTOM_CLASS, RULER_BOTTOM_CLASS, TimelineRuler } from "./TimelineRuler"
+
+function isDateguessrRound(round: RoundOut): round is DateguessrRoundOut {
+  return round.game_type === GameType.Dateguessr
+}
 
 // TimelineRuler's onSelectedChange is a required prop even in read-only review - every round here
 // is `disabled`, so it's never actually invoked.
@@ -21,17 +25,14 @@ function noop() {}
 // finished-round layout, but with the stepper's prev/next arrows in place of a live game.
 export function DateguessrRounds({ game, onBack }: RoundsComponentProps) {
   const { t } = useTranslation()
-  const [index, setIndex] = useState(0)
 
-  // A round still pending an answer (a game reached mid-play by URL) is dropped, same convention
-  // MoreOrLessRounds.tsx already established for its own redacted-field check (§3 H) - its
-  // actual_date never got set, so there's nothing to reveal.
-  const rounds = game.rounds
-    .filter((r): r is DateguessrRoundOut => r.game_type === GameType.Dateguessr)
-    .filter((r) => r.actual_date !== null)
-  const round = rounds[index]
+  // actual_date never got set on a round still pending an answer (a game reached mid-play by URL)
+  // - same convention MoreOrLessRounds.tsx already established for its own redacted-field check
+  // (§3 H): there's nothing to reveal for it.
+  const stepper = useRoundStepper(game, isDateguessrRound, (r) => r.actual_date !== null)
 
-  if (!round) return null
+  if (!stepper) return null
+  const { round, index, total, prev, next } = stepper
 
   return (
     <div className="h-dvh w-full overflow-hidden bg-app-bg">
@@ -40,12 +41,7 @@ export function DateguessrRounds({ game, onBack }: RoundsComponentProps) {
       </div>
 
       <BackButton label={t("common.back")} onClick={() => onBack?.()} />
-      <RoundStepper
-        current={index + 1}
-        total={rounds.length}
-        onPrev={() => setIndex((i) => Math.max(i - 1, 0))}
-        onNext={() => setIndex((i) => Math.min(i + 1, rounds.length - 1))}
-      />
+      <RoundStepper current={index + 1} total={total} onPrev={prev} onNext={next} />
 
       <div className="fixed top-[18px] right-[18px] z-30 md:top-7 md:right-10">
         <EntryOptionsMenu>
