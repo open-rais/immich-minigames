@@ -6,7 +6,13 @@ import { ImmichLink } from "../shared/ImmichLink"
 import type { TargetSnapshot } from "./clueColors"
 import { AnimatedGuessRow } from "./AnimatedGuessRow"
 import { ClueCell } from "./ClueCell"
-import { CLUE_CELL_WRAPPER_CLASS, CLUE_COL, CLUE_COLUMNS, PERSON_COL, ROW_MIN_H_CLASS } from "./guessTableColumns"
+import {
+  CLUE_CELL_WRAPPER_CLASS,
+  CLUE_COL,
+  CLUE_COLUMNS,
+  PERSON_COL,
+  ROW_MIN_H_CLASS,
+} from "./guessTableColumns"
 import { PersonCell } from "./PersonCell"
 
 const ACTIONS_COL = "w-10 flex-none md:w-12"
@@ -31,7 +37,12 @@ interface GuessTableProps {
 // `inline-flex flex-col` makes the table size to its own natural (widest-row) width rather than
 // shrinking to the container, so the surrounding `overflow-x-auto` scrolls *inside* the table when
 // it doesn't fit, instead of the whole page growing wider.
-export function GuessTable({ history, target, animatingRoundId, onRowAnimationDone }: GuessTableProps) {
+export function GuessTable({
+  history,
+  target,
+  animatingRoundId,
+  onRowAnimationDone,
+}: GuessTableProps) {
   const { t } = useTranslation()
 
   if (history.length === 0 && !target) return null
@@ -74,7 +85,10 @@ export function GuessTable({ history, target, animatingRoundId, onRowAnimationDo
           round.id === animatingRoundId ? (
             <AnimatedGuessRow key={round.id} round={round} onDone={() => onRowAnimationDone?.()} />
           ) : (
-            <div key={round.id} className={`flex border-t border-line first:border-t-0 ${ROW_MIN_H_CLASS}`}>
+            <div
+              key={round.id}
+              className={`flex border-t border-line first:border-t-0 ${ROW_MIN_H_CLASS}`}
+            >
               <div className={PERSON_COL}>
                 <PersonCell personId={round.guess_person_id!} name={round.guess_person_name} />
               </div>

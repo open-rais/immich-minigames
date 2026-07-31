@@ -1,7 +1,7 @@
-// Mirrors backend/src/api/schemas.py - keep field names in sync with that file.
+// Mirrors backend/src/api/dto/ - keep field names in sync with those modules.
 
 // Canonical game_type / mode identifiers, mirroring the keys of
-// backend/src/services/games_service.py's _GAME_CLASSES / _ROUND_CLASSES. Single source so the
+// backend/src/services/game_registry.py's GAMES. Single source so the
 // catalog, the game components and the discriminated-union tags below don't each hardcode the same
 // strings.
 export const GameType = {
@@ -208,7 +208,7 @@ export interface CurrentGameOut {
 }
 
 // No game_type here (unlike RoundOut) - game_id already fixes a round's game/mode server-side, so
-// the guess body only needs the guess itself; see backend/src/api/schemas.py's parse_guess.
+// the guess body only needs the guess itself; see backend/src/api/dto/common.py's parse_guess.
 export interface MoreOrLessPlayRoundIn {
   guess: MoreOrLessGuess
 }
@@ -227,7 +227,7 @@ export interface ImmichdlePlayRoundIn {
 }
 
 // face_id -> guessed person_id, one entry per hidden face in the round - see
-// backend/src/api/schemas.py's WhosThatPersonPlayRoundIn.
+// backend/src/api/dto/whos_that_person.py's WhosThatPersonPlayRoundIn.
 export interface WhosThatPersonPlayRoundIn {
   guesses: Record<string, string>
 }

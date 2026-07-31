@@ -13,7 +13,16 @@ import { ModeCard } from "./ModeCard"
 
 function ShareIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <circle cx="18" cy="5" r="3" />
       <circle cx="6" cy="12" r="3" />
       <circle cx="18" cy="19" r="3" />
@@ -49,7 +58,8 @@ export function DailySection() {
   if (!status || status.modes.length === 0) return null
 
   function subtitleFor(modeStatus: DailyModeStatusOut): string {
-    if (modeStatus.status === "finished") return t("mainMenu.bestScore", { score: modeStatus.score ?? 0 })
+    if (modeStatus.status === "finished")
+      return t("mainMenu.bestScore", { score: modeStatus.score ?? 0 })
     if (modeStatus.status === "in_progress") return t("common.continueCta")
     return t("mainMenu.notPlayed")
   }
@@ -64,12 +74,14 @@ export function DailySection() {
     setShareBusy(true)
     try {
       const entries = await Promise.all(
-        status.modes.map(async (modeStatus): Promise<{ modeTitle: string; game: GameOut } | null> => {
-          if (!modeStatus.game_id) return null
-          const catalogMode = findCatalogMode(modeStatus.game_type, modeStatus.mode)
-          const game = await getGame(modeStatus.game_id)
-          return { modeTitle: catalogMode ? t(catalogMode.modeTitleKey) : modeStatus.mode, game }
-        }),
+        status.modes.map(
+          async (modeStatus): Promise<{ modeTitle: string; game: GameOut } | null> => {
+            if (!modeStatus.game_id) return null
+            const catalogMode = findCatalogMode(modeStatus.game_type, modeStatus.mode)
+            const game = await getGame(modeStatus.game_id)
+            return { modeTitle: catalogMode ? t(catalogMode.modeTitleKey) : modeStatus.mode, game }
+          },
+        ),
       )
       const nonNull = entries.filter((e): e is { modeTitle: string; game: GameOut } => e !== null)
       const link = `${window.location.origin}/`
@@ -107,7 +119,12 @@ export function DailySection() {
         {/* Keyed by resets_at so a day rollover's re-fetch remounts the countdown - its offset/
             fired refs are fixed at mount, so without the remount it would stay frozen at 00:00:00
             even though the cards themselves already switched to the new day. */}
-        <DailyCountdown key={status.resets_at} resetsAt={status.resets_at} serverNow={status.server_now} onExpire={load} />
+        <DailyCountdown
+          key={status.resets_at}
+          resetsAt={status.resets_at}
+          serverNow={status.server_now}
+          onExpire={load}
+        />
         {allFinished && (
           <button
             type="button"

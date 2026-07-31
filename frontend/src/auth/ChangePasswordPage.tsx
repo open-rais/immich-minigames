@@ -77,7 +77,11 @@ export function ChangePasswordPage() {
           }}
         />
         {error && <p className="text-sm font-semibold text-rose-600">{error}</p>}
-        {saved && !error && <p className="text-sm font-semibold text-emerald-600">{t("auth.profile.changePassword.saved")}</p>}
+        {saved && !error && (
+          <p className="text-sm font-semibold text-emerald-600">
+            {t("auth.profile.changePassword.saved")}
+          </p>
+        )}
         <Button type="submit" variant="primary" className="w-full py-2.5" disabled={busy}>
           {t("auth.profile.changePassword.save")}
         </Button>

@@ -30,27 +30,38 @@ export function AdminGamesSection() {
   useEffect(() => {
     Promise.all([listGameSettings(), listDailySettings()])
       .then(([settings, daily]) => {
-        setSettingsByKey(Object.fromEntries(settings.map((s) => [settingsKey(s.game_type, s.mode), s])))
+        setSettingsByKey(
+          Object.fromEntries(settings.map((s) => [settingsKey(s.game_type, s.mode), s])),
+        )
         setDailyByKey(Object.fromEntries(daily.map((d) => [settingsKey(d.game_type, d.mode), d])))
       })
       .catch((err) => setError(apiErrorMessage(err) ?? t("auth.error.generic")))
   }, [t])
 
   function handleUpdated(updated: GameSettingsOut) {
-    setSettingsByKey((prev) => (prev ? { ...prev, [settingsKey(updated.game_type, updated.mode)]: updated } : prev))
+    setSettingsByKey((prev) =>
+      prev ? { ...prev, [settingsKey(updated.game_type, updated.mode)]: updated } : prev,
+    )
   }
 
   function handleDailyUpdated(updated: DailySettingsOut) {
-    setDailyByKey((prev) => (prev ? { ...prev, [settingsKey(updated.game_type, updated.mode)]: updated } : prev))
+    setDailyByKey((prev) =>
+      prev ? { ...prev, [settingsKey(updated.game_type, updated.mode)]: updated } : prev,
+    )
   }
 
   if (error) return <p className="text-sm font-semibold text-rose-600">{error}</p>
-  if (!settingsByKey || !dailyByKey) return <p className="text-sm text-faint">{t("admin.games.loading")}</p>
+  if (!settingsByKey || !dailyByKey)
+    return <p className="text-sm text-faint">{t("admin.games.loading")}</p>
 
   return (
     <>
       {GAME_CATALOG.map((game) => (
-        <SettingAccordion key={game.gameType} title={t(game.gameTitleKey)} description={t("admin.games.description")}>
+        <SettingAccordion
+          key={game.gameType}
+          title={t(game.gameTitleKey)}
+          description={t("admin.games.description")}
+        >
           {game.modes.map((mode) => {
             const settings = settingsByKey[settingsKey(game.gameType, mode.mode)]
             const daily = dailyByKey[settingsKey(game.gameType, mode.mode)]

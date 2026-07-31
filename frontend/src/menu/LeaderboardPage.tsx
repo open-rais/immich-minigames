@@ -54,7 +54,10 @@ export function LeaderboardPage() {
 
       <div className="mt-14 text-center md:mt-0">
         <h1 className="text-3xl font-bold text-ink">{t("leaderboard.title")}</h1>
-        <GameModeSubtitle gameTitle={t(game.gameTitleKey)} modeTitle={t(catalogMode.modeTitleKey)} />
+        <GameModeSubtitle
+          gameTitle={t(game.gameTitleKey)}
+          modeTitle={t(catalogMode.modeTitleKey)}
+        />
       </div>
 
       <div className="w-full max-w-xs">
@@ -78,7 +81,9 @@ export function LeaderboardPage() {
                   src={entry.skin_person_id ? personThumbnailUrl(entry.skin_person_id) : null}
                   alt=""
                 />
-                <span className="min-w-0 flex-1 truncate font-semibold text-ink">{entry.username}</span>
+                <span className="min-w-0 flex-1 truncate font-semibold text-ink">
+                  {entry.username}
+                </span>
                 <span className="flex-none font-mono font-bold text-ink">{entry.best_score}</span>
               </li>
             ))}

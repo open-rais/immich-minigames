@@ -16,7 +16,16 @@ const LANGUAGE_LABELS: Record<"en" | "es", string> = { en: "English", es: "Espa√
 
 function UserIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <circle cx="12" cy="8" r="4" />
       <path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8" />
     </svg>
@@ -44,7 +53,10 @@ function LanguageSelector() {
   const current = i18n.language === "es" ? "es" : "en"
   return (
     <SegmentedControl
-      options={(["en", "es"] as const).map((lang) => ({ value: lang, label: LANGUAGE_LABELS[lang] }))}
+      options={(["en", "es"] as const).map((lang) => ({
+        value: lang,
+        label: LANGUAGE_LABELS[lang],
+      }))}
       value={current}
       onChange={(lang) => {
         localStorage.setItem("minigames-lang", lang)
@@ -112,26 +124,40 @@ export function UserMenu() {
         aria-expanded={open}
         className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-line-strong bg-surface text-body shadow-card transition-colors hover:bg-hover-tint"
       >
-        {user.skin_person_id ? <SkinAvatar key={user.skin_person_id} personId={user.skin_person_id} /> : <UserIcon />}
+        {user.skin_person_id ? (
+          <SkinAvatar key={user.skin_person_id} personId={user.skin_person_id} />
+        ) : (
+          <UserIcon />
+        )}
       </button>
 
       {open && (
         <div className="absolute top-[calc(100%+8px)] right-0 z-40 w-64 rounded-2xl border border-line bg-surface p-2 shadow-card">
-          <Link to="/profile" className="block rounded-xl px-3 py-2.5 text-sm font-semibold text-body hover:bg-hover-tint">
+          <Link
+            to="/profile"
+            className="block rounded-xl px-3 py-2.5 text-sm font-semibold text-body hover:bg-hover-tint"
+          >
             {user.username}
           </Link>
           {user.is_admin && (
-            <Link to="/admin" className="block rounded-xl px-3 py-2.5 text-sm font-semibold text-body hover:bg-hover-tint">
+            <Link
+              to="/admin"
+              className="block rounded-xl px-3 py-2.5 text-sm font-semibold text-body hover:bg-hover-tint"
+            >
               {t("userMenu.adminPanel")}
             </Link>
           )}
           <div className="my-1 border-t border-line" />
           <div className="px-3 py-2">
-            <p className="mb-1.5 text-xs font-semibold tracking-wide text-faint uppercase">{t("userMenu.language")}</p>
+            <p className="mb-1.5 text-xs font-semibold tracking-wide text-faint uppercase">
+              {t("userMenu.language")}
+            </p>
             <LanguageSelector />
           </div>
           <div className="px-3 py-2">
-            <p className="mb-1.5 text-xs font-semibold tracking-wide text-faint uppercase">{t("userMenu.theme")}</p>
+            <p className="mb-1.5 text-xs font-semibold tracking-wide text-faint uppercase">
+              {t("userMenu.theme")}
+            </p>
             <ThemeSelector />
           </div>
         </div>

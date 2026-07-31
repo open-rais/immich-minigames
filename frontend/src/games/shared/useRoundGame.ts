@@ -158,7 +158,13 @@ export function useRoundGame<TRound extends RoundOut, TGuess>({
   function applyGame(g: GameOut): boolean {
     const currentRound = g.rounds[g.rounds.length - 1]
     if (!isRound(currentRound)) return false
-    setGame({ id: g.id, score: g.score, finished: g.finished, totalRounds: g.total_rounds, totalPeople: g.total_people })
+    setGame({
+      id: g.id,
+      score: g.score,
+      finished: g.finished,
+      totalRounds: g.total_rounds,
+      totalPeople: g.total_people,
+    })
     setRound(currentRound)
     setPendingNextRound(null)
     setPhase("guessing")

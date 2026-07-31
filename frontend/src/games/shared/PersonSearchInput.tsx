@@ -25,7 +25,9 @@ interface PersonSearchInputProps {
 }
 
 function isTextEntryElement(el: Element): boolean {
-  return el.tagName === "INPUT" || el.tagName === "TEXTAREA" || (el as HTMLElement).isContentEditable
+  return (
+    el.tagName === "INPUT" || el.tagName === "TEXTAREA" || (el as HTMLElement).isContentEditable
+  )
 }
 
 // Debounced search-as-you-type input for picking a person - accent-insensitive, per-token
@@ -35,7 +37,12 @@ function isTextEntryElement(el: Element): boolean {
 // the current skin again"). Results page in via infinite scroll (see handleResultsScroll) - the
 // dropdown's max-height (see the results box className below) only shows VISIBLE_ROWS rows at
 // once, so scrolling is the common case even though PAGE_SIZE fetches more than that per page.
-export function PersonSearchInput({ excludeIds, onSelect, disabled, focusOnTypeAnywhere = false }: PersonSearchInputProps) {
+export function PersonSearchInput({
+  excludeIds,
+  onSelect,
+  disabled,
+  focusOnTypeAnywhere = false,
+}: PersonSearchInputProps) {
   const { t } = useTranslation()
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<PersonSearchResultOut[]>([])
@@ -94,7 +101,10 @@ export function PersonSearchInput({ excludeIds, onSelect, disabled, focusOnTypeA
     setLoadingMore(true)
     const token = requestTokenRef.current
     try {
-      const { results: found } = await searchPersons(trimmed, { offset: offsetRef.current, limit: PAGE_SIZE })
+      const { results: found } = await searchPersons(trimmed, {
+        offset: offsetRef.current,
+        limit: PAGE_SIZE,
+      })
       if (requestTokenRef.current !== token) return
       offsetRef.current += found.length
       setHasMore(found.length === PAGE_SIZE)
@@ -139,7 +149,9 @@ export function PersonSearchInput({ excludeIds, onSelect, disabled, focusOnTypeA
   // Keeps the keyboard-selected row visible as it moves in/out of the scrollable results box.
   useEffect(() => {
     if (selectedIndex < 0) return
-    resultsBoxRef.current?.querySelector(`[data-index="${selectedIndex}"]`)?.scrollIntoView({ block: "nearest" })
+    resultsBoxRef.current
+      ?.querySelector(`[data-index="${selectedIndex}"]`)
+      ?.scrollIntoView({ block: "nearest" })
   }, [selectedIndex])
 
   // focusOnTypeAnywhere: a letter typed while focus is elsewhere on the page (but not inside some
@@ -153,7 +165,8 @@ export function PersonSearchInput({ excludeIds, onSelect, disabled, focusOnTypeA
       if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return
       if (!/^\p{L}$/u.test(e.key)) return
       const active = document.activeElement
-      if (active === inputRef.current || (active instanceof Element && isTextEntryElement(active))) return
+      if (active === inputRef.current || (active instanceof Element && isTextEntryElement(active)))
+        return
       e.preventDefault()
       inputRef.current?.focus()
       setQuery((prev) => prev + e.key)
@@ -281,7 +294,9 @@ export function PersonSearchInput({ excludeIds, onSelect, disabled, focusOnTypeA
                   <span className="truncate font-semibold text-ink">{person.name}</span>
                 </button>
               ))}
-              {loadingMore && <p className="px-4 py-2 text-sm text-muted">{t("immichdle.searching")}</p>}
+              {loadingMore && (
+                <p className="px-4 py-2 text-sm text-muted">{t("immichdle.searching")}</p>
+              )}
             </>
           )}
         </div>

@@ -9,7 +9,17 @@ import { SettingAccordion } from "./SettingAccordion"
 
 function BackArrowIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="block shrink-0">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="block shrink-0"
+    >
       <path d="M15 18l-6-6 6-6" />
     </svg>
   )
@@ -34,7 +44,10 @@ export function AdminPage() {
     <div className="min-h-screen bg-app-bg">
       <header className="sticky top-0 z-10 border-b border-line bg-surface pt-[env(safe-area-inset-top)]">
         <div className="flex h-16 items-center px-6 md:px-10">
-          <Link to="/" className="flex items-center gap-2 rounded-full py-2 pr-3 pl-2 text-sm font-semibold text-body transition-colors hover:bg-hover-tint">
+          <Link
+            to="/"
+            className="flex items-center gap-2 rounded-full py-2 pr-3 pl-2 text-sm font-semibold text-body transition-colors hover:bg-hover-tint"
+          >
             <BackArrowIcon />
             {/* "Back"/"Volver" have no descenders, so their glyphs sit in the top portion of the
                 text line box - centering that box against the (fully symmetric) icon box via
@@ -50,7 +63,10 @@ export function AdminPage() {
           <AdminUsersSection />
         </SettingAccordion>
 
-        <SettingAccordion title={t("admin.invites.title")} description={t("admin.invites.description")}>
+        <SettingAccordion
+          title={t("admin.invites.title")}
+          description={t("admin.invites.description")}
+        >
           <AdminInvitesSection />
         </SettingAccordion>
 

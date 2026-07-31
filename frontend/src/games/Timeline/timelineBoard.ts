@@ -17,7 +17,11 @@ export function toTrackCard(card: TimelineCardOut): TrackCard {
   return { assetId: card.asset_id, date: card.date }
 }
 
-export function insertCard(board: TimelineCardOut[], slot: number, card: TimelineCardOut): TimelineCardOut[] {
+export function insertCard(
+  board: TimelineCardOut[],
+  slot: number,
+  card: TimelineCardOut,
+): TimelineCardOut[] {
   return [...board.slice(0, slot), card, ...board.slice(slot)]
 }
 

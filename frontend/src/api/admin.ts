@@ -52,12 +52,17 @@ export async function updateGameSettings(
   mode: string,
   values: Record<string, number>,
 ): Promise<GameSettingsOut> {
-  const { data } = await apiClient.put<GameSettingsOut>(`/admin/games/${gameType}/${mode}/settings`, values)
+  const { data } = await apiClient.put<GameSettingsOut>(
+    `/admin/games/${gameType}/${mode}/settings`,
+    values,
+  )
   return data
 }
 
 export async function resetGameSettings(gameType: string, mode: string): Promise<GameSettingsOut> {
-  const { data } = await apiClient.post<GameSettingsOut>(`/admin/games/${gameType}/${mode}/settings/reset`)
+  const { data } = await apiClient.post<GameSettingsOut>(
+    `/admin/games/${gameType}/${mode}/settings/reset`,
+  )
   return data
 }
 
@@ -77,7 +82,10 @@ export async function updateDailySettings(
   return data
 }
 
-export async function resetDailySettings(gameType: string, mode: string): Promise<DailySettingsOut> {
+export async function resetDailySettings(
+  gameType: string,
+  mode: string,
+): Promise<DailySettingsOut> {
   const { data } = await apiClient.post<DailySettingsOut>(`/admin/daily/${gameType}/${mode}/reset`)
   return data
 }
@@ -91,7 +99,10 @@ export async function createInvite(): Promise<CreateInviteOut> {
 
 // Paginated (roadmap infinite-scroll UI, see admin/useInfiniteAdminList.ts) - same offset/limit
 // convention as api/games.ts's searchPersons.
-export async function listInvites(opts?: { offset?: number; limit?: number }): Promise<InviteOut[]> {
+export async function listInvites(opts?: {
+  offset?: number
+  limit?: number
+}): Promise<InviteOut[]> {
   const { data } = await apiClient.get<InviteOut[]>("/admin/invites", {
     params: { offset: opts?.offset, limit: opts?.limit },
   })

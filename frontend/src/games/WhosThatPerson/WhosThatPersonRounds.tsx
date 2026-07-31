@@ -81,7 +81,10 @@ export function WhosThatPersonRounds({ game, onBack }: RoundsComponentProps) {
         <RevealResultCard
           positionClassName="bottom-[18px] left-[18px] md:bottom-7 md:left-10"
           scoreDelta={round.score_delta}
-          subtitle={t("whosThatPerson.result.correctCount", { correct: correctCount, total: round.faces.length })}
+          subtitle={t("whosThatPerson.result.correctCount", {
+            correct: correctCount,
+            total: round.faces.length,
+          })}
         />
       )}
     </div>

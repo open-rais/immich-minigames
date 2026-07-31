@@ -57,7 +57,9 @@ function buildChain(rounds: MoreOrLessRoundOut[]): ChainEntry[] {
 export function MoreOrLessRounds({ game }: RoundsComponentProps) {
   const { mode = Mode.PersonAssets } = useParams<{ mode: string }>()
   const config = MODE_CONFIG[mode] ?? MODE_CONFIG[Mode.PersonAssets]
-  const rounds = game.rounds.filter((r): r is MoreOrLessRoundOut => r.game_type === GameType.MoreOrLess)
+  const rounds = game.rounds.filter(
+    (r): r is MoreOrLessRoundOut => r.game_type === GameType.MoreOrLess,
+  )
   const chain = buildChain(rounds)
 
   return (
@@ -69,7 +71,9 @@ export function MoreOrLessRounds({ game }: RoundsComponentProps) {
         >
           <PersonAvatar src={config.thumbnailUrl(entry.id)} alt="" />
           <span className="line-clamp-2 min-w-0 flex-1 font-semibold text-ink">{entry.name}</span>
-          <span className={`flex-none font-mono font-bold ${COUNT_COLOR_CLASS[entry.variant]}`}>{entry.assetCount}</span>
+          <span className={`flex-none font-mono font-bold ${COUNT_COLOR_CLASS[entry.variant]}`}>
+            {entry.assetCount}
+          </span>
           <EntryOptionsMenu>
             <ImmichLink kind={config.linkKind} id={entry.id} />
           </EntryOptionsMenu>

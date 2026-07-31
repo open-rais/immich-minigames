@@ -36,7 +36,8 @@ type PersonRef = { id: string; name: string }
 // mismatched game_type here means the backend returned something unexpected - fail loudly instead
 // of accessing MoreOrLess-only fields on a round the union type says might not have them.
 function assertMoreOrLess(round: RoundOut): asserts round is MoreOrLessRoundOut {
-  if (round.game_type !== GameType.MoreOrLess) throw new Error(`expected a more-or-less round, got ${round.game_type}`)
+  if (round.game_type !== GameType.MoreOrLess)
+    throw new Error(`expected a more-or-less round, got ${round.game_type}`)
 }
 
 export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameComponentProps) {
@@ -176,7 +177,11 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameC
     const round = g.rounds[g.rounds.length - 1]
     assertMoreOrLess(round)
     setGame(g)
-    setReference({ id: round.reference_id, name: round.reference_name, assetCount: round.reference_asset_count })
+    setReference({
+      id: round.reference_id,
+      name: round.reference_name,
+      assetCount: round.reference_asset_count,
+    })
     setCandidate({ id: round.candidate_id, name: round.candidate_name, roundId: round.id })
     setCandidatePhase("guessing")
     setCountTarget(null)
@@ -255,7 +260,11 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameC
     setTransitionEnabled(false)
     setSliding(false)
     setReference({ id: candidate.id, name: candidate.name, assetCount: countTarget })
-    setCandidate({ id: nextRound.candidate_id, name: nextRound.candidate_name, roundId: nextRound.id })
+    setCandidate({
+      id: nextRound.candidate_id,
+      name: nextRound.candidate_name,
+      roundId: nextRound.id,
+    })
     setCandidatePhase("guessing")
     setCountTarget(null)
     setRevealResult(null)
@@ -299,7 +308,13 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameC
         allowPlayAgain={!daily}
         dailyShare={
           daily && game
-            ? { gameId: game.id, gameType: GAME_TYPE, mode, gameTitle: t("moreOrLess.title"), modeTitle: t(config.modeTitleKey) }
+            ? {
+                gameId: game.id,
+                gameType: GAME_TYPE,
+                mode,
+                gameTitle: t("moreOrLess.title"),
+                modeTitle: t(config.modeTitleKey),
+              }
             : undefined
         }
       />
@@ -343,7 +358,9 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameC
             ref={slidingCardRef}
             className="relative z-10 flex h-full min-h-0 flex-col md:h-auto"
             style={{
-              transform: sliding ? `translate(${slideOffset.x}px, ${slideOffset.y}px)` : "translate(0px, 0px)",
+              transform: sliding
+                ? `translate(${slideOffset.x}px, ${slideOffset.y}px)`
+                : "translate(0px, 0px)",
               transition: transitionEnabled ? "transform 450ms ease-out" : "none",
             }}
             onTransitionEnd={handleSlideEnd}

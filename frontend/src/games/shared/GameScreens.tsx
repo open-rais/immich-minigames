@@ -28,7 +28,10 @@ function useLeaderboardHref(): string {
 // exists is looked up once in GameRoute.tsx and threaded down as `hasRoundsView`, the same way
 // GameRoute already threads down `coverUrl` - not looked up here directly, which would make this
 // game-tree module import games/catalog.ts, which imports every *Game.tsx (a cycle).
-function useRoundsHref(gameId: string | undefined, hasRoundsView: boolean | undefined): string | null {
+function useRoundsHref(
+  gameId: string | undefined,
+  hasRoundsView: boolean | undefined,
+): string | null {
   const { gameType, mode } = useParams<{ gameType: string; mode: string }>()
   if (!gameId || !hasRoundsView || !gameType || !mode) return null
   return `/${gameType}/${mode}/game/${gameId}/rounds`
@@ -94,7 +97,12 @@ export function IdleScreen({
           </Button>
         )}
         {(!canContinue || allowNewGame) && (
-          <Button variant={canContinue ? "secondary" : "primary"} className="w-56 py-3" onClick={onStart} disabled={busy}>
+          <Button
+            variant={canContinue ? "secondary" : "primary"}
+            className="w-56 py-3"
+            onClick={onStart}
+            disabled={busy}
+          >
             {t(canContinue ? "common.newGameCta" : "common.startCta")}
           </Button>
         )}
@@ -150,7 +158,13 @@ interface FinishedScreenProps {
   // FinishedScreen call). gameTitle/modeTitle are passed in already-translated (the same strings
   // each *Game.tsx already computes for its own IdleScreen title) rather than looked up here via
   // games/catalog.ts, which would cycle back through every *Game.tsx (see useRoundsHref above).
-  dailyShare?: { gameId: string; gameType: string; mode: string; gameTitle: string; modeTitle: string }
+  dailyShare?: {
+    gameId: string
+    gameType: string
+    mode: string
+    gameTitle: string
+    modeTitle: string
+  }
 }
 
 export function FinishedScreen({
@@ -201,7 +215,12 @@ export function FinishedScreen({
           </Button>
         )}
         {dailyShare && (
-          <Button variant="primary" className="w-56 py-3" onClick={handleShare} disabled={shareBusy}>
+          <Button
+            variant="primary"
+            className="w-56 py-3"
+            onClick={handleShare}
+            disabled={shareBusy}
+          >
             {t("daily.share.button")}
           </Button>
         )}
@@ -214,7 +233,9 @@ export function FinishedScreen({
           {t("common.leaderboards")}
         </Button>
       </div>
-      {shareError && <p className="text-sm font-semibold text-rose-600">{t("daily.share.error")}</p>}
+      {shareError && (
+        <p className="text-sm font-semibold text-rose-600">{t("daily.share.error")}</p>
+      )}
       {shareText && <ShareModal text={shareText} onClose={() => setShareText(null)} />}
     </div>
   )

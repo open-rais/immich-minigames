@@ -12,5 +12,11 @@ export function DailyGameRoute() {
   if (!catalogMode) return <Navigate to="/" replace />
 
   const Component = catalogMode.component
-  return <Component coverUrl={catalogMode.coverUrl} hasRoundsView={!!catalogMode.roundsComponent} daily />
+  return (
+    <Component
+      coverUrl={catalogMode.coverUrl}
+      hasRoundsView={!!catalogMode.roundsComponent}
+      daily
+    />
+  )
 }

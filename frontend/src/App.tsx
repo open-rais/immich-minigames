@@ -1,21 +1,21 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Route, Routes } from "react-router-dom"
 
-import { AdminPage } from './admin/AdminPage'
-import { AuthProvider } from './auth/AuthProvider'
-import { ChangePasswordPage } from './auth/ChangePasswordPage'
-import { EditProfilePage } from './auth/EditProfilePage'
-import { LoginPage } from './auth/LoginPage'
-import { ProfilePage } from './auth/ProfilePage'
-import { RequireAuth } from './auth/RequireAuth'
-import { ResetPasswordPage } from './auth/ResetPasswordPage'
-import { SignupPage } from './auth/SignupPage'
-import { RoundsPage } from './games/rounds/RoundsPage'
-import { DailyGameRoute } from './menu/DailyGameRoute'
-import { DailyLeaderboardPage } from './menu/DailyLeaderboardPage'
-import { GameRoute } from './menu/GameRoute'
-import { LeaderboardPage } from './menu/LeaderboardPage'
-import { MainMenu } from './menu/MainMenu'
-import { ThemeProvider } from './theme/ThemeProvider'
+import { AdminPage } from "./admin/AdminPage"
+import { AuthProvider } from "./auth/AuthProvider"
+import { ChangePasswordPage } from "./auth/ChangePasswordPage"
+import { EditProfilePage } from "./auth/EditProfilePage"
+import { LoginPage } from "./auth/LoginPage"
+import { ProfilePage } from "./auth/ProfilePage"
+import { RequireAuth } from "./auth/RequireAuth"
+import { ResetPasswordPage } from "./auth/ResetPasswordPage"
+import { SignupPage } from "./auth/SignupPage"
+import { RoundsPage } from "./games/rounds/RoundsPage"
+import { DailyGameRoute } from "./menu/DailyGameRoute"
+import { DailyLeaderboardPage } from "./menu/DailyLeaderboardPage"
+import { GameRoute } from "./menu/GameRoute"
+import { LeaderboardPage } from "./menu/LeaderboardPage"
+import { MainMenu } from "./menu/MainMenu"
+import { ThemeProvider } from "./theme/ThemeProvider"
 
 function App() {
   return (

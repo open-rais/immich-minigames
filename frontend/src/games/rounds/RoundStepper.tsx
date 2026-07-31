@@ -18,8 +18,22 @@ export function RoundStepper({ current, total, onPrev, onNext }: RoundStepperPro
   const { t } = useTranslation()
   return (
     <div className="fixed top-[18px] left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 md:top-7">
-      <button onClick={onPrev} disabled={current <= 1} aria-label={t("common.previousRound")} className={ARROW_BUTTON_CLASS}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <button
+        onClick={onPrev}
+        disabled={current <= 1}
+        aria-label={t("common.previousRound")}
+        className={ARROW_BUTTON_CLASS}
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="M15 18l-6-6 6-6" />
         </svg>
       </button>
@@ -28,8 +42,22 @@ export function RoundStepper({ current, total, onPrev, onNext }: RoundStepperPro
           {t("common.roundOf", { current, total })}
         </span>
       </div>
-      <button onClick={onNext} disabled={current >= total} aria-label={t("common.nextRound")} className={ARROW_BUTTON_CLASS}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <button
+        onClick={onNext}
+        disabled={current >= total}
+        aria-label={t("common.nextRound")}
+        className={ARROW_BUTTON_CLASS}
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="M9 18l6-6-6-6" />
         </svg>
       </button>

@@ -1,5 +1,12 @@
 import { apiClient } from "./client"
-import type { ChangePasswordIn, LoginIn, RegisterIn, ResetPasswordIn, UpdateProfileIn, User } from "./types"
+import type {
+  ChangePasswordIn,
+  LoginIn,
+  RegisterIn,
+  ResetPasswordIn,
+  UpdateProfileIn,
+  User,
+} from "./types"
 
 // The backend sets/clears the session as an httpOnly cookie (see backend/src/api/auth_api.py) -
 // same-origin in both dev (vite.config.ts's proxy) and prod (nginx.conf.template), so the browser
@@ -39,7 +46,9 @@ export async function updateProfile(body: UpdateProfileIn): Promise<User> {
 // here is normal control flow, shown inline on ChangePasswordPage, same reasoning as login() above
 // (without it, the global interceptor would redirect to /login before the inline error ever shows).
 export async function changePassword(body: ChangePasswordIn): Promise<User> {
-  const { data } = await apiClient.patch<User>("/auth/me/password", body, { skipAuthRedirect: true })
+  const { data } = await apiClient.patch<User>("/auth/me/password", body, {
+    skipAuthRedirect: true,
+  })
   return data
 }
 

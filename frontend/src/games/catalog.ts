@@ -15,8 +15,8 @@ import { TimelineRounds } from "./Timeline/TimelineRounds"
 import { WhosThatPersonGame } from "./WhosThatPerson/WhosThatPersonGame"
 import { WhosThatPersonRounds } from "./WhosThatPerson/WhosThatPersonRounds"
 
-// Mirrors backend/src/services/games_service.py's _GAME_CLASSES/_ROUND_CLASSES by hand - same
-// manual-sync convention already used for api/types.ts vs schemas.py. Add an entry here whenever a
+// Mirrors backend/src/services/game_registry.py's GAMES by hand - same
+// manual-sync convention already used for api/types.ts vs api/dto/. Add an entry here whenever a
 // new game/mode is wired up on the backend, so it shows up on the main menu.
 
 // Every <Name>Game component takes this same (optional) prop shape - GameRoute passes the

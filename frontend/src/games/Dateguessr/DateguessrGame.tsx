@@ -38,16 +38,27 @@ export function DateguessrGame({ coverUrl, hasRoundsView, daily = false }: GameC
   const backToMenu = () => navigate("/")
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
-  const { screen, busy, game, round, phase, revealed, hasCurrentGame, startGame, resumeGame, submitGuess, backToIdle } =
-    useRoundGame<DateguessrRoundOut, string>({
-      gameType: GAME_TYPE,
-      mode: MODE,
-      revealHoldMs: REVEAL_HOLD_MS,
-      isRound: isDateguessrRound,
-      playRound: (gameId, roundId, guess) => playRound(gameId, roundId, { date: guess }),
-      onNewRound: () => setSelectedDate(null),
-      daily,
-    })
+  const {
+    screen,
+    busy,
+    game,
+    round,
+    phase,
+    revealed,
+    hasCurrentGame,
+    startGame,
+    resumeGame,
+    submitGuess,
+    backToIdle,
+  } = useRoundGame<DateguessrRoundOut, string>({
+    gameType: GAME_TYPE,
+    mode: MODE,
+    revealHoldMs: REVEAL_HOLD_MS,
+    isRound: isDateguessrRound,
+    playRound: (gameId, roundId, guess) => playRound(gameId, roundId, { date: guess }),
+    onNewRound: () => setSelectedDate(null),
+    daily,
+  })
 
   if (screen === "idle") {
     return (
@@ -105,7 +116,12 @@ export function DateguessrGame({ coverUrl, hasRoundsView, daily = false }: GameC
 
       <GuardedBackButton onExit={backToIdle} />
       <ScoreBadge label={t("common.score")} score={game.score} />
-      <RoundBadge label={t("common.roundOf", { current: round.round_index, total: game.totalRounds ?? DEFAULT_TOTAL_ROUNDS })} />
+      <RoundBadge
+        label={t("common.roundOf", {
+          current: round.round_index,
+          total: game.totalRounds ?? DEFAULT_TOTAL_ROUNDS,
+        })}
+      />
 
       <TimelineRuler
         selected={selectedDate}

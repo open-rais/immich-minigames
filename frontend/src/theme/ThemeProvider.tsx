@@ -57,5 +57,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return () => mql.removeEventListener("change", handleChange)
   }, [preference])
 
-  return <ThemeContext.Provider value={{ preference, resolved, setPreference }}>{children}</ThemeContext.Provider>
+  return (
+    <ThemeContext.Provider value={{ preference, resolved, setPreference }}>
+      {children}
+    </ThemeContext.Provider>
+  )
 }

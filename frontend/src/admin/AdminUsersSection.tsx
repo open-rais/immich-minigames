@@ -11,9 +11,14 @@ import { useInfiniteAdminList } from "./useInfiniteAdminList"
 // useInfiniteAdminList.ts) - capped at ~5 rows tall, scrolling near the bottom loads the next page.
 export function AdminUsersSection() {
   const { t } = useTranslation()
-  const { items: users, error, loadingMore, containerRef, onScroll, setItems: setUsers } = useInfiniteAdminList<User>(
-    (offset, limit) => listUsers({ offset, limit }),
-  )
+  const {
+    items: users,
+    error,
+    loadingMore,
+    containerRef,
+    onScroll,
+    setItems: setUsers,
+  } = useInfiniteAdminList<User>((offset, limit) => listUsers({ offset, limit }))
 
   function handleUpdated(updated: User) {
     setUsers((prev) => prev?.map((u) => (u.id === updated.id ? updated : u)) ?? prev)

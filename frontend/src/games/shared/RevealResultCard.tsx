@@ -11,12 +11,18 @@ interface RevealResultCardProps {
   positionClassName: string
 }
 
-export function RevealResultCard({ scoreDelta, subtitle, positionClassName }: RevealResultCardProps) {
+export function RevealResultCard({
+  scoreDelta,
+  subtitle,
+  positionClassName,
+}: RevealResultCardProps) {
   const { t } = useTranslation()
   return (
     <div className={`fixed z-30 ${positionClassName}`}>
       <div className="rounded-2xl border border-line bg-surface px-5 py-3 text-left shadow-card">
-        <p className="font-mono text-lg font-bold text-ink">{t("common.points", { score: scoreDelta })}</p>
+        <p className="font-mono text-lg font-bold text-ink">
+          {t("common.points", { score: scoreDelta })}
+        </p>
         <p className="text-sm font-semibold text-muted">{subtitle}</p>
       </div>
     </div>

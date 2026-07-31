@@ -17,7 +17,12 @@ export function ImmichLink({ kind, id, className = "" }: ImmichLinkProps) {
   const links = useImmichLinks()
   if (!links) return null
 
-  const href = kind === "asset" ? links.assetUrl(id) : kind === "person" ? links.personUrl(id) : links.albumUrl(id)
+  const href =
+    kind === "asset"
+      ? links.assetUrl(id)
+      : kind === "person"
+        ? links.personUrl(id)
+        : links.albumUrl(id)
 
   return (
     <a

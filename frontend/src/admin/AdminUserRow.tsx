@@ -83,7 +83,12 @@ export function AdminUserRow({ user, onUpdated }: AdminUserRowProps) {
   return (
     <SettingAccordion
       nested
-      icon={<PersonAvatar src={user.skin_person_id ? personThumbnailUrl(user.skin_person_id) : null} alt="" />}
+      icon={
+        <PersonAvatar
+          src={user.skin_person_id ? personThumbnailUrl(user.skin_person_id) : null}
+          alt=""
+        />
+      }
       title={user.full_name}
       description={user.email}
     >
@@ -133,13 +138,20 @@ export function AdminUserRow({ user, onUpdated }: AdminUserRowProps) {
           </div>
         </div>
         {error && <p className="text-sm font-semibold text-rose-600">{error}</p>}
-        {saved && !error && <p className="text-sm font-semibold text-emerald-600">{t("auth.profile.saved")}</p>}
+        {saved && !error && (
+          <p className="text-sm font-semibold text-emerald-600">{t("auth.profile.saved")}</p>
+        )}
         <Button type="submit" variant="primary" className="w-full py-2.5" disabled={busy}>
           {t("auth.profile.save")}
         </Button>
       </form>
 
-      <Button variant="secondary" className="mt-3 w-full py-2.5" onClick={handleResetPassword} disabled={busy}>
+      <Button
+        variant="secondary"
+        className="mt-3 w-full py-2.5"
+        onClick={handleResetPassword}
+        disabled={busy}
+      >
         {t("auth.profile.resetPassword")}
       </Button>
 

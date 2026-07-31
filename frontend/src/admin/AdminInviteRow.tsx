@@ -29,8 +29,12 @@ export function AdminInviteRow({ invite, onRevoked }: AdminInviteRowProps) {
 
   const dateLabel =
     invite.status === "used" && invite.used_at
-      ? t("admin.invites.usedAt", { date: new Date(invite.used_at).toLocaleDateString(i18n.language) })
-      : t("admin.invites.expiresAt", { date: new Date(invite.expires_at).toLocaleDateString(i18n.language) })
+      ? t("admin.invites.usedAt", {
+          date: new Date(invite.used_at).toLocaleDateString(i18n.language),
+        })
+      : t("admin.invites.expiresAt", {
+          date: new Date(invite.expires_at).toLocaleDateString(i18n.language),
+        })
 
   async function handleRevoke() {
     setBusy(true)
@@ -54,7 +58,12 @@ export function AdminInviteRow({ invite, onRevoked }: AdminInviteRowProps) {
         {error && <p className="mt-1 text-xs font-semibold text-rose-600">{error}</p>}
       </div>
       {invite.status === "pending" && (
-        <Button variant="secondary" className="px-4 py-2 text-sm" onClick={handleRevoke} disabled={busy}>
+        <Button
+          variant="secondary"
+          className="px-4 py-2 text-sm"
+          onClick={handleRevoke}
+          disabled={busy}
+        >
           {t("admin.invites.revoke")}
         </Button>
       )}

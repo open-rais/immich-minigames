@@ -32,7 +32,13 @@ export function SignupPage() {
     setBusy(true)
     setError(null)
     try {
-      await register({ email, username, full_name: fullName, password, invite_code: inviteCode || undefined })
+      await register({
+        email,
+        username,
+        full_name: fullName,
+        password,
+        invite_code: inviteCode || undefined,
+      })
       navigate("/profile")
     } catch (err) {
       setError(apiErrorMessage(err) ?? t("auth.error.generic"))

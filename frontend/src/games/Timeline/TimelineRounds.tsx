@@ -31,7 +31,11 @@ function buildBoard(rounds: TimelineRoundOut[], t: TFunction): Board | null {
   const orderBadge = new Map<string, string>()
   orderBadge.set(initial.asset_id, t("timeline.rounds.startBadge"))
   for (const round of answered) {
-    if (round.correct) orderBadge.set(round.card_asset_id, t("timeline.rounds.orderBadge", { count: round.round_index }))
+    if (round.correct)
+      orderBadge.set(
+        round.card_asset_id,
+        t("timeline.rounds.orderBadge", { count: round.round_index }),
+      )
   }
 
   const last = answered[answered.length - 1]
@@ -43,7 +47,10 @@ function buildBoard(rounds: TimelineRoundOut[], t: TFunction): Board | null {
   // joined the board, so the board here is just `last.board` as-is.
   const placedBoard: TimelineCardOut[] = isLoss
     ? last.board
-    : insertCard(last.board, last.correct_slot as number, { asset_id: last.card_asset_id, date: last.card_date as string })
+    : insertCard(last.board, last.correct_slot as number, {
+        asset_id: last.card_asset_id,
+        date: last.card_date as string,
+      })
 
   const baseCards: TrackCard[] = placedBoard.map((card) => ({
     assetId: card.asset_id,
@@ -103,12 +110,16 @@ export function TimelineRounds({ game, onBack }: RoundsComponentProps) {
       <div className="mt-14 text-center md:mt-0">
         <h1 className="text-3xl font-bold text-ink">{t("common.rounds.title")}</h1>
         <GameModeSubtitle gameTitle={t("timeline.title")} modeTitle={t("timeline.modes.arcade")} />
-        <p className="mt-2 text-lg text-muted">{t("common.finished.finalScore", { score: game.score })}</p>
+        <p className="mt-2 text-lg text-muted">
+          {t("common.finished.finalScore", { score: game.score })}
+        </p>
       </div>
 
       <div className="mx-auto max-w-md text-center">
         <p className="text-sm text-muted">{t("timeline.rounds.banner")}</p>
-        {board.isLoss && <p className="mt-1 text-sm text-muted">{t("timeline.rounds.bannerLoss")}</p>}
+        {board.isLoss && (
+          <p className="mt-1 text-sm text-muted">{t("timeline.rounds.bannerLoss")}</p>
+        )}
       </div>
 
       <div className="flex w-full flex-1 items-center">

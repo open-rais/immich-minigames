@@ -31,7 +31,12 @@ let inFlight: Promise<ImmichLinks | null> | null = null
 function fetchLinks(): Promise<ImmichLinks | null> {
   if (!inFlight) {
     inFlight = getConfig()
-      .then((config) => (cached = config.immich_external_url ? linksFromBaseUrl(config.immich_external_url) : null))
+      .then(
+        (config) =>
+          (cached = config.immich_external_url
+            ? linksFromBaseUrl(config.immich_external_url)
+            : null),
+      )
       .catch(() => (cached = null))
   }
   return inFlight

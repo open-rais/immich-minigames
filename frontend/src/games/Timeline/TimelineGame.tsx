@@ -46,33 +46,51 @@ export function TimelineGame({ coverUrl, hasRoundsView, daily = false }: GameCom
   // the very first paint after measuring still shows the identity transform, then a rAF flips it to
   // the computed target - transitionEnabled/revealDone mirror MoreOrLessGame.tsx's own
   // transitionEnabled toggle so resetting for the next round never itself animates.
-  const [flyTransform, setFlyTransform] = useState<{ dx: number; dy: number; scaleX: number; scaleY: number } | null>(null)
+  const [flyTransform, setFlyTransform] = useState<{
+    dx: number
+    dy: number
+    scaleX: number
+    scaleY: number
+  } | null>(null)
   const [flyReady, setFlyReady] = useState(false)
   const [transitionEnabled, setTransitionEnabled] = useState(true)
   const [revealDone, setRevealDone] = useState(false)
-  const [focusTarget, setFocusTarget] = useState<{ kind: TrackSlotKind; index: number } | null>(null)
+  const [focusTarget, setFocusTarget] = useState<{ kind: TrackSlotKind; index: number } | null>(
+    null,
+  )
   const [focusToken, setFocusToken] = useState(0)
 
   const bigCardRef = useRef<HTMLDivElement>(null)
   const cardSlotRefs = useRef<Map<number, HTMLDivElement>>(new Map())
 
-  const { screen, busy, game, round, phase, revealed, hasCurrentGame, startGame, resumeGame, submitGuess, backToIdle } =
-    useRoundGame<TimelineRoundOut, number>({
-      gameType: GAME_TYPE,
-      mode: MODE,
-      revealHoldMs: REVEAL_HOLD_MS,
-      isRound: isTimelineRound,
-      playRound: (gameId, roundId, guess) => playRound(gameId, roundId, { slot: guess }),
-      onNewRound: () => {
-        setSelectedSlot(null)
-        setFlyTransform(null)
-        setFlyReady(false)
-        setRevealDone(false)
-        setFocusTarget(null)
-        setTransitionEnabled(false)
-      },
-      daily,
-    })
+  const {
+    screen,
+    busy,
+    game,
+    round,
+    phase,
+    revealed,
+    hasCurrentGame,
+    startGame,
+    resumeGame,
+    submitGuess,
+    backToIdle,
+  } = useRoundGame<TimelineRoundOut, number>({
+    gameType: GAME_TYPE,
+    mode: MODE,
+    revealHoldMs: REVEAL_HOLD_MS,
+    isRound: isTimelineRound,
+    playRound: (gameId, roundId, guess) => playRound(gameId, roundId, { slot: guess }),
+    onNewRound: () => {
+      setSelectedSlot(null)
+      setFlyTransform(null)
+      setFlyReady(false)
+      setRevealDone(false)
+      setFocusTarget(null)
+      setTransitionEnabled(false)
+    },
+    daily,
+  })
 
   // Measures the fly-in target as soon as a guess is revealed - see the state comment above.
   // Depends only on the identity of the round being revealed, not its fields (re-measuring on every
@@ -113,7 +131,10 @@ export function TimelineGame({ coverUrl, hasRoundsView, daily = false }: GameCom
     if (round.correct) {
       setFocusTarget({ kind: "card", index: round.guess_slot })
     } else if (round.correct_slot !== null) {
-      setFocusTarget({ kind: "gap", index: adjustedMarkerSlot(round.correct_slot, round.guess_slot) })
+      setFocusTarget({
+        kind: "gap",
+        index: adjustedMarkerSlot(round.correct_slot, round.guess_slot),
+      })
     }
     setFocusToken((n) => n + 1)
   }
@@ -187,7 +208,10 @@ export function TimelineGame({ coverUrl, hasRoundsView, daily = false }: GameCom
       : round.board.map(toTrackCard)
 
   const markerSlot =
-    phase === "revealed" && round.correct === false && round.correct_slot !== null && round.guess_slot !== null
+    phase === "revealed" &&
+    round.correct === false &&
+    round.correct_slot !== null &&
+    round.guess_slot !== null
       ? adjustedMarkerSlot(round.correct_slot, round.guess_slot)
       : null
 
@@ -198,7 +222,9 @@ export function TimelineGame({ coverUrl, hasRoundsView, daily = false }: GameCom
 
   return (
     <div className="relative h-dvh w-full overflow-hidden bg-app-bg">
-      <div className={`fixed inset-0 z-30 ${TRACK_BOTTOM_CLASS} flex items-center justify-center px-6`}>
+      <div
+        className={`fixed inset-0 z-30 ${TRACK_BOTTOM_CLASS} flex items-center justify-center px-6`}
+      >
         <div
           ref={bigCardRef}
           style={{
@@ -213,7 +239,9 @@ export function TimelineGame({ coverUrl, hasRoundsView, daily = false }: GameCom
             assetId={round.card_asset_id}
             date={round.card_date}
             size="lg"
-            variant={round.correct === true ? "correct" : round.correct === false ? "wrong" : "default"}
+            variant={
+              round.correct === true ? "correct" : round.correct === false ? "wrong" : "default"
+            }
           />
         </div>
       </div>
@@ -242,7 +270,9 @@ export function TimelineGame({ coverUrl, hasRoundsView, daily = false }: GameCom
         />
       )}
 
-      <div className={`fixed inset-x-0 bottom-0 z-20 flex flex-col border-t border-line bg-surface shadow-card ${TRACK_HEIGHT_CLASS}`}>
+      <div
+        className={`fixed inset-x-0 bottom-0 z-20 flex flex-col border-t border-line bg-surface shadow-card ${TRACK_HEIGHT_CLASS}`}
+      >
         <TimelineTrack
           cards={displayCards}
           selectedSlot={selectedSlot}

@@ -63,7 +63,10 @@ export function DailyLeaderboardPage() {
 
       <div className="mt-14 text-center md:mt-0">
         <h1 className="text-3xl font-bold text-ink">{t("leaderboard.title")}</h1>
-        <GameModeSubtitle gameTitle={t(game.gameTitleKey)} modeTitle={t(catalogMode.modeTitleKey)} />
+        <GameModeSubtitle
+          gameTitle={t(game.gameTitleKey)}
+          modeTitle={t(catalogMode.modeTitleKey)}
+        />
       </div>
 
       <div className="flex w-full max-w-xs items-center justify-between">
@@ -100,8 +103,13 @@ export function DailyLeaderboardPage() {
                 }`}
               >
                 <span className="w-6 flex-none text-center font-bold text-muted">{entry.rank}</span>
-                <PersonAvatar src={entry.skin_person_id ? personThumbnailUrl(entry.skin_person_id) : null} alt="" />
-                <span className="min-w-0 flex-1 truncate font-semibold text-ink">{entry.username}</span>
+                <PersonAvatar
+                  src={entry.skin_person_id ? personThumbnailUrl(entry.skin_person_id) : null}
+                  alt=""
+                />
+                <span className="min-w-0 flex-1 truncate font-semibold text-ink">
+                  {entry.username}
+                </span>
                 <span className="flex-none font-mono font-bold text-ink">{entry.best_score}</span>
               </li>
             ))}

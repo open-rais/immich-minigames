@@ -96,10 +96,13 @@ export function TimelineTrack({
   }
 
   return (
-    <div className={`flex w-full items-center overflow-x-auto px-4 py-3 [scrollbar-width:thin] md:px-8 ${TRACK_GAP_CLASS}`}>
+    <div
+      className={`flex w-full items-center overflow-x-auto px-4 py-3 [scrollbar-width:thin] md:px-8 ${TRACK_GAP_CLASS}`}
+    >
       {Array.from({ length: cards.length + 1 }, (_, gapIndex) => gapIndex).map((gapIndex) => {
         const highlighted = selectedSlot === gapIndex || markerSlot === gapIndex
-        const gapWidthClass = hideNeutralGaps && !highlighted ? GAP_NEUTRAL_WIDTH_CLASS : GAP_FULL_WIDTH_CLASS[cardSize]
+        const gapWidthClass =
+          hideNeutralGaps && !highlighted ? GAP_NEUTRAL_WIDTH_CLASS : GAP_FULL_WIDTH_CLASS[cardSize]
         return (
           <div key={`slot-${gapIndex}`} className="flex flex-none items-center">
             <div
@@ -127,7 +130,10 @@ export function TimelineTrack({
               </button>
             </div>
             {cards[gapIndex] && (
-              <div ref={(el) => setRef("card", gapIndex, el)} className={cards[gapIndex].visible === false ? "opacity-0" : ""}>
+              <div
+                ref={(el) => setRef("card", gapIndex, el)}
+                className={cards[gapIndex].visible === false ? "opacity-0" : ""}
+              >
                 <TimelineCard
                   key={cards[gapIndex].assetId}
                   assetId={cards[gapIndex].assetId}

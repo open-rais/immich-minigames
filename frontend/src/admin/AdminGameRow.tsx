@@ -2,7 +2,12 @@ import { useState } from "react"
 import type { FormEvent } from "react"
 import { useTranslation } from "react-i18next"
 
-import { resetDailySettings, resetGameSettings, updateDailySettings, updateGameSettings } from "../api/admin"
+import {
+  resetDailySettings,
+  resetGameSettings,
+  updateDailySettings,
+  updateGameSettings,
+} from "../api/admin"
 import { apiErrorMessage } from "../api/errors"
 import type { DailySettingsOut, GameSettingsOut } from "../api/types"
 import { Button } from "../games/shared/Button"
@@ -58,7 +63,10 @@ function SettingsForm({
       <form onSubmit={onSave} className="flex flex-col gap-4">
         {fields.map((setting) => (
           <div key={setting.key} className="flex flex-col gap-1.5">
-            <label htmlFor={`${idPrefix}-${setting.key}`} className="text-sm font-semibold text-body">
+            <label
+              htmlFor={`${idPrefix}-${setting.key}`}
+              className="text-sm font-semibold text-body"
+            >
               {settingLabel(t, setting.key)}
             </label>
             <input
@@ -78,13 +86,21 @@ function SettingsForm({
           <Button type="submit" variant="primary" className="flex-1 py-2.5" disabled={busy}>
             {t("auth.profile.save")}
           </Button>
-          <Button type="button" variant="secondary" className="flex-1 py-2.5" onClick={onReset} disabled={busy}>
+          <Button
+            type="button"
+            variant="secondary"
+            className="flex-1 py-2.5"
+            onClick={onReset}
+            disabled={busy}
+          >
             {t("admin.games.reset")}
           </Button>
         </div>
       </form>
       {error && <p className="mt-4 text-sm font-semibold text-rose-600">{error}</p>}
-      {saved && !error && <p className="mt-4 text-sm font-semibold text-emerald-600">{t("auth.profile.saved")}</p>}
+      {saved && !error && (
+        <p className="mt-4 text-sm font-semibold text-emerald-600">{t("auth.profile.saved")}</p>
+      )}
     </>
   )
 }

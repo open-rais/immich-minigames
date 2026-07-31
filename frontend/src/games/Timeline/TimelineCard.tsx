@@ -66,7 +66,15 @@ interface TimelineCardProps {
   actions?: ReactNode
 }
 
-export function TimelineCard({ assetId, date, size = "sm", variant = "default", className = "", badge, actions }: TimelineCardProps) {
+export function TimelineCard({
+  assetId,
+  date,
+  size = "sm",
+  variant = "default",
+  className = "",
+  badge,
+  actions,
+}: TimelineCardProps) {
   const { i18n } = useTranslation()
   const [failed, setFailed] = useState(false)
   const [loaded, setLoaded] = useState(false)
@@ -82,9 +90,12 @@ export function TimelineCard({ assetId, date, size = "sm", variant = "default", 
   }, [assetId])
 
   const formattedDate = date
-    ? new Intl.DateTimeFormat(i18n.language, { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" }).format(
-        new Date(date),
-      )
+    ? new Intl.DateTimeFormat(i18n.language, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        timeZone: "UTC",
+      }).format(new Date(date))
     : "?"
 
   return (

@@ -33,9 +33,14 @@ export function GeoguessrRounds({ game, onBack }: RoundsComponentProps) {
 
   if (!round) return null
 
-  const pin = round.guess_latitude !== null && round.guess_longitude !== null ? { lat: round.guess_latitude, lng: round.guess_longitude } : null
+  const pin =
+    round.guess_latitude !== null && round.guess_longitude !== null
+      ? { lat: round.guess_latitude, lng: round.guess_longitude }
+      : null
   const actual =
-    round.actual_latitude !== null && round.actual_longitude !== null ? { lat: round.actual_latitude, lng: round.actual_longitude } : null
+    round.actual_latitude !== null && round.actual_longitude !== null
+      ? { lat: round.actual_latitude, lng: round.actual_longitude }
+      : null
 
   return (
     <div className="h-dvh w-full overflow-hidden bg-app-bg">

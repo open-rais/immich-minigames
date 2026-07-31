@@ -39,16 +39,28 @@ export function GeoguessrGame({ coverUrl, hasRoundsView, daily = false }: GameCo
   const backToMenu = () => navigate("/")
 
   const [pin, setPin] = useState<Pin | null>(null)
-  const { screen, busy, game, round, phase, revealed, hasCurrentGame, startGame, resumeGame, submitGuess, backToIdle } =
-    useRoundGame<GeoguessrRoundOut, Pin>({
-      gameType: GAME_TYPE,
-      mode: MODE,
-      revealHoldMs: REVEAL_HOLD_MS,
-      isRound: isGeoguessrRound,
-      playRound: (gameId, roundId, guess) => playRound(gameId, roundId, { latitude: guess.lat, longitude: guess.lng }),
-      onNewRound: () => setPin(null),
-      daily,
-    })
+  const {
+    screen,
+    busy,
+    game,
+    round,
+    phase,
+    revealed,
+    hasCurrentGame,
+    startGame,
+    resumeGame,
+    submitGuess,
+    backToIdle,
+  } = useRoundGame<GeoguessrRoundOut, Pin>({
+    gameType: GAME_TYPE,
+    mode: MODE,
+    revealHoldMs: REVEAL_HOLD_MS,
+    isRound: isGeoguessrRound,
+    playRound: (gameId, roundId, guess) =>
+      playRound(gameId, roundId, { latitude: guess.lat, longitude: guess.lng }),
+    onNewRound: () => setPin(null),
+    daily,
+  })
 
   if (screen === "idle") {
     return (
@@ -111,9 +123,20 @@ export function GeoguessrGame({ coverUrl, hasRoundsView, daily = false }: GameCo
 
       <GuardedBackButton onExit={backToIdle} />
       <ScoreBadge label={t("common.score")} score={game.score} />
-      <RoundBadge label={t("common.roundOf", { current: round.round_index, total: game.totalRounds ?? DEFAULT_TOTAL_ROUNDS })} />
+      <RoundBadge
+        label={t("common.roundOf", {
+          current: round.round_index,
+          total: game.totalRounds ?? DEFAULT_TOTAL_ROUNDS,
+        })}
+      />
 
-      <MapPicker pin={pin} onPinChange={setPin} actual={actual} disabled={phase !== "guessing"} forceExpanded={revealed} />
+      <MapPicker
+        pin={pin}
+        onPinChange={setPin}
+        actual={actual}
+        disabled={phase !== "guessing"}
+        forceExpanded={revealed}
+      />
 
       {phase === "guessing" && (
         <div className="fixed bottom-[18px] left-[18px] z-30 md:bottom-7 md:left-10">

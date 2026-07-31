@@ -1,11 +1,18 @@
 import type { TFunction } from "i18next"
 
 import { GameType } from "../../api/types"
-import type { DateguessrRoundOut, GameOut, GeoguessrRoundOut, ImmichdleRoundOut, WhosThatPersonRoundOut } from "../../api/types"
+import type {
+  DateguessrRoundOut,
+  GameOut,
+  GeoguessrRoundOut,
+  ImmichdleRoundOut,
+  WhosThatPersonRoundOut,
+} from "../../api/types"
 
-// Mirrors backend/src/games/asset_rounds.py's MAX_SCORE default - a daily challenge's actual frozen
-// max_score (services/daily_service.py's settings snapshot) isn't exposed per round in GameOut, so
-// this is a cosmetic approximation for the share text's emoji color, not a scored value.
+// Mirrors backend/src/games/geoguessr/round.py's and games/dateguessr/round.py's MAX_SCORE default
+// (both 5000) - a daily challenge's actual frozen max_score (services/daily_service.py's settings
+// snapshot) isn't exposed per round in GameOut, so this is a cosmetic approximation for the share
+// text's emoji color, not a scored value.
 const DEFAULT_MAX_SCORE = 5000
 
 function scoreColor(scoreDelta: number, maxScore: number): string {
@@ -23,14 +30,21 @@ function assetRoundsBody(
 ): string {
   const lines = rounds.map((round) => {
     const delta = round.score_delta ?? 0
-    return t("daily.share.roundLine", { color: scoreColor(delta, DEFAULT_MAX_SCORE), points: delta, detail: detailFor(round) })
+    return t("daily.share.roundLine", {
+      color: scoreColor(delta, DEFAULT_MAX_SCORE),
+      points: delta,
+      detail: detailFor(round),
+    })
   })
   return [...lines, t("daily.share.total", { score })].join("\n")
 }
 
 function whosThatPersonCorrectTotal(game: GameOut): { correct: number; total: number } {
   const rounds = game.rounds as WhosThatPersonRoundOut[]
-  const correct = rounds.reduce((sum, round) => sum + round.faces.filter((f) => f.correct === true).length, 0)
+  const correct = rounds.reduce(
+    (sum, round) => sum + round.faces.filter((f) => f.correct === true).length,
+    0,
+  )
   const total = game.total_people ?? rounds.reduce((sum, round) => sum + round.faces.length, 0)
   return { correct, total }
 }
@@ -47,7 +61,10 @@ export function buildDailyShareBody(t: TFunction, game: GameOut): string {
       return assetRoundsBody(
         t,
         game.rounds as GeoguessrRoundOut[],
-        (round) => t("daily.share.km", { value: (round as GeoguessrRoundOut).distance_km?.toFixed(1) ?? "?" }),
+        (round) =>
+          t("daily.share.km", {
+            value: (round as GeoguessrRoundOut).distance_km?.toFixed(1) ?? "?",
+          }),
         game.score,
       )
 
@@ -62,7 +79,9 @@ export function buildDailyShareBody(t: TFunction, game: GameOut): string {
     case GameType.Immichdle: {
       const rounds = game.rounds as ImmichdleRoundOut[]
       const won = rounds[rounds.length - 1]?.correct === true
-      const line = won ? t("daily.share.immichdleWon", { attempts: rounds.length }) : t("daily.share.immichdleLost")
+      const line = won
+        ? t("daily.share.immichdleWon", { attempts: rounds.length })
+        : t("daily.share.immichdleLost")
       return `${line}\n${t("daily.share.total", { score: game.score })}`
     }
 
@@ -88,7 +107,10 @@ export function buildDailyShareMessage(
   modeTitle: string,
   link: string,
 ): string {
-  const header = t("daily.share.header", { game: `${gameTitle} · ${modeTitle}`, date: game.daily_challenge_date ?? "" })
+  const header = t("daily.share.header", {
+    game: `${gameTitle} · ${modeTitle}`,
+    date: game.daily_challenge_date ?? "",
+  })
   return `${header}\n${buildDailyShareBody(t, game)}\n${link}`
 }
 
@@ -104,14 +126,18 @@ export function buildDailyShareOneLiner(t: TFunction, game: GameOut): string {
     case GameType.Geoguessr:
     case GameType.Dateguessr: {
       const rounds = game.rounds as (GeoguessrRoundOut | DateguessrRoundOut)[]
-      const squares = rounds.map((round) => scoreColor(round.score_delta ?? 0, DEFAULT_MAX_SCORE)).join("")
+      const squares = rounds
+        .map((round) => scoreColor(round.score_delta ?? 0, DEFAULT_MAX_SCORE))
+        .join("")
       return `${squares} ${game.score}pts`
     }
 
     case GameType.Immichdle: {
       const rounds = game.rounds as ImmichdleRoundOut[]
       const won = rounds[rounds.length - 1]?.correct === true
-      return won ? t("daily.share.immichdleWon", { attempts: rounds.length }) : t("daily.share.immichdleLost")
+      return won
+        ? t("daily.share.immichdleWon", { attempts: rounds.length })
+        : t("daily.share.immichdleLost")
     }
 
     case GameType.WhosThatPerson: {
@@ -135,6 +161,8 @@ export function buildDailyShareAllMessage(
 ): string {
   const date = entries[0]?.game.daily_challenge_date ?? ""
   const header = t("daily.share.allHeader", { date })
-  const lines = entries.map(({ modeTitle, game }) => `${modeTitle}: ${buildDailyShareOneLiner(t, game)}`)
+  const lines = entries.map(
+    ({ modeTitle, game }) => `${modeTitle}: ${buildDailyShareOneLiner(t, game)}`,
+  )
   return [header, ...lines, link].join("\n")
 }

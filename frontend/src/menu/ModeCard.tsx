@@ -45,7 +45,10 @@ export function ModeCard({ title, coverUrl, bestScore, subtitle, onClick }: Mode
           {title}
         </div>
         <div className="truncate text-sm text-muted">
-          {subtitle ?? (bestScore === undefined ? t("mainMenu.notPlayed") : t("mainMenu.bestScore", { score: bestScore }))}
+          {subtitle ??
+            (bestScore === undefined
+              ? t("mainMenu.notPlayed")
+              : t("mainMenu.bestScore", { score: bestScore }))}
         </div>
       </div>
     </button>

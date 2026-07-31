@@ -32,7 +32,14 @@ interface SettingAccordionProps {
   defaultOpen?: boolean
 }
 
-export function SettingAccordion({ icon, title, description, children, nested = false, defaultOpen = false }: SettingAccordionProps) {
+export function SettingAccordion({
+  icon,
+  title,
+  description,
+  children,
+  nested = false,
+  defaultOpen = false,
+}: SettingAccordionProps) {
   const [open, setOpen] = useState(defaultOpen)
   // Mount children lazily on first expand, then keep them mounted (rather than tying presence
   // directly to `open`) - some children (AdminUserRow's PersonSearchInput, see admin/AdminUserRow
@@ -60,7 +67,12 @@ export function SettingAccordion({ icon, title, description, children, nested = 
     <div
       className={`${nested ? "mt-3 rounded-xl border border-line" : "mt-4 rounded-2xl border-2 border-primary/20"} px-6 py-4 transition-all`}
     >
-      <button type="button" onClick={toggle} aria-expanded={open} className="flex w-full place-items-center justify-between text-start">
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={open}
+        className="flex w-full place-items-center justify-between text-start"
+      >
         <div className="flex min-w-0 place-items-center gap-3">
           {icon && <span className="flex-none text-primary">{icon}</span>}
           <div className="min-w-0">

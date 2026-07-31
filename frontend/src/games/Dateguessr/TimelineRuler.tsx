@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 
-import { dateFromDayIndex, dayIndexFromIso, dayIndexOf, isoFromDayIndex, todayDayIndex } from "./timeMath"
+import {
+  dateFromDayIndex,
+  dayIndexFromIso,
+  dayIndexOf,
+  isoFromDayIndex,
+  todayDayIndex,
+} from "./timeMath"
 
 // Zoom is expressed as pixels-per-day, the direct analog of MapPicker.tsx's MapLibre zoom level -
 // same "zoom anchored under the cursor/pinch midpoint" UX principle, implemented by hand here since
@@ -93,15 +99,25 @@ export function TimelineRuler({
   const { t, i18n } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const [containerWidth, setContainerWidth] = useState(() => (typeof window !== "undefined" ? window.innerWidth : 800))
+  const [containerWidth, setContainerWidth] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth : 800,
+  )
   const [pxPerDay, setPxPerDay] = useState(DEFAULT_PX_PER_DAY)
   const [centerDayIndex, setCenterDayIndex] = useState(() => todayDayIndex())
 
   // Gesture bookkeeping - refs, not state, since they track in-progress pointer interactions
   // rather than anything that should trigger a re-render on their own.
   const activePointersRef = useRef<Map<number, { x: number; y: number }>>(new Map())
-  const dragRef = useRef<{ startClientX: number; startCenterDayIndex: number; moved: number } | null>(null)
-  const pinchRef = useRef<{ startDistance: number; startPxPerDay: number; anchorDayIndex: number } | null>(null)
+  const dragRef = useRef<{
+    startClientX: number
+    startCenterDayIndex: number
+    moved: number
+  } | null>(null)
+  const pinchRef = useRef<{
+    startDistance: number
+    startPxPerDay: number
+    anchorDayIndex: number
+  } | null>(null)
   const revealAnimationFrameRef = useRef<number | null>(null)
   const zoomAnimationFrameRef = useRef<number | null>(null)
   // Mirrors centerDayIndex for the native (non-React) wheel listener below, which is only
@@ -170,7 +186,11 @@ export function TimelineRuler({
     const guessDayIndex = dayIndexFromIso(selected)
     const actualDayIndex = dayIndexFromIso(actual)
     const spanDays = Math.max(Math.abs(actualDayIndex - guessDayIndex), 1)
-    const targetPxPerDay = clamp((containerWidth * REVEAL_FIT_FRACTION) / spanDays, MIN_PX_PER_DAY, MAX_PX_PER_DAY)
+    const targetPxPerDay = clamp(
+      (containerWidth * REVEAL_FIT_FRACTION) / spanDays,
+      MIN_PX_PER_DAY,
+      MAX_PX_PER_DAY,
+    )
     const targetCenterDayIndex = (guessDayIndex + actualDayIndex) / 2
 
     const startPxPerDay = pxPerDay
@@ -252,20 +272,28 @@ export function TimelineRuler({
 
     // Dynamic label frequency based on zoom level to avoid overlap
     let yearLabelInterval = 5 // default: every 5 years
-    if (pxPerDay >= 0.1) yearLabelInterval = 1 // show every year
-    else if (pxPerDay >= 0.05) yearLabelInterval = 2 // every 2 years
+    if (pxPerDay >= 0.1)
+      yearLabelInterval = 1 // show every year
+    else if (pxPerDay >= 0.05)
+      yearLabelInterval = 2 // every 2 years
     else if (pxPerDay >= 0.02) yearLabelInterval = 5 // every 5 years
 
     let monthLabelInterval = 12 // default: no months (only years)
-    if (pxPerDay >= 3) monthLabelInterval = 1 // show every month
-    else if (pxPerDay >= 2) monthLabelInterval = 2 // every 2 months
-    else if (pxPerDay >= 1) monthLabelInterval = 3 // every 3 months
+    if (pxPerDay >= 3)
+      monthLabelInterval = 1 // show every month
+    else if (pxPerDay >= 2)
+      monthLabelInterval = 2 // every 2 months
+    else if (pxPerDay >= 1)
+      monthLabelInterval = 3 // every 3 months
     else if (pxPerDay >= 0.3) monthLabelInterval = 6 // every 6 months
 
     let dayLabelInterval = 14 // default: every 2 weeks
-    if (pxPerDay >= 30) dayLabelInterval = 1 // show every day
-    else if (pxPerDay >= 15) dayLabelInterval = 3 // every 3 days
-    else if (pxPerDay >= 10) dayLabelInterval = 7 // every week
+    if (pxPerDay >= 30)
+      dayLabelInterval = 1 // show every day
+    else if (pxPerDay >= 15)
+      dayLabelInterval = 3 // every 3 days
+    else if (pxPerDay >= 10)
+      dayLabelInterval = 7 // every week
     else if (pxPerDay >= 5) dayLabelInterval = 14 // every 2 weeks
 
     for (let year = minYear; year <= maxYear; year++) {
@@ -287,7 +315,10 @@ export function TimelineRuler({
           dayIndex: monthDayIndex,
           x: dayIndexToX(monthDayIndex),
           kind: "month",
-          label: month % monthLabelInterval === 0 ? monthFormatter.format(dateFromDayIndex(monthDayIndex)) : null,
+          label:
+            month % monthLabelInterval === 0
+              ? monthFormatter.format(dateFromDayIndex(monthDayIndex))
+              : null,
         })
       }
 
@@ -303,7 +334,10 @@ export function TimelineRuler({
           dayIndex,
           x: dayIndexToX(dayIndex),
           kind: "day",
-          label: dayLabelInterval === 1 || dayOfMonth % dayLabelInterval === 1 ? String(dayOfMonth) : null,
+          label:
+            dayLabelInterval === 1 || dayOfMonth % dayLabelInterval === 1
+              ? String(dayOfMonth)
+              : null,
         })
       }
     }
@@ -349,7 +383,11 @@ export function TimelineRuler({
       const midX = (p1.x + p2.x) / 2
       const rect = containerRef.current!.getBoundingClientRect()
       const factor = distance / pinchRef.current.startDistance
-      const nextPxPerDay = clamp(pinchRef.current.startPxPerDay * factor, MIN_PX_PER_DAY, MAX_PX_PER_DAY)
+      const nextPxPerDay = clamp(
+        pinchRef.current.startPxPerDay * factor,
+        MIN_PX_PER_DAY,
+        MAX_PX_PER_DAY,
+      )
       const midOffset = midX - rect.left - containerWidth / 2
       setPxPerDay(nextPxPerDay)
       setCenterDayIndex(pinchRef.current.anchorDayIndex - midOffset / nextPxPerDay)
@@ -368,7 +406,11 @@ export function TimelineRuler({
     // was never recorded into activePointersRef/dragRef by the guard above, so wasTap is already
     // false and the cleanup below is a harmless no-op on an absent id - same shape as
     // games/shared/AssetPhoto.tsx's own handlePointerUp.
-    const wasTap = !disabled && activePointersRef.current.size === 1 && !!dragRef.current && dragRef.current.moved < CLICK_MOVEMENT_THRESHOLD_PX
+    const wasTap =
+      !disabled &&
+      activePointersRef.current.size === 1 &&
+      !!dragRef.current &&
+      dragRef.current.moved < CLICK_MOVEMENT_THRESHOLD_PX
     if (wasTap) {
       const rect = containerRef.current!.getBoundingClientRect()
       const dayIndex = Math.round(xToDayIndex(e.clientX - rect.left))
@@ -383,7 +425,11 @@ export function TimelineRuler({
       // One finger remains after a pinch ends - restart drag tracking from it, marked as already
       // "moved" so lifting that finger next doesn't misfire a tap.
       const [[, point]] = activePointersRef.current
-      dragRef.current = { startClientX: point.x, startCenterDayIndex: centerDayIndex, moved: CLICK_MOVEMENT_THRESHOLD_PX }
+      dragRef.current = {
+        startClientX: point.x,
+        startCenterDayIndex: centerDayIndex,
+        moved: CLICK_MOVEMENT_THRESHOLD_PX,
+      }
     }
   }
 
@@ -410,7 +456,11 @@ export function TimelineRuler({
               {tick.label && (
                 <span
                   className={`absolute mb-1 -translate-x-1/2 whitespace-nowrap font-mono text-faint pointer-events-none ${
-                    tick.kind === "year" ? "text-xs font-bold text-body" : tick.kind === "month" ? "text-[11px]" : "text-[9px]"
+                    tick.kind === "year"
+                      ? "text-xs font-bold text-body"
+                      : tick.kind === "month"
+                        ? "text-[11px]"
+                        : "text-[9px]"
                   }`}
                   style={{ bottom: "100%" }}
                 >
@@ -464,7 +514,9 @@ export function TimelineRuler({
         // confirm button's own ABOVE_RULER_BOTTOM_CLASS positioning (DateguessrGame.tsx) but on the
         // right instead of the left, and sized like AssetCarousel's arrow buttons (h-11 w-11 - a real
         // touch target, not a scaled-down desktop control).
-        <div className={`fixed ${ABOVE_RULER_BOTTOM_CLASS} right-[18px] z-30 flex gap-2 md:right-10`}>
+        <div
+          className={`fixed ${ABOVE_RULER_BOTTOM_CLASS} right-[18px] z-30 flex gap-2 md:right-10`}
+        >
           <button
             type="button"
             onClick={() => zoomBy(1 / ZOOM_BUTTON_FACTOR)}
@@ -472,7 +524,15 @@ export function TimelineRuler({
             aria-label={t("dateguessr.zoomOut")}
             className="flex h-11 w-11 items-center justify-center rounded-full border border-line-strong bg-surface text-body shadow-card transition-colors hover:bg-hover-tint disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-surface"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+            >
               <path d="M5 12h14" />
             </svg>
           </button>
@@ -483,7 +543,15 @@ export function TimelineRuler({
             aria-label={t("dateguessr.zoomIn")}
             className="flex h-11 w-11 items-center justify-center rounded-full border border-line-strong bg-surface text-body shadow-card transition-colors hover:bg-hover-tint disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-surface"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+            >
               <path d="M12 5v14M5 12h14" />
             </svg>
           </button>

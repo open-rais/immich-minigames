@@ -17,7 +17,7 @@ export function RoundsPage() {
   const navigate = useNavigate()
   const { gameType, mode, gameId } = useParams<{ gameType: string; mode: string; gameId: string }>()
   const catalogMode = gameType && mode ? findCatalogMode(gameType, mode) : undefined
-  const game_ = GAME_CATALOG.find((g) => g.gameType === gameType)
+  const catalogGame = GAME_CATALOG.find((g) => g.gameType === gameType)
   const [state, setState] = useState<LoadState>({ status: "loading" })
 
   useEffect(() => {
@@ -39,7 +39,14 @@ export function RoundsPage() {
   // An unknown mode, a mode with no roundsComponent registered (shouldn't happen - every mode has
   // one), or a missing gameId all mean there's nothing sensible to render here - bounce to the menu
   // the same way GameRoute does for an unknown (gameType, mode).
-  if (!catalogMode || !game_ || !gameType || !mode || !gameId || !catalogMode.roundsComponent) {
+  if (
+    !catalogMode ||
+    !catalogGame ||
+    !gameType ||
+    !mode ||
+    !gameId ||
+    !catalogMode.roundsComponent
+  ) {
     return <Navigate to="/" replace />
   }
 
@@ -74,7 +81,7 @@ export function RoundsPage() {
 
   return (
     <RoundsShell
-      gameTitle={t(game_.gameTitleKey)}
+      gameTitle={t(catalogGame.gameTitleKey)}
       modeTitle={t(catalogMode.modeTitleKey)}
       score={state.game.score}
       onBack={onBack}

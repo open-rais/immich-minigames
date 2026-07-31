@@ -17,7 +17,11 @@ export function FaceBoxReadOnly({ face, mode }: FaceBoxReadOnlyProps) {
   const yourAnswer = mode === "yourAnswer"
   // "Real" mirrors FaceBox's own revealed border coloring; "Tu respuesta" is the covered/unrevealed
   // state, which never carries a verdict color.
-  const borderClass = yourAnswer ? "border-white/80" : face.correct ? "border-clue-match" : "border-clue-miss"
+  const borderClass = yourAnswer
+    ? "border-white/80"
+    : face.correct
+      ? "border-clue-match"
+      : "border-clue-miss"
   const label = yourAnswer ? (face.guess_person_name ?? "?") : face.person_name
 
   return (
@@ -28,7 +32,11 @@ export function FaceBoxReadOnly({ face, mode }: FaceBoxReadOnlyProps) {
               underneath, nothing left to reveal. */}
           {yourAnswer &&
             (face.guess_person_id ? (
-              <img src={personThumbnailUrl(face.guess_person_id)} alt="" className="h-full w-full object-cover" />
+              <img
+                src={personThumbnailUrl(face.guess_person_id)}
+                alt=""
+                className="h-full w-full object-cover"
+              />
             ) : (
               <div className="h-full w-full bg-blackout" />
             ))}

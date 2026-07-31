@@ -42,7 +42,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const id = apiClient.interceptors.response.use(
       (response) => response,
       (error: unknown) => {
-        if (axios.isAxiosError(error) && error.response?.status === 401 && !error.config?.skipAuthRedirect) {
+        if (
+          axios.isAxiosError(error) &&
+          error.response?.status === 401 &&
+          !error.config?.skipAuthRedirect
+        ) {
           setPendingRedirectFrom(window.location.pathname)
           setUser(null)
         }

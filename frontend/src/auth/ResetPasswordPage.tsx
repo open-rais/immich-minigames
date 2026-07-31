@@ -40,7 +40,11 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <AuthCard title={t("auth.resetPassword.title")} backLabel={t("common.back")} onBack={() => navigate("/login")}>
+    <AuthCard
+      title={t("auth.resetPassword.title")}
+      backLabel={t("common.back")}
+      onBack={() => navigate("/login")}
+    >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <AuthField
           id="token"

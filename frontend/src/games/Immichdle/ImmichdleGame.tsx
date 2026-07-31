@@ -24,7 +24,8 @@ type Screen = "idle" | "playing" | "finished" | "error"
 // This component only ever creates/plays "immichdle" games, so a mismatched game_type here means
 // the backend returned something unexpected - fail loudly, same convention as MoreOrLessGame.tsx.
 function assertImmichdle(round: RoundOut): asserts round is ImmichdleRoundOut {
-  if (round.game_type !== GameType.Immichdle) throw new Error(`expected an immichdle round, got ${round.game_type}`)
+  if (round.game_type !== GameType.Immichdle)
+    throw new Error(`expected an immichdle round, got ${round.game_type}`)
 }
 
 interface GameState {
@@ -84,7 +85,14 @@ export function ImmichdleGame({ coverUrl, hasRoundsView, daily = false }: GameCo
         if (!isCurrent(token)) return
         const round = g.rounds[g.rounds.length - 1]
         assertImmichdle(round)
-        setGame({ id: g.id, score: g.score, finished: false, won: false, targetName: null, targetPersonId: null })
+        setGame({
+          id: g.id,
+          score: g.score,
+          finished: false,
+          won: false,
+          targetName: null,
+          targetPersonId: null,
+        })
         setPendingRoundId(round.id)
         setHistory([])
         setAnimatingRoundId(null)
@@ -182,7 +190,14 @@ export function ImmichdleGame({ coverUrl, hasRoundsView, daily = false }: GameCo
         answered.forEach(assertImmichdle)
         const pending = g.rounds[g.rounds.length - 1]
         assertImmichdle(pending)
-        setGame({ id: g.id, score: g.score, finished: false, won: false, targetName: null, targetPersonId: null })
+        setGame({
+          id: g.id,
+          score: g.score,
+          finished: false,
+          won: false,
+          targetName: null,
+          targetPersonId: null,
+        })
         setPendingRoundId(pending.id)
         setHistory([...(answered as ImmichdleRoundOut[])].reverse())
         setAnimatingRoundId(null)
@@ -209,7 +224,11 @@ export function ImmichdleGame({ coverUrl, hasRoundsView, daily = false }: GameCo
         const answeredRound = result.answered_round as ImmichdleRoundOut
 
         setHistory((h) => [answeredRound, ...h])
-        setGame((g) => (g ? { ...g, score: result.score, finished: result.finished, won: result.correct === true } : g))
+        setGame((g) =>
+          g
+            ? { ...g, score: result.score, finished: result.finished, won: result.correct === true }
+            : g,
+        )
         setPendingRoundId(result.next_round ? result.next_round.id : null)
 
         // Kicks off the row's own entrance/reveal timers (AnimatedGuessRow, via GuessTable) - the
@@ -311,7 +330,11 @@ export function ImmichdleGame({ coverUrl, hasRoundsView, daily = false }: GameCo
       >
         {game.targetPersonId && (
           <div className="flex flex-col items-center gap-2">
-            <PersonAvatar src={personThumbnailUrl(game.targetPersonId)} alt={game.targetName ?? ""} size="lg" />
+            <PersonAvatar
+              src={personThumbnailUrl(game.targetPersonId)}
+              alt={game.targetName ?? ""}
+              size="lg"
+            />
             {game.targetName && <p className="text-xl font-bold text-primary">{game.targetName}</p>}
           </div>
         )}

@@ -4,7 +4,12 @@ import type { ImmichdleRoundOut } from "../../api/types"
 import { useCountUp } from "../shared/useCountUp"
 import type { ClueResult } from "./clueColors"
 import { ClueCell } from "./ClueCell"
-import { CLUE_CELL_WRAPPER_CLASS, CLUE_COLUMNS, PERSON_COL, ROW_MIN_H_CLASS } from "./guessTableColumns"
+import {
+  CLUE_CELL_WRAPPER_CLASS,
+  CLUE_COLUMNS,
+  PERSON_COL,
+  ROW_MIN_H_CLASS,
+} from "./guessTableColumns"
 import { PersonCell } from "./PersonCell"
 
 // Timing budget for the guess-reveal sequence (§7 of docs/TODO/UI-ENHANCEMENTS.md, [DECISIÓN F2] -

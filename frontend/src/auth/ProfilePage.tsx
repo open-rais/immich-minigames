@@ -34,7 +34,11 @@ export function ProfilePage() {
   }
 
   return (
-    <AuthCard title={t("auth.profile.title")} backLabel={t("common.back")} onBack={() => navigate("/")}>
+    <AuthCard
+      title={t("auth.profile.title")}
+      backLabel={t("common.back")}
+      onBack={() => navigate("/")}
+    >
       <div className="mb-6 flex justify-center">
         {user.skin_person_id ? (
           <ProfileAvatar key={user.skin_person_id} personId={user.skin_person_id} />
@@ -62,16 +66,33 @@ export function ProfilePage() {
         {t("auth.profile.memberSince", { date: new Date(user.created_at).toLocaleDateString() })}
       </p>
 
-      <Button variant="primary" className="mt-6 w-full py-2.5" onClick={() => navigate("/profile/edit")}>
+      <Button
+        variant="primary"
+        className="mt-6 w-full py-2.5"
+        onClick={() => navigate("/profile/edit")}
+      >
         {t("auth.profile.edit")}
       </Button>
-      <Button variant="secondary" className="mt-3 w-full py-2.5" onClick={() => navigate("/profile/password")}>
+      <Button
+        variant="secondary"
+        className="mt-3 w-full py-2.5"
+        onClick={() => navigate("/profile/password")}
+      >
         {t("auth.profile.changePassword.title")}
       </Button>
-      <Button variant="secondary" className="mt-3 w-full py-2.5" onClick={() => setShowRecentGames(true)}>
+      <Button
+        variant="secondary"
+        className="mt-3 w-full py-2.5"
+        onClick={() => setShowRecentGames(true)}
+      >
         {t("auth.profile.viewGames")}
       </Button>
-      <Button variant="secondary" className="mt-3 w-full py-2.5" onClick={handleLogout} disabled={busy}>
+      <Button
+        variant="secondary"
+        className="mt-3 w-full py-2.5"
+        onClick={handleLogout}
+        disabled={busy}
+      >
         {t("auth.profile.logout")}
       </Button>
 

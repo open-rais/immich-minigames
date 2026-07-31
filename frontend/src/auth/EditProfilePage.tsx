@@ -75,7 +75,11 @@ export function EditProfilePage() {
   }
 
   return (
-    <AuthCard title={t("auth.profile.edit")} backLabel={t("common.back")} onBack={() => navigate("/profile")}>
+    <AuthCard
+      title={t("auth.profile.edit")}
+      backLabel={t("common.back")}
+      onBack={() => navigate("/profile")}
+    >
       <div className="mb-6 flex items-center justify-center gap-3">
         {user.skin_person_id ? (
           <ProfileAvatar key={user.skin_person_id} personId={user.skin_person_id} />
@@ -128,7 +132,9 @@ export function EditProfilePage() {
           <PersonSearchInput excludeIds={excludeIds} onSelect={applySkin} disabled={busy} />
         </div>
         {error && <p className="text-sm font-semibold text-rose-600">{error}</p>}
-        {saved && !error && <p className="text-sm font-semibold text-emerald-600">{t("auth.profile.saved")}</p>}
+        {saved && !error && (
+          <p className="text-sm font-semibold text-emerald-600">{t("auth.profile.saved")}</p>
+        )}
         <Button type="submit" variant="primary" className="w-full py-2.5" disabled={busy}>
           {t("auth.profile.save")}
         </Button>

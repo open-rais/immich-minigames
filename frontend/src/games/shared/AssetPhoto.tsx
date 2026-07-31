@@ -37,7 +37,15 @@ function clamp(value: number, min: number, max: number): number {
 // caller declares the box (typically `fixed inset-0`, or a smaller area like Dateguessr's
 // above-the-ruler wrapper) so a `position: fixed` ancestor that isn't itself a containing block
 // can't silently make that box a no-op (see AssetCarousel.tsx and each game's own wrapper).
-export function AssetPhoto({ src, alt, overlay }: { src: string; alt: string; overlay?: ReactNode }) {
+export function AssetPhoto({
+  src,
+  alt,
+  overlay,
+}: {
+  src: string
+  alt: string
+  overlay?: ReactNode
+}) {
   const [failed, setFailed] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -59,10 +67,17 @@ export function AssetPhoto({ src, alt, overlay }: { src: string; alt: string; ov
   // rather than anything that should trigger a re-render on their own. Same shape as
   // TimelineRuler.tsx's activePointersRef/dragRef/pinchRef.
   const activePointersRef = useRef<Map<number, Point>>(new Map())
-  const dragRef = useRef<{ startClientX: number; startClientY: number; startTranslate: Point } | null>(null)
-  const pinchRef = useRef<{ startDistance: number; startScale: number; startTranslate: Point; anchor: Point } | null>(
-    null,
-  )
+  const dragRef = useRef<{
+    startClientX: number
+    startClientY: number
+    startTranslate: Point
+  } | null>(null)
+  const pinchRef = useRef<{
+    startDistance: number
+    startScale: number
+    startTranslate: Point
+    anchor: Point
+  } | null>(null)
 
   // Same ResizeObserver convention as Dateguessr/TimelineRuler.tsx's containerWidth tracking.
   useEffect(() => {
@@ -81,10 +96,18 @@ export function AssetPhoto({ src, alt, overlay }: { src: string; alt: string; ov
   // games/WhosThatPerson/IncognitoPhoto.tsx for the original derivation of this formula).
   const fitBox = (() => {
     if (!naturalSize || !containerSize) return null
-    const fitScale = Math.min(containerSize.width / naturalSize.width, containerSize.height / naturalSize.height)
+    const fitScale = Math.min(
+      containerSize.width / naturalSize.width,
+      containerSize.height / naturalSize.height,
+    )
     const width = naturalSize.width * fitScale
     const height = naturalSize.height * fitScale
-    return { left: (containerSize.width - width) / 2, top: (containerSize.height - height) / 2, width, height }
+    return {
+      left: (containerSize.width - width) / 2,
+      top: (containerSize.height - height) / 2,
+      width,
+      height,
+    }
   })()
 
   function clampTranslate(nextScale: number, next: Point): Point {
@@ -135,7 +158,11 @@ export function AssetPhoto({ src, alt, overlay }: { src: string; alt: string; ov
     activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
 
     if (activePointersRef.current.size === 1) {
-      dragRef.current = { startClientX: e.clientX, startClientY: e.clientY, startTranslate: translateRef.current }
+      dragRef.current = {
+        startClientX: e.clientX,
+        startClientY: e.clientY,
+        startTranslate: translateRef.current,
+      }
       pinchRef.current = null
     } else if (activePointersRef.current.size === 2) {
       dragRef.current = null
@@ -194,7 +221,11 @@ export function AssetPhoto({ src, alt, overlay }: { src: string; alt: string; ov
       // One finger remains after a pinch ends - restart drag tracking from it, same as
       // TimelineRuler.tsx's handlePointerUp.
       const [[, point]] = activePointersRef.current
-      dragRef.current = { startClientX: point.x, startClientY: point.y, startTranslate: translateRef.current }
+      dragRef.current = {
+        startClientX: point.x,
+        startClientY: point.y,
+        startTranslate: translateRef.current,
+      }
     }
   }
 
@@ -225,14 +256,24 @@ export function AssetPhoto({ src, alt, overlay }: { src: string; alt: string; ov
           src={src}
           alt={alt}
           onError={() => setFailed(true)}
-          onLoad={(e) => setNaturalSize({ width: e.currentTarget.naturalWidth, height: e.currentTarget.naturalHeight })}
+          onLoad={(e) =>
+            setNaturalSize({
+              width: e.currentTarget.naturalWidth,
+              height: e.currentTarget.naturalHeight,
+            })
+          }
           draggable={false}
           className={`h-full w-full object-contain ${photoReady ? "" : "invisible"}`}
         />
         {overlay && fitBox && (
           <div
             className="absolute"
-            style={{ left: fitBox.left, top: fitBox.top, width: fitBox.width, height: fitBox.height }}
+            style={{
+              left: fitBox.left,
+              top: fitBox.top,
+              width: fitBox.width,
+              height: fitBox.height,
+            }}
           >
             {overlay}
           </div>

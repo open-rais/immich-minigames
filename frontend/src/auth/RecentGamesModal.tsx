@@ -7,7 +7,8 @@ import type { RecentGameOut } from "../api/types"
 import { findCatalogMode, GAME_CATALOG } from "../games/catalog"
 import { Button } from "../games/shared/Button"
 
-type LoadState = { status: "loading" } | { status: "error" } | { status: "ready"; games: RecentGameOut[] }
+type LoadState =
+  { status: "loading" } | { status: "error" } | { status: "ready"; games: RecentGameOut[] }
 
 interface RecentGamesModalProps {
   onClose: () => void
@@ -43,7 +44,10 @@ export function RecentGamesModal({ onClose }: RecentGamesModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-ink/40 px-6" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-40 flex items-center justify-center bg-ink/40 px-6"
+      onClick={onClose}
+    >
       <div
         className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-2xl border border-line-soft bg-surface p-6 shadow-card"
         onClick={(e) => e.stopPropagation()}
@@ -53,7 +57,9 @@ export function RecentGamesModal({ onClose }: RecentGamesModalProps) {
         {state.status === "loading" && (
           <p className="mt-4 text-sm text-muted">{t("auth.profile.recentGames.loading")}</p>
         )}
-        {state.status === "error" && <p className="mt-4 text-sm text-muted">{t("common.error.message")}</p>}
+        {state.status === "error" && (
+          <p className="mt-4 text-sm text-muted">{t("common.error.message")}</p>
+        )}
         {state.status === "ready" && state.games.length === 0 && (
           <p className="mt-4 text-sm text-muted">{t("auth.profile.recentGames.empty")}</p>
         )}
@@ -70,7 +76,11 @@ export function RecentGamesModal({ onClose }: RecentGamesModalProps) {
                     className="flex w-full items-center gap-3 rounded-xl border border-line-soft p-3 text-left transition-colors hover:bg-hover-tint"
                   >
                     {catalogMode?.coverUrl ? (
-                      <img src={catalogMode.coverUrl} alt="" className="h-10 w-10 flex-none rounded-lg object-cover" />
+                      <img
+                        src={catalogMode.coverUrl}
+                        alt=""
+                        className="h-10 w-10 flex-none rounded-lg object-cover"
+                      />
                     ) : (
                       <div className="h-10 w-10 flex-none rounded-lg bg-primary" />
                     )}
