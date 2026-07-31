@@ -1,19 +1,19 @@
-import { GameType } from "../../api/types"
-import type { ImmichdleRoundOut } from "../../api/types"
+import { GameType } from "../../api/types/common"
+import type { ImmichdleRoundOut } from "../../api/types/immichdle"
 import type { RoundsComponentProps } from "../catalog"
 import type { TargetSnapshot } from "./clueColors"
 import { GuessTable } from "./GuessTable"
 
-// The GuessTable as it stood at the end of a finished Immichdle game, plus the target row
-// (ROUNDS-VIEW.md roadmap #10, §3 F/§4.6) - "list" family (registered with no roundsLayout in
+// The GuessTable as it stood at the end of a finished Immichdle game, plus the target row -
+// "list" family (registered with no roundsLayout in
 // catalog.ts), so RoundsShell wraps this exactly as it does MoreOrLessRounds.
 export function ImmichdleRounds({ game }: RoundsComponentProps) {
   // A round still pending an answer (a game reached mid-play by URL) is dropped, same convention
-  // MoreOrLessRounds.tsx/GeoguessrRounds.tsx already established (§3 H). A won game's last guess
+  // MoreOrLessRounds.tsx/GeoguessrRounds.tsx already established. A won game's last guess
   // *is* the target - also dropped here, since the target row above already shows that same
   // person; keeping it in the history below would just show it twice.
   //
-  // Reversed to newest-first ([DECISIÓN G]) - `game.rounds` comes back chronological, but the live
+  // Reversed to newest-first - `game.rounds` comes back chronological, but the live
   // game's own `history` state (ImmichdleGame.tsx) is newest-first (new guesses prepend), so without
   // this the same finished game reads backwards depending on whether you're mid-game or reviewing
   // it. As a side effect the target row above (always first) now sits next to the *last* guess

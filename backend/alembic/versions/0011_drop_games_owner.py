@@ -1,15 +1,15 @@
-"""drop games.owner, require games.user_id (roadmap #H, F4)
+"""drop games.owner, require games.user_id
 
-Login is mandatory as of F3 (AuthMiddleware default-denies unauthenticated requests), so the old
+Login is mandatory (AuthMiddleware default-denies unauthenticated requests), so the old
 anonymous-identity column (`games.owner`, the `X-Owner-Id` header's counterpart) has nothing left
 writing to it. This drops it and makes `user_id` `NOT NULL`, collapsing `GamesService`'s owner/
 user_id dual branching down to a single `user_id`-only path.
 
-Pre-cutover anonymous games (`user_id IS NULL`) can't survive the `NOT NULL` constraint - decision
-[I] in docs/TODO/NEW-AUTH.md: these are deleted (with their rounds, by explicit delete rather than
-relying on the ORM-level `cascade="all, delete-orphan"`, which is a session concept, not a DB
-constraint) rather than building a one-time "claim by X-Owner-Id" endpoint just to migrate what is,
-in this app's current installations, dev/test data.
+Pre-cutover anonymous games (`user_id IS NULL`) can't survive the `NOT NULL` constraint: these are
+deleted (with their rounds, by explicit delete rather than relying on the ORM-level
+`cascade="all, delete-orphan"`, which is a session concept, not a DB constraint) rather than
+building a one-time "claim by X-Owner-Id" endpoint just to migrate what is, in this app's current
+installations, dev/test data.
 
 The two daily-uniqueness indexes (`uq_games_daily_user`, keyed on `user_id`; `uq_games_daily_owner`,
 keyed on `owner`, for the anonymous case) collapse into one now that `user_id` is never null.

@@ -1,17 +1,17 @@
 """
-Roadmap #G (daily games) - own-database persistence for the daily-challenge feature. Two tables:
+Own-database persistence for the daily-challenge feature. Two tables:
 
 `DailyConfigModel` - one row per (game_type, mode), admin-owned - whether that mode participates in
-the daily rotation (`enabled`, the "Activar juego diario" checkbox from roadmap #f) plus its
-daily-only setting overrides (`values`). Same one-row-per-(game_type,mode)-with-a-JSONB-payload
-shape as persistence/game_settings.py's GameSettingsModel, just with an extra `enabled` column - a
+the daily rotation (`enabled`, the "Activar juego diario" checkbox) plus its daily-only setting
+overrides (`values`). Same one-row-per-(game_type,mode)-with-a-JSONB-payload shape as
+persistence/game_settings.py's GameSettingsModel, just with an extra `enabled` column - a
 (game_type, mode) with no row yet defaults to disabled with no overrides (see
 services/daily_settings.py).
 
 `DailyChallengeModel` - one row per (day, game_type, mode) - the pre-generated, shared content every
-player of that mode plays that day (`spec`, shape documented per-game in services/daily_service.py)
-plus a frozen snapshot of that day's effective settings (`settings` - see docs/TODO/DAILY-GAMES.md
-§4.2 for why this is snapshotted rather than read live like a normal game's settings). Referenced by
+player of that mode plays that day (`spec`, shape documented per-game in
+services/daily_challenge_service.py) plus a frozen snapshot of that day's effective settings
+(`settings`, snapshotted rather than read live like a normal game's settings). Referenced by
 persistence/games.py's GameModel.daily_challenge_id.
 """
 

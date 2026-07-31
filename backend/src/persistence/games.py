@@ -14,9 +14,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from persistence.base import SCHEMA, Base
 
-# Roadmap #G (daily games) - GameModel.daily_challenge_id below is a real FK to this table, which
-# must already be registered in Base.metadata by the time tests' reset_db()/create_all() (or a
-# real `alembic upgrade`) runs. Nothing else in this module's own import chain pulls
+# GameModel.daily_challenge_id below is a real FK to this table, which must already be registered
+# in Base.metadata by the time tests' reset_db()/create_all() (or a real `alembic upgrade`) runs.
+# Nothing else in this module's own import chain pulls
 # persistence.daily in on its own (unlike UserModel, which every request path already imports via
 # services/auth_service.py) - see persistence/daily.py.
 from persistence.daily import DailyChallengeModel  # noqa: F401
@@ -27,10 +27,9 @@ class GameModel(Base):
     # Backs GamesService.get_personal_records's per-(user, game_type, mode) MAX(score) lookup.
     __table_args__ = (
         Index("ix_games_user_type_mode", "user_id", "game_type", "mode"),
-        # Roadmap #G - "one daily attempt per (challenge, player)" enforced at the DB level, not
-        # just in GamesService.create_daily_game. A plain UNIQUE(daily_challenge_id, user_id) is
-        # safe now that user_id is never null (roadmap #H, F4) - no anonymous NULL rows left to
-        # dodge the constraint.
+        # "One daily attempt per (challenge, player)" enforced at the DB level, not just in
+        # GamesService.create_daily_game. A plain UNIQUE(daily_challenge_id, user_id) is safe
+        # because user_id is never null - no anonymous NULL rows left to dodge the constraint.
         Index(
             "uq_games_daily",
             "daily_challenge_id",
@@ -41,26 +40,24 @@ class GameModel(Base):
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
-    # Every game belongs to a logged-in account (roadmap #H, F3 made login mandatory; F4 dropped
-    # the old anonymous `owner` identity this column replaced). A real FK (unlike skin_person_id on
-    # UserModel) since UserModel lives in this same app database, not Immich's.
+    # Every game belongs to a logged-in account - login is mandatory, so this is never null. A real
+    # FK (unlike skin_person_id on UserModel) since UserModel lives in this same app database, not
+    # Immich's.
     user_id: Mapped[UUID] = mapped_column(ForeignKey(f"{SCHEMA}.users.id"))
     game_type: Mapped[str]
     mode: Mapped[str]
     score: Mapped[int] = mapped_column(default=0)
     finished: Mapped[bool] = mapped_column(default=False)
-    # Roadmap #e - set when a new game of the same (user, game_type, mode) starts while this one
-    # was still unfinished (GamesService._abandon_active_games). Never becomes True at the same
-    # time finished does, so get_personal_records/get_leaderboard need no changes.
+    # Set when a new game of the same (user, game_type, mode) starts while this one was still
+    # unfinished (GamesService._abandon_active_games). Never becomes True at the same time finished
+    # does, so get_personal_records/get_leaderboard need no changes.
     abandoned: Mapped[bool] = mapped_column(default=False)
-    # Roadmap #G - set only for a game created through the daily flow (GamesService.
-    # create_daily_game), pointing at the shared challenge content it was instantiated from. NULL
-    # for every normal game, exactly as before this column existed - see GamesService's
-    # daily_challenge_id IS NULL filters on get_personal_records/get_leaderboard/get_current_game/
-    # _abandon_active_games (daily games live in a separate "world", docs/TODO/DAILY-GAMES.md §4.5).
-    daily_challenge_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey(f"{SCHEMA}.daily_challenges.id"), default=None
-    )
+    # Set only for a game created through the daily flow (GamesService.create_daily_game),
+    # pointing at the shared challenge content it was instantiated from. NULL for every normal game
+    # - see GamesService's daily_challenge_id IS NULL filters on
+    # get_personal_records/get_leaderboard/get_current_game/_abandon_active_games (daily games live
+    # in a separate "world").
+    daily_challenge_id: Mapped[UUID | None] = mapped_column(ForeignKey(f"{SCHEMA}.daily_challenges.id"), default=None)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
     rounds: Mapped[list["RoundModel"]] = relationship(

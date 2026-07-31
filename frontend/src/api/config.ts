@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 
 import { apiClient } from "./client"
-import type { ConfigOut } from "./types"
+import type { ConfigOut } from "./types/config"
 
 export async function getConfig(): Promise<ConfigOut> {
   const { data } = await apiClient.get<ConfigOut>("/config")
@@ -31,7 +31,12 @@ let inFlight: Promise<ImmichLinks | null> | null = null
 function fetchLinks(): Promise<ImmichLinks | null> {
   if (!inFlight) {
     inFlight = getConfig()
-      .then((config) => (cached = config.immich_external_url ? linksFromBaseUrl(config.immich_external_url) : null))
+      .then(
+        (config) =>
+          (cached = config.immich_external_url
+            ? linksFromBaseUrl(config.immich_external_url)
+            : null),
+      )
       .catch(() => (cached = null))
   }
   return inFlight

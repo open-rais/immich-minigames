@@ -3,11 +3,11 @@ Limiter/one counter store for the whole app (storage_uri from config.py, "memory
 Imported both by main.py (to wire the middleware/exception handler) and the route modules that
 decorate their own endpoints with it.
 
-Roadmap #H, F5 - keyed by session-or-IP (session_or_ip_key below), not a trusted proxy header:
-decision [A] (docs/TODO/NEW-AUTH.md) is that this app assumes nothing about what's in front of it
-(bare `docker compose up`, behind Caddy/Nginx/Cloudflare Tunnel, whatever) - an X-Real-IP-trusting
-key function would need per-deployment config to stay correct, and silently under-protect (or
-over-throttle a shared IP) when that assumption doesn't hold."""
+Keyed by session-or-IP (session_or_ip_key below), not a trusted proxy header: this app assumes
+nothing about what's in front of it (bare `docker compose up`, behind Caddy/Nginx/Cloudflare
+Tunnel, whatever) - an X-Real-IP-trusting key function would need per-deployment config to stay
+correct, and silently under-protect (or over-throttle a shared IP) when that assumption doesn't
+hold."""
 
 import time
 
@@ -51,7 +51,7 @@ SEARCH_LIMIT = "60/minute"
 # Both thumbnail proxies - each also makes a real outbound HTTP call to Immich.
 THUMBNAIL_LIMIT = "60/minute"
 
-# Roadmap #H, F5 - slowapi's own @limiter.limit(...) decorator can only key by request
+# slowapi's own @limiter.limit(...) decorator can only key by request
 # (session_or_ip_key above - IP or, on /login, always IP since there's no session yet), so it
 # can't single out "many attempts against the same email" the way credential stuffing actually
 # looks: an attacker spreading guesses across IPs (or many victims sharing one IP/NAT) both defeat

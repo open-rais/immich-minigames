@@ -1,14 +1,19 @@
 import { useEffect, useRef, useState } from "react"
 
-import type { ImmichdleRoundOut } from "../../api/types"
+import type { ImmichdleRoundOut } from "../../api/types/immichdle"
 import { useCountUp } from "../shared/useCountUp"
 import type { ClueResult } from "./clueColors"
 import { ClueCell } from "./ClueCell"
-import { CLUE_CELL_WRAPPER_CLASS, CLUE_COLUMNS, PERSON_COL, ROW_MIN_H_CLASS } from "./guessTableColumns"
+import {
+  CLUE_CELL_WRAPPER_CLASS,
+  CLUE_COLUMNS,
+  PERSON_COL,
+  ROW_MIN_H_CLASS,
+} from "./guessTableColumns"
 import { PersonCell } from "./PersonCell"
 
-// Timing budget for the guess-reveal sequence (§7 of docs/TODO/UI-ENHANCEMENTS.md, [DECISIÓN F2] -
-// fixed after eyeballing it on screen, not derived from anything). Total for one row is roughly
+// Timing budget for the guess-reveal sequence - fixed after eyeballing it on screen, not derived
+// from anything. Total for one row is roughly
 // ENTER_MS + CLUE_COLUMNS.length * REVEAL_STEP_MS + HOLD_MS ≈ 2.5s, in line with the other games'
 // own REVEAL_HOLD_MS (2400ms Geo/Date, 2800ms WTP).
 const ENTER_MS = 350
@@ -43,7 +48,7 @@ function AnimatedClueCell({ clue, revealed }: { clue: ClueResult; revealed: bool
   if (!revealed) return <ClueCell clue={clue} pending />
 
   // For kind: "date"/"text" numericTarget is null, so this is just `clue` unchanged - the count-up
-  // only ever touches the columns where "the number writes in" actually makes sense ([DECISIÓN F1]).
+  // only ever touches the columns where "the number writes in" actually makes sense.
   const displayClue: ClueResult = numericTarget !== null ? { ...clue, value: countValue } : clue
   return (
     // w-full: CLUE_CELL_WRAPPER_CLASS is a flex container (to center the pending tile within

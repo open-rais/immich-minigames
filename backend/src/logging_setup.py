@@ -1,4 +1,4 @@
-"""Structured logging (docs/TODO/LOGGING.md) - not `logging.py`: `src/` is on `sys.path`
+"""Structured logging - not `logging.py`: `src/` is on `sys.path`
 (`--app-dir src`), so a module with that name would shadow the stdlib package."""
 
 import json
@@ -21,8 +21,7 @@ RESERVED_LOG_RECORD_ATTRS = frozenset(vars(logging.LogRecord("", 0, "", 0, "", (
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         payload: dict[str, object] = {
-            "ts": datetime.fromtimestamp(record.created, tz=UTC).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]
-            + "Z",
+            "ts": datetime.fromtimestamp(record.created, tz=UTC).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z",
             "level": record.levelname,
             "logger": record.name,
         }
@@ -85,11 +84,11 @@ def configure_logging(settings: Settings) -> None:
                 # through our single stdout handler instead.
                 "uvicorn": {"handlers": [], "propagate": True},
                 "uvicorn.error": {"handlers": [], "propagate": True},
-                # Replaced by RequestLogMiddleware's "access" logger (docs/TODO/LOGGING.md §4.3) -
-                # silenced rather than left in its default per-request-line format.
+                # Silenced - RequestLogMiddleware's own "access" logger covers this instead, in
+                # this app's own format, rather than uvicorn's default per-request-line format.
                 "uvicorn.access": {"handlers": [], "propagate": False},
-                # Never filtered by LOG_LEVEL (decision [H]) - security/access events stay
-                # visible even when LOG_LEVEL=ERROR silences app noise.
+                # Never filtered by LOG_LEVEL - security/access events stay visible even when
+                # LOG_LEVEL=ERROR silences app noise.
                 "audit": {"handlers": ["default"], "level": "INFO", "propagate": False},
                 "access": {"handlers": ["default"], "level": "INFO", "propagate": False},
             },

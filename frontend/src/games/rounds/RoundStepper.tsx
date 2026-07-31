@@ -12,14 +12,28 @@ const ARROW_BUTTON_CLASS =
 
 // Interactive counterpart to games/shared/RoundBadge.tsx (same top-center fixed slot/pill shown
 // during real gameplay) - this one lets the player step back and forth through already-played
-// rounds instead of only ever advancing (ROUNDS-VIEW.md roadmap #10, "one round at a time" family:
-// Geoguessr, Dateguessr, Who'sThatPerson).
+// rounds instead of only ever advancing ("one round at a time" family: Geoguessr, Dateguessr,
+// Who'sThatPerson).
 export function RoundStepper({ current, total, onPrev, onNext }: RoundStepperProps) {
   const { t } = useTranslation()
   return (
     <div className="fixed top-[18px] left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 md:top-7">
-      <button onClick={onPrev} disabled={current <= 1} aria-label={t("common.previousRound")} className={ARROW_BUTTON_CLASS}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <button
+        onClick={onPrev}
+        disabled={current <= 1}
+        aria-label={t("common.previousRound")}
+        className={ARROW_BUTTON_CLASS}
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="M15 18l-6-6 6-6" />
         </svg>
       </button>
@@ -28,8 +42,22 @@ export function RoundStepper({ current, total, onPrev, onNext }: RoundStepperPro
           {t("common.roundOf", { current, total })}
         </span>
       </div>
-      <button onClick={onNext} disabled={current >= total} aria-label={t("common.nextRound")} className={ARROW_BUTTON_CLASS}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <button
+        onClick={onNext}
+        disabled={current >= total}
+        aria-label={t("common.nextRound")}
+        className={ARROW_BUTTON_CLASS}
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="M9 18l6-6-6-6" />
         </svg>
       </button>

@@ -1,7 +1,7 @@
 """
 Connection to Immich's own database - read-only, and a different database from this app's own
 (see base.py). Kept in its own module so that neither side's plumbing has to know about the other:
-services/immich_service.py reads through immich_tables.py's Core `Table()` declarations, while
+services/immich/ reads through immich_tables.py's Core `Table()` declarations, while
 services/ml_service.py issues raw `text()` SQL and never imports those declarations at all, so a
 neutral module is the honest home for both.
 

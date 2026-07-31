@@ -23,17 +23,15 @@ class HiddenFaceOut(BaseModel):
     person_id: UUID | None
     person_name: str | None
     correct: bool | None
-    # Roadmap #10 (rounds review) - what the player guessed for this face, frozen at guess time
-    # (WhosThatPersonGame.play_round, see WhosThatPersonRound.guess_names). guess_person_id was
-    # already in the payload (the raw guess), just not exposed here before. guess_person_name is
+    # What the player guessed for this face, frozen at guess time
+    # (WhosThatPersonGame.play_round, see WhosThatPersonRound.guess_names) - mirrors the raw guess
+    # back so the frontend can show it without holding onto the request body. guess_person_name is
     # null if that person no longer exists in Immich.
     guess_person_id: UUID | None
     guess_person_name: str | None
 
     @classmethod
-    def from_face(
-        cls, face: HiddenFace, guess: UUID | None, guess_name: str | None, answered: bool
-    ) -> "HiddenFaceOut":
+    def from_face(cls, face: HiddenFace, guess: UUID | None, guess_name: str | None, answered: bool) -> "HiddenFaceOut":
         return cls(
             face_id=face.face_id,
             image_width=face.image_width,

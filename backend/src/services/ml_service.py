@@ -20,7 +20,7 @@ from persistence.ml_cache import PersonFaceEmbeddingCacheModel
 _CACHE_TABLE = PersonFaceEmbeddingCacheModel.__table__
 
 # Visible, non-deleted faces are the same eligibility filter used everywhere else a person's faces
-# are counted/read (see services/immich_service.py's get_random_asset_with_named_faces).
+# are counted/read (see services/immich/faces.py's get_random_asset_with_named_faces).
 _FACE_COUNT_QUERY = text("""
     SELECT count(*) FROM asset_face
     WHERE "personId" = :person_id AND "deletedAt" IS NULL AND "isVisible"
@@ -81,9 +81,7 @@ class MLService:
         embedding = _parse_vector_text(avg_text)
 
         with self._app_engine.begin() as conn:
-            upsert = pg_insert(_CACHE_TABLE).values(
-                person_id=person_id, embedding=embedding, face_count=current_count
-            )
+            upsert = pg_insert(_CACHE_TABLE).values(person_id=person_id, embedding=embedding, face_count=current_count)
             upsert = upsert.on_conflict_do_update(
                 index_elements=[_CACHE_TABLE.c.person_id],
                 set_={

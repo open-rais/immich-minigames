@@ -21,7 +21,15 @@ const SIZE_CLASSES = {
 
 // `src: null` (e.g. a leaderboard entry with no skin picked, see menu/LeaderboardPage.tsx) renders
 // the same placeholder as a failed image load - both mean "no photo to show".
-export function PersonAvatar({ src, alt, size = "sm" }: { src: string | null; alt: string; size?: keyof typeof SIZE_CLASSES }) {
+export function PersonAvatar({
+  src,
+  alt,
+  size = "sm",
+}: {
+  src: string | null
+  alt: string
+  size?: keyof typeof SIZE_CLASSES
+}) {
   const [failed, setFailed] = useState(false)
   const sizingClass = `${SIZE_CLASSES[size]} flex-none rounded-full`
 
@@ -29,5 +37,12 @@ export function PersonAvatar({ src, alt, size = "sm" }: { src: string | null; al
     return <div className={sizingClass} style={placeholderStyle} />
   }
 
-  return <img src={src} alt={alt} onError={() => setFailed(true)} className={`${sizingClass} object-cover`} />
+  return (
+    <img
+      src={src}
+      alt={alt}
+      onError={() => setFailed(true)}
+      className={`${sizingClass} object-cover`}
+    />
+  )
 }

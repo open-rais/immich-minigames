@@ -1,4 +1,4 @@
-"""add games.abandoned column (roadmap point #e)
+"""add games.abandoned column
 
 `finished` keeps its exact current meaning (game ended per its own rules). `abandoned` is a new,
 orthogonal terminal state: set when the player starts a new game of the same (owner-or-user,

@@ -1,9 +1,10 @@
-"""Admin-configurable settings for Immichdle (ADMIN-FEATURE.md point #4) - see
-games/settings_spec.py for the contract, services/game_settings.py for how every game's specs get
-assembled into one registry and read/written."""
+"""Admin-configurable settings for Immichdle - see games/settings_spec.py for the contract,
+games/settings_registry.py for how every game's specs get assembled into one registry and
+services/game_settings_service.py for how they're read/written."""
 
-from games.immichdle.game import ASSET_COUNT_WEIGHT_EXPONENT, MODE_PERSON, STARTING_SCORE, WRONG_GUESS_PENALTY
-from games.settings_spec import SettingSpec
+from games.immichdle.game import ASSET_COUNT_WEIGHT_EXPONENT, MODE_PERSON, STARTING_SCORE
+from games.immichdle.round import WRONG_GUESS_PENALTY
+from games.settings_spec import NO_REPEAT_DAYS_SPEC, SettingSpec
 
 SETTING_SPECS: dict[str, list[SettingSpec]] = {
     MODE_PERSON: [
@@ -16,3 +17,7 @@ SETTING_SPECS: dict[str, list[SettingSpec]] = {
         SettingSpec("asset_count_weight", ASSET_COUNT_WEIGHT_EXPONENT, "float", 0, 1),
     ],
 }
+
+# Immichdle's target is a concrete named person, so its daily rotation needs a no-repeat window
+# like every game except MoreOrLess.
+DAILY_SETTING_SPECS: list[SettingSpec] = [NO_REPEAT_DAYS_SPEC]

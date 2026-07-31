@@ -1,21 +1,21 @@
-"""Roadmap #G (daily games) - Immichdle's DailySupport implementation (games/daily.py's contract):
-generates a day's shared content, decides which ids future days must avoid repeating, and builds
-the kwargs to replay it against the *same* ImmichdleGame class a normal game uses (see
-docs/TODO/DECOUPLING.md decision C). Immichdle has no round sequence to precompute - its only
-content is the target, and guesses stay live either way (ImmichdleGame.play_round always queries
-immich_service for whatever the player types) - so unlike the other games, this needs no separate
-content seam in games/immichdle/game.py; ImmichdleGame.start()'s existing optional `target` param
-already covers it."""
+"""Immichdle's DailySupport implementation (games/daily.py's contract): generates a day's shared
+content, decides which ids future days must avoid repeating, and builds the kwargs to replay it
+against the *same* ImmichdleGame class a normal game uses. Immichdle has no round sequence to
+precompute - its only content is the target, and guesses stay live either way
+(ImmichdleGame.play_round always queries immich_service for whatever the player types) - so unlike
+the other games, this needs no separate content seam in games/immichdle/game.py;
+ImmichdleGame.start()'s existing optional `target` param already covers it."""
 
 from typing import Any
 from uuid import UUID
 
-from games.immichdle.game import ASSET_COUNT_WEIGHT_EXPONENT, PersonSnapshot
-from services.immich_service import ImmichService
+from games.immichdle.game import ASSET_COUNT_WEIGHT_EXPONENT
+from games.immichdle.round import PersonSnapshot
+from services.immich import ContentQueries, ImmichService
 from services.ml_service import MLService
 
 
-def build_spec(mode: str, immich_service: ImmichService, settings: dict[str, float]) -> dict[str, Any]:
+def build_spec(mode: str, immich_service: ContentQueries, settings: dict[str, float]) -> dict[str, Any]:
     # Replicates ImmichdleGame.start()'s target-selection directly rather than driving a full game
     # instance, since there's no round sequence to precompute.
     weight = float(settings.get("asset_count_weight", ASSET_COUNT_WEIGHT_EXPONENT))

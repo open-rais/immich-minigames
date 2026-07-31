@@ -3,14 +3,13 @@ import type {
   CreateGameIn,
   CurrentGameOut,
   GameOut,
-  GameRecordsOut,
-  LeaderboardOut,
-  LeaderboardWindow,
-  PersonSearchOut,
   PlayRoundIn,
   PlayRoundOut,
   RecentGamesOut,
-} from "./types"
+} from "./types/common"
+import type { LeaderboardOut, LeaderboardWindow } from "./types/leaderboard"
+import type { PersonSearchOut } from "./types/persons"
+import type { GameRecordsOut } from "./types/records"
 
 export async function createGame(type: string, mode: string): Promise<GameOut> {
   const body: CreateGameIn = { type, mode }
@@ -23,7 +22,7 @@ export async function getGame(id: string): Promise<GameOut> {
   return data
 }
 
-// Idle-screen "Continuar" lookup (roadmap #e) - null when the logged-in account has no unfinished
+// Idle-screen "Continuar" lookup - null when the logged-in account has no unfinished
 // game for this (gameType, mode). See backend/src/api/api.py's get_current_game.
 export async function getCurrentGame(gameType: string, mode: string): Promise<GameOut | null> {
   const { data } = await apiClient.get<CurrentGameOut>("/games/current", {
@@ -32,20 +31,20 @@ export async function getCurrentGame(gameType: string, mode: string): Promise<Ga
   return data.game
 }
 
-// Profile "Ver juegos" modal (roadmap #e) - see api/api.py's get_recent_games.
+// Profile "Ver juegos" modal - see api/api.py's get_recent_games.
 export async function getRecentGames(): Promise<RecentGamesOut["games"]> {
   const { data } = await apiClient.get<RecentGamesOut>("/games/recent")
   return data.games
 }
 
-// Personal-best score per (game_type, mode) - shown in the main menu (roadmap point E) - see
+// Personal-best score per (game_type, mode) - shown in the main menu - see
 // backend/src/api/api.py's get_game_records.
 export async function getGameRecords(): Promise<GameRecordsOut> {
   const { data } = await apiClient.get<GameRecordsOut>("/games/records")
   return data
 }
 
-// Top-15 leaderboard for a (game_type, mode) (roadmap point F) - see backend/src/api/api.py's
+// Top-15 leaderboard for a (game_type, mode) - see backend/src/api/api.py's
 // get_leaderboard.
 export async function getLeaderboard(
   gameType: string,
@@ -59,16 +58,23 @@ export async function getLeaderboard(
 }
 
 // One endpoint for every game's guess - which body shape is valid is fixed by the game's type/mode
-// server-side (see backend/src/api/schemas.py's parse_guess), so callers just pass the body for
+// server-side (see backend/src/api/dto/common.py's parse_guess), so callers just pass the body for
 // their game. Replaces the former per-game playRound/playGeoguessrRound/playDateguessrRound trio.
-export async function playRound(gameId: string, roundId: string, body: PlayRoundIn): Promise<PlayRoundOut> {
+export async function playRound(
+  gameId: string,
+  roundId: string,
+  body: PlayRoundIn,
+): Promise<PlayRoundOut> {
   const { data } = await apiClient.post<PlayRoundOut>(`/games/${gameId}/rounds/${roundId}`, body)
   return data
 }
 
 // Word-prefix match on named people's full name - see backend/src/services/immich_service.py's
 // search_persons. Small pages by default (matches the backend's own default limit=3).
-export async function searchPersons(query: string, opts?: { offset?: number; limit?: number }): Promise<PersonSearchOut> {
+export async function searchPersons(
+  query: string,
+  opts?: { offset?: number; limit?: number },
+): Promise<PersonSearchOut> {
   const { data } = await apiClient.get<PersonSearchOut>("/persons/search", {
     params: { query, offset: opts?.offset, limit: opts?.limit },
   })

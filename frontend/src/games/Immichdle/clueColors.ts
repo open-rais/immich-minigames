@@ -1,4 +1,4 @@
-import type { ImmichdleRoundOut } from "../../api/types"
+import type { ImmichdleRoundOut } from "../../api/types/immichdle"
 
 // Three-tier color scheme (green/amber/red), same intent everywhere: "match" is as-good-as-correct,
 // "close" is a meaningful hint, "miss" is far off. Kept here as pure functions (no i18n/rendering)
@@ -41,7 +41,12 @@ function dateClue(
     return { variant: "match", background: null, kind: "date", value: guessDate ?? undefined }
   }
   const direction = comparison === "younger" || comparison === "before" ? "up" : "down"
-  return { variant: close ? "close" : "miss", background: direction, kind: "date", value: guessDate ?? undefined }
+  return {
+    variant: close ? "close" : "miss",
+    background: direction,
+    kind: "date",
+    value: guessDate ?? undefined,
+  }
 }
 
 export function ageClue(round: ImmichdleRoundOut): ClueResult {
@@ -62,17 +67,28 @@ export function firstAppearanceClue(round: ImmichdleRoundOut): ClueResult {
 export function assetCountClue(round: ImmichdleRoundOut): ClueResult {
   const clues = round.clues!
   if (clues.asset_count === "equal") {
-    return { variant: "match", background: null, kind: "count", value: round.guess_asset_count ?? undefined }
+    return {
+      variant: "match",
+      background: null,
+      kind: "count",
+      value: round.guess_asset_count ?? undefined,
+    }
   }
   const direction = clues.asset_count === "less" ? "up" : "down"
   const variant: ClueVariant = clues.asset_count_close ? "close" : "miss"
-  return { variant, background: direction, kind: "count", value: round.guess_asset_count ?? undefined }
+  return {
+    variant,
+    background: direction,
+    kind: "count",
+    value: round.guess_asset_count ?? undefined,
+  }
 }
 
 export function commonNamesClue(round: ImmichdleRoundOut): ClueResult {
   const clues = round.clues!
   const guessWordCount = (round.guess_person_name ?? "").trim().split(/\s+/).filter(Boolean).length
-  const variant: ClueVariant = clues.common_names === 0 ? "miss" : clues.common_names === guessWordCount ? "match" : "close"
+  const variant: ClueVariant =
+    clues.common_names === 0 ? "miss" : clues.common_names === guessWordCount ? "match" : "close"
   return { variant, background: null, kind: "count", value: clues.common_names }
 }
 
@@ -90,11 +106,15 @@ export function mlSimilarityClue(round: ImmichdleRoundOut): ClueResult {
 
 export function assetsTogetherClue(round: ImmichdleRoundOut): ClueResult {
   const clues = round.clues!
-  const variant: ClueVariant = round.correct ? "match" : clues.assets_together === 0 ? "miss" : "close"
+  const variant: ClueVariant = round.correct
+    ? "match"
+    : clues.assets_together === 0
+      ? "miss"
+      : "close"
   return { variant, background: null, kind: "count", value: clues.assets_together }
 }
 
-// The target row (roadmap #10 rounds review, ROUNDS-VIEW.md §3 F/§4.6) - one xTargetClue per xClue
+// The target row (rounds review) - one xTargetClue per xClue
 // above, all `variant: "match"` and no background glyph (there's no direction to hint at when
 // showing the target's own value, not a comparison).
 export interface TargetSnapshot {
@@ -106,7 +126,8 @@ export interface TargetSnapshot {
 }
 
 export function ageTargetClue(target: TargetSnapshot): ClueResult {
-  if (target.birthDate === null) return { variant: "match", background: null, kind: "text", value: "?" }
+  if (target.birthDate === null)
+    return { variant: "match", background: null, kind: "text", value: "?" }
   return { variant: "match", background: null, kind: "date", value: target.birthDate }
 }
 
@@ -115,7 +136,8 @@ export function assetCountTargetClue(target: TargetSnapshot): ClueResult {
 }
 
 export function firstAppearanceTargetClue(target: TargetSnapshot): ClueResult {
-  if (target.firstAssetDate === null) return { variant: "match", background: null, kind: "text", value: "?" }
+  if (target.firstAssetDate === null)
+    return { variant: "match", background: null, kind: "text", value: "?" }
   return { variant: "match", background: null, kind: "date", value: target.firstAssetDate }
 }
 

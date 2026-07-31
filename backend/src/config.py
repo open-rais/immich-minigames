@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     immich_api_key: str
     immich_server_url: str = "http://localhost:2283"
 
-    # Public URL the *browser* uses to open Immich directly ("Ver en Immich" buttons, roadmap #10) -
+    # Public URL the *browser* uses to open Immich directly ("Ver en Immich" buttons) -
     # distinct from immich_server_url above, which is how the *backend* reaches Immich and is often an
     # internal Docker host, useless as a browser link. Falls back to immich_server_url when unset -
     # convenient for localhost dev, but produces a broken link if the backend reaches Immich through an
@@ -54,14 +54,14 @@ class Settings(BaseSettings):
     # cookie keeps going out without the Secure flag even over HTTPS.
     cookie_secure: bool = False
 
-    # Roadmap #I (docs/TODO/LOGGING.md, decision [H]) - LOG_LEVEL only affects app logging
-    # (getLogger(__name__) call sites); the audit/access loggers are always INFO, never filtered.
+    # LOG_LEVEL only affects app logging (getLogger(__name__) call sites); the audit/access
+    # loggers are always INFO, never filtered.
     # LOG_FORMAT defaults to legible console output for bare `uv run uvicorn` dev; the Dockerfile
     # sets ENV LOG_FORMAT=json so every packaged install emits JSON without touching its .env.
     log_level: str = "INFO"
     log_format: Literal["console", "json"] = "console"
 
-    # Roadmap #H, F5 - backing store for api/rate_limit.py's Limiter (and the per-email login
+    # Backing store for api/rate_limit.py's Limiter (and the per-email login
     # check it shares that storage with). "memory://" (default) is a single process's own memory -
     # fine for this app's single-backend-container deployment shape, and what every rate limit
     # test in this suite runs against. Accepts "redis://host:port" too (the `limits` library's own
@@ -69,13 +69,13 @@ class Settings(BaseSettings):
     # each process serve its own separate budget instead of one shared one.
     rate_limit_storage_uri: str = "memory://"
 
-    # Admin feature (ADMIN-FEATURE.md point #1) - promotion only, not account creation: if a user
+    # Admin feature - promotion only, not account creation: if a user
     # already registered (via /signup) with this email, services/admin_bootstrap.py flips their
     # is_admin flag to True on every backend startup. If no such account exists yet, it's a no-op
     # (register normally first, then restart the backend). None/unset means no admin is managed.
     admin_email: str | None = None
 
-    # Roadmap #H, F1 - registration is invite-only (services/invite_service.py), but the very first
+    # Registration is invite-only (services/invite_service.py), but the very first
     # account can't have an invite yet. While the `users` table is empty, RegisterIn.invite_code is
     # accepted as valid if it matches this value instead (services/auth_service.py's
     # _authorize_registration) - a one-shot bootstrap door that closes itself the moment any
@@ -108,9 +108,9 @@ class Settings(BaseSettings):
         (None) - convenient for localhost dev, where both point at the same place anyway. An
         explicitly empty IMMICH_EXTERNAL_URL ("") means "no public link" and returns None outright
         instead of falling back - the deliberate way to suppress the "Ver en Immich" button
-        (GET /config, roadmap #10) on a deployment where immich_server_url is an internal-only
+        (GET /config) on a deployment where immich_server_url is an internal-only
         address (e.g. host.docker.internal) that would otherwise leak into a browser-facing
-        response (roadmap #H, F6)."""
+        response."""
         if self.immich_external_url is None:
             return self.immich_server_url.rstrip("/")
         return self.immich_external_url.rstrip("/") or None

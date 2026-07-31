@@ -8,14 +8,13 @@ actual type, nothing would catch the mismatch before it reached the domain layer
 wrongly-shaped guess.
 
 Everything that doesn't spread across every game/mode lives in a sibling module instead
-(api/dto/persons.py, records.py, leaderboard.py, daily.py, admin.py, config.py) - this file used to
-hold all of it, split apart since each section had nothing to do with the others beyond living in
-the same file.
+(api/dto/persons.py, records.py, leaderboard.py, daily.py, admin.py, config.py), keeping this file
+scoped to what's genuinely cross-game.
 """
 
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Annotated, Any, Union
+from typing import Annotated, Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -33,7 +32,8 @@ from games.immichdle import ImmichdleGame, ImmichdleRound
 from games.more_or_less import MoreOrLessRound
 from games.timeline import TimelineRound
 from games.whos_that_person import WhosThatPersonRound
-from services.games_service import RecentGame, UnsupportedGameError
+from services.errors import UnsupportedGameError
+from services.scores_service import RecentGame
 
 
 class CreateGameIn(BaseModel):
@@ -42,14 +42,12 @@ class CreateGameIn(BaseModel):
 
 
 RoundOut = Annotated[
-    Union[
-        MoreOrLessRoundOut,
-        GeoguessrRoundOut,
-        DateguessrRoundOut,
-        ImmichdleRoundOut,
-        WhosThatPersonRoundOut,
-        TimelineRoundOut,
-    ],
+    MoreOrLessRoundOut
+    | GeoguessrRoundOut
+    | DateguessrRoundOut
+    | ImmichdleRoundOut
+    | WhosThatPersonRoundOut
+    | TimelineRoundOut,
     Field(discriminator="game_type"),
 ]
 
@@ -57,10 +55,10 @@ RoundOut = Annotated[
 @dataclass(frozen=True)
 class _RoundSpec:
     """One registry entry per concrete Round class - single source of truth for what this API
-    layer needs per game (used to be three separate structures that had to stay in sync: a
-    (game_type, mode)-keyed guess-schema dict here, an isinstance ladder in round_out_from_round
-    picking the right *RoundOut DTO, and another isinstance check in PlayRoundOut.from_answered for
-    whether "correct" is even a meaningful concept for this game)."""
+    layer needs per game, avoiding three separate structures that would otherwise have to stay in
+    sync: a (game_type, mode)-keyed guess-schema dict here, an isinstance ladder in
+    round_out_from_round picking the right *RoundOut DTO, and another isinstance check in
+    PlayRoundOut.from_answered for whether "correct" is even a meaningful concept for this game."""
 
     guess_schema: type[BaseModel]
     out_class: type[BaseModel]
@@ -74,9 +72,7 @@ _ROUND_SPECS: dict[type[BaseRound], _RoundSpec] = {
     GeoguessrRound: _RoundSpec(GeoguessrPlayRoundIn, GeoguessrRoundOut, has_binary_correctness=False),
     DateguessrRound: _RoundSpec(DateguessrPlayRoundIn, DateguessrRoundOut, has_binary_correctness=False),
     ImmichdleRound: _RoundSpec(ImmichdlePlayRoundIn, ImmichdleRoundOut, has_binary_correctness=True),
-    WhosThatPersonRound: _RoundSpec(
-        WhosThatPersonPlayRoundIn, WhosThatPersonRoundOut, has_binary_correctness=True
-    ),
+    WhosThatPersonRound: _RoundSpec(WhosThatPersonPlayRoundIn, WhosThatPersonRoundOut, has_binary_correctness=True),
     TimelineRound: _RoundSpec(TimelinePlayRoundIn, TimelineRoundOut, has_binary_correctness=True),
 }
 
@@ -123,23 +119,22 @@ class GameOut(BaseModel):
     # an Immichdle game still in progress, where revealing it would be a straight cheat.
     target_person_id: UUID | None = None
     target_person_name: str | None = None
-    # Roadmap #10 (rounds review) - the target row in the post-game GuessTable (ROUNDS-VIEW.md §4.6).
-    # Same redaction condition as target_person_id/name above - PersonSnapshot already carries these,
-    # just not previously surfaced here.
+    # The target row in the post-game GuessTable. Same redaction condition as target_person_id/name
+    # above - PersonSnapshot already carries these; surfaced here too for that table.
     target_asset_count: int | None = None
     target_birth_date: date | None = None
     target_first_asset_date: date | None = None
-    # Admin feature (ADMIN-FEATURE.md point #4) - the *live* configured total for this game
+    # The *live* configured total for this game
     # instance (BaseGame.total_rounds/total_people, overridden by Geoguessr/Dateguessr and
     # WhosThatPerson respectively), so the frontend's round counter (e.g. "Round 2 of 5") reflects
     # an admin override instead of a hardcoded display-only constant. Null for every other game,
     # which has no such fixed/counted total.
     total_rounds: int | None = None
     total_people: int | None = None
-    # Roadmap #G - set only for a daily-challenge game (see games/base.py's BaseGame.
+    # Set only for a daily-challenge game (see games/base.py's BaseGame.
     # daily_challenge_date), null for every normal game. Lets the frontend tell a resumed/loaded
     # game is a daily one on a fresh page load (no separate "Nuevo juego" affordance, no re-offer
-    # to play) and titles the rounds-review page (docs/TODO/DAILY-GAMES.md §5).
+    # to play) and titles the rounds-review page.
     daily_challenge_date: date | None = None
 
     @classmethod
@@ -173,7 +168,7 @@ class GameOut(BaseModel):
         )
 
 
-# -- resumable games (roadmap point #e, see GamesService.get_current_game/get_recent_games) ---
+# -- resumable games (see GamesService.get_current_game/get_recent_games) ---
 
 
 class CurrentGameOut(BaseModel):
@@ -194,7 +189,7 @@ class RecentGameOut(BaseModel):
     finished: bool
     abandoned: bool
     created_at: datetime
-    # Roadmap #G - whether this was a daily-challenge game (see GamesService.get_recent_games).
+    # Whether this was a daily-challenge game (see GamesService.get_recent_games).
     is_daily: bool
 
     @classmethod

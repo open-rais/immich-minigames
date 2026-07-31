@@ -1,16 +1,10 @@
-"""Admin-configurable settings for Dateguessr (ADMIN-FEATURE.md point #4) - see
-games/settings_spec.py for the contract, services/game_settings.py for how every game's specs get
-assembled into one registry and read/written."""
+"""Admin-configurable settings for Dateguessr - see games/settings_spec.py for the contract,
+games/settings_registry.py for how every game's specs get assembled into one registry and
+services/game_settings_service.py for how they're read/written."""
 
-from games.dateguessr.game import (
-    DECAY_DAYS,
-    FLAT_SCORE_DAYS,
-    MAX_EXTRA_ASSETS,
-    MAX_SCORE,
-    MODE_DAYS_TO_DATE,
-    TOTAL_ROUNDS,
-)
-from games.settings_spec import SettingSpec
+from games.dateguessr.game import MAX_EXTRA_ASSETS, MODE_DAYS_TO_DATE, TOTAL_ROUNDS
+from games.dateguessr.round import DECAY_DAYS, FLAT_SCORE_DAYS, MAX_SCORE
+from games.settings_spec import NO_REPEAT_DAYS_SPEC, SettingSpec
 
 SETTING_SPECS: dict[str, list[SettingSpec]] = {
     MODE_DAYS_TO_DATE: [
@@ -21,3 +15,7 @@ SETTING_SPECS: dict[str, list[SettingSpec]] = {
         SettingSpec("decay_days", DECAY_DAYS, "float", 0.01, 36500),
     ],
 }
+
+# Dateguessr's own content is concrete assets, so its daily rotation needs a no-repeat window like
+# every game except MoreOrLess.
+DAILY_SETTING_SPECS: list[SettingSpec] = [NO_REPEAT_DAYS_SPEC]

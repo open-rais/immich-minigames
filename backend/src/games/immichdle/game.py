@@ -1,47 +1,39 @@
 """
 Based on the *dle games (Wordle). A person is secretly chosen as the target. The player guesses
 other named people (by id) - each guess reveals comparative clues about how it relates to the
-target: Age, AssetCount, FirstAppearance, CommonNames, MLSimilarity, AssetsTogether. Starting score
-is 100, -5 per wrong guess (floored at 0). The game ends when a guess is correct (won) or the score
-hits 0 (lost). See docs/GAMES/IMMICHDLE.md.
+target: Age, AssetCount, FirstAppearance, CommonNames, MLSimilarity, AssetsTogether (see
+games/immichdle/clues.py for the comparison logic). Starting score is 100, -5 per wrong guess
+(floored at 0). The game ends when a guess is correct (won) or the score hits 0 (lost). See
+docs/GAMES/IMMICHDLE.md.
 
 Unlike MoreOrLess/Geoguessr/Dateguessr, the guessed entity isn't picked by the server ahead of
 time - it's whichever person_id the player submits - so ImmichdleGame overrides play_round() to
-resolve/validate the guess and compute its clues before scoring (see calculate_score()'s docstring
-for why that split exists).
+resolve/validate the guess and compute its clues before scoring (see games/immichdle/round.py's
+ImmichdleRound.calculate_score docstring for why that split exists).
 """
 
 from collections.abc import Mapping
-from dataclasses import dataclass
-from datetime import date
-from typing import Any, Literal
 from uuid import UUID, uuid4
 
-from domain.person import Person
-from games.base import BaseGame, BaseRound, PlayRoundResult
-from games.shared.serialization import DictCodec
-from services.immich_service import ImmichService
+from games.base import BaseGame, PlayRoundResult
+from games.immichdle.clues import _compute_clues
+from games.immichdle.round import ImmichdleRound, PersonSnapshot
+from services.immich import ImmichService
 from services.ml_service import MLService
 
 GAME_TYPE = "immichdle"
 MODE_PERSON = "person"
 
-# Admin feature (ADMIN-FEATURE.md point #4) - public (no leading underscore) since
-# services/game_settings.py imports these as defaults for the admin-configurable
-# starting_score/wrong_guess_penalty settings, same convention already used by e.g.
-# games/geoguessr/game.py's TOTAL_ROUNDS/MAX_SCORE.
+# Admin feature - public (no leading underscore) since games/settings_registry.py assembles these
+# as defaults for the admin-configurable starting_score/wrong_guess_penalty settings, same
+# convention already used by e.g. games/geoguessr/game.py's TOTAL_ROUNDS/MAX_SCORE.
 STARTING_SCORE = 100
-WRONG_GUESS_PENALTY = 5
-# Exponent `w` in `peso = c_fotos ^ w` (services/immich_service.py's get_persons
+# Exponent `w` in `peso = c_fotos ^ w` (services/immich/persons.py's get_persons
 # asset_count_weight), applied only to the target person's selection at game start
 # (ImmichdleGame.start). w=0 makes every named person equally likely regardless of photo count;
-# w=1 makes a person with 1000 photos 1000x as likely as one with 1 photo. Confirmed with the
-# project owner: default is a mild bias towards people with more photos (0.2), not a strong one.
+# w=1 makes a person with 1000 photos 1000x as likely as one with 1 photo. Default is a mild bias
+# towards people with more photos (0.2), not a strong one.
 ASSET_COUNT_WEIGHT_EXPONENT = 0.2
-
-AgeComparison = Literal["older", "younger", "same", "unknown"]
-CountComparison = Literal["more", "less", "equal"]
-DateComparison = Literal["before", "after", "same", "unknown"]
 
 
 class DuplicateGuessError(Exception):
@@ -50,163 +42,6 @@ class DuplicateGuessError(Exception):
 
 class InvalidGuessError(Exception):
     pass
-
-
-@dataclass(frozen=True)
-class PersonSnapshot(DictCodec):
-    """A person's identifying data frozen at the moment it's looked up (target at game start,
-    guess at guess time) - not a live query result, so a round's revealed data stays stable even
-    if the underlying Immich data changes later (same rationale as more_or_less.py's
-    PersonSnapshot)."""
-
-    id: UUID
-    name: str
-    asset_count: int
-    birth_date: date | None
-    first_asset_date: date | None
-
-    @classmethod
-    def of(cls, person: Person, first_asset_date: date | None) -> "PersonSnapshot":
-        return cls(
-            id=person.id,
-            name=person.name,
-            asset_count=person.asset_count,
-            birth_date=person.birth_date,
-            first_asset_date=first_asset_date,
-        )
-
-
-@dataclass(frozen=True)
-class ImmichdleClues(DictCodec):
-    age: AgeComparison
-    asset_count: CountComparison
-    first_appearance: DateComparison
-    common_names: int
-    ml_similarity: float | None
-    assets_together: int
-    # Magnitude buckets, not exact diffs - the target's birth_date/first_asset_date/asset_count stay
-    # secret until the game ends, and an exact diff (e.g. "3 days younger") combined with the
-    # guessed person's own public date/count would pin down the target's exact value from a single
-    # guess, breaking the Wordle-style narrowing. None whenever the underlying comparison has no
-    # meaningful magnitude ("same"/"equal"/"unknown").
-    age_close: bool | None
-    first_appearance_close: bool | None
-    asset_count_close: bool | None
-    # Only meaningful when age/first_appearance == "unknown" - that single enum value covers both
-    # "neither person has a date" and "only the target's is missing" (the guess's own date, when
-    # known, is already visible via ImmichdleRoundOut.guess_birth_date/guess_first_asset_date, so
-    # only the "guess's date is also missing" case is actually ambiguous without this bit). Revealing
-    # this one bit (not the target's date itself) is the same bucket-not-raw-value tradeoff as
-    # *_close above.
-    age_both_unknown: bool
-    first_appearance_both_unknown: bool
-
-
-def _is_close(target_date: date | None, guess_date: date | None) -> bool | None:
-    """Whether two dates are within a year of each other - None if either is unknown."""
-    if target_date is None or guess_date is None:
-        return None
-    return abs((guess_date - target_date).days) < 365
-
-
-def _compute_clues(
-    target: PersonSnapshot, guess: PersonSnapshot, ml_similarity: float | None, assets_together: int
-) -> ImmichdleClues:
-    """Every comparison is guess-relative-to-target (e.g. "older" means the guess is older than
-    the target) - mirrors how more_or_less.py describes its candidate relative to its reference."""
-    if target.birth_date is None or guess.birth_date is None:
-        age: AgeComparison = "unknown"
-    elif guess.birth_date < target.birth_date:
-        age = "older"
-    elif guess.birth_date > target.birth_date:
-        age = "younger"
-    else:
-        age = "same"
-
-    if guess.asset_count > target.asset_count:
-        asset_count: CountComparison = "more"
-    elif guess.asset_count < target.asset_count:
-        asset_count = "less"
-    else:
-        asset_count = "equal"
-
-    if target.first_asset_date is None or guess.first_asset_date is None:
-        first_appearance: DateComparison = "unknown"
-    elif guess.first_asset_date < target.first_asset_date:
-        first_appearance = "before"
-    elif guess.first_asset_date > target.first_asset_date:
-        first_appearance = "after"
-    else:
-        first_appearance = "same"
-
-    common_names = len(set(target.name.lower().split()) & set(guess.name.lower().split()))
-
-    asset_count_close = None if asset_count == "equal" else abs(guess.asset_count - target.asset_count) < 100
-
-    return ImmichdleClues(
-        age=age,
-        asset_count=asset_count,
-        first_appearance=first_appearance,
-        common_names=common_names,
-        ml_similarity=ml_similarity,
-        assets_together=assets_together,
-        age_close=_is_close(target.birth_date, guess.birth_date) if age in ("older", "younger") else None,
-        first_appearance_close=(
-            _is_close(target.first_asset_date, guess.first_asset_date) if first_appearance in ("before", "after") else None
-        ),
-        asset_count_close=asset_count_close,
-        age_both_unknown=target.birth_date is None and guess.birth_date is None,
-        first_appearance_both_unknown=target.first_asset_date is None and guess.first_asset_date is None,
-    )
-
-
-class ImmichdleRound(BaseRound):
-    def __init__(self, id: UUID, game_id: UUID, round_index: int, target: PersonSnapshot) -> None:
-        super().__init__(id, game_id, round_index, shown_entities=[])
-        self.target = target
-        self.guess: UUID | None = None
-        # Both set by ImmichdleGame.play_round() before calculate_score() runs - calculate_score()
-        # itself stays a trivial, self-contained comparison (matches BaseRound's contract) rather
-        # than doing the Immich lookups itself, since only the owning game holds service refs.
-        self.guessed_person: PersonSnapshot | None = None
-        self.clues: ImmichdleClues | None = None
-
-    @property
-    def correct(self) -> bool | None:
-        """Whether the guess was the target - None until answered. Single definition of "correct"
-        for the DTOs, same role as MoreOrLessRound.correct."""
-        if not self.answered:
-            return None
-        if self.guessed_person is None:
-            raise RuntimeError("correct accessed on an answered round with no guessed_person set")
-        return self.guessed_person.id == self.target.id
-
-    def calculate_score(self, settings: Mapping[str, float] | None = None) -> int:
-        if self.guessed_person is None:
-            raise RuntimeError("calculate_score() called before ImmichdleGame.play_round set guessed_person")
-        penalty = (settings or {}).get("wrong_guess_penalty", WRONG_GUESS_PENALTY)
-        return 0 if self.correct else -int(penalty)
-
-    def to_payload(self) -> dict[str, Any]:
-        return {
-            "target": self.target.to_dict(),
-            "guess": str(self.guess) if self.guess else None,
-            "guessed_person": self.guessed_person.to_dict() if self.guessed_person else None,
-            "clues": self.clues.to_dict() if self.clues else None,
-        }
-
-    @classmethod
-    def from_payload(
-        cls, id: UUID, game_id: UUID, round_index: int, payload: dict[str, Any], score_delta: int | None
-    ) -> "ImmichdleRound":
-        round_ = cls(id=id, game_id=game_id, round_index=round_index, target=PersonSnapshot.from_dict(payload["target"]))
-        round_.guess = UUID(payload["guess"]) if payload["guess"] else None
-        round_.guessed_person = PersonSnapshot.from_dict(payload["guessed_person"]) if payload["guessed_person"] else None
-        round_.clues = ImmichdleClues.from_dict(payload["clues"]) if payload["clues"] else None
-        round_.score_delta = score_delta
-        if round_.guessed_person is not None:
-            round_.shown_entities = [round_.guessed_person.id]
-        return round_
 
 
 class ImmichdleGame(BaseGame):
@@ -253,24 +88,21 @@ class ImmichdleGame(BaseGame):
         settings: Mapping[str, float] | None = None,
         target: PersonSnapshot | None = None,
     ) -> "ImmichdleGame":
-        # Roadmap #G - a daily game hands in its pre-generated target (games/immichdle/daily.py's
-        # build_spec) instead of sampling one here; guesses stay live either way
-        # (play_round below always queries immich_service for whatever the player types), so
-        # nothing downstream of this needs to know whether the target came from a live sample or a
-        # frozen spec.
+        # A daily game hands in its pre-generated target (games/immichdle/daily.py's build_spec)
+        # instead of sampling one here; guesses stay live either way (play_round below always
+        # queries immich_service for whatever the player types), so nothing downstream of this
+        # needs to know whether the target came from a live sample or a frozen spec.
         if target is None:
             asset_count_weight = float((settings or {}).get("asset_count_weight", ASSET_COUNT_WEIGHT_EXPONENT))
+            # limit=2 in one call instead of a second get_persons just to check an alternative
+            # exists - that second query repeated the full asset_face aggregation for nothing more
+            # than an existence check.
             target_people = immich_service.get_persons(
-                named_only=True, randomize=True, limit=1, asset_count_weight=asset_count_weight
+                named_only=True, randomize=True, limit=2, asset_count_weight=asset_count_weight
             )
-            if not target_people:
+            if len(target_people) < 2:
                 raise ValueError("not enough named people in Immich to start an Immichdle game")
-            [target_person] = target_people
-            has_alternative = immich_service.get_persons(
-                named_only=True, limit=1, exclude_ids=frozenset({target_person.id})
-            )
-            if not has_alternative:
-                raise ValueError("not enough named people in Immich to start an Immichdle game")
+            target_person = target_people[0]
 
             target = PersonSnapshot.of(
                 target_person, first_asset_date=immich_service.get_person_first_asset_date(target_person.id)

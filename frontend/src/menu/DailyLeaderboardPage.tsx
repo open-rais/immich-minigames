@@ -4,7 +4,7 @@ import { Navigate, useNavigate, useParams, useSearchParams } from "react-router-
 
 import { getDailyLeaderboard } from "../api/daily"
 import { personThumbnailUrl } from "../api/games"
-import type { LeaderboardEntryOut } from "../api/types"
+import type { LeaderboardEntryOut } from "../api/types/leaderboard"
 import { useAuth } from "../auth/useAuth"
 import { GAME_CATALOG } from "../games/catalog"
 import { BackButton } from "../games/shared/BackButton"
@@ -21,7 +21,7 @@ function shiftDate(iso: string, days: number): string {
   return d.toISOString().slice(0, 10)
 }
 
-// Roadmap #G, F5 - /daily/:gameType/:mode/leaderboard. Close variant of menu/LeaderboardPage.tsx
+// /daily/:gameType/:mode/leaderboard. Close variant of menu/LeaderboardPage.tsx
 // (same entry-list/row shape) with a [<] {date} [>] navigator instead of the all/weekly/daily
 // SegmentedControl - a daily leaderboard is scoped to one specific day's challenge, not a rolling
 // window. The right arrow disables once past today, since there's nothing to navigate to yet.
@@ -63,7 +63,10 @@ export function DailyLeaderboardPage() {
 
       <div className="mt-14 text-center md:mt-0">
         <h1 className="text-3xl font-bold text-ink">{t("leaderboard.title")}</h1>
-        <GameModeSubtitle gameTitle={t(game.gameTitleKey)} modeTitle={t(catalogMode.modeTitleKey)} />
+        <GameModeSubtitle
+          gameTitle={t(game.gameTitleKey)}
+          modeTitle={t(catalogMode.modeTitleKey)}
+        />
       </div>
 
       <div className="flex w-full max-w-xs items-center justify-between">
@@ -100,8 +103,13 @@ export function DailyLeaderboardPage() {
                 }`}
               >
                 <span className="w-6 flex-none text-center font-bold text-muted">{entry.rank}</span>
-                <PersonAvatar src={entry.skin_person_id ? personThumbnailUrl(entry.skin_person_id) : null} alt="" />
-                <span className="min-w-0 flex-1 truncate font-semibold text-ink">{entry.username}</span>
+                <PersonAvatar
+                  src={entry.skin_person_id ? personThumbnailUrl(entry.skin_person_id) : null}
+                  alt=""
+                />
+                <span className="min-w-0 flex-1 truncate font-semibold text-ink">
+                  {entry.username}
+                </span>
                 <span className="flex-none font-mono font-bold text-ink">{entry.best_score}</span>
               </li>
             ))}

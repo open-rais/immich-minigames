@@ -1,4 +1,4 @@
-"""Per-request contextvars (docs/TODO/LOGGING.md §4.2, phase F1) - what every log record should
+"""Per-request contextvars - what every log record should
 carry without call sites threading it through manually. `RequestLogMiddleware` (the outermost
 middleware) sets `request_id`/`ip`/`forwarded_for` before calling down into the app, and
 `AuthMiddleware` sets `user` once it resolves the session cookie - `logging_setup.py`'s formatters

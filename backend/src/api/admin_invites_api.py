@@ -1,5 +1,5 @@
-"""Admin REST endpoints for registration invites (roadmap #H, F1) - lets an is_admin account
-generate/list/revoke single-use, expiring invite links. Mounted under /admin/invites by
+"""Admin REST endpoints for registration invites - lets an is_admin account generate/list/revoke
+single-use, expiring invite links. Mounted under /admin/invites by
 api/api.py. Mirrors api/admin_daily_api.py's shape closely - same get_current_admin_user
 dependency, same router-per-subresource split."""
 

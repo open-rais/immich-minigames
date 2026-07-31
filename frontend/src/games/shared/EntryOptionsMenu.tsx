@@ -19,9 +19,9 @@ interface EntryOptionsMenuProps {
 const POPOVER_WIDTH_PX = 192 // w-48
 const POPOVER_GAP_PX = 8
 
-// "..." trigger + popover for a compact row's per-entity actions (ROUNDS-VIEW.md roadmap #10) -
+// "..." trigger + popover for a compact row's per-entity actions -
 // today just the "Ver en Immich" link, later joined by "Reportar" once that feature exists (no
-// placeholder reserved for it yet, per the doc's own §3 H). Same open/outside-click/Escape
+// placeholder reserved for it yet). Same open/outside-click/Escape
 // mechanics as menu/UserMenu.tsx's account popover, generalized to arbitrary row content instead
 // of that component's fixed account/language/theme rows.
 //

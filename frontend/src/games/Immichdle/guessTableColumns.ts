@@ -21,15 +21,30 @@ import {
 // non-component values.
 export const CLUE_COLUMNS = [
   { key: "age", labelKey: "immichdle.clues.age", compute: ageClue, computeTarget: ageTargetClue },
-  { key: "assetCount", labelKey: "immichdle.clues.assetCount", compute: assetCountClue, computeTarget: assetCountTargetClue },
+  {
+    key: "assetCount",
+    labelKey: "immichdle.clues.assetCount",
+    compute: assetCountClue,
+    computeTarget: assetCountTargetClue,
+  },
   {
     key: "firstAppearance",
     labelKey: "immichdle.clues.firstAppearance",
     compute: firstAppearanceClue,
     computeTarget: firstAppearanceTargetClue,
   },
-  { key: "commonNames", labelKey: "immichdle.clues.commonNames", compute: commonNamesClue, computeTarget: commonNamesTargetClue },
-  { key: "mlSimilarity", labelKey: "immichdle.clues.mlSimilarity", compute: mlSimilarityClue, computeTarget: mlSimilarityTargetClue },
+  {
+    key: "commonNames",
+    labelKey: "immichdle.clues.commonNames",
+    compute: commonNamesClue,
+    computeTarget: commonNamesTargetClue,
+  },
+  {
+    key: "mlSimilarity",
+    labelKey: "immichdle.clues.mlSimilarity",
+    compute: mlSimilarityClue,
+    computeTarget: mlSimilarityTargetClue,
+  },
   {
     key: "assetsTogether",
     labelKey: "immichdle.clues.assetsTogether",

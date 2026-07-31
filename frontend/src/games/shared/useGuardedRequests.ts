@@ -1,9 +1,8 @@
 import { useRef } from "react"
 import type { RefObject } from "react"
 
-// Shared re-entrancy guard + staleness token, extracted out of useRoundGame/MoreOrLessGame/
-// ImmichdleGame (see CODE-REVIEW.md #18) where the same three refs and the same guard/token
-// dance around them were hand-written three times. This owns only that plumbing - callers still
+// Shared re-entrancy guard + staleness token for start/resume/guess requests - this owns only that
+// plumbing - callers still
 // own their own state updates (busy/phase/etc.), since those genuinely differ per game.
 export function useGuardedRequests() {
   // Bumped on every guarded() call and on discardInFlight() (e.g. "Back") - shared across all

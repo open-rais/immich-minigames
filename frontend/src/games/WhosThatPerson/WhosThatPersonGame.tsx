@@ -3,8 +3,9 @@ import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 
 import { playRound } from "../../api/games"
-import { GameType, Mode } from "../../api/types"
-import type { RoundOut, WhosThatPersonRoundOut } from "../../api/types"
+import { GameType, Mode } from "../../api/types/common"
+import type { RoundOut } from "../../api/types/common"
+import type { WhosThatPersonRoundOut } from "../../api/types/whosThatPerson"
 import type { GameComponentProps } from "../catalog"
 import { Button } from "../shared/Button"
 import { ErrorScreen, FinishedScreen, IdleScreen } from "../shared/GameScreens"
@@ -17,7 +18,7 @@ import { IncognitoPhoto } from "./IncognitoPhoto"
 
 const GAME_TYPE = GameType.WhosThatPerson
 const MODE = Mode.NamedFaces
-// Fallback only - the real total (admin-configurable, ADMIN-FEATURE.md point #4) comes from
+// Fallback only - the real total (admin-configurable) comes from
 // game.totalPeople, read off the backend's live GameOut.total_people.
 const DEFAULT_TOTAL_PEOPLE = 15
 // Longer than Geoguessr/Dateguessr's 2400ms - a round can reveal several faces at once, so the
@@ -43,27 +44,38 @@ export function WhosThatPersonGame({ coverUrl, hasRoundsView, daily = false }: G
   const [peopleAskedTotal, setPeopleAskedTotal] = useState(0)
   const seenRoundIdsRef = useRef<Set<string>>(new Set())
 
-  const { screen, busy, game, round, phase, revealed, hasCurrentGame, startGame, resumeGame, submitGuess, backToIdle } =
-    useRoundGame<WhosThatPersonRoundOut, Record<string, string>>({
-      gameType: GAME_TYPE,
-      mode: MODE,
-      revealHoldMs: REVEAL_HOLD_MS,
-      isRound: isWhosThatPersonRound,
-      playRound: (gameId, roundId, guess) => playRound(gameId, roundId, { guesses: guess }),
-      onNewRound: () => {
-        setGuesses({})
-        setActiveFaceId(null)
-      },
-      // Roadmap #e - on resume, seed the "N of 15 people" progress from every already-answered
-      // round (all but the resumed pending one), so the per-round effect below only adds that
-      // pending round on top instead of undercounting the whole resumed history.
-      onResume: (g) => {
-        const answered = g.rounds.slice(0, -1).filter(isWhosThatPersonRound)
-        seenRoundIdsRef.current = new Set(answered.map((r) => r.id))
-        setPeopleAskedTotal(answered.reduce((sum, r) => sum + r.faces.length, 0))
-      },
-      daily,
-    })
+  const {
+    screen,
+    busy,
+    game,
+    round,
+    phase,
+    revealed,
+    hasCurrentGame,
+    startGame,
+    resumeGame,
+    submitGuess,
+    backToIdle,
+  } = useRoundGame<WhosThatPersonRoundOut, Record<string, string>>({
+    gameType: GAME_TYPE,
+    mode: MODE,
+    revealHoldMs: REVEAL_HOLD_MS,
+    isRound: isWhosThatPersonRound,
+    playRound: (gameId, roundId, guess) => playRound(gameId, roundId, { guesses: guess }),
+    onNewRound: () => {
+      setGuesses({})
+      setActiveFaceId(null)
+    },
+    // On resume, seed the "N of 15 people" progress from every already-answered
+    // round (all but the resumed pending one), so the per-round effect below only adds that
+    // pending round on top instead of undercounting the whole resumed history.
+    onResume: (g) => {
+      const answered = g.rounds.slice(0, -1).filter(isWhosThatPersonRound)
+      seenRoundIdsRef.current = new Set(answered.map((r) => r.id))
+      setPeopleAskedTotal(answered.reduce((sum, r) => sum + r.faces.length, 0))
+    },
+    daily,
+  })
 
   useEffect(() => {
     if (!round || seenRoundIdsRef.current.has(round.id)) return
@@ -149,7 +161,12 @@ export function WhosThatPersonGame({ coverUrl, hasRoundsView, daily = false }: G
 
       <GuardedBackButton onExit={backToIdle} />
       <ScoreBadge label={t("common.score")} score={game.score} />
-      <RoundBadge label={t("whosThatPerson.progress", { current: peopleAskedTotal, total: game.totalPeople ?? DEFAULT_TOTAL_PEOPLE })} />
+      <RoundBadge
+        label={t("whosThatPerson.progress", {
+          current: peopleAskedTotal,
+          total: game.totalPeople ?? DEFAULT_TOTAL_PEOPLE,
+        })}
+      />
 
       {phase === "guessing" && (
         <div className="fixed bottom-[18px] left-[18px] z-30 md:bottom-7 md:left-10">
@@ -168,7 +185,10 @@ export function WhosThatPersonGame({ coverUrl, hasRoundsView, daily = false }: G
         <RevealResultCard
           positionClassName="bottom-[18px] left-[18px] md:bottom-7 md:left-10"
           scoreDelta={round.score_delta}
-          subtitle={t("whosThatPerson.result.correctCount", { correct: correctCount, total: round.faces.length })}
+          subtitle={t("whosThatPerson.result.correctCount", {
+            correct: correctCount,
+            total: round.faces.length,
+          })}
         />
       )}
     </div>

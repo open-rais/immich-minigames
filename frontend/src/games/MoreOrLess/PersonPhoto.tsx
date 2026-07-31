@@ -18,5 +18,12 @@ export function PersonPhoto({ src, alt }: { src: string; alt: string }) {
     return <div className={sizingClass} style={placeholderStyle} />
   }
 
-  return <img src={src} alt={alt} onError={() => setFailed(true)} className={`${sizingClass} object-cover`} />
+  return (
+    <img
+      src={src}
+      alt={alt}
+      onError={() => setFailed(true)}
+      className={`${sizingClass} object-cover`}
+    />
+  )
 }

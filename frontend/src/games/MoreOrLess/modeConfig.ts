@@ -1,5 +1,5 @@
 import { albumThumbnailUrl, personThumbnailUrl } from "../../api/games"
-import { Mode } from "../../api/types"
+import { Mode } from "../../api/types/common"
 
 // The two MoreOrLess modes differ only in their data source and thumbnail endpoint - everything
 // else (the whole streak/slide state machine in MoreOrLessGame.tsx) is identical, so one component
@@ -11,7 +11,7 @@ export interface ModeConfig {
   thumbnailUrl: (id: string) => string
   modeTitleKey: string
   descriptionKey: string
-  // Which ImmichLink kind this mode's entities are (roadmap #10 rounds view) - person for
+  // Which ImmichLink kind this mode's entities are (rounds view) - person for
   // personAssets, album for albumAssets.
   linkKind: "person" | "album"
 }

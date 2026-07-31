@@ -1,5 +1,5 @@
-"""Admin REST endpoints (ADMIN-FEATURE.md point #3) - lets an is_admin account list and edit any
-user's full name/username/skin. Mounted under /admin by api/api.py. Reuses auth_api.py's
+"""Admin REST endpoints that let an is_admin account list and edit any user's full name/username/
+skin. Mounted under /admin by api/api.py. Reuses auth_api.py's
 get_current_user dependency and auth_schemas.py's DTOs (UpdateProfileIn/UpdateSkinIn/UserOut) -
 these are the same shapes the self-service /auth/me routes already accept/return, just applied to
 an arbitrary user_id instead of the caller's own account."""
@@ -16,7 +16,7 @@ from api.dto.admin import CreateInviteOut
 from audit import audit
 from persistence.users import UserModel
 from services.auth_service import AuthService
-from services.immich_service import ImmichService
+from services.immich import ImmichService
 from services.invite_service import InviteService
 
 router = APIRouter(prefix="/admin", tags=["admin"])

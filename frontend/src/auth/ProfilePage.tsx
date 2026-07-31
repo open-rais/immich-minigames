@@ -8,9 +8,9 @@ import { ProfileAvatar, ProfileAvatarPlaceholder } from "./ProfileAvatar"
 import { RecentGamesModal } from "./RecentGamesModal"
 import { useAuth } from "./useAuth"
 
-// Read-only account view (roadmap point B's "lo básico", plus the skin avatar from roadmap point
-// E) - actual editing (username/full name/skin) lives on its own page, reached via "Edit profile"
-// (see EditProfilePage.tsx), so this one stays a plain "here's your account" display.
+// Read-only account view - actual editing (username/full name/skin) lives on its own page,
+// reached via "Edit profile" (see EditProfilePage.tsx), so this one stays a plain "here's your
+// account" display.
 export function ProfilePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -18,7 +18,7 @@ export function ProfilePage() {
   const [busy, setBusy] = useState(false)
   const [showRecentGames, setShowRecentGames] = useState(false)
 
-  // Roadmap #H, F3 - RequireAuth (App.tsx) already guarantees a session before this page ever
+  // RequireAuth (App.tsx) already guarantees a session before this page ever
   // mounts; this is just a TypeScript narrowing helper (user: User | null), not reachable at
   // runtime.
   if (!user) return null
@@ -34,7 +34,11 @@ export function ProfilePage() {
   }
 
   return (
-    <AuthCard title={t("auth.profile.title")} backLabel={t("common.back")} onBack={() => navigate("/")}>
+    <AuthCard
+      title={t("auth.profile.title")}
+      backLabel={t("common.back")}
+      onBack={() => navigate("/")}
+    >
       <div className="mb-6 flex justify-center">
         {user.skin_person_id ? (
           <ProfileAvatar key={user.skin_person_id} personId={user.skin_person_id} />
@@ -62,16 +66,33 @@ export function ProfilePage() {
         {t("auth.profile.memberSince", { date: new Date(user.created_at).toLocaleDateString() })}
       </p>
 
-      <Button variant="primary" className="mt-6 w-full py-2.5" onClick={() => navigate("/profile/edit")}>
+      <Button
+        variant="primary"
+        className="mt-6 w-full py-2.5"
+        onClick={() => navigate("/profile/edit")}
+      >
         {t("auth.profile.edit")}
       </Button>
-      <Button variant="secondary" className="mt-3 w-full py-2.5" onClick={() => navigate("/profile/password")}>
+      <Button
+        variant="secondary"
+        className="mt-3 w-full py-2.5"
+        onClick={() => navigate("/profile/password")}
+      >
         {t("auth.profile.changePassword.title")}
       </Button>
-      <Button variant="secondary" className="mt-3 w-full py-2.5" onClick={() => setShowRecentGames(true)}>
+      <Button
+        variant="secondary"
+        className="mt-3 w-full py-2.5"
+        onClick={() => setShowRecentGames(true)}
+      >
         {t("auth.profile.viewGames")}
       </Button>
-      <Button variant="secondary" className="mt-3 w-full py-2.5" onClick={handleLogout} disabled={busy}>
+      <Button
+        variant="secondary"
+        className="mt-3 w-full py-2.5"
+        onClick={handleLogout}
+        disabled={busy}
+      >
         {t("auth.profile.logout")}
       </Button>
 

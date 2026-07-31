@@ -1,5 +1,12 @@
 import type { ReactNode } from "react"
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
+
+import { fitBox as computeFitBox } from "./fitBox"
+import type { Size } from "./fitBox"
+import { useElementSize } from "./useElementSize"
+import { useNonPassiveWheel } from "./useNonPassiveWheel"
+import type { Point } from "./usePointerGestures"
+import { usePointerGestures } from "./usePointerGestures"
 
 // Mirrors games/MoreOrLess/PersonPhoto.tsx's failed-image placeholder pattern, fullscreen instead
 // of a card.
@@ -10,15 +17,11 @@ const placeholderStyle = {
 
 // Same "zoom anchored under the cursor/pinch midpoint" UX principle as
 // games/Dateguessr/TimelineRuler.tsx, just 2D (translate x/y + scale) instead of its 1D
-// pixels-per-day/center-day - mirrors its wheel/pointer handling approach directly.
+// pixels-per-day/center-day - both built on the same usePointerGestures/useNonPassiveWheel
+// mechanics, applying them to a different transform.
 const MIN_SCALE = 1
 const MAX_SCALE = 4
 const WHEEL_ZOOM_SENSITIVITY = 0.0015
-
-interface Point {
-  x: number
-  y: number
-}
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value))
@@ -29,15 +32,23 @@ function clamp(value: number, min: number, max: number): number {
 // to fill the viewport).
 //
 // `overlay` (optional) renders inside a layer sized and positioned to exactly match the photo's
-// rendered content box (the object-contain "fit box", not the full letterboxed container) - see
-// fitBox below - and inherits the same pan/zoom transform as the image, so interactive content
+// rendered content box (the object-contain "fit box", not the full letterboxed container, see
+// fitBox.ts) - and inherits the same pan/zoom transform as the image, so interactive content
 // placed on top of the photo (e.g. Who'sThatPerson's face boxes) stays pixel-aligned to it at any
 // zoom/pan state.
 // Fills its parent (`absolute inset-0`) rather than positioning itself against the viewport - the
 // caller declares the box (typically `fixed inset-0`, or a smaller area like Dateguessr's
 // above-the-ruler wrapper) so a `position: fixed` ancestor that isn't itself a containing block
 // can't silently make that box a no-op (see AssetCarousel.tsx and each game's own wrapper).
-export function AssetPhoto({ src, alt, overlay }: { src: string; alt: string; overlay?: ReactNode }) {
+export function AssetPhoto({
+  src,
+  alt,
+  overlay,
+}: {
+  src: string
+  alt: string
+  overlay?: ReactNode
+}) {
   const [failed, setFailed] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -46,46 +57,29 @@ export function AssetPhoto({ src, alt, overlay }: { src: string; alt: string; ov
 
   // Natural (source) image size and the container's own rendered size - both needed to compute
   // fitBox below. Only relevant when `overlay` is used; harmless to always track otherwise.
-  const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null)
-  const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null)
-  // Mirrors TimelineRuler.tsx's centerDayIndexRef - lets the native wheel listener (only attached
-  // once, on mount) read the latest values without being in its dependency array.
+  const [naturalSize, setNaturalSize] = useState<Size | null>(null)
+  const containerSize = useElementSize(containerRef)
+  // Read by the wheel/pinch handlers below, which need the latest scale/translate without
+  // re-subscribing (wheel) or without it changing which callback closure fired mid-gesture (pinch).
   const scaleRef = useRef(scale)
   scaleRef.current = scale
   const translateRef = useRef(translate)
   translateRef.current = translate
 
-  // Gesture bookkeeping - refs, not state, since they track in-progress pointer interactions
-  // rather than anything that should trigger a re-render on their own. Same shape as
-  // TimelineRuler.tsx's activePointersRef/dragRef/pinchRef.
-  const activePointersRef = useRef<Map<number, Point>>(new Map())
-  const dragRef = useRef<{ startClientX: number; startClientY: number; startTranslate: Point } | null>(null)
-  const pinchRef = useRef<{ startDistance: number; startScale: number; startTranslate: Point; anchor: Point } | null>(
-    null,
-  )
-
-  // Same ResizeObserver convention as Dateguessr/TimelineRuler.tsx's containerWidth tracking.
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-    const observer = new ResizeObserver((entries) => {
-      const { width, height } = entries[0].contentRect
-      setContainerSize({ width, height })
-    })
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [])
+  // Start-of-gesture snapshots - captured in onDragStart/onPinchStart below, read in the matching
+  // .../Move callback. usePointerGestures owns pointer capture/classification; this component owns
+  // what a drag/pinch actually does to translate+scale.
+  const dragStartTranslateRef = useRef<Point>({ x: 0, y: 0 })
+  const pinchStartRef = useRef<{
+    startDistance: number
+    startScale: number
+    startTranslate: Point
+    anchor: Point
+  } | null>(null)
 
   // The object-contain "fit box": where the image's actual pixels render within the container,
-  // excluding letterbox padding - standard object-contain-fit math (see
-  // games/WhosThatPerson/IncognitoPhoto.tsx for the original derivation of this formula).
-  const fitBox = (() => {
-    if (!naturalSize || !containerSize) return null
-    const fitScale = Math.min(containerSize.width / naturalSize.width, containerSize.height / naturalSize.height)
-    const width = naturalSize.width * fitScale
-    const height = naturalSize.height * fitScale
-    return { left: (containerSize.width - width) / 2, top: (containerSize.height - height) / 2, width, height }
-  })()
+  // excluding letterbox padding - see fitBox.ts.
+  const fitBox = naturalSize && containerSize ? computeFitBox(naturalSize, containerSize) : null
 
   function clampTranslate(nextScale: number, next: Point): Point {
     const rect = containerRef.current?.getBoundingClientRect()
@@ -94,74 +88,53 @@ export function AssetPhoto({ src, alt, overlay }: { src: string; alt: string; ov
     return { x: clamp(next.x, -maxX, maxX), y: clamp(next.y, -maxY, maxY) }
   }
 
-  // React marks onWheel as a passive listener by default, so preventDefault() inside a JSX handler
-  // silently does nothing (and warns) - attaching natively is the only way to actually stop the
-  // page from scrolling/zooming while the player zooms the photo. See TimelineRuler.tsx's own
-  // wheel handler for the same rationale.
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
+  useNonPassiveWheel(containerRef, (e) => {
+    e.preventDefault()
+    const rect = containerRef.current!.getBoundingClientRect()
+    const cursorX = e.clientX - rect.left - rect.width / 2
+    const cursorY = e.clientY - rect.top - rect.height / 2
+    setScale((prevScale) => {
+      const factor = Math.exp(-e.deltaY * WHEEL_ZOOM_SENSITIVITY)
+      const nextScale = clamp(prevScale * factor, MIN_SCALE, MAX_SCALE)
+      const ratio = nextScale / prevScale
+      setTranslate((prevTranslate) =>
+        clampTranslate(nextScale, {
+          x: cursorX - (cursorX - prevTranslate.x) * ratio,
+          y: cursorY - (cursorY - prevTranslate.y) * ratio,
+        }),
+      )
+      return nextScale
+    })
+  })
 
-    function handleWheel(e: WheelEvent) {
-      e.preventDefault()
-      const rect = el!.getBoundingClientRect()
-      const cursorX = e.clientX - rect.left - rect.width / 2
-      const cursorY = e.clientY - rect.top - rect.height / 2
-      setScale((prevScale) => {
-        const factor = Math.exp(-e.deltaY * WHEEL_ZOOM_SENSITIVITY)
-        const nextScale = clamp(prevScale * factor, MIN_SCALE, MAX_SCALE)
-        const ratio = nextScale / prevScale
-        setTranslate((prevTranslate) =>
-          clampTranslate(nextScale, {
-            x: cursorX - (cursorX - prevTranslate.x) * ratio,
-            y: cursorY - (cursorY - prevTranslate.y) * ratio,
-          }),
-        )
-        return nextScale
-      })
-    }
-
-    el.addEventListener("wheel", handleWheel, { passive: false })
-    return () => el.removeEventListener("wheel", handleWheel)
-  }, [])
-
-  function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    // Don't hijack interactive `overlay` content (e.g. Who'sThatPerson's face-box buttons) into a
-    // pan gesture - once an element calls setPointerCapture, every subsequent event for that
-    // pointer (including the synthesized `click`) is redirected to it instead of whatever was
-    // actually pointed at, so a button nested inside this container would never see its own click.
-    if ((e.target as HTMLElement).closest("button, input, a")) return
-    e.currentTarget.setPointerCapture(e.pointerId)
-    activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
-
-    if (activePointersRef.current.size === 1) {
-      dragRef.current = { startClientX: e.clientX, startClientY: e.clientY, startTranslate: translateRef.current }
-      pinchRef.current = null
-    } else if (activePointersRef.current.size === 2) {
-      dragRef.current = null
-      const [p1, p2] = [...activePointersRef.current.values()]
-      const distance = Math.max(Math.hypot(p1.x - p2.x, p1.y - p2.y), 1)
+  const gesture = usePointerGestures({
+    onDragStart: () => {
+      dragStartTranslateRef.current = translateRef.current
+    },
+    onDragMove: (point, startPoint) => {
+      setTranslate(
+        clampTranslate(scaleRef.current, {
+          x: dragStartTranslateRef.current.x + (point.x - startPoint.x),
+          y: dragStartTranslateRef.current.y + (point.y - startPoint.y),
+        }),
+      )
+    },
+    onPinchStart: (a, b) => {
       const rect = containerRef.current!.getBoundingClientRect()
-      pinchRef.current = {
-        startDistance: distance,
+      pinchStartRef.current = {
+        startDistance: Math.max(Math.hypot(a.x - b.x, a.y - b.y), 1),
         startScale: scaleRef.current,
         startTranslate: translateRef.current,
         anchor: {
-          x: (p1.x + p2.x) / 2 - rect.left - rect.width / 2,
-          y: (p1.y + p2.y) / 2 - rect.top - rect.height / 2,
+          x: (a.x + b.x) / 2 - rect.left - rect.width / 2,
+          y: (a.y + b.y) / 2 - rect.top - rect.height / 2,
         },
       }
-    }
-  }
-
-  function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
-    if (!activePointersRef.current.has(e.pointerId)) return
-    activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
-
-    if (activePointersRef.current.size >= 2 && pinchRef.current) {
-      const { startDistance, startScale, startTranslate, anchor } = pinchRef.current
-      const [p1, p2] = [...activePointersRef.current.values()]
-      const distance = Math.max(Math.hypot(p1.x - p2.x, p1.y - p2.y), 1)
+    },
+    onPinchMove: (a, b) => {
+      if (!pinchStartRef.current) return
+      const { startDistance, startScale, startTranslate, anchor } = pinchStartRef.current
+      const distance = Math.max(Math.hypot(a.x - b.x, a.y - b.y), 1)
       const nextScale = clamp(startScale * (distance / startDistance), MIN_SCALE, MAX_SCALE)
       const ratio = nextScale / startScale
       setScale(nextScale)
@@ -171,32 +144,11 @@ export function AssetPhoto({ src, alt, overlay }: { src: string; alt: string; ov
           y: anchor.y - (anchor.y - startTranslate.y) * ratio,
         }),
       )
-      return
-    }
-
-    if (activePointersRef.current.size === 1 && dragRef.current) {
-      const { startClientX, startClientY, startTranslate } = dragRef.current
-      setTranslate(
-        clampTranslate(scaleRef.current, {
-          x: startTranslate.x + (e.clientX - startClientX),
-          y: startTranslate.y + (e.clientY - startClientY),
-        }),
-      )
-    }
-  }
-
-  function handlePointerUp(e: React.PointerEvent<HTMLDivElement>) {
-    activePointersRef.current.delete(e.pointerId)
-    if (activePointersRef.current.size < 2) pinchRef.current = null
-    if (activePointersRef.current.size === 0) {
-      dragRef.current = null
-    } else if (activePointersRef.current.size === 1) {
-      // One finger remains after a pinch ends - restart drag tracking from it, same as
-      // TimelineRuler.tsx's handlePointerUp.
-      const [[, point]] = activePointersRef.current
-      dragRef.current = { startClientX: point.x, startClientY: point.y, startTranslate: translateRef.current }
-    }
-  }
+    },
+    onPinchEnd: () => {
+      pinchStartRef.current = null
+    },
+  })
 
   if (failed) {
     return <div className="absolute inset-0" style={placeholderStyle} />
@@ -211,10 +163,7 @@ export function AssetPhoto({ src, alt, overlay }: { src: string; alt: string; ov
   return (
     <div
       ref={containerRef}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
+      {...gesture}
       className="absolute inset-0 touch-none overflow-hidden bg-app-bg select-none"
     >
       <div
@@ -225,14 +174,24 @@ export function AssetPhoto({ src, alt, overlay }: { src: string; alt: string; ov
           src={src}
           alt={alt}
           onError={() => setFailed(true)}
-          onLoad={(e) => setNaturalSize({ width: e.currentTarget.naturalWidth, height: e.currentTarget.naturalHeight })}
+          onLoad={(e) =>
+            setNaturalSize({
+              width: e.currentTarget.naturalWidth,
+              height: e.currentTarget.naturalHeight,
+            })
+          }
           draggable={false}
           className={`h-full w-full object-contain ${photoReady ? "" : "invisible"}`}
         />
         {overlay && fitBox && (
           <div
             className="absolute"
-            style={{ left: fitBox.left, top: fitBox.top, width: fitBox.width, height: fitBox.height }}
+            style={{
+              left: fitBox.left,
+              top: fitBox.top,
+              width: fitBox.width,
+              height: fitBox.height,
+            }}
           >
             {overlay}
           </div>

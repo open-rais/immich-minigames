@@ -3,13 +3,13 @@ import { useTranslation } from "react-i18next"
 
 import { createInvite, listInvites } from "../api/admin"
 import { apiErrorMessage } from "../api/errors"
-import type { InviteOut } from "../api/types"
+import type { InviteOut } from "../api/types/admin"
 import { Button } from "../games/shared/Button"
 import { ShareModal } from "../games/shared/ShareModal"
 import { AdminInviteRow } from "./AdminInviteRow"
 import { useInfiniteAdminList } from "./useInfiniteAdminList"
 
-// Roadmap #H, F1 - content of the "Invitaciones" top-level accordion in AdminPage.tsx. Generating
+// Content of the "Invitaciones" top-level accordion in AdminPage.tsx. Generating
 // an invite shows its one-time link via ShareModal.tsx (already built for the daily-share feature -
 // a generic "here's some text, copy it" modal, reused as-is rather than building a new one).
 // Infinite-scroll paginated (see useInfiniteAdminList.ts) - capped at ~5 rows tall, scrolling near
