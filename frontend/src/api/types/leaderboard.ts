@@ -15,9 +15,13 @@ export interface LeaderboardOut {
   entries: LeaderboardEntryOut[]
 }
 
-// Same entry shape as the normal LeaderboardOut, scoped to one specific day's
+// Same entry shape as the normal LeaderboardOut plus a streak, scoped to one specific day's
 // challenge instead of a rolling window.
+export interface DailyLeaderboardEntryOut extends LeaderboardEntryOut {
+  streak: number
+}
+
 export interface DailyLeaderboardOut {
   date: string
-  entries: LeaderboardEntryOut[]
+  entries: DailyLeaderboardEntryOut[]
 }

@@ -7,6 +7,8 @@ from conftest import mint_invite_code
 
 from games.immichdle import GAME_TYPE as IMMICHDLE_TYPE
 from games.immichdle import MODE_PERSON
+from games.whos_that_person import GAME_TYPE as WHOS_THAT_PERSON_TYPE
+from games.whos_that_person import MODE_NAMED_FACES
 from persistence.daily import DailyConfigModel
 from persistence.games import GameModel
 from services.errors import UnsupportedGameError
@@ -279,8 +281,13 @@ def _next_date() -> date:
 
 @pytest.fixture(autouse=True)
 def _clean_daily_configs(db_session):
+    # Also covers whos-that-person, enabled by TestGetDailyLeaderboard.test_streak_is_per_mode.
+    _cleaned_game_types = (IMMICHDLE_TYPE, WHOS_THAT_PERSON_TYPE)
+
     def _clear():
-        db_session.query(DailyConfigModel).filter(DailyConfigModel.game_type == IMMICHDLE_TYPE).delete()
+        db_session.query(DailyConfigModel).filter(DailyConfigModel.game_type.in_(_cleaned_game_types)).delete(
+            synchronize_session=False
+        )
         db_session.commit()
 
     _clear()
@@ -348,3 +355,97 @@ class TestGetDailyLeaderboard:
         assert scores_service.get_daily_leaderboard(IMMICHDLE_TYPE, MODE_PERSON, day2) == []
         day1_entries = scores_service.get_daily_leaderboard(IMMICHDLE_TYPE, MODE_PERSON, day1)
         assert [e.best_score for e in day1_entries] == [77]
+
+    def _finish_daily(self, daily_games_service, db_session, *, game_type, mode, user_id, today, score=1):
+        game = daily_games_service.create_daily_game(game_type=game_type, mode=mode, user_id=user_id, today=today)
+        row = db_session.get(GameModel, game.id)
+        row.finished = True
+        row.score = score
+        db_session.commit()
+
+    def test_streak_counts_consecutive_finished_days(
+        self, daily_games_service, scores_service, daily_settings_service, db_session, auth_service
+    ):
+        daily_settings_service.update_settings(IMMICHDLE_TYPE, MODE_PERSON, enabled=True)
+        day1 = _next_date()
+        day2 = day1 + timedelta(days=1)
+        day3 = day1 + timedelta(days=2)
+        user = _register_user(auth_service)
+        for day in (day1, day2, day3):
+            self._finish_daily(
+                daily_games_service, db_session, game_type=IMMICHDLE_TYPE, mode=MODE_PERSON, user_id=user.id, today=day
+            )
+
+        entries = scores_service.get_daily_leaderboard(IMMICHDLE_TYPE, MODE_PERSON, day3)
+
+        assert [e.streak for e in entries] == [3]
+
+    def test_streak_resets_after_a_gap(
+        self, daily_games_service, scores_service, daily_settings_service, db_session, auth_service
+    ):
+        daily_settings_service.update_settings(IMMICHDLE_TYPE, MODE_PERSON, enabled=True)
+        day1 = _next_date()
+        day3 = day1 + timedelta(days=2)  # day1 + 1 (day2) deliberately skipped
+        user = _register_user(auth_service)
+        self._finish_daily(
+            daily_games_service, db_session, game_type=IMMICHDLE_TYPE, mode=MODE_PERSON, user_id=user.id, today=day1
+        )
+        self._finish_daily(
+            daily_games_service, db_session, game_type=IMMICHDLE_TYPE, mode=MODE_PERSON, user_id=user.id, today=day3
+        )
+
+        entries = scores_service.get_daily_leaderboard(IMMICHDLE_TYPE, MODE_PERSON, day3)
+
+        assert [e.streak for e in entries] == [1]
+
+    def test_streak_is_per_mode(
+        self, daily_games_service, scores_service, daily_settings_service, db_session, auth_service
+    ):
+        daily_settings_service.update_settings(IMMICHDLE_TYPE, MODE_PERSON, enabled=True)
+        daily_settings_service.update_settings(WHOS_THAT_PERSON_TYPE, MODE_NAMED_FACES, enabled=True)
+        day1 = _next_date()
+        day2 = day1 + timedelta(days=1)
+        user = _register_user(auth_service)
+        # Plays mode A on both days, but mode B only on day2 - mode B's streak must not inherit
+        # mode A's history.
+        self._finish_daily(
+            daily_games_service, db_session, game_type=IMMICHDLE_TYPE, mode=MODE_PERSON, user_id=user.id, today=day1
+        )
+        self._finish_daily(
+            daily_games_service, db_session, game_type=IMMICHDLE_TYPE, mode=MODE_PERSON, user_id=user.id, today=day2
+        )
+        self._finish_daily(
+            daily_games_service,
+            db_session,
+            game_type=WHOS_THAT_PERSON_TYPE,
+            mode=MODE_NAMED_FACES,
+            user_id=user.id,
+            today=day2,
+        )
+
+        mode_a_entries = scores_service.get_daily_leaderboard(IMMICHDLE_TYPE, MODE_PERSON, day2)
+        mode_b_entries = scores_service.get_daily_leaderboard(WHOS_THAT_PERSON_TYPE, MODE_NAMED_FACES, day2)
+
+        assert [e.streak for e in mode_a_entries] == [2]
+        assert [e.streak for e in mode_b_entries] == [1]
+
+    def test_unfinished_day_does_not_count_toward_streak(
+        self, daily_games_service, scores_service, daily_settings_service, db_session, auth_service
+    ):
+        daily_settings_service.update_settings(IMMICHDLE_TYPE, MODE_PERSON, enabled=True)
+        day1 = _next_date()
+        day2 = day1 + timedelta(days=1)
+        day3 = day1 + timedelta(days=2)
+        user = _register_user(auth_service)
+        self._finish_daily(
+            daily_games_service, db_session, game_type=IMMICHDLE_TYPE, mode=MODE_PERSON, user_id=user.id, today=day1
+        )
+        # Started but never finished on day2 - shouldn't bridge the streak between day1 and day3.
+        daily_games_service.create_daily_game(game_type=IMMICHDLE_TYPE, mode=MODE_PERSON, user_id=user.id, today=day2)
+        self._finish_daily(
+            daily_games_service, db_session, game_type=IMMICHDLE_TYPE, mode=MODE_PERSON, user_id=user.id, today=day3
+        )
+
+        entries = scores_service.get_daily_leaderboard(IMMICHDLE_TYPE, MODE_PERSON, day3)
+
+        assert [e.streak for e in entries] == [1]

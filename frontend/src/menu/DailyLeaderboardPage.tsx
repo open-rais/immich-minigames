@@ -4,7 +4,7 @@ import { Navigate, useNavigate, useParams, useSearchParams } from "react-router-
 
 import { getDailyLeaderboard } from "../api/daily"
 import { personThumbnailUrl } from "../api/games"
-import type { LeaderboardEntryOut } from "../api/types/leaderboard"
+import type { DailyLeaderboardEntryOut } from "../api/types/leaderboard"
 import { useAuth } from "../auth/useAuth"
 import { GAME_CATALOG } from "../games/catalog"
 import { BackButton } from "../games/shared/BackButton"
@@ -32,7 +32,7 @@ export function DailyLeaderboardPage() {
   const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const date = searchParams.get("date") || todayIso()
-  const [entries, setEntries] = useState<LeaderboardEntryOut[] | null>(null)
+  const [entries, setEntries] = useState<DailyLeaderboardEntryOut[] | null>(null)
 
   const game = GAME_CATALOG.find((g) => g.gameType === gameType)
   const catalogMode = game?.modes.find((m) => m.mode === mode)
@@ -109,6 +109,12 @@ export function DailyLeaderboardPage() {
                 />
                 <span className="min-w-0 flex-1 truncate font-semibold text-ink">
                   {entry.username}
+                </span>
+                <span
+                  className="flex flex-none items-center gap-0.5 rounded-full bg-badge-bg px-2 py-1.5 font-mono text-xs leading-none font-bold text-badge-value"
+                  title={t("daily.leaderboard.streak", { count: entry.streak })}
+                >
+                  🔥{entry.streak}
                 </span>
                 <span className="flex-none font-mono font-bold text-ink">{entry.best_score}</span>
               </li>

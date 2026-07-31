@@ -27,7 +27,8 @@
     "title": "Diario",
     "leaderboard": {
       "previousDay": "Día anterior",
-      "nextDay": "Día siguiente"
+      "nextDay": "Día siguiente",
+      "streak": "Racha de {{count}} días"
     },
     "share": {
       "button": "Compartir",

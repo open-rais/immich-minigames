@@ -3,11 +3,11 @@ import { initReactI18next } from "react-i18next"
 
 const STORAGE_KEY = "minigames-lang"
 
-export type Language = "en" | "es"
+export type Language = "en" | "es" | "fr" | "de"
 
 function readStoredLanguage(): Language {
   const stored = localStorage.getItem(STORAGE_KEY)
-  return stored === "es" ? "es" : "en"
+  return (["en", "es", "fr", "de"].includes(stored || "") ? stored : "en") as Language
 }
 
 // Loaded via import() instead of a static top-level import - with two languages the saving is
@@ -17,6 +17,8 @@ function readStoredLanguage(): Language {
 const loaders: Record<Language, () => Promise<{ default: Record<string, unknown> }>> = {
   en: () => import("./locales/en.json"),
   es: () => import("./locales/es.json"),
+  fr: () => import("./locales/fr.json"),
+  de: () => import("./locales/de.json"),
 }
 const loaded = new Set<Language>()
 

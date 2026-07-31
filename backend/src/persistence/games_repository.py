@@ -6,7 +6,7 @@ has to duplicate a SELECT/UPDATE shape the others already need.
 """
 
 from collections.abc import Sequence
-from datetime import date
+from datetime import date, timedelta
 from typing import Literal
 from uuid import UUID
 
@@ -124,7 +124,7 @@ class GameRepository:
     def daily_leaderboard_rows(self, challenge_id: UUID) -> Sequence[Row]:
         best_score = func.max(GameModel.score).label("best_score")
         stmt = (
-            select(UserModel.username, UserModel.skin_person_id, best_score)
+            select(UserModel.id, UserModel.username, UserModel.skin_person_id, best_score)
             .select_from(GameModel)
             .join(UserModel, UserModel.id == GameModel.user_id)
             .where(GameModel.daily_challenge_id == challenge_id, GameModel.finished.is_(True))
@@ -133,6 +133,42 @@ class GameRepository:
             .limit(15)
         )
         return self._session.execute(stmt).all()
+
+    def daily_streaks(
+        self, game_type: str, mode: str, challenge_date: date, user_ids: Sequence[UUID]
+    ) -> dict[UUID, int]:
+        """For each of `user_ids`, the number of consecutive days up to and including
+        `challenge_date` for which that user has a finished daily game of this (game_type, mode) -
+        walked backward in Python from a played-days set per user rather than a SQL gaps-and-islands
+        query, since this only ever runs over the leaderboard's own small (<=15) user list."""
+        if not user_ids:
+            return {}
+        rows = self._session.execute(
+            select(GameModel.user_id, DailyChallengeModel.challenge_date)
+            .select_from(GameModel)
+            .join(DailyChallengeModel, DailyChallengeModel.id == GameModel.daily_challenge_id)
+            .where(
+                DailyChallengeModel.game_type == game_type,
+                DailyChallengeModel.mode == mode,
+                GameModel.finished.is_(True),
+                GameModel.user_id.in_(user_ids),
+                DailyChallengeModel.challenge_date <= challenge_date,
+            )
+        ).all()
+
+        played_days: dict[UUID, set[date]] = {}
+        for user_id, day in rows:
+            played_days.setdefault(user_id, set()).add(day)
+
+        streaks: dict[UUID, int] = {}
+        for user_id, days in played_days.items():
+            streak = 0
+            cursor = challenge_date
+            while cursor in days:
+                streak += 1
+                cursor -= timedelta(days=1)
+            streaks[user_id] = streak
+        return streaks
 
     def has_played_challenge(self, challenge_id: UUID, user_id: UUID) -> bool:
         return (

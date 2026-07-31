@@ -40,7 +40,7 @@ Cuando se complete un item, marcar su checkbox.
   - El juego no mostrará more/less en los botónes, ya que será esta persona nació antes/después. Eso serán los botónes (before/after, antes/después)
 - [x] 14. Immichdle: nueva modalidad `albumdle`
 - [X] h. Arreglos de UI/UX
-- [ ] K. En leaderboard de daily, al lado del nombre de cada persona, debería salir un badge indicando la racha de días seguidos que lleva el usuario completando el juego (da igual si pierde o no, solo de haber jugado el daily)
+- [X] K. En leaderboard de daily, al lado del nombre de cada persona, debería salir un badge indicando la racha de días seguidos que lleva el usuario completando el juego (da igual si pierde o no, solo de haber jugado el daily)
 - [ ] i. Traducir al francés y alemán
 <!-- 🎉 v1.0.0 🎉 -->
 - [ ] j. Añadir script de desinstalación limpia (una manera segura de eliminar rastros de esta app, sin tocar nada de immich)

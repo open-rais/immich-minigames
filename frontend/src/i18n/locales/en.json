@@ -27,7 +27,8 @@
     "title": "Daily",
     "leaderboard": {
       "previousDay": "Previous day",
-      "nextDay": "Next day"
+      "nextDay": "Next day",
+      "streak": "{{count}}-day streak"
     },
     "share": {
       "button": "Share",
