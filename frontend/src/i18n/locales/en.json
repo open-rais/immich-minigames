@@ -151,7 +151,8 @@
   "immichdle": {
     "title": "Immichdle",
     "modes": {
-      "person": "Persondle"
+      "person": "Persondle",
+      "album": "Albumdle"
     },
     "start": {
       "description": "Guess the mystery person. Every guess reveals comparative clues - green means a match, amber means close, red means far off."
@@ -171,6 +172,20 @@
     "finished": {
       "won": "You got it!",
       "lost": "Game over"
+    },
+    "album": {
+      "start": {
+        "description": "Guess the mystery album. Every guess reveals comparative clues - green means a match, amber means close, red means far off."
+      },
+      "searchPlaceholder": "Search an album by name...",
+      "clues": {
+        "firstAssetDate": "First seen",
+        "assetCount": "Assets",
+        "dominantFace": "Top face",
+        "commonNames": "Common names",
+        "similarity": "Similarity",
+        "uniqueFaceCount": "Unique faces"
+      }
     }
   },
   "whosThatPerson": {

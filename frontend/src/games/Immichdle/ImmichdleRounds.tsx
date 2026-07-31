@@ -1,4 +1,4 @@
-import { GameType } from "../../api/types/common"
+import { GameType, Mode } from "../../api/types/common"
 import type { ImmichdleRoundOut } from "../../api/types/immichdle"
 import type { RoundsComponentProps } from "../catalog"
 import type { TargetSnapshot } from "./clueColors"
@@ -19,7 +19,7 @@ export function ImmichdleRounds({ game }: RoundsComponentProps) {
   // it. As a side effect the target row above (always first) now sits next to the *last* guess
   // instead of the first, which is the more natural reading ("this is how it ended").
   const history = game.rounds
-    .filter((r): r is ImmichdleRoundOut => r.game_type === GameType.Immichdle)
+    .filter((r): r is ImmichdleRoundOut => r.game_type === GameType.Immichdle && r.mode === Mode.Person)
     .filter((r) => r.guess_person_id !== null && !r.correct)
     .reverse()
 

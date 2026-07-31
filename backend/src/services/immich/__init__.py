@@ -107,14 +107,39 @@ class ImmichService:
     def get_albums(
         self,
         *,
+        ids: frozenset[UUID] | None = None,
+        name_query: str | None = None,
+        min_asset_count: int | None = None,
         randomize: bool = False,
+        asset_count_weight: float | None = None,
         limit: int = 1,
         exclude_ids: frozenset[UUID] = frozenset(),
     ) -> list[Album]:
-        return albums.get_albums(self._engine, randomize=randomize, limit=limit, exclude_ids=exclude_ids)
+        return albums.get_albums(
+            self._engine,
+            ids=ids,
+            name_query=name_query,
+            min_asset_count=min_asset_count,
+            randomize=randomize,
+            asset_count_weight=asset_count_weight,
+            limit=limit,
+            exclude_ids=exclude_ids,
+        )
+
+    def search_albums(self, query: str, *, offset: int = 0, limit: int = 3) -> list[Album]:
+        return albums.search_albums(self._engine, query, offset=offset, limit=limit)
 
     def get_album_cover_asset_id(self, album_id: UUID) -> UUID | None:
         return albums.get_album_cover_asset_id(self._engine, album_id)
+
+    def get_album_first_asset_date(self, album_id: UUID) -> date | None:
+        return albums.get_album_first_asset_date(self._engine, album_id)
+
+    def get_album_named_face_counts(self, album_id: UUID) -> list[tuple[UUID, str, int]]:
+        return albums.get_album_named_face_counts(self._engine, album_id)
+
+    def get_persons_present_in_album(self, album_id: UUID, person_ids: frozenset[UUID]) -> frozenset[UUID]:
+        return albums.get_persons_present_in_album(self._engine, album_id, person_ids)
 
     def get_asset_thumbnail(self, asset_id: UUID, size: str = "preview") -> tuple[bytes, str]:
         return images.get_asset_thumbnail(self._settings, asset_id, size)
@@ -161,7 +186,15 @@ class ContentQueries(Protocol):
     ) -> list[Person]: ...
 
     def get_albums(
-        self, *, randomize: bool = False, limit: int = 1, exclude_ids: frozenset[UUID] = frozenset()
+        self,
+        *,
+        ids: frozenset[UUID] | None = None,
+        name_query: str | None = None,
+        min_asset_count: int | None = None,
+        randomize: bool = False,
+        asset_count_weight: float | None = None,
+        limit: int = 1,
+        exclude_ids: frozenset[UUID] = frozenset(),
     ) -> list[Album]: ...
 
     def get_random_asset_with_named_faces(
@@ -169,3 +202,7 @@ class ContentQueries(Protocol):
     ) -> list[Face]: ...
 
     def get_person_first_asset_date(self, person_id: UUID) -> date | None: ...
+
+    def get_album_first_asset_date(self, album_id: UUID) -> date | None: ...
+
+    def get_album_named_face_counts(self, album_id: UUID) -> list[tuple[UUID, str, int]]: ...

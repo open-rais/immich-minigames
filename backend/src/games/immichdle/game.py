@@ -1,39 +1,41 @@
 """
-Based on the *dle games (Wordle). A person is secretly chosen as the target. The player guesses
-other named people (by id) - each guess reveals comparative clues about how it relates to the
-target: Age, AssetCount, FirstAppearance, CommonNames, MLSimilarity, AssetsTogether (see
-games/immichdle/clues.py for the comparison logic). Starting score is 100, -5 per wrong guess
-(floored at 0). The game ends when a guess is correct (won) or the score hits 0 (lost). See
-docs/GAMES/IMMICHDLE.md.
+Based on the *dle games (Wordle). Shared engine both Immichdle modes plug into - persondle.py
+(guess the mystery person) and albumdle.py (guess the mystery album, roadmap #14). Unlike
+MoreOrLess's modes (which share one fully generic MoreOrLessGame/MoreOrLessRound because every
+mode compares one generic `value`), persondle's and albumdle's clue systems are NOT generically
+shareable - albumdle's dominant-face clue has no persondle equivalent at all - so only what's
+genuinely identical lives here: the duplicate-guess/finished checks, the play_round loop shape,
+has_next_round, and the correct/calculate_score round mechanics. Each mode still owns its own
+concrete Round/Game classes, its own snapshot/clue types, and its own create_next_round (see
+games/base.py's BaseGame for why that one isn't hoisted here either - it's the same 4-line shape
+in both modes, but naming a different concrete Round class, so sharing it would trade away
+type-checker clarity for no real behavior in common).
 
-Unlike MoreOrLess/Geoguessr/Dateguessr, the guessed entity isn't picked by the server ahead of
-time - it's whichever person_id the player submits - so ImmichdleGame overrides play_round() to
-resolve/validate the guess and compute its clues before scoring (see games/immichdle/round.py's
-ImmichdleRound.calculate_score docstring for why that split exists).
+Starting score is 100, -5 per wrong guess (floored at 0) for both modes - see
+games/immichdle/persondle.py / albumdle.py for each mode's own docstring and scoring/termination
+specifics.
 """
 
+from abc import ABC, abstractmethod
 from collections.abc import Mapping
-from uuid import UUID, uuid4
+from datetime import date
+from typing import Any
+from uuid import UUID
 
-from games.base import BaseGame, PlayRoundResult
-from games.immichdle.clues import _compute_clues
-from games.immichdle.round import ImmichdleRound, PersonSnapshot
+from games.base import BaseGame, BaseRound, PlayRoundResult
 from services.immich import ImmichService
 from services.ml_service import MLService
 
 GAME_TYPE = "immichdle"
 MODE_PERSON = "person"
+MODE_ALBUM = "album"
 
-# Admin feature - public (no leading underscore) since games/settings_registry.py assembles these
-# as defaults for the admin-configurable starting_score/wrong_guess_penalty settings, same
-# convention already used by e.g. games/geoguessr/game.py's TOTAL_ROUNDS/MAX_SCORE.
+# Admin feature - public (no leading underscore) since services/game_settings_service.py assembles
+# these as defaults for the admin-configurable starting_score/wrong_guess_penalty settings, same
+# convention already used by e.g. games/geoguessr/game.py's TOTAL_ROUNDS/MAX_SCORE. Shared by both
+# modes (see settings.py's SETTING_SPECS, one entry per mode using these same defaults).
 STARTING_SCORE = 100
-# Exponent `w` in `peso = c_fotos ^ w` (services/immich/persons.py's get_persons
-# asset_count_weight), applied only to the target person's selection at game start
-# (ImmichdleGame.start). w=0 makes every named person equally likely regardless of photo count;
-# w=1 makes a person with 1000 photos 1000x as likely as one with 1 photo. Default is a mild bias
-# towards people with more photos (0.2), not a strong one.
-ASSET_COUNT_WEIGHT_EXPONENT = 0.2
+WRONG_GUESS_PENALTY = 5
 
 
 class DuplicateGuessError(Exception):
@@ -44,11 +46,71 @@ class InvalidGuessError(Exception):
     pass
 
 
-class ImmichdleGame(BaseGame):
+def is_close(target_date: date | None, guess_date: date | None) -> bool | None:
+    """Whether two dates are within a year of each other - None if either is unknown. Shared by
+    both modes' clue computation (persondle's age/first_appearance, albumdle's
+    first_asset_date) - same magnitude-bucket-not-raw-diff rationale each mode's own clues
+    dataclass documents."""
+    if target_date is None or guess_date is None:
+        return None
+    return abs((guess_date - target_date).days) < 365
+
+
+class BaseImmichdleRound(BaseRound, ABC):
+    """Shared round shape: a frozen `target` snapshot, the mode's own `clues` result (typed `Any`
+    here - persondle.py/albumdle.py narrow it), and the guess-correctness/scoring mechanics that
+    don't depend on which entity type is being guessed. Concrete subclasses add their own
+    `guessed_person`/`guessed_album` attribute (there isn't one generic name worth forcing both
+    modes to share) via `apply_guess`, and expose its id via `guessed_entity_id` - the one thing
+    `correct` needs without knowing that attribute's name."""
+
+    def __init__(self, id: UUID, game_id: UUID, round_index: int, target: Any) -> None:
+        super().__init__(id, game_id, round_index, shown_entities=[])
+        self.target = target
+        self.guess: UUID | None = None
+        self.clues: Any | None = None
+
+    @property
+    @abstractmethod
+    def guessed_entity_id(self) -> UUID | None:
+        """The resolved guess's id (persondle: guessed_person.id, albumdle: guessed_album.id) -
+        None until answered."""
+
+    @abstractmethod
+    def apply_guess(self, guessed: Any, clues: Any) -> None:
+        """Sets this round's mode-specific guessed-entity attribute, `clues`, and
+        `shown_entities` - called by BaseImmichdleGame.play_round once the guess has been resolved
+        and scored."""
+
+    @property
+    def correct(self) -> bool | None:
+        """Whether the guess was the target - None until answered. Single definition of "correct"
+        for the DTOs, same role as MoreOrLessRound.correct."""
+        if not self.answered:
+            return None
+        entity_id = self.guessed_entity_id
+        if entity_id is None:
+            raise RuntimeError("correct accessed on an answered round with no guessed entity set")
+        return entity_id == self.target.id
+
+    def calculate_score(self, settings: Mapping[str, float] | None = None) -> int:
+        if self.guessed_entity_id is None:
+            raise RuntimeError("calculate_score() called before apply_guess() set the guessed entity")
+        penalty = (settings or {}).get("wrong_guess_penalty", WRONG_GUESS_PENALTY)
+        return 0 if self.correct else -int(penalty)
+
+
+class BaseImmichdleGame(BaseGame, ABC):
+    """Shared game shape: both modes pick a target once (frozen on the first round), let the
+    player guess entities by id, and score/end the same way (see calculate_score/has_next_round
+    below) - only *how* a guess is resolved into a snapshot+clues differs, via the abstract
+    `_resolve_and_score_guess` hook."""
+
     def __init__(
         self,
         id: UUID,
-        rounds: list[ImmichdleRound],
+        mode: str,
+        rounds: list[BaseImmichdleRound],
         immich_service: ImmichService,
         ml_service: MLService | None = None,
         score: int = STARTING_SCORE,
@@ -58,93 +120,45 @@ class ImmichdleGame(BaseGame):
         super().__init__(
             id=id,
             game_type=GAME_TYPE,
-            mode=MODE_PERSON,
+            mode=mode,
             rounds=rounds,
             score=score,
             finished=finished,
             settings=settings,
         )
         self._immich_service = immich_service
-        # Injected by GamesService (see services/games_service.py's _game_kwargs), which is the only
-        # game-specific dependency any game currently needs beyond immich_service. Still defaults to
-        # self-constructing when omitted - same default-construction pattern ImmichService() itself
-        # uses elsewhere (e.g. api/api.py's get_immich_service) - so direct/low-level construction
-        # (tests, a one-off script) doesn't have to wire up an MLService just to build a game.
+        # Injected by GameFactory - defaults to self-constructing when omitted (tests, a one-off
+        # script), same pattern ImmichService() itself uses elsewhere.
         self._ml_service = ml_service or MLService()
 
     @property
-    def target(self) -> PersonSnapshot:
+    def target(self) -> Any:
         # The target is the same for every round of the game (unlike MoreOrLess's chaining
         # reference/candidate) - stored once, on the first round's payload, since GameModel has no
         # game-level payload column of its own (see persistence/games.py).
         return self.rounds[0].target
 
-    @classmethod
-    def start(
-        cls,
-        id: UUID,
-        immich_service: ImmichService,
-        ml_service: MLService | None = None,
-        settings: Mapping[str, float] | None = None,
-        target: PersonSnapshot | None = None,
-    ) -> "ImmichdleGame":
-        # A daily game hands in its pre-generated target (games/immichdle/daily.py's build_spec)
-        # instead of sampling one here; guesses stay live either way (play_round below always
-        # queries immich_service for whatever the player types), so nothing downstream of this
-        # needs to know whether the target came from a live sample or a frozen spec.
-        if target is None:
-            asset_count_weight = float((settings or {}).get("asset_count_weight", ASSET_COUNT_WEIGHT_EXPONENT))
-            # limit=2 in one call instead of a second get_persons just to check an alternative
-            # exists - that second query repeated the full asset_face aggregation for nothing more
-            # than an existence check.
-            target_people = immich_service.get_persons(
-                named_only=True, randomize=True, limit=2, asset_count_weight=asset_count_weight
-            )
-            if len(target_people) < 2:
-                raise ValueError("not enough named people in Immich to start an Immichdle game")
-            target_person = target_people[0]
-
-            target = PersonSnapshot.of(
-                target_person, first_asset_date=immich_service.get_person_first_asset_date(target_person.id)
-            )
-
-        first_round = ImmichdleRound(id=uuid4(), game_id=id, round_index=1, target=target)
-        starting_score = int((settings or {}).get("starting_score", STARTING_SCORE))
-        return cls(
-            id=id,
-            rounds=[first_round],
-            immich_service=immich_service,
-            ml_service=ml_service,
-            score=starting_score,
-            settings=settings,
-        )
-
-    def _guessed_person_ids(self) -> frozenset[UUID]:
+    def _guessed_ids(self) -> frozenset[UUID]:
         return frozenset(round_.guess for round_ in self.rounds if round_.guess is not None)
+
+    @abstractmethod
+    def _resolve_and_score_guess(self, guess: UUID) -> tuple[Any, Any]:
+        """Looks up `guess` as this mode's entity (raises InvalidGuessError if it isn't a valid
+        one to guess) and computes its clues against self.target - called before any round state
+        is mutated, matching persondle's original ordering (validate, then mutate). Returns
+        (guessed_snapshot, clues)."""
 
     def play_round(self, guess: UUID) -> PlayRoundResult:
         if self.finished:
             raise ValueError("game is already finished")
-        if guess in self._guessed_person_ids():
-            raise DuplicateGuessError(f"person {guess} was already guessed in this game")
+        if guess in self._guessed_ids():
+            raise DuplicateGuessError(f"{self.mode} entity {guess} was already guessed in this game")
 
-        matches = self._immich_service.get_persons(named_only=True, ids=frozenset({guess}), limit=1)
-        if not matches:
-            raise InvalidGuessError(f"person {guess} is not a valid named person to guess")
-        guessed = matches[0]
+        guessed, clues = self._resolve_and_score_guess(guess)
 
         current = self.current_round
         current.guess = guess
-        current.guessed_person = PersonSnapshot.of(
-            guessed, first_asset_date=self._immich_service.get_person_first_asset_date(guessed.id)
-        )
-        current.clues = _compute_clues(
-            target=current.target,
-            guess=current.guessed_person,
-            ml_similarity=self._ml_service.face_similarity(current.target.id, guessed.id),
-            assets_together=self._immich_service.get_assets_together_count(current.target.id, guessed.id),
-        )
-        current.shown_entities = [guessed.id]
+        current.apply_guess(guessed, clues)
         current.score_delta = current.calculate_score(self._settings)
         self.score = max(0, self.score + current.score_delta)
 
@@ -159,7 +173,3 @@ class ImmichdleGame(BaseGame):
         if self.current_round.correct:
             return False
         return self.score > 0
-
-    def create_next_round(self) -> ImmichdleRound:
-        previous = self.current_round
-        return ImmichdleRound(id=uuid4(), game_id=self.id, round_index=previous.round_index + 1, target=self.target)

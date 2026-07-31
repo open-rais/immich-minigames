@@ -20,6 +20,7 @@ from api.auth_api import get_current_user
 from api.auth_api import router as auth_router
 from api.daily_api import router as daily_router
 from api.deps import get_games_service, get_immich_service, get_scores_service
+from api.dto.albums import AlbumSearchOut
 from api.dto.common import CreateGameIn, CurrentGameOut, GameOut, PlayRoundOut, RecentGamesOut, parse_guess
 from api.dto.config import ConfigOut
 from api.dto.leaderboard import LeaderboardOut, LeaderboardWindow
@@ -179,6 +180,21 @@ def search_persons(
     # small batches (default 3) for infinite-scroll UIs. See ImmichService.search_persons.
     persons = immich_service.search_persons(query, offset=offset, limit=limit)
     return PersonSearchOut.from_persons(persons)
+
+
+@router.get("/albums/search", response_model=AlbumSearchOut)
+@limiter.limit(SEARCH_LIMIT)
+def search_albums(
+    request: Request,
+    query: Annotated[str, Query(min_length=1)],
+    immich_service: Annotated[ImmichService, Depends(get_immich_service)],
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=50)] = 3,
+) -> AlbumSearchOut:
+    # Albumdle's guess-input autocomplete (roadmap #14) - mirrors search_persons above exactly.
+    # See ImmichService.search_albums.
+    albums = immich_service.search_albums(query, offset=offset, limit=limit)
+    return AlbumSearchOut.from_albums(albums)
 
 
 @router.get("/people/{person_id}/thumbnail")

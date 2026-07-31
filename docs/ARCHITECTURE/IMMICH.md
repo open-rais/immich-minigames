@@ -171,6 +171,31 @@ whenever `face_count` no longer matches that person's current count of visible, 
 `asset_face` rows. Swapping one face for another without changing the total count is not detected
 - accepted imprecision for now (confirmed with the project owner).
 
+## Album similarity (Albumdle, roadmap #14)
+
+A sibling cache to the one above, for Albumdle's `Similarity` clue - but built from a **different**
+table and a different kind of embedding entirely. Where `MLSimilarity` averages *face* embeddings
+(`face_search`, one row per detected face) to compare two people, Albumdle's clue averages *CLIP*
+embeddings (`smart_search`, one row per asset - Immich's semantic/text-search index, unrelated to
+face detection) across every eligible asset in an album, to compare two albums as wholes. Confirmed
+by the project owner explicitly: "tomar el CLIP de todos los assets de smart search... eso dará un
+vector álbum promedio" - not a face-based signal at all.
+
+`MLService.album_similarity` mirrors `face_similarity`'s shape exactly: plain cosine similarity
+between two albums' averaged embeddings, same `-1..1` range and "small negative is normal" caveat.
+The one query-level difference: `album_asset` rows outlive Immich's soft-delete (an asset's
+`deletedAt`/`status` live on `asset`, not on the join table), so the averaging query joins through
+`asset` and applies the standard eligibility filter - something the face-based query doesn't need,
+since `asset_face` rows are pruned independently via their own `deletedAt`/`isVisible` columns.
+
+**The cache**: `minigames.album_embedding_cache` (`persistence/album_ml_cache.py`) - `album_id` (PK),
+`embedding vector(512)`, `asset_count`, `computed_at`. Same rationale for living in this app's own
+database as the face cache above, reusing that module's hand-rolled `Vector` SQLAlchemy type rather
+than duplicating it.
+
+**Freshness** mirrors the face cache's own cheap-not-exact contract, substituting the album's current
+raw `album_asset` row count for `face_count` as the staleness fingerprint.
+
 ## Dev instance
 
 `docker-compose.yml` at the repo root stands up a dev Immich (server + ML + Postgres + Redis) to
