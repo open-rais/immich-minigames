@@ -1,8 +1,9 @@
 import type { ReactNode } from "react"
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import { fitBox as computeFitBox } from "./fitBox"
 import type { Size } from "./fitBox"
+import { Spinner } from "./Spinner"
 import { useElementSize } from "./useElementSize"
 import { useNonPassiveWheel } from "./useNonPassiveWheel"
 import type { Point } from "./usePointerGestures"
@@ -50,7 +51,18 @@ export function AssetPhoto({
   overlay?: ReactNode
 }) {
   const [failed, setFailed] = useState(false)
+  const [loaded, setLoaded] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  // A caller that doesn't key this component by src (AssetCarousel.tsx does; WhosThatPersonGame's
+  // IncognitoPhoto doesn't) would otherwise keep this same <img> node across a round change - reset
+  // here too so the loading spinner/fade-in and the failed placeholder both react to a real photo
+  // change instead of the previous round's resolved state (mirrors Timeline/TimelineCard.tsx's own
+  // per-assetId reset).
+  useEffect(() => {
+    setFailed(false)
+    setLoaded(false)
+  }, [src])
 
   const [scale, setScale] = useState(1)
   const [translate, setTranslate] = useState<Point>({ x: 0, y: 0 })
@@ -174,14 +186,17 @@ export function AssetPhoto({
           src={src}
           alt={alt}
           onError={() => setFailed(true)}
-          onLoad={(e) =>
+          onLoad={(e) => {
             setNaturalSize({
               width: e.currentTarget.naturalWidth,
               height: e.currentTarget.naturalHeight,
             })
-          }
+            setLoaded(true)
+          }}
           draggable={false}
-          className={`h-full w-full object-contain ${photoReady ? "" : "invisible"}`}
+          className={`h-full w-full object-contain transition-opacity duration-150 ${
+            photoReady && loaded ? "opacity-100" : "invisible opacity-0"
+          }`}
         />
         {overlay && fitBox && (
           <div
@@ -197,6 +212,13 @@ export function AssetPhoto({
           </div>
         )}
       </div>
+      {/* Outside the pan/zoom-transformed div so it stays a fixed size, centered on the container
+          regardless of the photo's current scale. */}
+      {!loaded && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Spinner className="h-8 w-8" />
+        </div>
+      )}
     </div>
   )
 }

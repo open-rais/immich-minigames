@@ -105,7 +105,7 @@ export function buildDailyShareMessage(
   link: string,
 ): string {
   const header = t("daily.share.header", {
-    game: `${gameTitle} · ${modeTitle}`,
+    game: `${gameTitle} - ${modeTitle}`,
     date: game.daily_challenge_date ?? "",
   })
   return `${header}\n${buildDailyShareBody(t, game)}\n${link}`
@@ -152,13 +152,14 @@ export function buildDailyShareOneLiner(t: TFunction, game: GameOut): string {
 
 export function buildDailyShareAllMessage(
   t: TFunction,
-  entries: { modeTitle: string; game: GameOut }[],
+  entries: { gameTitle: string; modeTitle: string; game: GameOut }[],
   link: string,
 ): string {
   const date = entries[0]?.game.daily_challenge_date ?? ""
   const header = t("daily.share.allHeader", { date })
   const lines = entries.map(
-    ({ modeTitle, game }) => `${modeTitle}: ${buildDailyShareOneLiner(t, game)}`,
+    ({ gameTitle, modeTitle, game }) =>
+      `${gameTitle} - ${modeTitle}: ${buildDailyShareOneLiner(t, game)}`,
   )
   return [header, ...lines, link].join("\n")
 }

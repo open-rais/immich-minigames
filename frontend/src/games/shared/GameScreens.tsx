@@ -181,6 +181,7 @@ export function FinishedScreen({
 }: FinishedScreenProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const leaderboardHref = useLeaderboardHref()
   const roundsHref = useRoundsHref(gameId, hasRoundsView)
   const [shareBusy, setShareBusy] = useState(false)
@@ -225,7 +226,17 @@ export function FinishedScreen({
           </Button>
         )}
         {roundsHref && (
-          <Button variant="secondary" className="w-56 py-3" onClick={() => navigate(roundsHref)}>
+          <Button
+            variant="secondary"
+            className="w-56 py-3"
+            // Threads whether this game was reached via /daily/... through router state, so
+            // RoundsPage.tsx's back button can return to the right screen - there's a single
+            // rounds route for both daily and non-daily games, so this can't be told apart from
+            // the URL alone once we're already on it.
+            onClick={() =>
+              navigate(roundsHref, { state: { daily: pathname.startsWith("/daily/") } })
+            }
+          >
             {t("common.viewRounds")}
           </Button>
         )}

@@ -186,6 +186,11 @@ export function ImmichdleGame({ coverUrl, hasRoundsView, daily = false }: GameCo
     if (game?.finished) setScreen("finished")
   }, [animatingRoundId, rowAnimationDone, targetFetchDone, game?.finished, setScreen])
 
+  // Daily's "already played today" check (useGameSession's idle effect) resolves async -
+  // hasCurrentGame stays null until it does, so this avoids a beat of the idle/start screen before
+  // screen flips to "finished".
+  if (daily && hasCurrentGame === null) return <div className="min-h-dvh bg-app-bg" />
+
   if (screen === "idle") {
     return (
       <IdleScreen
