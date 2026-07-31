@@ -111,6 +111,38 @@ def _reset_own_db():
     reset_db(get_app_engine())
 
 
+# Fixed, not randomized like every other test account (`_register`/`logged_client` suffix a fresh
+# uuid onto every email/username so parallel tests never collide) - this one is deliberately the
+# same every pytest run, so there's always a known (email, password) to log into the dev stack's
+# frontend as an admin with afterward, instead of having to go dig a specific test's random account
+# out of the DB.
+FIXED_ADMIN_EMAIL = "admin@example.com"
+FIXED_ADMIN_USERNAME = "admin"
+FIXED_ADMIN_PASSWORD = "correct-horse-battery-staple"
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _seed_fixed_admin(_reset_own_db):
+    """Depends on _reset_own_db (not just autouse ordering) to guarantee this is the very first
+    registration of the session - AuthService's bootstrap branch (the only one that doesn't need a
+    real invite) only applies to the very first account in an empty `users` table. Opens its own
+    throwaway session and commits immediately, same technique as mint_invite_code() below (the
+    function-scoped `db_session` fixture isn't available at session scope)."""
+    session = get_session_factory()()
+    try:
+        user = AuthService(session).register(
+            email=FIXED_ADMIN_EMAIL,
+            username=FIXED_ADMIN_USERNAME,
+            full_name="Admin",
+            password=FIXED_ADMIN_PASSWORD,
+            invite_code=mint_invite_code(),
+        )
+        user.is_admin = True
+        session.commit()
+    finally:
+        session.close()
+
+
 @pytest.fixture
 def db_session():
     session_factory = get_session_factory()
