@@ -1,6 +1,7 @@
-"""Route-level coverage for the current/recent-games endpoints - GamesService-level behavior (the
-abandon side effect, the scoping/filtering rules) is already covered by test_games_service.py; this
-file only checks the HTTP-layer conventions (status codes, auth requirements, response shape)."""
+"""Route-level coverage for the current/recent-games endpoints - GamesService/ScoresService-level
+behavior (the abandon side effect, the scoping/filtering rules) is already covered by
+test_games_service.py/test_scores_service.py; this file only checks the HTTP-layer conventions
+(status codes, auth requirements, response shape)."""
 
 from uuid import uuid4
 

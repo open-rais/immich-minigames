@@ -1,6 +1,6 @@
 """Pure unit tests (no DB) for Timeline's daily support
 (games/timeline/daily.py::ScriptedContent/exclusion_ids). Hand-constructed content, so none of this
-needs the immich_service/db_session fixtures - see tests/test_daily_challenge_service.py's
+needs the immich_service/db_session fixtures - see tests/unit/services/test_daily_challenge_service.py's
 TestSpecShapePerGame/TestExclusionWindow for the integration-level coverage (build_spec's actual
 shape, two players/days sharing or excluding content) that does need those."""
 

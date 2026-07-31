@@ -77,7 +77,7 @@ class TestCreateAndConsume:
 
 class TestConsumeConcurrency:
     def test_only_one_of_two_racing_consumers_wins(self, db_session):
-        # Mirrors test_auth_service.py's TestRegisterConcurrency technique: hold one consumer's
+        # Mirrors test_auth_service_register.py's TestRegisterConcurrency technique: hold one consumer's
         # UPDATE open (uncommitted) so the second's conflicting UPDATE reliably blocks on it, then
         # resolve - deterministic, not a sleep-and-hope race.
         service_a = InviteService(db_session)

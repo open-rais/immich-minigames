@@ -1,8 +1,8 @@
-"""Daily games live in a separate world.
-
-create_daily_game doesn't exist yet - these tests seed a daily game the same way the
-rest of the suite seeds any other row state (create a normal game, then mutate its row directly),
-attaching it to a directly-inserted DailyChallengeModel row.
+"""Daily games live in a separate world - they must stay invisible to every query that reports on
+normal games (personal records, leaderboards, current-game, abandon). Seeds a daily game the same
+way the rest of the suite seeds any other row state (create a normal game, then mutate its row
+directly) rather than through DailyGamesService.create_daily_game (see test_daily_games_service.py
+for that), attaching it to a directly-inserted DailyChallengeModel row.
 """
 
 import itertools
