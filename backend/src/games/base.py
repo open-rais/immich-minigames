@@ -30,7 +30,7 @@ class BaseRound(ABC):
     def calculate_score(self, settings: Mapping[str, float] | None = None) -> int:
         """Score delta to apply to the game's total. Only called once `guess` has been set.
         `settings` is this game's live admin-configurable values (ADMIN-FEATURE.md point #4, see
-        services/game_settings.py) - implementations without any configurable score knob
+        services/game_settings_service.py) - implementations without any configurable score knob
         (MoreOrLess, WhosThatPerson today) just ignore it. Defaults to None/{} so direct
         construction (tests, a one-off script) doesn't have to pass one to get the same behavior
         as before this param existed."""
@@ -78,7 +78,7 @@ class BaseGame(ABC):
         self.score = score
         self.finished = finished
         # Admin feature (ADMIN-FEATURE.md point #4) - this game_type's live admin-configurable
-        # values (services/game_settings.py), injected by GamesService. Read fresh on every
+        # values (services/game_settings_service.py), injected by GamesService. Read fresh on every
         # request (see GamesService._game_kwargs), never snapshotted onto a round, so a change
         # takes effect on the very next round played rather than only on new games.
         self._settings: Mapping[str, float] = settings or {}

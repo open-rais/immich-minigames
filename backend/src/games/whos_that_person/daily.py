@@ -6,7 +6,9 @@ and builds the kwargs to replay it against the *same* WhosThatPersonGame class a
 from typing import Any
 from uuid import UUID, uuid4
 
-from games.whos_that_person.game import HiddenFace, LiveContent, WhosThatPersonGame
+from games.whos_that_person.content import LiveContent
+from games.whos_that_person.game import WhosThatPersonGame
+from games.whos_that_person.round import HiddenFace
 from services.immich_service import ImmichService
 from services.ml_service import MLService
 

@@ -6,184 +6,26 @@ correct guess chains into a new round (the new card joins the board at its real 
 guess ends the game (score = the streak of correctly placed cards). See docs/GAMES/TIMELINE.md and
 docs/TODO/TIMELINE.md (design doc, decisions [A]-[K]).
 
-Mirrors Dateguessr's split of *which* asset a round gets (`TimelineContent` protocol - live Immich
-queries here, a frozen daily spec in games/timeline/daily.py's ScriptedContent) from the game loop
-itself (insertion, board, scoring), which lives entirely here - docs/TODO/DECOUPLING.md decision
-[J]: zero logic shared with any other game beyond games/shared/'s pure helpers.
+Mirrors Dateguessr's split of *which* asset a round gets (games/timeline/content.py's
+TimelineContent protocol - live Immich queries here, a frozen daily spec in
+games/timeline/daily.py's ScriptedContent) from the game loop itself (insertion, board
+rehydration, scoring), which lives entirely here - docs/TODO/DECOUPLING.md decision [J]: zero
+logic shared with any other game beyond games/shared/'s pure helpers. games/timeline/round.py holds
+the round itself (its board/card snapshot and accepted-slot/scoring math).
 """
 
-import bisect
 from collections.abc import Mapping
-from dataclasses import dataclass
-from datetime import date, timedelta
-from typing import Any, Protocol
 from uuid import UUID, uuid4
 
-from domain.asset import Asset
 from games.base import BaseGame, BaseRound
-from games.shared.picking import pick_spread_asset
-from games.shared.serialization import DictCodec
-from services.immich_service import ImmichService
+from games.timeline.content import TimelineContent
+from games.timeline.round import TOLERANCE_DAYS, CardSnapshot, TimelineRound
 
 GAME_TYPE = "timeline"
 MODE_ARCADE = "arcade"
 
-TOLERANCE_DAYS = 1
 MIN_SEPARATION_DAYS = 30
 MAX_CARDS = 0  # 0 = no limit - decision [F]
-
-# How many random photos to sample when looking for one far enough from every card already on the
-# board - see games/shared/picking.py's pick_spread_asset. Same role as Dateguessr's homonymous
-# constant.
-_CANDIDATE_SAMPLE_SIZE = 10
-
-
-@dataclass(frozen=True)
-class CardSnapshot(DictCodec):
-    """A card's id/date frozen at the moment it was drawn - not a live query result, so a round's
-    board/answer stay stable even if the underlying Immich data changes later (same rationale as
-    Dateguessr's AssetSnapshot)."""
-
-    id: UUID
-    date: date
-
-    @classmethod
-    def of(cls, asset: Asset) -> "CardSnapshot":
-        # Local calendar day, not the UTC day of file_created_at - see domain/asset.py's local_date
-        # and decision [C].
-        return cls(id=asset.id, date=asset.local_date)
-
-
-class TimelineContent(Protocol):
-    """The single point of variation between a normal Timeline game and a daily one (decision [G]) -
-    live Immich queries (LiveContent below) vs. a frozen daily spec (games/timeline/daily.py's
-    ScriptedContent). The game engine below never knows which."""
-
-    def pick_card(
-        self, exclude_ids: frozenset[UUID], board_dates: list[date], *, min_separation_days: int
-    ) -> Asset | None:
-        """The next card to draw, excluding `exclude_ids` and preferring one at least
-        `min_separation_days` from every date already on the board (see games/shared/picking.py's
-        pick_spread_asset) - None when no eligible asset is left."""
-        ...
-
-    def has_more(self, exclude_ids: frozenset[UUID]) -> bool:
-        """Whether another card is available, without actually picking one - used by
-        has_next_round() so it doesn't have to look at a guess to decide (unlike MoreOrLess's
-        chain, this game's next card doesn't depend on what was guessed)."""
-        ...
-
-
-class LiveContent:
-    """Normal-play TimelineContent - samples eligible photos straight from Immich."""
-
-    def __init__(self, immich_service: ImmichService) -> None:
-        self._immich_service = immich_service
-
-    def _query_assets(self, exclude_ids: frozenset[UUID], *, limit: int, randomize: bool) -> list[Asset]:
-        return self._immich_service.get_assets(
-            media_type="photo", randomize=randomize, limit=limit, exclude_ids=exclude_ids
-        )
-
-    @staticmethod
-    def _separation(candidate: Asset, board_date: date) -> float:
-        return abs((candidate.local_date - board_date).days)
-
-    def pick_card(
-        self, exclude_ids: frozenset[UUID], board_dates: list[date], *, min_separation_days: int
-    ) -> Asset | None:
-        candidates = self._query_assets(exclude_ids, limit=_CANDIDATE_SAMPLE_SIZE, randomize=True)
-        return pick_spread_asset(candidates, board_dates, self._separation, min_separation_days)
-
-    def has_more(self, exclude_ids: frozenset[UUID]) -> bool:
-        # Cheap existence check - pick_card()'s separation-aware pick always succeeds as long as the
-        # candidate pool isn't empty (see pick_spread_asset's fallback), so this is consistent with
-        # it without needing to sample _CANDIDATE_SAMPLE_SIZE rows twice.
-        return bool(self._query_assets(exclude_ids, limit=1, randomize=False))
-
-
-class TimelineRound(BaseRound):
-    def __init__(
-        self, id: UUID, game_id: UUID, round_index: int, board: list[CardSnapshot], card: CardSnapshot
-    ) -> None:
-        super().__init__(id, game_id, round_index, shown_entities=[card.id] + [c.id for c in board])
-        self.board = board
-        self.card = card
-        self.guess: int | None = None
-
-    @property
-    def correct_slot(self) -> int:
-        """How many board cards are strictly earlier than `card` - the exact insertion index
-        (`list.insert(i, x)` semantics, decision §2) that keeps the board chronologically correct.
-        With duplicate dates on the board, this always lands right before the first equal-or-later
-        one - fine, since accepted_slots() below is what actually decides whether a guess counts."""
-        dates = [c.date for c in self.board]
-        return bisect.bisect_left(dates, self.card.date)
-
-    def accepted_slots(self, tolerance_days: int) -> range:
-        """Every slot whose neighbors don't contradict `card`'s real date beyond `tolerance_days` -
-        decision [D]. Always contains correct_slot, and is always a contiguous range: the left
-        endpoint is the first slot whose left neighbor doesn't undercut `card.date - tol` and the
-        right endpoint is the last slot whose right neighbor doesn't overshoot `card.date + tol`,
-        so both bounds are plain binary searches on the (sorted) board dates."""
-        dates = [c.date for c in self.board]
-        tol = timedelta(days=tolerance_days)
-        return range(
-            bisect.bisect_left(dates, self.card.date - tol),
-            bisect.bisect_right(dates, self.card.date + tol) + 1,
-        )
-
-    def calculate_score(self, settings: Mapping[str, float] | None = None) -> int:
-        settings = settings or {}
-        tolerance_days = int(settings.get("tolerance_days", TOLERANCE_DAYS))
-        return 1 if self.guess in self.accepted_slots(tolerance_days) else 0
-
-    @property
-    def correct(self) -> bool | None:
-        """Whether the guess landed in an accepted slot - None until answered. Mirrors
-        MoreOrLessRound.correct as the single definition of "correct" for the DTOs."""
-        if not self.answered:
-            return None
-        return self.score_delta == 1
-
-    def to_payload(self) -> dict[str, Any]:
-        payload: dict[str, Any] = {
-            "card": self.card.to_dict(),
-            "guess": self.guess,
-        }
-        if self.round_index == 1:
-            # Only round 1 persists its board (the single seed card) - every later board is
-            # derivable from it (board N = board N-1 + insert(correct_slot, card), exactly what
-            # create_next_round does live), so storing each round's whole board would make a
-            # game's stored payloads grow O(R^2) with the streak.
-            # TimelineGame._hydrate_boards rebuilds the omitted ones at load time.
-            payload["board"] = [c.to_dict() for c in self.board]
-        return payload
-
-    @classmethod
-    def from_payload(
-        cls, id: UUID, game_id: UUID, round_index: int, payload: dict[str, Any], score_delta: int | None
-    ) -> "TimelineRound":
-        round_ = cls(
-            id=id,
-            game_id=game_id,
-            round_index=round_index,
-            # Absent for rounds >= 2 (see to_payload) - left empty here and filled in by
-            # TimelineGame._hydrate_boards, which sees the whole rounds list; payloads written
-            # before boards were slimmed still carry one, and using it when present is the whole
-            # backward-compat story.
-            board=[CardSnapshot.from_dict(c) for c in payload.get("board", [])],
-            card=CardSnapshot.from_dict(payload["card"]),
-        )
-        round_.guess = payload["guess"]
-        round_.score_delta = score_delta
-        return round_
-
-    def _hydrate_board(self, board: list[CardSnapshot]) -> None:
-        """Fills in a board omitted from this round's persisted payload (see to_payload) - also
-        recomputes shown_entities, which __init__ derived from the then-empty board."""
-        self.board = board
-        self.shown_entities = [self.card.id] + [c.id for c in board]
 
 
 class TimelineGame(BaseGame):
@@ -228,7 +70,7 @@ class TimelineGame(BaseGame):
             next_board.insert(round_.correct_slot, round_.card)
             board = next_board
 
-    # -- admin-configurable (ADMIN-FEATURE.md point #4, see services/game_settings.py) ----------
+    # -- admin-configurable (ADMIN-FEATURE.md point #4, see games/settings_registry.py) ----------
 
     @property
     def _tolerance_days(self) -> int:

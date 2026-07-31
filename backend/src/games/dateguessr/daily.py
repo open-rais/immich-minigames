@@ -8,7 +8,9 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from domain.asset import Asset
-from games.dateguessr.game import AssetSnapshot, DateguessrGame, LiveContent
+from games.dateguessr.content import LiveContent
+from games.dateguessr.game import DateguessrGame
+from games.dateguessr.round import AssetSnapshot
 from services.immich_service import ImmichService
 from services.ml_service import MLService
 

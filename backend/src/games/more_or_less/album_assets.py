@@ -1,8 +1,9 @@
-"""albumAssets mode - see games/more_or_less/game.py's CandidateProvider."""
+"""albumAssets mode - see games/more_or_less/content.py's CandidateProvider."""
 
 from uuid import UUID
 
-from games.more_or_less.game import CandidateProvider, EntitySnapshot
+from games.more_or_less.content import CandidateProvider
+from games.more_or_less.round import EntitySnapshot
 from services.immich_service import ImmichService
 
 

@@ -7,13 +7,10 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from games.more_or_less.album_assets import AlbumAssetsProvider
-from games.more_or_less.game import (
-    MODE_PERSON_ASSETS,
-    CandidateProvider,
-    EntitySnapshot,
-    MoreOrLessGame,
-)
+from games.more_or_less.content import CandidateProvider
+from games.more_or_less.game import MODE_PERSON_ASSETS, MoreOrLessGame
 from games.more_or_less.person_assets import PersonAssetsProvider
+from games.more_or_less.round import EntitySnapshot
 from services.immich_service import ImmichService
 from services.ml_service import MLService
 

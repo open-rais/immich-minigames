@@ -3,7 +3,7 @@ this Protocol so services/daily_service.py and services/games_service.py can gen
 daily challenge for any game without knowing that game's own content/picking logic - see
 docs/TODO/DECOUPLING.md §4, Fase 4. Structurally, an implementation is the `<game>/daily.py` module
 itself (its three top-level functions), not a class instance - `GameSpec.daily` in
-services/game_registry.py holds the module directly.
+games/registry.py holds the module directly.
 """
 
 from typing import Any, Protocol

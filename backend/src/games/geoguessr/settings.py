@@ -1,16 +1,10 @@
 """Admin-configurable settings for Geoguessr (ADMIN-FEATURE.md point #4) - see
-games/settings_spec.py for the contract, services/game_settings.py for how every game's specs get
-assembled into one registry and read/written."""
+games/settings_spec.py for the contract, games/settings_registry.py for how every game's specs get
+assembled into one registry and services/game_settings_service.py for how they're read/written."""
 
-from games.geoguessr.game import (
-    DECAY_KM,
-    FLAT_SCORE_RADIUS_KM,
-    MAX_EXTRA_ASSETS,
-    MAX_SCORE,
-    MODE_DISTANCE_BETWEEN_GUESS,
-    TOTAL_ROUNDS,
-)
-from games.settings_spec import SettingSpec
+from games.geoguessr.game import MAX_EXTRA_ASSETS, MODE_DISTANCE_BETWEEN_GUESS, TOTAL_ROUNDS
+from games.geoguessr.round import DECAY_KM, FLAT_SCORE_RADIUS_KM, MAX_SCORE
+from games.settings_spec import NO_REPEAT_DAYS_SPEC, SettingSpec
 
 SETTING_SPECS: dict[str, list[SettingSpec]] = {
     MODE_DISTANCE_BETWEEN_GUESS: [
@@ -21,3 +15,7 @@ SETTING_SPECS: dict[str, list[SettingSpec]] = {
         SettingSpec("decay_km", DECAY_KM, "float", 0.01, 20000),
     ],
 }
+
+# Roadmap #G decisions [E]/[F] (docs/TODO/DAILY-GAMES.md §4.2) - Geoguessr's own content is
+# concrete assets, so its daily rotation needs a no-repeat window like every game except MoreOrLess.
+DAILY_SETTING_SPECS: list[SettingSpec] = [NO_REPEAT_DAYS_SPEC]
