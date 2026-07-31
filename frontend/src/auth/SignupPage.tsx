@@ -25,7 +25,7 @@ export function SignupPage() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  if (!loading && user) return <Navigate to="/profile" replace />
+  if (!loading && user) return <Navigate to="/" replace />
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
