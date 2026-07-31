@@ -32,11 +32,13 @@ from games.more_or_less import GAME_TYPE as MORE_OR_LESS_TYPE
 from games.more_or_less import (
     MODE_ALBUM_ASSETS,
     MODE_PERSON_ASSETS,
+    MODE_PERSON_BIRTH_DATE,
     AlbumAssetsProvider,
     CandidateProvider,
     MoreOrLessGame,
     MoreOrLessRound,
     PersonAssetsProvider,
+    PersonBirthDateProvider,
 )
 from games.timeline import GAME_TYPE as TIMELINE_TYPE
 from games.timeline import MODE_ARCADE, TimelineGame, TimelineRound
@@ -78,6 +80,9 @@ GAMES: dict[tuple[str, str], GameSpec] = {
     ),
     (MORE_OR_LESS_TYPE, MODE_ALBUM_ASSETS): GameSpec(
         MoreOrLessGame, MoreOrLessRound, provider_factory=AlbumAssetsProvider, daily=more_or_less_daily
+    ),
+    (MORE_OR_LESS_TYPE, MODE_PERSON_BIRTH_DATE): GameSpec(
+        MoreOrLessGame, MoreOrLessRound, provider_factory=PersonBirthDateProvider, daily=more_or_less_daily
     ),
     (GEOGUESSR_TYPE, MODE_DISTANCE_BETWEEN_GUESS): GameSpec(
         GeoguessrGame, GeoguessrRound, content_factory=GeoguessrLiveContent, daily=geoguessr_daily

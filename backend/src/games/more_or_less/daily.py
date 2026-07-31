@@ -7,8 +7,9 @@ from uuid import UUID, uuid4
 
 from games.more_or_less.album_assets import AlbumAssetsProvider
 from games.more_or_less.content import CandidateProvider
-from games.more_or_less.game import MODE_PERSON_ASSETS, MoreOrLessGame
+from games.more_or_less.game import MODE_ALBUM_ASSETS, MODE_PERSON_ASSETS, MODE_PERSON_BIRTH_DATE, MoreOrLessGame
 from games.more_or_less.person_assets import PersonAssetsProvider
+from games.more_or_less.person_birth_date import PersonBirthDateProvider
 from games.more_or_less.round import EntitySnapshot
 from services.immich import ContentQueries, ImmichService
 from services.ml_service import MLService
@@ -81,7 +82,11 @@ def build_spec(mode: str, immich_service: ContentQueries, settings: dict[str, fl
     # length instead (mirroring the real game's own infinite-chain fallback - see
     # games/more_or_less/game.py's create_next_round, which already tolerates a library smaller
     # than the chain by allowing repeats rather than raising).
-    provider_cls = PersonAssetsProvider if mode == MODE_PERSON_ASSETS else AlbumAssetsProvider
+    provider_cls = {
+        MODE_PERSON_ASSETS: PersonAssetsProvider,
+        MODE_ALBUM_ASSETS: AlbumAssetsProvider,
+        MODE_PERSON_BIRTH_DATE: PersonBirthDateProvider,
+    }[mode]
     chain_length = int(settings.get("chain_length", 100))
     # Batch size generous enough that the whole chain usually comes from one fetch, even accounting
     # for _pick_non_tied_candidate's 10-per-round sample and its small-pool retry - see
