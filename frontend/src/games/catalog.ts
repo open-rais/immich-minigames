@@ -27,6 +27,12 @@ const ImmichdleGame = lazy(() =>
 const ImmichdleRounds = lazy(() =>
   import("./Immichdle/ImmichdleRounds").then((m) => ({ default: m.ImmichdleRounds })),
 )
+const AlbumdleGame = lazy(() =>
+  import("./Immichdle/AlbumdleGame").then((m) => ({ default: m.AlbumdleGame })),
+)
+const AlbumdleRounds = lazy(() =>
+  import("./Immichdle/AlbumdleRounds").then((m) => ({ default: m.AlbumdleRounds })),
+)
 const MoreOrLessGame = lazy(() =>
   import("./MoreOrLess/MoreOrLessGame").then((m) => ({ default: m.MoreOrLessGame })),
 )
@@ -177,6 +183,13 @@ export const GAME_CATALOG: CatalogGame[] = [
         component: ImmichdleGame,
         coverUrl: "/covers/persondle.webp",
         roundsComponent: ImmichdleRounds,
+      },
+      {
+        mode: Mode.Album,
+        modeTitleKey: "immichdle.modes.album",
+        component: AlbumdleGame,
+        coverUrl: "/covers/albumdle.webp",
+        roundsComponent: AlbumdleRounds,
       },
     ],
   },

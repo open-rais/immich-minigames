@@ -1,4 +1,5 @@
 import { apiClient } from "./client"
+import type { AlbumSearchOut } from "./types/albums"
 import type {
   CreateGameIn,
   CurrentGameOut,
@@ -76,6 +77,18 @@ export async function searchPersons(
   opts?: { offset?: number; limit?: number },
 ): Promise<PersonSearchOut> {
   const { data } = await apiClient.get<PersonSearchOut>("/persons/search", {
+    params: { query, offset: opts?.offset, limit: opts?.limit },
+  })
+  return data
+}
+
+// Word-prefix match on album names - see backend/src/services/immich/albums.py's search_albums.
+// Albumdle's guess-input autocomplete (roadmap #14) - mirrors searchPersons above exactly.
+export async function searchAlbums(
+  query: string,
+  opts?: { offset?: number; limit?: number },
+): Promise<AlbumSearchOut> {
+  const { data } = await apiClient.get<AlbumSearchOut>("/albums/search", {
     params: { query, offset: opts?.offset, limit: opts?.limit },
   })
   return data

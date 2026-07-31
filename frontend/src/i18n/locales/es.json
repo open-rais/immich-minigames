@@ -151,7 +151,8 @@
   "immichdle": {
     "title": "Immichdle",
     "modes": {
-      "person": "Persondle"
+      "person": "Persondle",
+      "album": "Albumdle"
     },
     "start": {
       "description": "Adivina a la persona misteriosa. Cada intento revela pistas comparativas - verde es coincidencia, amarillo es cerca, rojo es lejos."
@@ -171,6 +172,20 @@
     "finished": {
       "won": "¡La adivinaste!",
       "lost": "Juego terminado"
+    },
+    "album": {
+      "start": {
+        "description": "Adivina el álbum misterioso. Cada intento revela pistas comparativas - verde es coincidencia, amarillo es cerca, rojo es lejos."
+      },
+      "searchPlaceholder": "Busca un álbum por nombre...",
+      "clues": {
+        "firstAssetDate": "Primera foto",
+        "assetCount": "Fotos",
+        "dominantFace": "Cara principal",
+        "commonNames": "Nombres en común",
+        "similarity": "Similitud",
+        "uniqueFaceCount": "Caras únicas"
+      }
     }
   },
   "whosThatPerson": {
