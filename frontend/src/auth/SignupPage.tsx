@@ -106,8 +106,8 @@ export function SignupPage() {
           id="inviteCode"
           type="text"
           label={t("auth.signup.inviteCode")}
-          // Not `required` - the very first account on a fresh install registers without one
-          // (roadmap #H decision [H]); the backend is the source of truth and rejects a missing/
+          // Not `required` - the very first account on a fresh install registers without one;
+          // the backend is the source of truth and rejects a missing/
           // invalid code with a normal inline error either way.
           value={inviteCode}
           onChange={(e) => setInviteCode(e.target.value)}

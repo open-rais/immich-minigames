@@ -13,13 +13,12 @@ function settingsKey(gameType: string, mode: string): string {
   return `${gameType}:${mode}`
 }
 
-// Roadmap #f - one top-level accordion per game (replacing the single shared "Juegos" wrapper
-// AdminPage.tsx used to render around this component), each with one nested row per mode instead
-// of the old one-row-per-game_type. Fetches every (game_type, mode)'s settings in one request,
-// then renders a nested row per GAME_CATALOG mode (the same source of truth already used
-// elsewhere for game/mode titles) so a mode with no persisted override yet still gets a row
-// showing its defaults. Roadmap #G - also fetches the daily config for every mode alongside the
-// normal settings (one extra request, same shape) and threads it into each AdminGameRow, which
+// One top-level accordion per game, each with one nested row per mode. Fetches every
+// (game_type, mode)'s settings in one request, then renders a nested row per GAME_CATALOG mode
+// (the same source of truth already used elsewhere for game/mode titles) so a mode with no
+// persisted override yet still gets a row showing its defaults. Also fetches the daily config for
+// every mode alongside the normal settings (one extra request, same shape) and threads it into
+// each AdminGameRow, which
 // renders the "Activar juego diario" toggle + daily-only settings inline below the normal ones.
 export function AdminGamesSection() {
   const { t } = useTranslation()

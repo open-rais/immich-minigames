@@ -40,7 +40,7 @@ export async function updateProfile(body: UpdateProfileIn): Promise<User> {
   return data
 }
 
-// Roadmap #H, F0 - re-issues the session cookie in the same response (see backend/src/api/
+// Re-issues the session cookie in the same response (see backend/src/api/
 // auth_api.py's change_password), so the caller's own session survives the password_changed_at
 // bump that would otherwise revoke it. skipAuthRedirect (client.ts) - a wrong-current-password 401
 // here is normal control flow, shown inline on ChangePasswordPage, same reasoning as login() above
@@ -58,7 +58,7 @@ export async function updateSkin(personId: string | null): Promise<User> {
   return data
 }
 
-// Roadmap #H, F2 - the public counterpart of changePassword: no session to preserve (the caller is
+// The public counterpart of changePassword: no session to preserve (the caller is
 // by definition logged out), so no cookie comes back - ResetPasswordPage.tsx sends them to /login
 // afterward. No skipAuthRedirect needed either: this route has no auth dependency, so it can never
 // 401 in the first place.

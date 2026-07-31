@@ -32,7 +32,7 @@ function UserIcon() {
   )
 }
 
-// Cosmetic skin (roadmap point E) - same img+onError fallback convention as
+// Cosmetic skin - same img+onError fallback convention as
 // games/shared/PersonAvatar.tsx, just sized to fill this button's existing 40px circle instead of
 // that component's own fixed h-10/md:h-14 sizing. Rendered with `key={personId}` by the caller so
 // switching skins resets `failed` instead of keeping a stale placeholder around.
@@ -59,7 +59,7 @@ function LanguageSelector() {
       }))}
       value={current}
       onChange={(lang) => {
-        // Loaded on demand (see i18n/index.ts's B-2 comment) - awaited here so switching to a
+        // Loaded on demand (see i18n/index.ts) - awaited here so switching to a
         // language not loaded yet doesn't flash the fallback language while its bundle fetches.
         void loadLanguage(lang).then(() => {
           localStorage.setItem("minigames-lang", lang)
@@ -113,7 +113,7 @@ export function UserMenu() {
     setOpen(false)
   }, [location.pathname])
 
-  // Roadmap #H, F3 - RequireAuth (App.tsx) already guarantees a session before AppHeader (this
+  // RequireAuth (App.tsx) already guarantees a session before AppHeader (this
   // trigger's only caller) ever mounts; this is just a TypeScript narrowing helper (user: User |
   // null), not reachable at runtime. The trigger no longer has an anonymous state to render at all
   // - login/logged-out are the same "not here" case RequireAuth already redirects away from.

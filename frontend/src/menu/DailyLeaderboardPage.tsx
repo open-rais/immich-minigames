@@ -21,7 +21,7 @@ function shiftDate(iso: string, days: number): string {
   return d.toISOString().slice(0, 10)
 }
 
-// Roadmap #G, F5 - /daily/:gameType/:mode/leaderboard. Close variant of menu/LeaderboardPage.tsx
+// /daily/:gameType/:mode/leaderboard. Close variant of menu/LeaderboardPage.tsx
 // (same entry-list/row shape) with a [<] {date} [>] navigator instead of the all/weekly/daily
 // SegmentedControl - a daily leaderboard is scoped to one specific day's challenge, not a rolling
 // window. The right arrow disables once past today, since there's nothing to navigate to yet.

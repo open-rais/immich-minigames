@@ -10,10 +10,10 @@ function readStoredLanguage(): Language {
   return stored === "es" ? "es" : "en"
 }
 
-// Loaded via import() instead of a static top-level import (CODE-REVIEW-FRONT.md B-2) - with two
-// languages the saving is noise, but the roadmap already plans French/German (point i), and at 4
-// languages loading all of them upfront to use one stops being noise. `loaded` dedupes repeat calls
-// (e.g. switching back to a language already loaded once this session).
+// Loaded via import() instead of a static top-level import - with two languages the saving is
+// noise, but more languages are already planned, and at 4 languages loading all of them upfront to
+// use one stops being noise. `loaded` dedupes repeat calls (e.g. switching back to a language
+// already loaded once this session).
 const loaders: Record<Language, () => Promise<{ default: Record<string, unknown> }>> = {
   en: () => import("./locales/en.json"),
   es: () => import("./locales/es.json"),

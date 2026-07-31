@@ -19,7 +19,7 @@ import { MapPicker } from "./MapPicker"
 
 const GAME_TYPE = GameType.Geoguessr
 const MODE = Mode.DistanceBetweenGuess
-// Fallback only - the real total (admin-configurable, ADMIN-FEATURE.md point #4) comes from
+// Fallback only - the real total (admin-configurable) comes from
 // game.totalRounds, read off the backend's live GameOut.total_rounds.
 const DEFAULT_TOTAL_ROUNDS = 5
 // Longer than MoreOrLess's own REVEAL_HOLD_MS (1400ms) - there's more to take in here (the map's

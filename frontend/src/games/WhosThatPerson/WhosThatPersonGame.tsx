@@ -18,7 +18,7 @@ import { IncognitoPhoto } from "./IncognitoPhoto"
 
 const GAME_TYPE = GameType.WhosThatPerson
 const MODE = Mode.NamedFaces
-// Fallback only - the real total (admin-configurable, ADMIN-FEATURE.md point #4) comes from
+// Fallback only - the real total (admin-configurable) comes from
 // game.totalPeople, read off the backend's live GameOut.total_people.
 const DEFAULT_TOTAL_PEOPLE = 15
 // Longer than Geoguessr/Dateguessr's 2400ms - a round can reveal several faces at once, so the
@@ -66,7 +66,7 @@ export function WhosThatPersonGame({ coverUrl, hasRoundsView, daily = false }: G
       setGuesses({})
       setActiveFaceId(null)
     },
-    // Roadmap #e - on resume, seed the "N of 15 people" progress from every already-answered
+    // On resume, seed the "N of 15 people" progress from every already-answered
     // round (all but the resumed pending one), so the per-round effect below only adds that
     // pending round on top instead of undercounting the whole resumed history.
     onResume: (g) => {

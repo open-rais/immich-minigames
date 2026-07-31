@@ -32,7 +32,7 @@ interface PointerGestureHandlers {
   onPointerCancel: (e: React.PointerEvent) => void
 }
 
-// Shared pointer-gesture mechanics for pan/zoom surfaces (CODE-REVIEW-FRONT.md A-2) - pointer
+// Shared pointer-gesture mechanics for pan/zoom surfaces - pointer
 // capture, tracking active pointers, classifying one active pointer as a drag and two as a pinch,
 // and restarting drag tracking from whichever pointer remains once a pinch drops to one. Reports
 // only raw client coordinates; what a drag/pinch actually does (AssetPhoto.tsx's 2D translate+scale,

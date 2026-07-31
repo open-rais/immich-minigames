@@ -16,7 +16,7 @@ export interface HiddenFaceOut {
   person_id: string | null
   person_name: string | null
   correct: boolean | null
-  // Roadmap #10 (rounds review) - what the player guessed, frozen at guess time. guess_person_name
+  // What the player guessed, frozen at guess time. guess_person_name
   // is null if that person no longer exists in Immich.
   guess_person_id: string | null
   guess_person_name: string | null

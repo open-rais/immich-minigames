@@ -18,7 +18,7 @@ const placeholderStyle = {
 // Same "zoom anchored under the cursor/pinch midpoint" UX principle as
 // games/Dateguessr/TimelineRuler.tsx, just 2D (translate x/y + scale) instead of its 1D
 // pixels-per-day/center-day - both built on the same usePointerGestures/useNonPassiveWheel
-// mechanics (CODE-REVIEW-FRONT.md A-2), applying them to a different transform.
+// mechanics, applying them to a different transform.
 const MIN_SCALE = 1
 const MAX_SCALE = 4
 const WHEEL_ZOOM_SENSITIVITY = 0.0015
@@ -68,7 +68,7 @@ export function AssetPhoto({
 
   // Start-of-gesture snapshots - captured in onDragStart/onPinchStart below, read in the matching
   // .../Move callback. usePointerGestures owns pointer capture/classification; this component owns
-  // what a drag/pinch actually does to translate+scale (CODE-REVIEW-FRONT.md A-2).
+  // what a drag/pinch actually does to translate+scale.
   const dragStartTranslateRef = useRef<Point>({ x: 0, y: 0 })
   const pinchStartRef = useRef<{
     startDistance: number

@@ -9,7 +9,7 @@ import { Button } from "../games/shared/Button"
 import { AuthCard } from "./AuthCard"
 import { AuthField } from "./AuthField"
 
-// Roadmap #H, F2 - public page (unlike ChangePasswordPage.tsx, no auth guard: the whole point is
+// Public page (unlike ChangePasswordPage.tsx, no auth guard: the whole point is
 // a locked-out user with no session) reached via the admin-generated /reset-password?token=...
 // link (see admin/AdminUserRow.tsx). Token pre-fills from the query param, same pattern
 // SignupPage.tsx already uses for its own ?invite= param - still editable, so a token shared

@@ -10,7 +10,7 @@ interface GameState {
   id: string
   score: number
   finished: boolean
-  // Admin feature (ADMIN-FEATURE.md point #4) - the backend's live configured total for this game
+  // The backend's live configured total for this game
   // (Geoguessr/Dateguessr: total_rounds, WhosThatPerson: total_people; undefined for games with
   // neither). Captured once at game start, same as the fields above - unlike `rounds`, an admin
   // changing this setting mid-game shouldn't retroactively change what a game already in progress
@@ -21,7 +21,7 @@ interface GameState {
 
 // Round-flow layer for the "fixed number of rounds, one picker per round, auto-advance after a
 // reveal hold" games (Geoguessr, Dateguessr, Timeline, WhosThatPerson), built on top of
-// useGameSession (CODE-REVIEW-FRONT.md A-1) for the screen/busy/daily/start/resume/backToIdle
+// useGameSession for the screen/busy/daily/start/resume/backToIdle
 // lifecycle those games share with every other game. This hook owns what's specific to their round
 // shape: round/pendingNextRound/phase state, the reveal-hold auto-advance, and submitGuess. The
 // component still owns its guess input state and rendering.
@@ -40,13 +40,13 @@ interface UseRoundGameConfig<TRound extends RoundOut, TGuess> {
   // Resets the component-owned guess input whenever a fresh round becomes active (game start and
   // each auto-advance).
   onNewRound: () => void
-  // Roadmap #e - fired once, only when resumeGame() picks an in-progress game back up (never on a
+  // Fired once, only when resumeGame() picks an in-progress game back up (never on a
   // fresh startGame()), with the full fetched GameOut - the hook-point a caller with extra
   // accumulated state derived from round history (e.g. WhosThatPersonGame's "N of 15 people"
   // counter) needs to seed itself from every already-answered round, not just the resumed pending
   // one. Games with no such state (Geoguessr, Dateguessr) simply omit it.
   onResume?: (game: GameOut) => void
-  // Roadmap #G - see useGameSession's own docstring for what this changes.
+  // See useGameSession's own docstring for what this changes.
   daily?: boolean
 }
 

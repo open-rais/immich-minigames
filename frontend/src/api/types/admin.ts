@@ -1,6 +1,6 @@
 // Admin-editable game/daily settings and invites - mirrors backend/src/api/dto/admin.py.
 
-// Admin feature (ADMIN-FEATURE.md point #4). `key` names match services/game_settings.py's
+// `key` names match services/game_settings.py's
 // SettingSpec keys (e.g. "decay_km", "total_rounds") - see admin/AdminGameRow.tsx for how they're
 // labeled.
 export interface GameSettingOut {
@@ -18,11 +18,10 @@ export interface GameSettingsOut {
   settings: GameSettingOut[]
 }
 
-// Roadmap #G.
 export interface DailySettingsOut {
   game_type: string
   mode: string
-  // The "Activar juego diario" checkbox from roadmap #f.
+  // The "Activar juego diario" checkbox.
   enabled: boolean
   settings: GameSettingOut[]
 }
@@ -32,7 +31,6 @@ export interface UpdateDailySettingsIn {
   values?: Record<string, number>
 }
 
-// Roadmap #H, F1.
 export type InviteStatus = "pending" | "used" | "expired"
 
 export interface InviteOut {

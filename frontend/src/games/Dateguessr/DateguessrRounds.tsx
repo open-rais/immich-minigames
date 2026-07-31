@@ -22,14 +22,14 @@ function isDateguessrRound(round: RoundOut): round is DateguessrRoundOut {
 function noop() {}
 
 // Steps through an already-finished Dateguessr game's rounds, one at a time, exactly as they
-// looked right after their reveal (ROUNDS-VIEW.md roadmap #10) - mirrors DateguessrGame.tsx's own
+// looked right after their reveal - mirrors DateguessrGame.tsx's own
 // finished-round layout, but with the stepper's prev/next arrows in place of a live game.
 export function DateguessrRounds({ game, onBack }: RoundsComponentProps) {
   const { t } = useTranslation()
 
   // actual_date never got set on a round still pending an answer (a game reached mid-play by URL)
-  // - same convention MoreOrLessRounds.tsx already established for its own redacted-field check
-  // (§3 H): there's nothing to reveal for it.
+  // - same convention MoreOrLessRounds.tsx already established for its own redacted-field check:
+  // there's nothing to reveal for it.
   const stepper = useRoundStepper(game, isDateguessrRound, (r) => r.actual_date !== null)
 
   if (!stepper) return null
@@ -51,8 +51,8 @@ export function DateguessrRounds({ game, onBack }: RoundsComponentProps) {
       </div>
 
       {/* key={round.id} remounts the ruler fresh on every stepper navigation, so its own pan/zoom
-          reveal animation replays instead of tweening between two unrelated rounds' dates (§5 of
-          the doc, same reasoning as GeoguessrRounds.tsx's MapPicker). */}
+          reveal animation replays instead of tweening between two unrelated rounds' dates (same
+          reasoning as GeoguessrRounds.tsx's MapPicker). */}
       <TimelineRuler
         key={round.id}
         selected={round.guess_date}

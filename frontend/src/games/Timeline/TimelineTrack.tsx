@@ -5,8 +5,8 @@ import { useTranslation } from "react-i18next"
 import type { TimelineCardSize, TimelineCardVariant } from "./TimelineCard"
 import { TimelineCard } from "./TimelineCard"
 
-// The strip is a plain scrollable list, NOT a proportional timeline ruler (docs/TODO/TIMELINE.md
-// decision [K]): fixed card width and fixed gap between every pair of cards, no matter how far
+// The strip is a plain scrollable list, NOT a proportional timeline ruler: fixed card width and
+// fixed gap between every pair of cards, no matter how far
 // apart their real dates are. Nothing here reuses Dateguessr/TimelineRuler.tsx or any of its
 // scale/zoom math.
 const TRACK_GAP_CLASS = "gap-2.5 md:gap-3.5"
@@ -37,7 +37,7 @@ export interface TrackCard {
   // the fly-in animation target in TimelineGame.tsx renders it invisible for one frame so its final
   // position can be measured before the floating "big card" animates toward it.
   visible?: boolean
-  // "Ver rondas" only (roadmap #10) - forwarded straight to TimelineCard's own badge/actions props.
+  // "Ver rondas" only - forwarded straight to TimelineCard's own badge/actions props.
   badge?: string
   actions?: ReactNode
 }
@@ -49,8 +49,7 @@ interface TimelineTrackProps {
   selectedSlot: number | null
   onSelectSlot: (slot: number) => void
   selectable: boolean
-  // Extra highlighted gap with no card in it - the real insertion point on a missed guess
-  // (docs/TODO/TIMELINE.md §5.2's "hueco correcto en verde").
+  // Extra highlighted gap with no card in it - the real insertion point on a missed guess.
   markerSlot?: number | null
   // "Ver rondas" only - every other (non-marker, non-selected) gap renders as empty space instead
   // of its neutral bordered square, since there's nothing to pick in a read-only board.

@@ -9,8 +9,8 @@ interface FaceBoxReadOnlyProps {
   mode: FaceBoxMode
 }
 
-// Read-only counterpart to IncognitoPhoto.tsx's internal FaceBox, for the rounds review
-// (ROUNDS-VIEW.md roadmap #10, §4.6) - same box geometry (faceBoxMath.ts), but none of that
+// Read-only counterpart to IncognitoPhoto.tsx's internal FaceBox, for the rounds review -
+// same box geometry (faceBoxMath.ts), but none of that
 // component's popover/anchor/tap logic, which this doesn't need at all: just one of two static
 // end-states, chosen by the "Tu respuesta"/"Real" toggle.
 export function FaceBoxReadOnly({ face, mode }: FaceBoxReadOnlyProps) {

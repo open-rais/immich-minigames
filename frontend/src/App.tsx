@@ -11,7 +11,7 @@ import { GameRoute } from "./menu/GameRoute"
 import { MainMenu } from "./menu/MainMenu"
 import { ThemeProvider } from "./theme/ThemeProvider"
 
-// Lazy-loaded (roadmap B-1 of CODE-REVIEW-FRONT.md): none of these are the entry path a session
+// Lazy-loaded: none of these are the entry path a session
 // hits right after login (that's "/" and the gameplay routes below), so they don't need to be in
 // the initial bundle. The Suspense boundary around <Routes> below covers all of them.
 const AdminPage = lazy(() => import("./admin/AdminPage").then((m) => ({ default: m.AdminPage })))
@@ -44,7 +44,7 @@ function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignupPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
-              {/* Roadmap #H, F3 - every other route needs a session; RequireAuth is a layout route
+              {/* Every other route needs a session; RequireAuth is a layout route
                   (renders <Outlet /> once logged in, redirects to /login otherwise) rather than
                   wrapping each element individually. */}
               <Route element={<RequireAuth />}>

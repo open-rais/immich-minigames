@@ -43,7 +43,7 @@ export function ImmichdleGame({ coverUrl, hasRoundsView, daily = false }: GameCo
   const [game, setGame] = useState<GameState | null>(null)
   const [pendingRoundId, setPendingRoundId] = useState<string | null>(null)
   const [history, setHistory] = useState<ImmichdleRoundOut[]>([])
-  // §7 of docs/TODO/UI-ENHANCEMENTS.md - the guess-reveal sequence. `animatingRoundId` is the row
+  // The guess-reveal sequence. `animatingRoundId` is the row
   // GuessTable/AnimatedGuessRow is currently running its own entrance/reveal timers for; the effect
   // below only advances past it once that row reports done *and* (only relevant when this was the
   // game's last guess) the target-person fetch below has also resolved - whichever finishes last.
@@ -177,7 +177,7 @@ export function ImmichdleGame({ coverUrl, hasRoundsView, daily = false }: GameCo
 
   // Advances past the guess-reveal sequence once both the row's own animation and (only when this
   // guess finished the game) the target fetch above have resolved - whichever finishes last is what
-  // actually triggers this, without branching on win/lose (§7 [DECISIÓN F0]).
+  // actually triggers this, without branching on win/lose.
   useEffect(() => {
     if (!animatingRoundId || !rowAnimationDone || !targetFetchDone) return
     setAnimatingRoundId(null)

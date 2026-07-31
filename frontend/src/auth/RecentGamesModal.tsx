@@ -14,9 +14,9 @@ interface RecentGamesModalProps {
   onClose: () => void
 }
 
-// Roadmap #e - profile "Ver juegos" modal: the last 5 games (finished or abandoned - never a
+// Profile "Ver juegos" modal: the last 5 games (finished or abandoned - never a
 // still-active one, see GamesService.get_recent_games) of the logged-in account, each linking to
-// its rounds view (roadmap #10, already built). Visual shell copied from games/shared/
+// its rounds view. Visual shell copied from games/shared/
 // ConfirmExitModal.tsx's overlay/card pattern; loading/error/ready state machine modeled on
 // games/rounds/RoundsPage.tsx.
 export function RecentGamesModal({ onClose }: RecentGamesModalProps) {

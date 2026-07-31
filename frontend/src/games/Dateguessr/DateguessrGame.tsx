@@ -19,7 +19,7 @@ import { ABOVE_RULER_BOTTOM_CLASS, RULER_BOTTOM_CLASS, TimelineRuler } from "./T
 
 const GAME_TYPE = GameType.Dateguessr
 const MODE = Mode.DaysToDate
-// Fallback only - the real total (admin-configurable, ADMIN-FEATURE.md point #4) comes from
+// Fallback only - the real total (admin-configurable) comes from
 // game.totalRounds, read off the backend's live GameOut.total_rounds.
 const DEFAULT_TOTAL_ROUNDS = 5
 // Same reveal-hold duration as GeoguessrGame - the ruler's own reveal animation is a bit shorter

@@ -114,7 +114,7 @@ export function assetsTogetherClue(round: ImmichdleRoundOut): ClueResult {
   return { variant, background: null, kind: "count", value: clues.assets_together }
 }
 
-// The target row (roadmap #10 rounds review, ROUNDS-VIEW.md §3 F/§4.6) - one xTargetClue per xClue
+// The target row (rounds review) - one xTargetClue per xClue
 // above, all `variant: "match"` and no background glyph (there's no direction to hint at when
 // showing the target's own value, not a comparison).
 export interface TargetSnapshot {

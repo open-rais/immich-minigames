@@ -2,7 +2,7 @@
 
 import type { GameType } from "./common"
 
-// A card already on the board - always fully revealed (see docs/TODO/TIMELINE.md decision [H]).
+// A card already on the board - always fully revealed.
 export interface TimelineCardOut {
   asset_id: string
   date: string

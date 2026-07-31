@@ -26,8 +26,7 @@ const FLY_TRANSITION_MS = 500
 // The strip pinned to the bottom of the screen (TimelineTrack.tsx) and the amount of space
 // reserved above it for the big card - one h-*/bottom-* pair per breakpoint, kept next to each
 // other so a height change is a single edit (same "pixel coupling" convention as Dateguessr/
-// TimelineRuler.tsx's RULER_HEIGHT_CLASS/RULER_BOTTOM_CLASS, though nothing here reuses that file
-// per docs/TODO/TIMELINE.md decision [K]).
+// TimelineRuler.tsx's RULER_HEIGHT_CLASS/RULER_BOTTOM_CLASS, though nothing here reuses that file).
 const TRACK_HEIGHT_CLASS = "h-40 md:h-48"
 const TRACK_BOTTOM_CLASS = "bottom-40 md:bottom-48"
 // Track height + a breathing gap - for the confirm button / reveal card floating just above it.
@@ -283,7 +282,7 @@ export function TimelineGame({ coverUrl, hasRoundsView, daily = false }: GameCom
           focusToken={focusToken}
           focusTarget={focusTarget}
         />
-        {/* Decorative only - not a temporal scale (docs/TODO/TIMELINE.md decision [K]). */}
+        {/* Decorative only - not a temporal scale. */}
         <div className="h-px bg-line-strong" />
       </div>
     </div>

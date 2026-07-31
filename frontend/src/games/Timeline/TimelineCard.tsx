@@ -14,8 +14,8 @@ export type TimelineCardSize = "lg" | "md" | "sm"
 export type TimelineCardVariant = "default" | "correct" | "wrong"
 
 // The one place both the big "card to place", the live-play track's small cards ("sm"), and the
-// "Ver rondas" track's bigger read-only cards ("md") get their dimensions from - decision [K]:
-// every track card is the same size regardless of how far apart its neighbors' dates are, so this
+// "Ver rondas" track's bigger read-only cards ("md") get their dimensions from - every track card
+// is the same size regardless of how far apart its neighbors' dates are, so this
 // is a fixed lookup, never computed from a date span. "sm" is wide enough on mobile that a full
 // "MMM D, YYYY" date fits the strip on one line without truncating.
 const SIZE_CLASS: Record<TimelineCardSize, string> = {
@@ -53,12 +53,12 @@ const IMG_FIT_CLASS: Record<TimelineCardSize, string> = {
 
 interface TimelineCardProps {
   assetId: string
-  // null renders "?" - the card's date hasn't been revealed yet (docs/TODO/TIMELINE.md decision [H]).
+  // null renders "?" - the card's date hasn't been revealed yet.
   date: string | null
   size?: TimelineCardSize
   variant?: TimelineCardVariant
   className?: string
-  // "Ver rondas" only (roadmap #10, decision [H]) - the order this card was drawn in ("Inicio" for
+  // "Ver rondas" only - the order this card was drawn in ("Inicio" for
   // the seed card, "#N" for round N's), rendered as a small pill over the top-left corner.
   badge?: string
   // "Ver rondas" only - a per-card menu (EntryOptionsMenu + "Ver en Immich"), rendered over the

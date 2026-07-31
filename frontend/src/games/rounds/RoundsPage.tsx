@@ -10,7 +10,7 @@ import { RoundsShell } from "./RoundsShell"
 
 type LoadState = { status: "loading" } | { status: "error" } | { status: "ready"; game: GameOut }
 
-// Loads a finished game and hands it to that mode's roundsComponent (ROUNDS-VIEW.md roadmap #10) -
+// Loads a finished game and hands it to that mode's roundsComponent -
 // modeled directly on menu/LeaderboardPage.tsx (params -> catalog lookup -> fetch -> render).
 export function RoundsPage() {
   const { t } = useTranslation()
@@ -56,7 +56,7 @@ export function RoundsPage() {
 
   if (state.status === "error") {
     // One message for every failure (including 403/404) - a game that's inaccessible or doesn't
-    // exist looks the same to the player either way (§4.4 of the doc).
+    // exist looks the same to the player either way.
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-app-bg px-6 text-center">
         <p className="text-body">{t("common.rounds.notFound")}</p>
@@ -72,7 +72,7 @@ export function RoundsPage() {
 
   // "Fullscreen" family (Geoguessr/Dateguessr/Who'sThatPerson) owns the whole viewport itself -
   // MapPicker/TimelineRuler/AssetPhoto are fixed full-screen components that don't belong inside
-  // RoundsShell's padded scrolling column (ROUNDS-VIEW.md §5), and the round stepper needs state
+  // RoundsShell's padded scrolling column, and the round stepper needs state
   // that only the component itself holds. RoundsShell is reserved for the "list" family
   // (MoreOrLess, Immichdle).
   if (catalogMode.roundsLayout === "fullscreen") {

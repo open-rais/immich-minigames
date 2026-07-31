@@ -19,12 +19,12 @@ const ACTIONS_COL = "w-10 flex-none md:w-12"
 
 interface GuessTableProps {
   history: ImmichdleRoundOut[]
-  // Roadmap #10 (rounds review) - when present, draws the target's own row above the guesses
-  // (ROUNDS-VIEW.md §3 F/§4.6) and adds a "Ver en Immich" menu to every row. Undefined during live
+  // When present, draws the target's own row above the guesses and adds a "Ver en Immich" menu to
+  // every row. Undefined during live
   // play (ImmichdleGame.tsx never has the target - it's redacted until the game finishes), which
   // keeps this table looking exactly as it always has there.
   target?: TargetSnapshot
-  // The guess-reveal sequence (§7 of docs/TODO/UI-ENHANCEMENTS.md) - when this matches a row in
+  // The guess-reveal sequence - when this matches a row in
   // `history`, that row renders as an AnimatedGuessRow instead of the plain static row below.
   // Undefined in the rounds-review table (ImmichdleRounds.tsx never passes it), which keeps that
   // table exactly as it's always looked - a finished game has nothing left to animate.

@@ -8,7 +8,7 @@ interface ShareModalProps {
   onClose: () => void
 }
 
-// Roadmap #G, F6 - shows the share text in a plain, selectable textbox instead of only trying
+// Shows the share text in a plain, selectable textbox instead of only trying
 // navigator.clipboard.writeText directly: the Clipboard API requires a secure context, which a
 // plain-HTTP self-hosted deployment (this project's default - see backend/src/config.py's
 // cookie_secure) won't have. The textbox lets the player select-all and copy manually either way;

@@ -22,7 +22,7 @@ const DEFAULT_PX_PER_DAY = 2.2 // starting zoom - months visible, matches the "m
 const WHEEL_ZOOM_SENSITIVITY = 0.0015
 const CLICK_MOVEMENT_THRESHOLD_PX = 6
 const REVEAL_ANIMATION_MS = 500
-// Variant A of the zoom-buttons UI-enhancements batch (§6, [DECISIÓN E]) - a fixed multiplicative
+// A fixed multiplicative
 // step per click/tap, same "anchor stays put" principle as the wheel/pinch gestures below. Bigger
 // than a single wheel tick on purpose - a button press is a deliberate, discrete action (not a
 // continuous gesture the player can just keep doing), so it should visibly move the needle.
@@ -58,7 +58,7 @@ interface TimelineRulerProps {
   onSelectedChange: (iso: string) => void
   actual?: string | null // ISO date, only set once revealed
   disabled?: boolean
-  // Hidden in the rounds-review screen ([DECISIÓN E2]) - that ruler is permanently `disabled` as a
+  // Hidden in the rounds-review screen - that ruler is permanently `disabled` as a
   // read-only replay, not mid-guess, so a control that changes its own zoom doesn't belong there.
   // Defaults to true so every live-play call site gets it for free.
   showZoomControls?: boolean
@@ -87,8 +87,7 @@ export function TimelineRuler({
   // Start-of-gesture snapshots - captured in onDragStart/onPinchStart below, read in the matching
   // .../Move callback. usePointerGestures owns pointer capture/classification (drag vs. pinch,
   // capture, the pinch->drag restart transition); this component owns what a drag/pinch actually
-  // does to pxPerDay/centerDayIndex - the 1D analog of AssetPhoto.tsx's 2D translate+scale
-  // (CODE-REVIEW-FRONT.md A-2).
+  // does to pxPerDay/centerDayIndex - the 1D analog of AssetPhoto.tsx's 2D translate+scale.
   const dragStartCenterDayIndexRef = useRef(0)
   const pinchStartRef = useRef<{
     startDistance: number
@@ -341,7 +340,7 @@ export function TimelineRuler({
       </div>
 
       {showZoomControls && (
-        // Own container, outside the ruler's pointer-capturing div (§6 "Detalles de implementación")
+        // Own container, outside the ruler's pointer-capturing div
         // - a tap on these buttons never reaches the pointer-gesture handlers above at all, rather
         // than relying solely on their target-guard. Floats above the ruler, mirroring the confirm
         // button's own ABOVE_RULER_BOTTOM_CLASS positioning (DateguessrGame.tsx) but on the right

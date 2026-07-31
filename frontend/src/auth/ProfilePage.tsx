@@ -8,9 +8,9 @@ import { ProfileAvatar, ProfileAvatarPlaceholder } from "./ProfileAvatar"
 import { RecentGamesModal } from "./RecentGamesModal"
 import { useAuth } from "./useAuth"
 
-// Read-only account view (roadmap point B's "lo básico", plus the skin avatar from roadmap point
-// E) - actual editing (username/full name/skin) lives on its own page, reached via "Edit profile"
-// (see EditProfilePage.tsx), so this one stays a plain "here's your account" display.
+// Read-only account view - actual editing (username/full name/skin) lives on its own page,
+// reached via "Edit profile" (see EditProfilePage.tsx), so this one stays a plain "here's your
+// account" display.
 export function ProfilePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -18,7 +18,7 @@ export function ProfilePage() {
   const [busy, setBusy] = useState(false)
   const [showRecentGames, setShowRecentGames] = useState(false)
 
-  // Roadmap #H, F3 - RequireAuth (App.tsx) already guarantees a session before this page ever
+  // RequireAuth (App.tsx) already guarantees a session before this page ever
   // mounts; this is just a TypeScript narrowing helper (user: User | null), not reachable at
   // runtime.
   if (!user) return null

@@ -10,7 +10,7 @@ import { GameSection } from "./GameSection"
 // group, and each of its modes is a card within that group - same shape Immich uses for
 // "year -> albums", just swapping "year" for "game" and "album" for "mode".
 export function MainMenu() {
-  // Personal-best badge (roadmap point E) - fetched once here rather than per-ModeCard so N
+  // Personal-best badge - fetched once here rather than per-ModeCard so N
   // modes don't mean N requests; keyed by "gameType:mode" to match GameSection's lookup.
   const [records, setRecords] = useState<Map<string, number>>(new Map())
 

@@ -21,15 +21,15 @@ function isWhosThatPersonRound(round: RoundOut): round is WhosThatPersonRoundOut
   return round.game_type === GameType.WhosThatPerson
 }
 
-// Steps through an already-finished Who'sThatPerson game's rounds, one at a time (ROUNDS-VIEW.md
-// roadmap #10) - mirrors GeoguessrRounds.tsx/DateguessrRounds.tsx's own "fullscreen" shape, plus the
-// "Tu respuesta"/"Real" toggle (§4.6) FaceBoxReadOnly.tsx renders.
+// Steps through an already-finished Who'sThatPerson game's rounds, one at a time - mirrors
+// GeoguessrRounds.tsx/DateguessrRounds.tsx's own "fullscreen" shape, plus the "Tu respuesta"/"Real"
+// toggle FaceBoxReadOnly.tsx renders.
 export function WhosThatPersonRounds({ game, onBack }: RoundsComponentProps) {
   const { t } = useTranslation()
   const [mode, setMode] = useState<FaceBoxMode>("yourAnswer")
 
   // A round still pending an answer (a game reached mid-play by URL) is dropped, same convention
-  // every other *Rounds component already established (§3 H).
+  // every other *Rounds component already established.
   const stepper = useRoundStepper(game, isWhosThatPersonRound, (r) => r.correct !== null)
 
   if (!stepper) return null

@@ -28,7 +28,7 @@ const COUNT_COLOR_CLASS: Record<ChainVariant, string> = {
 }
 
 // The chain of entities the player walked through: [round[0].reference, ...rounds.map(candidate)],
-// colored by the round that had it as its candidate (ROUNDS-VIEW.md §4.6) - the first entry was
+// colored by the round that had it as its candidate - the first entry was
 // never guessed, so it stays neutral. A round still pending an answer (a game reached mid-play by
 // URL) is dropped first: its candidate never got a score, so it can't take a place in the chain.
 function buildChain(rounds: MoreOrLessRoundOut[]): ChainEntry[] {

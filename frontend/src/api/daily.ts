@@ -3,8 +3,8 @@ import type { GameOut } from "./types/common"
 import type { DailyStatusOut } from "./types/daily"
 import type { DailyLeaderboardOut } from "./types/leaderboard"
 
-// Roadmap #G - backend/src/api/daily_api.py. Login is mandatory for every route (roadmap #H), so
-// no anonymous-vs-account branching to note here anymore.
+// backend/src/api/daily_api.py. Login is mandatory for every route, so no anonymous-vs-account
+// branching to note here anymore.
 
 // Dedupes concurrent callers (menu + the game it navigates into both ask for this on mount) onto
 // a single in-flight request. Cleared as soon as it settles, so it never serves stale data.

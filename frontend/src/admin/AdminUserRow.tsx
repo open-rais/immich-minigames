@@ -20,7 +20,7 @@ interface AdminUserRowProps {
   onUpdated: (updated: User) => void
 }
 
-// Admin feature (ADMIN-FEATURE.md point #3) - editing (full name/username/skin) for an arbitrary
+// Editing (full name/username/skin) for an arbitrary
 // account, mirroring auth/EditProfilePage.tsx's fields and flow but against api/admin.ts instead
 // of the self-service api/auth.ts, and operating on the `user` prop instead of useAuth()'s own
 // account. The row's own skin doubles as the accordion header's icon (left of the user's name),

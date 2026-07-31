@@ -19,7 +19,7 @@ interface AdminInviteRowProps {
   onRevoked: (id: string) => void
 }
 
-// Roadmap #H, F1 - one row per invite in AdminInvitesSection.tsx's list. Only a pending invite can
+// One row per invite in AdminInvitesSection.tsx's list. Only a pending invite can
 // be revoked (mirrors backend/src/services/invite_service.py's revoke_invite - already-used ones
 // are history, not actionable).
 export function AdminInviteRow({ invite, onRevoked }: AdminInviteRowProps) {

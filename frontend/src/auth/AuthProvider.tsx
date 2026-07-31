@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false))
   }, [])
 
-  // Roadmap #H, F0 (updated F3) - a session that dies mid-use (expired, or revoked by a password
+  // A session that dies mid-use (expired, or revoked by a password
   // change on another device) surfaces as a 401 on whatever request happens to be in flight next;
   // catch it globally here rather than in every screen that calls the API. login/getMe opt out via
   // skipAuthRedirect (see client.ts) - their 401s are normal control flow, handled locally.

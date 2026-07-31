@@ -27,7 +27,7 @@ export function LoginPage() {
     setError(null)
     try {
       await login({ email, password })
-      // Roadmap #H, F0 - a session that expired mid-use lands the user back where they were (the
+      // A session that expired mid-use lands the user back where they were (the
       // 401 interceptor in AuthProvider.tsx sets this via pendingRedirect.ts), not just on their
       // profile.
       const from = consumePendingRedirectFrom()

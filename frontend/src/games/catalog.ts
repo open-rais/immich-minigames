@@ -4,7 +4,7 @@ import { lazy } from "react"
 import type { GameOut } from "../api/types/common"
 import { GameType, Mode } from "../api/types/common"
 
-// Every game/rounds component is lazy-loaded (roadmap B-1 of CODE-REVIEW-FRONT.md) - this is what
+// Every game/rounds component is lazy-loaded - this is what
 // keeps maplibre-gl (Geoguessr's map, ~1 MB minified) and the other 5 games out of the initial
 // bundle, since this catalog is imported eagerly from the app's entry routes. Callers that render
 // `component`/`roundsComponent` need a <Suspense> boundary above them (see menu/GameRoute.tsx,
@@ -57,18 +57,18 @@ const WhosThatPersonRounds = lazy(() =>
 // itself up in the catalog.
 export interface GameComponentProps {
   coverUrl?: string
-  // Roadmap #10 - whether this mode has a roundsComponent registered (see CatalogMode below),
+  // Whether this mode has a roundsComponent registered (see CatalogMode below),
   // resolved once by GameRoute.tsx and threaded down so FinishedScreen can decide whether to show
   // its "Ver rondas" button without any game-tree module importing this catalog file itself (that
   // would cycle back through the *Game.tsx components this file already imports).
   hasRoundsView?: boolean
-  // Roadmap #G - true when this instance is playing today's daily challenge (resolved by
+  // True when this instance is playing today's daily challenge (resolved by
   // menu/DailyGameRoute.tsx from the /daily/:gameType/:mode route) instead of a normal game.
   // Threaded into useRoundGame's `daily` config - see that hook for what changes.
   daily?: boolean
 }
 
-// Roadmap #10 (rounds review) - every <Name>Rounds component takes the finished GameOut it reviews,
+// Every <Name>Rounds component takes the finished GameOut it reviews,
 // already loaded by RoundsPage.tsx. onBack is only used by the "fullscreen" family below (the
 // "list" family's RoundsShell already renders its own back button, so MoreOrLessRounds/
 // ImmichdleRounds just ignore it).
@@ -87,12 +87,12 @@ export interface CatalogMode {
   // falls back to the plain bg-primary block and IdleScreen just skips the image if omitted, for
   // any future game/mode added before its art is ready.
   coverUrl?: string
-  // Roadmap #10 - which component reviews a finished game of this mode (games/rounds/RoundsPage.tsx).
+  // Which component reviews a finished game of this mode (games/rounds/RoundsPage.tsx).
   // Every mode has one today, but stays optional so a future new game/mode can land before its
   // rounds review is built (same reasoning as coverUrl above) - GameScreens.tsx's FinishedScreen
   // only shows its "Ver rondas" button once a mode has one registered here.
   roundsComponent?: ComponentType<RoundsComponentProps>
-  // Which of ROUNDS-VIEW.md §2's two visual families that roundsComponent belongs to - "list"
+  // Which of the two visual families that roundsComponent belongs to - "list"
   // (default, unset) is a normal scrolling page wrapped in RoundsShell (MoreOrLess, Immichdle);
   // "fullscreen" (Geoguessr, Dateguessr, Who'sThatPerson) skips RoundsShell entirely and lets the
   // component own the whole viewport itself, the same way *Game.tsx already does - RoundsShell is

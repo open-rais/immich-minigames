@@ -70,7 +70,7 @@ export function AdminPage() {
           <AdminInvitesSection />
         </SettingAccordion>
 
-        {/* Roadmap #f - each game is now its own top-level accordion (AdminGamesSection renders
+        {/* Each game is now its own top-level accordion (AdminGamesSection renders
             one per GAME_CATALOG entry itself), replacing the single shared "Juegos" wrapper. */}
         <AdminGamesSection />
       </main>

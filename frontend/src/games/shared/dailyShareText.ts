@@ -47,9 +47,8 @@ function whosThatPersonCorrectTotal(game: GameOut): { correct: number; total: nu
   return { correct, total }
 }
 
-// Roadmap #G, F6 - the per-game emoji summary from the "Copy-Paste de daily" section of
-// docs/TODO/ROADMAP.md, built client-side from an already-finished GameOut (score, each round's
-// score_delta/distance/days-off) - no backend endpoint needed for this.
+// The per-game emoji share summary, built client-side from an already-finished GameOut (score,
+// each round's score_delta/distance/days-off) - no backend endpoint needed for this.
 export function buildDailyShareBody(t: TFunction, game: GameOut): string {
   switch (game.type) {
     case GameType.MoreOrLess:
@@ -89,8 +88,8 @@ export function buildDailyShareBody(t: TFunction, game: GameOut): string {
     }
 
     case GameType.Timeline:
-      // Score IS the streak of correctly placed cards (docs/TODO/TIMELINE.md decision [B]), same
-      // "score doubles as the headline count" shape as MoreOrLess's own streak line above.
+      // Score IS the streak of correctly placed cards, same "score doubles as the headline count"
+      // shape as MoreOrLess's own streak line above.
       return `${t("daily.share.timeline", { count: game.score })}\n${t("daily.share.total", { score: game.score })}`
 
     default:
@@ -112,10 +111,9 @@ export function buildDailyShareMessage(
   return `${header}\n${buildDailyShareBody(t, game)}\n${link}`
 }
 
-// Roadmap #G, F6 - the condensed "todos resumidos a una linea" variant (docs/TODO/ROADMAP.md's
-// "Copy-Paste de daily" section) - one line per mode instead of each mode's full round-by-round
-// breakdown, used when every enabled daily mode has been played (menu/DailySection.tsx's header
-// share button).
+// The condensed "todos resumidos a una linea" variant - one line per mode instead of each mode's
+// full round-by-round breakdown, used when every enabled daily mode has been played
+// (menu/DailySection.tsx's header share button).
 export function buildDailyShareOneLiner(t: TFunction, game: GameOut): string {
   switch (game.type) {
     case GameType.MoreOrLess:
@@ -144,7 +142,7 @@ export function buildDailyShareOneLiner(t: TFunction, game: GameOut): string {
     }
 
     case GameType.Timeline:
-      // One-liner: just the first line (docs/TODO/TIMELINE.md §6.3) - the score is already in it.
+      // One-liner: just the first line - the score is already in it.
       return t("daily.share.timeline", { count: game.score })
 
     default:

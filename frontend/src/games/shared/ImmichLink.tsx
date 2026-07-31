@@ -8,7 +8,7 @@ interface ImmichLinkProps {
   className?: string
 }
 
-/** "Ver en Immich" deep link (ROUNDS-VIEW.md roadmap point #10) - renders nothing if Immich's
+/** "Ver en Immich" deep link - renders nothing if Immich's
  * public URL isn't configured, so callers never need their own conditional around this. Styled as
  * a menu row (see EntryOptionsMenu.tsx), matching menu/UserMenu.tsx's own account/language/theme
  * rows - it's meant to live inside that "..." popover, not stand alone. */

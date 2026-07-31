@@ -9,14 +9,14 @@ import { AuthCard } from "./AuthCard"
 import { AuthField } from "./AuthField"
 import { useAuth } from "./useAuth"
 
-// Roadmap #H, F0 - self-service password change, reached from ProfilePage's "Change password"
+// Self-service password change, reached from ProfilePage's "Change password"
 // button. Same shell/state shape as EditProfilePage.tsx; kept as its own page (rather than a
 // section on EditProfilePage) since it's a distinct action with its own current/new-password
 // fields, not a profile field being edited in place.
 export function ChangePasswordPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  // Roadmap #H, F3 - no more session guard here at all: RequireAuth (App.tsx) already guarantees
+  // No session guard here at all: RequireAuth (App.tsx) already guarantees
   // one before this page mounts, and unlike ProfilePage/EditProfilePage this page never reads
   // `user` itself, so there's nothing left needing a TypeScript narrowing check either.
   const { changePassword } = useAuth()

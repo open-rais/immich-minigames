@@ -12,11 +12,11 @@ interface RoundsShellProps {
   children: ReactNode
 }
 
-// Chrome for the "full list" rounds-review family (MoreOrLess, Immichdle - ROUNDS-VIEW.md §2)-
+// Chrome for the "full list" rounds-review family (MoreOrLess, Immichdle) -
 // header mirrors menu/LeaderboardPage.tsx's (generic feature title as h1, game+mode as h2). The
 // "one round at a time" family (Geoguessr/Dateguessr/Who'sThatPerson) never reaches this shell at
 // all - RoundsPage.tsx renders those <XxxRounds> directly, since MapPicker/TimelineRuler/AssetPhoto
-// are all fixed-position full-viewport components (§5 of the doc) that don't belong inside this
+// are all fixed-position full-viewport components that don't belong inside this
 // shell's padded, centered, min-h-dvh column, and their own round stepper needs live state only
 // the component itself holds. Deliberately no max-w-* around children either way - MoreOrLess's
 // own list applies its own max-w-md.

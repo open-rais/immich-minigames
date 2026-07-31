@@ -33,10 +33,10 @@ function ShareIcon() {
   )
 }
 
-// Roadmap #G - "Daily" menu section: same collapsible-group shape as a normal GameSection (chevron
+// "Daily" menu section: same collapsible-group shape as a normal GameSection (chevron
 // + title, grid-rows collapse animation, see menu/GameSection.tsx), but listing every enabled
-// daily mode instead of one game's own modes, with a countdown to the next reset next to the title
-// (decision [G]). Renders nothing once loaded if no mode is enabled - an empty section header
+// daily mode instead of one game's own modes, with a countdown to the next reset next to the
+// title. Renders nothing once loaded if no mode is enabled - an empty section header
 // would be worse than no section.
 export function DailySection() {
   const { t } = useTranslation()
@@ -65,8 +65,8 @@ export function DailySection() {
     return t("mainMenu.notPlayed")
   }
 
-  // Roadmap #G, F6 - "Si se comparte total: Todos resumidos a una linea" (docs/TODO/ROADMAP.md) -
-  // only offered once every enabled mode has been played, fetching each one's full GameOut (rounds)
+  // A combined "share all results" summary line - only offered once every enabled mode has been
+  // played, fetching each one's full GameOut (rounds)
   // on demand rather than keeping them all loaded just in case.
   const allFinished = status.modes.every((m) => m.status === "finished")
 

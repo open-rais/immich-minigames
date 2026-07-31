@@ -1,4 +1,4 @@
-// Roadmap #G - daily games, player-facing status. Mirrors backend/src/api/dto/daily.py (see
+// Daily games, player-facing status. Mirrors backend/src/api/dto/daily.py (see
 // services/games_service.py's GamesService.get_daily_status).
 
 export type DailyModeStatusValue = "not_played" | "in_progress" | "finished"

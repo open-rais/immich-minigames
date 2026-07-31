@@ -22,14 +22,14 @@ function isGeoguessrRound(round: RoundOut): round is GeoguessrRoundOut {
 function noop() {}
 
 // Steps through an already-finished Geoguessr game's rounds, one at a time, exactly as they looked
-// right after their reveal (ROUNDS-VIEW.md roadmap #10) - mirrors GeoguessrGame.tsx's own
+// right after their reveal - mirrors GeoguessrGame.tsx's own
 // finished-round layout, but with the stepper's prev/next arrows in place of a live game.
 export function GeoguessrRounds({ game, onBack }: RoundsComponentProps) {
   const { t } = useTranslation()
 
   // actual_latitude never got set on a round still pending an answer (a game reached mid-play by
   // URL) - same convention MoreOrLessRounds.tsx already established for its own redacted-field
-  // check (§3 H): there's nothing to reveal for it.
+  // check: there's nothing to reveal for it.
   const stepper = useRoundStepper(game, isGeoguessrRound, (r) => r.actual_latitude !== null)
 
   if (!stepper) return null
@@ -63,7 +63,7 @@ export function GeoguessrRounds({ game, onBack }: RoundsComponentProps) {
           like real gameplay's own reveal state. Forcing it open always would permanently cover the
           asset carousel underneath, with no way to browse the round's other photos. key={round.id}
           remounts the map fresh on every stepper navigation, so its own fitBounds reveal animation
-          replays instead of tweening between two unrelated rounds' coordinates (§5 of the doc). */}
+          replays instead of tweening between two unrelated rounds' coordinates. */}
       <MapPicker key={round.id} pin={pin} onPinChange={noop} actual={actual} disabled />
 
       {round.distance_km !== null && round.score_delta !== null && (

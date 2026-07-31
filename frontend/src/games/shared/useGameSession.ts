@@ -27,12 +27,11 @@ interface UseGameSessionConfig {
   // game's own "finished" state; returns whether it succeeded (false -> error screen). Only ever
   // called when `daily` is true.
   hydrateFinishedDaily: (g: GameOut) => boolean
-  // Roadmap #G - true when this instance is playing today's daily challenge (menu/
+  // True when this instance is playing today's daily challenge (menu/
   // DailyGameRoute.tsx) instead of a normal game. Changes which endpoint creates a game, where the
   // idle-screen "has an active game" check reads from (GET /daily's status instead of
-  // get_current_game, which excludes daily games by design - see docs/TODO/DAILY-GAMES.md §4.5),
-  // and that an already-finished daily jumps straight to the finished screen instead of ever
-  // offering "Jugar" again.
+  // get_current_game, which excludes daily games by design), and that an already-finished daily
+  // jumps straight to the finished screen instead of ever offering "Jugar" again.
   daily?: boolean
 }
 
@@ -45,16 +44,16 @@ export function useGameSession({
 }: UseGameSessionConfig) {
   const [screen, setScreen] = useState<Screen>("idle")
   const [busy, setBusy] = useState(false)
-  // Roadmap #e - whether the current player has an unfinished game for this (gameType, mode); null
+  // Whether the current player has an unfinished game for this (gameType, mode); null
   // while the idle-screen check below is still in flight, which IdleScreen treats the same as
   // false (an accepted brief "plain layout, then Continue pops in" flash).
   const [hasCurrentGame, setHasCurrentGame] = useState<boolean | null>(null)
-  // Roadmap #G - the daily game's id, known from GET /daily's status before the player has done
+  // The daily game's id, known from GET /daily's status before the player has done
   // anything - resumeGame() reads this instead of calling getCurrentGame (which never returns a
   // daily game).
   const dailyGameIdRef = useRef<string | null>(null)
   // Bumped when the idle-screen status needs re-fetching while the screen is already "idle" -
-  // today only the daily 409 fallback in startGame below (docs/TODO/DAILY-GAMES.md §4.7).
+  // today only the daily 409 fallback in startGame below.
   const [idleRefresh, setIdleRefresh] = useState(0)
 
   const { isCurrent, guarded, discardInFlight } = useGuardedRequests()
@@ -125,7 +124,7 @@ export function useGameSession({
         if (daily && apiErrorStatus(err) === 409) {
           // Today's attempt was consumed between the idle status check and this create (another
           // tab/device) - re-run the status check instead of showing a generic error; it lands on
-          // the finished (or in-progress) state, the "ya jugado" behavior of DAILY-GAMES.md §4.7.
+          // the finished (or in-progress) state instead, the "already played today" behavior.
           setHasCurrentGame(null)
           setIdleRefresh((n) => n + 1)
           return
@@ -137,7 +136,7 @@ export function useGameSession({
     })
   }
 
-  // Roadmap #e - "Continuar" button's action: picks the player's existing unfinished game back up
+  // "Continuar" button's action: picks the player's existing unfinished game back up
   // instead of creating a new one.
   async function resumeGame() {
     await guarded(startInFlightRef, async (token) => {

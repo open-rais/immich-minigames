@@ -11,7 +11,7 @@ import { AuthField } from "./AuthField"
 import { ProfileAvatar, ProfileAvatarPlaceholder } from "./ProfileAvatar"
 import { useAuth } from "./useAuth"
 
-// Edit form (roadmap point E) - reached from ProfilePage's "Edit profile" button, separate from
+// Edit form - reached from ProfilePage's "Edit profile" button, separate from
 // the read-only profile view so that page can stay a plain "here's your account" display.
 // Editable username/full name, plus the cosmetic skin (avatar) picker; email stays read-only (no
 // endpoint to change it - would need re-verification this app doesn't have yet).
@@ -40,7 +40,7 @@ export function EditProfilePage() {
     }
   }, [user])
 
-  // Roadmap #H, F3 - RequireAuth (App.tsx) already guarantees a session before this page ever
+  // RequireAuth (App.tsx) already guarantees a session before this page ever
   // mounts; this is just a TypeScript narrowing helper (user: User | null), not reachable at
   // runtime.
   if (!user) return null

@@ -1,4 +1,4 @@
-// Roadmap point F - leaderboards (requires login, unlike the personal records in records.ts) -
+// Leaderboards (requires login, unlike the personal records in records.ts) -
 // mirrors backend/src/api/dto/leaderboard.py.
 
 export type LeaderboardWindow = "all" | "weekly" | "daily"
@@ -15,7 +15,7 @@ export interface LeaderboardOut {
   entries: LeaderboardEntryOut[]
 }
 
-// Roadmap #G, F5 - same entry shape as the normal LeaderboardOut, scoped to one specific day's
+// Same entry shape as the normal LeaderboardOut, scoped to one specific day's
 // challenge instead of a rolling window.
 export interface DailyLeaderboardOut {
   date: string

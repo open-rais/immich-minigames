@@ -11,7 +11,7 @@ export interface ModeConfig {
   thumbnailUrl: (id: string) => string
   modeTitleKey: string
   descriptionKey: string
-  // Which ImmichLink kind this mode's entities are (roadmap #10 rounds view) - person for
+  // Which ImmichLink kind this mode's entities are (rounds view) - person for
   // personAssets, album for albumAssets.
   linkKind: "person" | "album"
 }
