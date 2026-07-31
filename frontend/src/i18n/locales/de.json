@@ -1,0 +1,346 @@
+{
+  "appHeader": {
+    "title": "immich-minigames"
+  },
+  "userMenu": {
+    "trigger": "Kontomenü",
+    "settings": "Einstellungen",
+    "adminPanel": "Admin"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "language": "Sprache",
+    "theme": "Design",
+    "themeOptions": {
+      "light": "Hell",
+      "dark": "Dunkel",
+      "system": "System"
+    }
+  },
+  "mainMenu": {
+    "modesCount_one": "{{count}} Modus",
+    "modesCount_other": "{{count}} Modi",
+    "bestScore": "Beste: {{score}}",
+    "notPlayed": "Noch nicht gespielt"
+  },
+  "daily": {
+    "title": "Täglich",
+    "leaderboard": {
+      "previousDay": "Vorheriger Tag",
+      "nextDay": "Nächster Tag",
+      "streak": "{{count}}-Tage-Serie"
+    },
+    "share": {
+      "button": "Teilen",
+      "copyButton": "Kopieren",
+      "copied": "In Zwischenablage kopiert!",
+      "error": "Kopieren fehlgeschlagen - Versuchen Sie es erneut",
+      "header": "{{game}} - {{date}}",
+      "allHeader": "Tägliche Ergebnisse - {{date}}",
+      "moreOrLess": "📈 Serie: {{score}} 📉",
+      "roundLine": "{{color}} {{points}} Punkte ({{detail}})",
+      "total": "Gesamt: {{score}} Punkte",
+      "immichdleWon": "🟩 In {{attempts}} Versuchen erraten",
+      "immichdleLost": "🟥 Nicht erraten",
+      "whosThatPerson": "🧑‍🧑‍🧒‍🧒 {{correct}}/{{total}} Personen",
+      "km": "{{value}}km",
+      "days": "{{count}} Tage",
+      "timeline": "🃏 {{count}} Karten"
+    }
+  },
+  "leaderboard": {
+    "title": "Rangliste",
+    "empty": "Noch niemand hat diesen Modus in diesem Fenster gespielt.",
+    "window": {
+      "all": "Gesamtverlauf",
+      "weekly": "Wöchentlich",
+      "daily": "Täglich"
+    }
+  },
+  "common": {
+    "back": "Zurück",
+    "score": "Punktzahl",
+    "startCta": "Spiel starten",
+    "continueCta": "Fortfahren",
+    "newGameCta": "Neues Spiel",
+    "confirmGuess": "Antwort bestätigen",
+    "roundOf": "Runde {{current}} von {{total}}",
+    "points": "+{{score}} Punkte",
+    "playAgain": "Erneut spielen",
+    "leaderboards": "Ranglisten",
+    "previousPhoto": "Vorheriges Foto",
+    "nextPhoto": "Nächstes Foto",
+    "previousRound": "Vorherige Runde",
+    "nextRound": "Nächste Runde",
+    "viewInImmich": "In Immich anzeigen",
+    "viewRounds": "Spiel anzeigen",
+    "rounds": {
+      "title": "Spiel",
+      "notFound": "Dieses Spiel existiert nicht oder gehört nicht dir.",
+      "optionsMenu": "Optionen"
+    },
+    "finished": {
+      "title": "Spielende",
+      "finalScore": "Endergebnis: {{score}}"
+    },
+    "error": {
+      "message": "Etwas ist beim Kontakt mit dem Server schiefgelaufen.",
+      "retry": "Erneut versuchen"
+    },
+    "exitConfirm": {
+      "title": "Willst du das Spiel wirklich beenden?",
+      "message": "Du wirst diese Runde ohne Antwort verlassen, aber du kannst dieses Spiel später über sein Menü fortsetzen.",
+      "confirm": "Beenden",
+      "cancel": "Abbrechen"
+    }
+  },
+  "moreOrLess": {
+    "title": "Mehr oder Weniger",
+    "modes": {
+      "personAssets": "Fotos von Personen",
+      "albumAssets": "Fotos von Alben",
+      "personBirthDate": "Geburtsdatum"
+    },
+    "start": {
+      "personAssets": "Erraten Sie, ob die nächste Person mehr oder weniger Fotos als die vorherige hat. Eine falsche Antwort beendet das Spiel.",
+      "albumAssets": "Erraten Sie, ob das nächste Album mehr oder weniger Fotos als das vorherige hat. Eine falsche Antwort beendet das Spiel.",
+      "personBirthDate": "Erraten Sie, ob die nächste Person vor oder nach der vorherigen geboren wurde. Eine falsche Antwort beendet das Spiel."
+    },
+    "has": "hat",
+    "bornOn": "wurde geboren am",
+    "unit_one": "Foto",
+    "unit_other": "Fotos",
+    "question": "Hat {{name}} mehr oder weniger Fotos?",
+    "birthDateQuestion": "Wurde {{name}} vor oder nach geboren?",
+    "guessMore": "Mehr",
+    "guessLess": "Weniger",
+    "guessAfter": "Danach",
+    "guessBefore": "Davor",
+    "result": {
+      "correct": "Richtig!",
+      "incorrect": "Nicht ganz.",
+      "continue": "Fortfahren"
+    }
+  },
+  "geoguessr": {
+    "title": "Geoguessr",
+    "modes": {
+      "distanceBetweenGuess": "Klassisch"
+    },
+    "start": {
+      "description": "Erraten Sie, wo jedes Foto aufgenommen wurde. Die Punktzahl nimmt mit der Entfernung vom echten Ort ab."
+    },
+    "result": {
+      "distance": "{{distance}} km entfernt"
+    }
+  },
+  "dateguessr": {
+    "title": "Dateguessr",
+    "modes": {
+      "daysToDate": "Klassisch"
+    },
+    "start": {
+      "description": "Erraten Sie, wann jedes Foto aufgenommen wurde. Die Punktzahl nimmt mit der Entfernung vom echten Datum ab."
+    },
+    "zoomIn": "Vergrößern",
+    "zoomOut": "Verkleinern",
+    "result": {
+      "daysOff_one": "{{count}} Tag Unterschied",
+      "daysOff_other": "{{count}} Tage Unterschied"
+    }
+  },
+  "immichdle": {
+    "title": "Immichdle",
+    "modes": {
+      "person": "Persondle",
+      "album": "Albumdle"
+    },
+    "start": {
+      "description": "Erraten Sie die mysteriöse Person. Jede Antwort enthüllt vergleichende Hinweise - Grün bedeutet eine Übereinstimmung, Amber bedeutet nah dran, Rot bedeutet weit weg."
+    },
+    "searchPlaceholder": "Eine Person nach Name suchen...",
+    "searching": "Wird gesucht...",
+    "noResults": "Keine Treffer gefunden.",
+    "unknown": "?",
+    "clues": {
+      "age": "Alter",
+      "assetCount": "Fotos",
+      "firstAppearance": "Erste Sichtung",
+      "commonNames": "Gemeinsame Namen",
+      "mlSimilarity": "Gesichtsübereinstimmung",
+      "assetsTogether": "Zusammen"
+    },
+    "finished": {
+      "won": "Du hast es erraten!",
+      "lost": "Spielende"
+    },
+    "album": {
+      "start": {
+        "description": "Erraten Sie das mysteriöse Album. Jede Antwort enthüllt vergleichende Hinweise - Grün bedeutet eine Übereinstimmung, Amber bedeutet nah dran, Rot bedeutet weit weg."
+      },
+      "searchPlaceholder": "Ein Album nach Name suchen...",
+      "clues": {
+        "firstAssetDate": "Erste Sichtung",
+        "assetCount": "Fotos",
+        "dominantFace": "Dominantes Gesicht",
+        "commonNames": "Gemeinsame Namen",
+        "similarity": "Ähnlichkeit",
+        "uniqueFaceCount": "Eindeutige Gesichter"
+      }
+    }
+  },
+  "whosThatPerson": {
+    "title": "Wer ist diese Person",
+    "modes": {
+      "namedFaces": "Klassisch"
+    },
+    "start": {
+      "description": "Einige bereits benannte Gesichter in jedem Foto sind geschwärzt - klicken Sie auf eines und suchen Sie, wer es ist."
+    },
+    "progress": "{{current}} von {{total}} Personen",
+    "submit": "Antworten einreichen",
+    "result": {
+      "correctCount": "{{correct}}/{{total}} richtig"
+    },
+    "rounds": {
+      "yourAnswer": "Deine Antwort",
+      "real": "Real"
+    }
+  },
+  "timeline": {
+    "title": "Timeline",
+    "modes": {
+      "arcade": "Arcade"
+    },
+    "start": {
+      "description": "Fügen Sie jedes neue Foto an der richtigen Stelle in die Zeitleiste ein. Ein Fehler beendet das Spiel."
+    },
+    "cardLabel": "Karte {{count}}",
+    "confirmSlot": "Position bestätigen",
+    "selectSlotAria": "Einfügepunkt auswählen",
+    "result": {
+      "correct": "Richtig!",
+      "wrong": "Falsche Position"
+    },
+    "rounds": {
+      "banner": "Die Nummer auf jeder Karte gibt die Reihenfolge an, in der sie gezogen wurde.",
+      "bannerLoss": "Die Karte, die das Spiel beendet hat, wird rot angezeigt: Wo du sie platziert hast und wo sie tatsächlich sein sollte.",
+      "startBadge": "Start",
+      "orderBadge": "#{{count}}"
+    }
+  },
+  "auth": {
+    "fields": {
+      "email": "E-Mail",
+      "username": "Benutzername",
+      "fullName": "Vollständiger Name",
+      "password": "Passwort",
+      "person": "Person"
+    },
+    "login": {
+      "title": "Anmelden",
+      "cta": "Anmelden",
+      "noAccount": "Noch kein Konto?"
+    },
+    "signup": {
+      "title": "Registrieren",
+      "cta": "Registrieren",
+      "hasAccount": "Hast du bereits ein Konto?",
+      "inviteCode": "Einladungscode"
+    },
+    "resetPassword": {
+      "title": "Passwort zurücksetzen",
+      "token": "Zurücksetzen-Token",
+      "newPassword": "Neues Passwort",
+      "submit": "Passwort zurücksetzen"
+    },
+    "profile": {
+      "title": "Profil",
+      "memberSince": "Mitglied seit {{date}}",
+      "logout": "Abmelden",
+      "edit": "Profil bearbeiten",
+      "save": "Änderungen speichern",
+      "saved": "Profil aktualisiert",
+      "viewGames": "Spiele anzeigen",
+      "resetPassword": "Passwort zurücksetzen",
+      "changePassword": {
+        "title": "Passwort ändern",
+        "currentPassword": "Aktuelles Passwort",
+        "newPassword": "Neues Passwort",
+        "save": "Passwort ändern",
+        "saved": "Passwort geändert"
+      },
+      "skin": {
+        "label": "Skin",
+        "none": "Keine",
+        "clear": "Löschen"
+      },
+      "recentGames": {
+        "title": "Letzte Spiele",
+        "loading": "Spiele werden geladen...",
+        "empty": "Du hast noch keine Spiele beendet.",
+        "score": "{{score}} Punkte",
+        "finished": "Beendet",
+        "abandoned": "Abgebrochen",
+        "daily": "Täglich"
+      }
+    },
+    "error": {
+      "generic": "Etwas ist schiefgelaufen. Bitte versuche es erneut."
+    }
+  },
+  "admin": {
+    "users": {
+      "title": "Benutzer",
+      "description": "App-Konten verwalten",
+      "loading": "Benutzer werden geladen..."
+    },
+    "games": {
+      "description": "Konfiguration für jedes Spiel bearbeiten",
+      "loading": "Spiele werden geladen...",
+      "noSettings": "Dieses Spiel hat noch keine konfigurierbaren Einstellungen.",
+      "reset": "Auf Standard zurücksetzen",
+      "settings": {
+        "total_rounds": "Gesamtrunden",
+        "max_score": "Maximale Punkte pro Runde",
+        "max_extra_assets": "Zusätzliche angezeigte Fotos",
+        "flat_score_radius_km": "Radius mit Maximalpunkten (km)",
+        "decay_km": "Punkteverfall (km)",
+        "flat_score_days": "Tage mit Maximalpunkten",
+        "decay_days": "Punkteverfall (Tage)",
+        "starting_score": "Startpunktzahl",
+        "wrong_guess_penalty": "Strafe für falsche Antwort",
+        "asset_count_weight": "Gewichtung der Fotanzahl (0 = einheitlich, 1 = proportional)",
+        "total_people": "Gesamtanzahl der Personen",
+        "max_hidden_faces": "Max verborgen Gesichter pro Runde",
+        "tolerance_days": "Slot-Toleranz (Tage)",
+        "min_separation_days": "Mindestabstand zwischen Karten (Tage)",
+        "max_cards": "Max Karten (0 = unbegrenzt)"
+      }
+    },
+    "daily": {
+      "title": "Tägliches Spiel",
+      "enabledLabel": "Für die tägliche Rotation aktivieren",
+      "settings": {
+        "no_repeat_days": "Fenster ohne Wiederholung (Tage)",
+        "chain_length": "Kettenlängenbegrenzung"
+      }
+    },
+    "invites": {
+      "title": "Einladungen",
+      "description": "Registrierungslinks generieren",
+      "loading": "Einladungen werden geladen...",
+      "empty": "Noch keine Einladungen.",
+      "generate": "Einladung generieren",
+      "revoke": "Widerrufen",
+      "status": {
+        "pending": "Ausstehend",
+        "used": "Verwendet",
+        "expired": "Abgelaufen"
+      },
+      "createdAt": "Erstellt {{date}}",
+      "expiresAt": "Läuft ab {{date}}",
+      "usedAt": "Verwendet {{date}}"
+    }
+  }
+}

@@ -1,0 +1,346 @@
+{
+  "appHeader": {
+    "title": "immich-minigames"
+  },
+  "userMenu": {
+    "trigger": "Menu de compte",
+    "settings": "Paramètres",
+    "adminPanel": "Admin"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "language": "Langue",
+    "theme": "Thème",
+    "themeOptions": {
+      "light": "Clair",
+      "dark": "Sombre",
+      "system": "Système"
+    }
+  },
+  "mainMenu": {
+    "modesCount_one": "{{count}} mode",
+    "modesCount_other": "{{count}} modes",
+    "bestScore": "Meilleur: {{score}}",
+    "notPlayed": "Pas encore joué"
+  },
+  "daily": {
+    "title": "Quotidien",
+    "leaderboard": {
+      "previousDay": "Jour précédent",
+      "nextDay": "Jour suivant",
+      "streak": "Série de {{count}} jours"
+    },
+    "share": {
+      "button": "Partager",
+      "copyButton": "Copier",
+      "copied": "Copié dans le presse-papiers!",
+      "error": "Impossible de copier - réessayez",
+      "header": "{{game}} - {{date}}",
+      "allHeader": "Résultats quotidiens - {{date}}",
+      "moreOrLess": "📈 Série: {{score}} 📉",
+      "roundLine": "{{color}} {{points}} pts ({{detail}})",
+      "total": "Total: {{score}} pts",
+      "immichdleWon": "🟩 Deviné en {{attempts}} tentatives",
+      "immichdleLost": "🟥 Non deviné",
+      "whosThatPerson": "🧑‍🧑‍🧒‍🧒 {{correct}}/{{total}} personnes",
+      "km": "{{value}}km",
+      "days": "{{count}} jours",
+      "timeline": "🃏 {{count}} cartes"
+    }
+  },
+  "leaderboard": {
+    "title": "Classement",
+    "empty": "Personne n'a joué à ce mode dans cette fenêtre encore.",
+    "window": {
+      "all": "Historique",
+      "weekly": "Hebdomadaire",
+      "daily": "Quotidien"
+    }
+  },
+  "common": {
+    "back": "Retour",
+    "score": "Score",
+    "startCta": "Commencer le jeu",
+    "continueCta": "Continuer",
+    "newGameCta": "Nouveau jeu",
+    "confirmGuess": "Confirmer la réponse",
+    "roundOf": "Manche {{current}} sur {{total}}",
+    "points": "+{{score}} pts",
+    "playAgain": "Rejouer",
+    "leaderboards": "Classements",
+    "previousPhoto": "Photo précédente",
+    "nextPhoto": "Photo suivante",
+    "previousRound": "Manche précédente",
+    "nextRound": "Manche suivante",
+    "viewInImmich": "Voir dans Immich",
+    "viewRounds": "Voir le jeu",
+    "rounds": {
+      "title": "Jeu",
+      "notFound": "Ce jeu n'existe pas ou n'est pas le vôtre.",
+      "optionsMenu": "Options"
+    },
+    "finished": {
+      "title": "Jeu terminé",
+      "finalScore": "Score final: {{score}}"
+    },
+    "error": {
+      "message": "Quelque chose s'est mal passé lors de la communication avec le serveur.",
+      "retry": "Réessayer"
+    },
+    "exitConfirm": {
+      "title": "Êtes-vous sûr de vouloir quitter?",
+      "message": "Vous laisserez cette manche sans réponse, mais vous pourrez continuer ce jeu plus tard depuis son menu.",
+      "confirm": "Quitter",
+      "cancel": "Annuler"
+    }
+  },
+  "moreOrLess": {
+    "title": "Plus ou Moins",
+    "modes": {
+      "personAssets": "Photos de personnes",
+      "albumAssets": "Photos d'albums",
+      "personBirthDate": "Date de naissance"
+    },
+    "start": {
+      "personAssets": "Devinez si la personne suivante a plus ou moins de photos que la précédente. Une mauvaise réponse termine le jeu.",
+      "albumAssets": "Devinez si l'album suivant a plus ou moins de photos que le précédent. Une mauvaise réponse termine le jeu.",
+      "personBirthDate": "Devinez si la personne suivante est née avant ou après la précédente. Une mauvaise réponse termine le jeu."
+    },
+    "has": "a",
+    "bornOn": "est né(e) le",
+    "unit_one": "photo",
+    "unit_other": "photos",
+    "question": "{{name}} a-t-il/elle plus ou moins de photos?",
+    "birthDateQuestion": "{{name}} est-il/elle né(e) avant ou après?",
+    "guessMore": "Plus",
+    "guessLess": "Moins",
+    "guessAfter": "Après",
+    "guessBefore": "Avant",
+    "result": {
+      "correct": "Correct!",
+      "incorrect": "Pas tout à fait.",
+      "continue": "Continuer"
+    }
+  },
+  "geoguessr": {
+    "title": "Geoguessr",
+    "modes": {
+      "distanceBetweenGuess": "Classique"
+    },
+    "start": {
+      "description": "Devinez où chaque photo a été prise. Le score diminue avec la distance du vrai lieu."
+    },
+    "result": {
+      "distance": "{{distance}} km de distance"
+    }
+  },
+  "dateguessr": {
+    "title": "Dateguessr",
+    "modes": {
+      "daysToDate": "Classique"
+    },
+    "start": {
+      "description": "Devinez quand chaque photo a été prise. Le score diminue avec la distance de la vraie date."
+    },
+    "zoomIn": "Zoom avant",
+    "zoomOut": "Zoom arrière",
+    "result": {
+      "daysOff_one": "{{count}} jour d'écart",
+      "daysOff_other": "{{count}} jours d'écart"
+    }
+  },
+  "immichdle": {
+    "title": "Immichdle",
+    "modes": {
+      "person": "Persondle",
+      "album": "Albumdle"
+    },
+    "start": {
+      "description": "Devinez la personne mystérieuse. Chaque réponse révèle des indices comparatifs - vert signifie une correspondance, amber signifie proche, rouge signifie loin."
+    },
+    "searchPlaceholder": "Cherchez une personne par nom...",
+    "searching": "Recherche en cours...",
+    "noResults": "Aucun résultat trouvé.",
+    "unknown": "?",
+    "clues": {
+      "age": "Âge",
+      "assetCount": "Photos",
+      "firstAppearance": "Première apparition",
+      "commonNames": "Noms en commun",
+      "mlSimilarity": "Correspondance faciale",
+      "assetsTogether": "Ensemble"
+    },
+    "finished": {
+      "won": "Vous l'avez deviné!",
+      "lost": "Jeu terminé"
+    },
+    "album": {
+      "start": {
+        "description": "Devinez l'album mystérieux. Chaque réponse révèle des indices comparatifs - vert signifie une correspondance, amber signifie proche, rouge signifie loin."
+      },
+      "searchPlaceholder": "Cherchez un album par nom...",
+      "clues": {
+        "firstAssetDate": "Première apparition",
+        "assetCount": "Photos",
+        "dominantFace": "Visage dominant",
+        "commonNames": "Noms en commun",
+        "similarity": "Similarité",
+        "uniqueFaceCount": "Visages uniques"
+      }
+    }
+  },
+  "whosThatPerson": {
+    "title": "Qui est cette personne",
+    "modes": {
+      "namedFaces": "Classique"
+    },
+    "start": {
+      "description": "Certains visages déjà nommés dans chaque photo sont noircis - cliquez sur l'un et cherchez qui c'est."
+    },
+    "progress": "{{current}} sur {{total}} personnes",
+    "submit": "Envoyer les réponses",
+    "result": {
+      "correctCount": "{{correct}}/{{total}} corrects"
+    },
+    "rounds": {
+      "yourAnswer": "Votre réponse",
+      "real": "Réel"
+    }
+  },
+  "timeline": {
+    "title": "Timeline",
+    "modes": {
+      "arcade": "Arcade"
+    },
+    "start": {
+      "description": "Insérez chaque nouvelle photo au bon endroit sur la chronologie. Une erreur termine le jeu."
+    },
+    "cardLabel": "Carte {{count}}",
+    "confirmSlot": "Confirmer la position",
+    "selectSlotAria": "Sélectionner le point d'insertion",
+    "result": {
+      "correct": "Correct!",
+      "wrong": "Mauvais endroit"
+    },
+    "rounds": {
+      "banner": "Le nombre sur chaque carte indique l'ordre dans lequel elle a été tirée.",
+      "bannerLoss": "La carte qui a terminé le jeu s'affiche en rouge: où vous l'avez placée par rapport à où elle aurait dû être.",
+      "startBadge": "Début",
+      "orderBadge": "#{{count}}"
+    }
+  },
+  "auth": {
+    "fields": {
+      "email": "Email",
+      "username": "Nom d'utilisateur",
+      "fullName": "Nom complet",
+      "password": "Mot de passe",
+      "person": "Personne"
+    },
+    "login": {
+      "title": "Connexion",
+      "cta": "Se connecter",
+      "noAccount": "Pas de compte?"
+    },
+    "signup": {
+      "title": "S'inscrire",
+      "cta": "S'inscrire",
+      "hasAccount": "Vous avez déjà un compte?",
+      "inviteCode": "Code d'invitation"
+    },
+    "resetPassword": {
+      "title": "Réinitialiser le mot de passe",
+      "token": "Jeton de réinitialisation",
+      "newPassword": "Nouveau mot de passe",
+      "submit": "Réinitialiser le mot de passe"
+    },
+    "profile": {
+      "title": "Profil",
+      "memberSince": "Membre depuis {{date}}",
+      "logout": "Se déconnecter",
+      "edit": "Éditer le profil",
+      "save": "Enregistrer les modifications",
+      "saved": "Profil mis à jour",
+      "viewGames": "Voir les jeux",
+      "resetPassword": "Réinitialiser le mot de passe",
+      "changePassword": {
+        "title": "Changer le mot de passe",
+        "currentPassword": "Mot de passe actuel",
+        "newPassword": "Nouveau mot de passe",
+        "save": "Changer le mot de passe",
+        "saved": "Mot de passe modifié"
+      },
+      "skin": {
+        "label": "Skin",
+        "none": "Aucun",
+        "clear": "Effacer"
+      },
+      "recentGames": {
+        "title": "Jeux récents",
+        "loading": "Chargement des jeux...",
+        "empty": "Vous n'avez pas encore terminé de jeux.",
+        "score": "{{score}} pts",
+        "finished": "Terminé",
+        "abandoned": "Abandonné",
+        "daily": "Quotidien"
+      }
+    },
+    "error": {
+      "generic": "Quelque chose s'est mal passé. Veuillez réessayer."
+    }
+  },
+  "admin": {
+    "users": {
+      "title": "Utilisateurs",
+      "description": "Gérer les comptes de l'application",
+      "loading": "Chargement des utilisateurs..."
+    },
+    "games": {
+      "description": "Éditer la configuration de chaque jeu",
+      "loading": "Chargement des jeux...",
+      "noSettings": "Ce jeu n'a pas de paramètres configurables pour le moment.",
+      "reset": "Réinitialiser par défaut",
+      "settings": {
+        "total_rounds": "Manches totales",
+        "max_score": "Score maximum par manche",
+        "max_extra_assets": "Photos supplémentaires affichées",
+        "flat_score_radius_km": "Rayon de score maximum (km)",
+        "decay_km": "Décroissance du score (km)",
+        "flat_score_days": "Jours de score maximum",
+        "decay_days": "Décroissance du score (jours)",
+        "starting_score": "Score de départ",
+        "wrong_guess_penalty": "Pénalité pour mauvaise réponse",
+        "asset_count_weight": "Poids du nombre de photos (0 = uniforme, 1 = proportionnel)",
+        "total_people": "Nombre total de personnes",
+        "max_hidden_faces": "Visages cachés maximum par manche",
+        "tolerance_days": "Tolérance d'emplacement (jours)",
+        "min_separation_days": "Séparation minimale entre les cartes (jours)",
+        "max_cards": "Cartes maximum (0 = illimité)"
+      }
+    },
+    "daily": {
+      "title": "Jeu quotidien",
+      "enabledLabel": "Activer pour la rotation quotidienne",
+      "settings": {
+        "no_repeat_days": "Fenêtre de non-répétition (jours)",
+        "chain_length": "Limite de chaîne"
+      }
+    },
+    "invites": {
+      "title": "Invitations",
+      "description": "Générer des liens d'inscription",
+      "loading": "Chargement des invitations...",
+      "empty": "Pas d'invitations pour le moment.",
+      "generate": "Générer une invitation",
+      "revoke": "Révoquer",
+      "status": {
+        "pending": "En attente",
+        "used": "Utilisée",
+        "expired": "Expirée"
+      },
+      "createdAt": "Créée {{date}}",
+      "expiresAt": "Expire {{date}}",
+      "usedAt": "Utilisée {{date}}"
+    }
+  }
+}
