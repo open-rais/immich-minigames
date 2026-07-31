@@ -1,5 +1,6 @@
-import { GameType } from "../../api/types"
-import type { RoundOut, TimelineCardOut, TimelineRoundOut } from "../../api/types"
+import { GameType } from "../../api/types/common"
+import type { RoundOut } from "../../api/types/common"
+import type { TimelineCardOut, TimelineRoundOut } from "../../api/types/timeline"
 import type { TrackCard } from "./TimelineTrack"
 
 // Small pure helpers shared between TimelineGame.tsx (live play) and TimelineRounds.tsx (roadmap

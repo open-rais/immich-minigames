@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next"
 import { Navigate, useNavigate, useParams } from "react-router-dom"
 
 import { getGame } from "../../api/games"
-import type { GameOut } from "../../api/types"
+import type { GameOut } from "../../api/types/common"
 import { findCatalogMode, GAME_CATALOG } from "../catalog"
 import { Button } from "../shared/Button"
 import { RoundsShell } from "./RoundsShell"

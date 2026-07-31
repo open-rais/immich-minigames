@@ -1,7 +1,7 @@
 import type { TFunction } from "i18next"
 import { useTranslation } from "react-i18next"
 
-import type { TimelineCardOut, TimelineRoundOut } from "../../api/types"
+import type { TimelineCardOut, TimelineRoundOut } from "../../api/types/timeline"
 import type { RoundsComponentProps } from "../catalog"
 import { BackButton } from "../shared/BackButton"
 import { EntryOptionsMenu } from "../shared/EntryOptionsMenu"

@@ -1,5 +1,5 @@
-import { GameType } from "../../api/types"
-import type { ImmichdleRoundOut } from "../../api/types"
+import { GameType } from "../../api/types/common"
+import type { ImmichdleRoundOut } from "../../api/types/immichdle"
 import type { RoundsComponentProps } from "../catalog"
 import type { TargetSnapshot } from "./clueColors"
 import { GuessTable } from "./GuessTable"

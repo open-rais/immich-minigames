@@ -3,7 +3,7 @@ import { useLayoutEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 
 import { assetThumbnailUrl, personThumbnailUrl } from "../../api/games"
-import type { HiddenFaceOut } from "../../api/types"
+import type { HiddenFaceOut } from "../../api/types/whosThatPerson"
 import { AssetPhoto } from "../shared/AssetPhoto"
 import type { RoundPhase } from "../shared/useRoundGame"
 import { boxStyle } from "./faceBoxMath"

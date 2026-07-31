@@ -1,6 +1,12 @@
 import { createContext } from "react"
 
-import type { ChangePasswordIn, LoginIn, RegisterIn, UpdateProfileIn, User } from "../api/types"
+import type {
+  ChangePasswordIn,
+  LoginIn,
+  RegisterIn,
+  UpdateProfileIn,
+  User,
+} from "../api/types/auth"
 
 // Own account session (roadmap point B). The backend holds the session as an httpOnly JWT cookie;
 // this context just tracks who (if anyone) it currently belongs to for the UI. Split from

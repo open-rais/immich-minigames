@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react"
 import { createDailyGame, getDailyStatus } from "../../api/daily"
 import { apiErrorStatus } from "../../api/errors"
 import { createGame, getCurrentGame, getGame } from "../../api/games"
-import type { GameOut } from "../../api/types"
+import type { GameOut } from "../../api/types/common"
 import { useGuardedRequests } from "./useGuardedRequests"
 
 export type Screen = "idle" | "playing" | "finished" | "error"

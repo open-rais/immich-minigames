@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next"
 
 import { createInvite, listInvites } from "../api/admin"
 import { apiErrorMessage } from "../api/errors"
-import type { InviteOut } from "../api/types"
+import type { InviteOut } from "../api/types/admin"
 import { Button } from "../games/shared/Button"
 import { ShareModal } from "../games/shared/ShareModal"
 import { AdminInviteRow } from "./AdminInviteRow"

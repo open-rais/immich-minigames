@@ -1,5 +1,7 @@
 import { apiClient } from "./client"
-import type { DailyLeaderboardOut, DailyStatusOut, GameOut } from "./types"
+import type { GameOut } from "./types/common"
+import type { DailyStatusOut } from "./types/daily"
+import type { DailyLeaderboardOut } from "./types/leaderboard"
 
 // Roadmap #G - backend/src/api/daily_api.py. Login is mandatory for every route (roadmap #H), so
 // no anonymous-vs-account branching to note here anymore.

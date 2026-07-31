@@ -1,5 +1,5 @@
 import { personThumbnailUrl } from "../../api/games"
-import type { HiddenFaceOut } from "../../api/types"
+import type { HiddenFaceOut } from "../../api/types/whosThatPerson"
 import { boxStyle } from "./faceBoxMath"
 
 export type FaceBoxMode = "yourAnswer" | "real"

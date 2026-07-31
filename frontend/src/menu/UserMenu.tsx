@@ -5,7 +5,7 @@ import { Link, useLocation } from "react-router-dom"
 import { personThumbnailUrl } from "../api/games"
 import { useAuth } from "../auth/useAuth"
 import { SegmentedControl } from "../games/shared/SegmentedControl"
-import i18n from "../i18n"
+import i18n, { loadLanguage } from "../i18n"
 import type { ThemePreference } from "../theme/themeContext"
 import { useTheme } from "../theme/useTheme"
 
@@ -59,8 +59,12 @@ function LanguageSelector() {
       }))}
       value={current}
       onChange={(lang) => {
-        localStorage.setItem("minigames-lang", lang)
-        i18n.changeLanguage(lang)
+        // Loaded on demand (see i18n/index.ts's B-2 comment) - awaited here so switching to a
+        // language not loaded yet doesn't flash the fallback language while its bundle fetches.
+        void loadLanguage(lang).then(() => {
+          localStorage.setItem("minigames-lang", lang)
+          i18n.changeLanguage(lang)
+        })
       }}
     />
   )

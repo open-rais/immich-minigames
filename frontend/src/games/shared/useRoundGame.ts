@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 
-import type { GameOut, PlayRoundOut, RoundOut } from "../../api/types"
+import type { GameOut, PlayRoundOut, RoundOut } from "../../api/types/common"
 import { useGameSession } from "./useGameSession"
 
 // Only the fields that stay live for the whole game. The full GameOut also carries `rounds`, but

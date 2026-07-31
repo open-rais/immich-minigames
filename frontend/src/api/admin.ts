@@ -5,9 +5,8 @@ import type {
   GameSettingsOut,
   InviteOut,
   UpdateDailySettingsIn,
-  UpdateProfileIn,
-  User,
-} from "./types"
+} from "./types/admin"
+import type { UpdateProfileIn, User } from "./types/auth"
 
 // Admin feature (ADMIN-FEATURE.md point #3) - same request shapes as api/auth.ts's self-service
 // updateProfile/updateSkin, applied to an arbitrary userId instead of the caller's own account.

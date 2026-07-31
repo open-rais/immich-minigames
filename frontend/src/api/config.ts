@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 
 import { apiClient } from "./client"
-import type { ConfigOut } from "./types"
+import type { ConfigOut } from "./types/config"
 
 export async function getConfig(): Promise<ConfigOut> {
   const { data } = await apiClient.get<ConfigOut>("/config")

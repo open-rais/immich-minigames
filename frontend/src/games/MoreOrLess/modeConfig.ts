@@ -1,5 +1,5 @@
 import { albumThumbnailUrl, personThumbnailUrl } from "../../api/games"
-import { Mode } from "../../api/types"
+import { Mode } from "../../api/types/common"
 
 // The two MoreOrLess modes differ only in their data source and thumbnail endpoint - everything
 // else (the whole streak/slide state machine in MoreOrLessGame.tsx) is identical, so one component

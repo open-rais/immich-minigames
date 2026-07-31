@@ -9,7 +9,7 @@ import {
   updateGameSettings,
 } from "../api/admin"
 import { apiErrorMessage } from "../api/errors"
-import type { DailySettingsOut, GameSettingsOut } from "../api/types"
+import type { DailySettingsOut, GameSettingsOut } from "../api/types/admin"
 import { Button } from "../games/shared/Button"
 import { SettingAccordion } from "./SettingAccordion"
 

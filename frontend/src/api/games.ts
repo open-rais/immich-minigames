@@ -3,14 +3,13 @@ import type {
   CreateGameIn,
   CurrentGameOut,
   GameOut,
-  GameRecordsOut,
-  LeaderboardOut,
-  LeaderboardWindow,
-  PersonSearchOut,
   PlayRoundIn,
   PlayRoundOut,
   RecentGamesOut,
-} from "./types"
+} from "./types/common"
+import type { LeaderboardOut, LeaderboardWindow } from "./types/leaderboard"
+import type { PersonSearchOut } from "./types/persons"
+import type { GameRecordsOut } from "./types/records"
 
 export async function createGame(type: string, mode: string): Promise<GameOut> {
   const body: CreateGameIn = { type, mode }

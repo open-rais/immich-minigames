@@ -6,7 +6,7 @@ import type {
   ResetPasswordIn,
   UpdateProfileIn,
   User,
-} from "./types"
+} from "./types/auth"
 
 // The backend sets/clears the session as an httpOnly cookie (see backend/src/api/auth_api.py) -
 // same-origin in both dev (vite.config.ts's proxy) and prod (nginx.conf.template), so the browser

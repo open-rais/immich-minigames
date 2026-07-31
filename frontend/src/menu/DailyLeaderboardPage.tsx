@@ -4,7 +4,7 @@ import { Navigate, useNavigate, useParams, useSearchParams } from "react-router-
 
 import { getDailyLeaderboard } from "../api/daily"
 import { personThumbnailUrl } from "../api/games"
-import type { LeaderboardEntryOut } from "../api/types"
+import type { LeaderboardEntryOut } from "../api/types/leaderboard"
 import { useAuth } from "../auth/useAuth"
 import { GAME_CATALOG } from "../games/catalog"
 import { BackButton } from "../games/shared/BackButton"

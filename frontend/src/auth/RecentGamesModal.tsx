@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 
 import { getRecentGames } from "../api/games"
-import type { RecentGameOut } from "../api/types"
+import type { RecentGameOut } from "../api/types/common"
 import { findCatalogMode, GAME_CATALOG } from "../games/catalog"
 import { Button } from "../games/shared/Button"
 

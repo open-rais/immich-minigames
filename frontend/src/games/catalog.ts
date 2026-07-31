@@ -1,8 +1,8 @@
 import type { ComponentType } from "react"
 import { lazy } from "react"
 
-import type { GameOut } from "../api/types"
-import { GameType, Mode } from "../api/types"
+import type { GameOut } from "../api/types/common"
+import { GameType, Mode } from "../api/types/common"
 
 // Every game/rounds component is lazy-loaded (roadmap B-1 of CODE-REVIEW-FRONT.md) - this is what
 // keeps maplibre-gl (Geoguessr's map, ~1 MB minified) and the other 5 games out of the initial

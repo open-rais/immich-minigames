@@ -1,6 +1,6 @@
 import { useState } from "react"
 
-import type { GameOut, RoundOut } from "../../api/types"
+import type { GameOut, RoundOut } from "../../api/types/common"
 
 interface RoundStepperState<T extends RoundOut> {
   round: T

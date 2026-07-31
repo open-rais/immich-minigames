@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next"
 
 import { listUsers } from "../api/admin"
-import type { User } from "../api/types"
+import type { User } from "../api/types/auth"
 import { AdminUserRow } from "./AdminUserRow"
 import { useInfiniteAdminList } from "./useInfiniteAdminList"
 

@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next"
 
-import type { ImmichdleRoundOut } from "../../api/types"
+import type { ImmichdleRoundOut } from "../../api/types/immichdle"
 import { EntryOptionsMenu } from "../shared/EntryOptionsMenu"
 import { ImmichLink } from "../shared/ImmichLink"
 import type { TargetSnapshot } from "./clueColors"

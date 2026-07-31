@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next"
 
 import { revokeInvite } from "../api/admin"
 import { apiErrorMessage } from "../api/errors"
-import type { InviteOut, InviteStatus } from "../api/types"
+import type { InviteOut, InviteStatus } from "../api/types/admin"
 import { Button } from "../games/shared/Button"
 
 // Same green/amber/red semantic tokens the game clues already use (Immichdle/MoreOrLess) - reused

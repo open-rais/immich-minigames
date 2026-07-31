@@ -1,13 +1,11 @@
 import type { TFunction } from "i18next"
 
-import { GameType } from "../../api/types"
-import type {
-  DateguessrRoundOut,
-  GameOut,
-  GeoguessrRoundOut,
-  ImmichdleRoundOut,
-  WhosThatPersonRoundOut,
-} from "../../api/types"
+import { GameType } from "../../api/types/common"
+import type { GameOut } from "../../api/types/common"
+import type { DateguessrRoundOut } from "../../api/types/dateguessr"
+import type { GeoguessrRoundOut } from "../../api/types/geoguessr"
+import type { ImmichdleRoundOut } from "../../api/types/immichdle"
+import type { WhosThatPersonRoundOut } from "../../api/types/whosThatPerson"
 
 // Mirrors backend/src/games/geoguessr/round.py's and games/dateguessr/round.py's MAX_SCORE default
 // (both 5000) - a daily challenge's actual frozen max_score (services/daily_service.py's settings

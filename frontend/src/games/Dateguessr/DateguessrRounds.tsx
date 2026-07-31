@@ -1,7 +1,8 @@
 import { useTranslation } from "react-i18next"
 
-import { GameType } from "../../api/types"
-import type { DateguessrRoundOut, RoundOut } from "../../api/types"
+import { GameType } from "../../api/types/common"
+import type { RoundOut } from "../../api/types/common"
+import type { DateguessrRoundOut } from "../../api/types/dateguessr"
 import type { RoundsComponentProps } from "../catalog"
 import { AssetCarousel } from "../shared/AssetCarousel"
 import { BackButton } from "../shared/BackButton"

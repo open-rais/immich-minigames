@@ -1,7 +1,7 @@
 import { useParams } from "react-router-dom"
 
-import { GameType, Mode } from "../../api/types"
-import type { MoreOrLessRoundOut } from "../../api/types"
+import { GameType, Mode } from "../../api/types/common"
+import type { MoreOrLessRoundOut } from "../../api/types/moreOrLess"
 import type { RoundsComponentProps } from "../catalog"
 import { EntryOptionsMenu } from "../shared/EntryOptionsMenu"
 import { ImmichLink } from "../shared/ImmichLink"

@@ -1,4 +1,4 @@
-import type { ImmichdleRoundOut } from "../../api/types"
+import type { ImmichdleRoundOut } from "../../api/types/immichdle"
 
 // Three-tier color scheme (green/amber/red), same intent everywhere: "match" is as-good-as-correct,
 // "close" is a meaningful hint, "miss" is far off. Kept here as pure functions (no i18n/rendering)

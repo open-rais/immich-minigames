@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 
-import type { ImmichdleRoundOut } from "../../api/types"
+import type { ImmichdleRoundOut } from "../../api/types/immichdle"
 import { useCountUp } from "../shared/useCountUp"
 import type { ClueResult } from "./clueColors"
 import { ClueCell } from "./ClueCell"

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 
 import { personThumbnailUrl, searchPersons } from "../../api/games"
-import type { PersonSearchResultOut } from "../../api/types"
+import type { PersonSearchResultOut } from "../../api/types/persons"
 import { PersonAvatar } from "./PersonAvatar"
 
 const DEBOUNCE_MS = 400

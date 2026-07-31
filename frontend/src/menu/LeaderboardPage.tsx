@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next"
 import { Navigate, useNavigate, useParams } from "react-router-dom"
 
 import { getLeaderboard, personThumbnailUrl } from "../api/games"
-import type { LeaderboardEntryOut, LeaderboardWindow } from "../api/types"
+import type { LeaderboardEntryOut, LeaderboardWindow } from "../api/types/leaderboard"
 import { useAuth } from "../auth/useAuth"
 import { GAME_CATALOG } from "../games/catalog"
 import { BackButton } from "../games/shared/BackButton"

@@ -12,7 +12,13 @@ import {
   updateSkin as apiUpdateSkin,
 } from "../api/auth"
 import { apiClient } from "../api/client"
-import type { ChangePasswordIn, LoginIn, RegisterIn, UpdateProfileIn, User } from "../api/types"
+import type {
+  ChangePasswordIn,
+  LoginIn,
+  RegisterIn,
+  UpdateProfileIn,
+  User,
+} from "../api/types/auth"
 import { AuthContext } from "./authContext"
 import { setPendingRedirectFrom } from "./pendingRedirect"
 

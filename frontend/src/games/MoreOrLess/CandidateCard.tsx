@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next"
 
-import type { MoreOrLessGuess } from "../../api/types"
+import type { MoreOrLessGuess } from "../../api/types/moreOrLess"
 import { Button } from "../shared/Button"
 import { CountBadge } from "./CountBadge"
 import { StatCard } from "./StatCard"

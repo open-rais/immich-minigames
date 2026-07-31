@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next"
 
 import { listDailySettings, listGameSettings } from "../api/admin"
 import { apiErrorMessage } from "../api/errors"
-import type { DailySettingsOut, GameSettingsOut } from "../api/types"
+import type { DailySettingsOut, GameSettingsOut } from "../api/types/admin"
 import { GAME_CATALOG } from "../games/catalog"
 import { AdminGameRow } from "./AdminGameRow"
 import { SettingAccordion } from "./SettingAccordion"
