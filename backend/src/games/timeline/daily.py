@@ -11,7 +11,7 @@ from domain.asset import Asset
 from games.timeline.content import LiveContent
 from games.timeline.game import TimelineGame
 from games.timeline.round import CardSnapshot
-from services.immich_service import ImmichService
+from services.immich import ImmichService
 from services.ml_service import MLService
 
 

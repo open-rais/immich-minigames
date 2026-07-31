@@ -45,7 +45,7 @@ from games.timeline import LiveContent as TimelineLiveContent
 from games.whos_that_person import GAME_TYPE as WHOS_THAT_PERSON_TYPE
 from games.whos_that_person import MODE_NAMED_FACES, WhosThatPersonGame, WhosThatPersonRound
 from games.whos_that_person import LiveContent as WhosThatPersonLiveContent
-from services.immich_service import ImmichService
+from services.immich import ImmichService
 
 
 @dataclass(frozen=True)

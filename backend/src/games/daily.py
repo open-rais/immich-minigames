@@ -9,7 +9,7 @@ games/registry.py holds the module directly.
 from typing import Any, Protocol
 from uuid import UUID
 
-from services.immich_service import ImmichService
+from services.immich import ImmichService
 from services.ml_service import MLService
 
 

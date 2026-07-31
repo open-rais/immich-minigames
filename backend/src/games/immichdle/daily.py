@@ -12,7 +12,7 @@ from uuid import UUID
 
 from games.immichdle.game import ASSET_COUNT_WEIGHT_EXPONENT
 from games.immichdle.round import PersonSnapshot
-from services.immich_service import ImmichService
+from services.immich import ImmichService
 from services.ml_service import MLService
 
 

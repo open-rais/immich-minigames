@@ -24,7 +24,7 @@ from games.registry import GAMES
 from persistence.daily import DailyChallengeModel
 from services.daily_settings import DailySettingsService
 from services.errors import NotEnoughContentError, UnsupportedGameError
-from services.immich_service import ImmichService
+from services.immich import ImmichService
 
 
 class _ExcludingImmichService:

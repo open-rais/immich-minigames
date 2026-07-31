@@ -17,7 +17,7 @@ from persistence.daily import DailyChallengeModel
 from persistence.games import GameModel
 from services.errors import NotEnoughContentError, UnsupportedGameError
 from services.game_settings_service import GameSettingsService
-from services.immich_service import ImmichService
+from services.immich import ImmichService
 from services.ml_service import MLService
 
 

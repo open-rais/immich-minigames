@@ -16,7 +16,7 @@ from api.dto.admin import CreateInviteOut
 from audit import audit
 from persistence.users import UserModel
 from services.auth_service import AuthService
-from services.immich_service import ImmichService
+from services.immich import ImmichService
 from services.invite_service import InviteService
 
 router = APIRouter(prefix="/admin", tags=["admin"])

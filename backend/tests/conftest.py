@@ -34,7 +34,7 @@ from services.daily_settings import DailySettingsService
 from services.game_factory import GameFactory
 from services.game_settings_service import GameSettingsService
 from services.games_service import GamesService
-from services.immich_service import ImmichService
+from services.immich import ImmichService
 from services.invite_service import InviteService
 from services.ml_service import MLService
 from services.scores_service import ScoresService

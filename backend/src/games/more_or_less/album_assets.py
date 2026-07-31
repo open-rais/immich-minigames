@@ -4,7 +4,7 @@ from uuid import UUID
 
 from games.more_or_less.content import CandidateProvider
 from games.more_or_less.round import EntitySnapshot
-from services.immich_service import ImmichService
+from services.immich import ImmichService
 
 
 class AlbumAssetsProvider(CandidateProvider):

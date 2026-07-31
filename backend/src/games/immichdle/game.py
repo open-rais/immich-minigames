@@ -18,7 +18,7 @@ from uuid import UUID, uuid4
 from games.base import BaseGame, PlayRoundResult
 from games.immichdle.clues import _compute_clues
 from games.immichdle.round import ImmichdleRound, PersonSnapshot
-from services.immich_service import ImmichService
+from services.immich import ImmichService
 from services.ml_service import MLService
 
 GAME_TYPE = "immichdle"
@@ -29,7 +29,7 @@ MODE_PERSON = "person"
 # starting_score/wrong_guess_penalty settings, same convention already used by e.g.
 # games/geoguessr/game.py's TOTAL_ROUNDS/MAX_SCORE.
 STARTING_SCORE = 100
-# Exponent `w` in `peso = c_fotos ^ w` (services/immich_service.py's get_persons
+# Exponent `w` in `peso = c_fotos ^ w` (services/immich/persons.py's get_persons
 # asset_count_weight), applied only to the target person's selection at game start
 # (ImmichdleGame.start). w=0 makes every named person equally likely regardless of photo count;
 # w=1 makes a person with 1000 photos 1000x as likely as one with 1 photo. Confirmed with the

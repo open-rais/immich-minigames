@@ -24,7 +24,7 @@ from uuid import UUID, uuid4
 from games.base import BaseGame, PlayRoundResult
 from games.whos_that_person.content import WhosThatPersonContent
 from games.whos_that_person.round import WhosThatPersonRound
-from services.immich_service import ImmichService
+from services.immich import ImmichService
 
 GAME_TYPE = "whos-that-person"
 MODE_NAMED_FACES = "namedFaces"

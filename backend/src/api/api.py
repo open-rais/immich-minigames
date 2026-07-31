@@ -29,7 +29,7 @@ from api.rate_limit import GAME_ACTION_LIMIT, SEARCH_LIMIT, THUMBNAIL_LIMIT, lim
 from config import Settings, get_settings
 from persistence.users import UserModel
 from services.games_service import GamesService
-from services.immich_service import ImmichService
+from services.immich import ImmichService
 from services.scores_service import ScoresService
 
 router = APIRouter(prefix="/api/v1")

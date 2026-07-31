@@ -11,7 +11,7 @@ from domain.asset import Asset
 from games.dateguessr.content import LiveContent
 from games.dateguessr.game import DateguessrGame
 from games.dateguessr.round import AssetSnapshot
-from services.immich_service import ImmichService
+from services.immich import ImmichService
 from services.ml_service import MLService
 
 

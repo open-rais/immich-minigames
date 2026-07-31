@@ -23,7 +23,7 @@ from api.rate_limit import enforce_login_email_limit, limiter
 from config import get_settings
 from persistence.users import UserModel
 from services.auth_service import AuthService, UnauthorizedError
-from services.immich_service import ImmichService
+from services.immich import ImmichService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

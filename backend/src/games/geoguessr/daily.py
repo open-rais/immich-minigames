@@ -11,7 +11,7 @@ from domain.asset import Asset
 from games.geoguessr.content import LiveContent
 from games.geoguessr.game import GeoguessrGame
 from games.geoguessr.round import AssetSnapshot
-from services.immich_service import ImmichService
+from services.immich import ImmichService
 from services.ml_service import MLService
 
 

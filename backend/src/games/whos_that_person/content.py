@@ -7,7 +7,7 @@ from typing import Protocol
 from uuid import UUID
 
 from games.whos_that_person.round import HiddenFace
-from services.immich_service import ImmichService
+from services.immich import ImmichService
 
 
 class WhosThatPersonContent(Protocol):

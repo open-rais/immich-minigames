@@ -20,7 +20,7 @@ from persistence.ml_cache import PersonFaceEmbeddingCacheModel
 _CACHE_TABLE = PersonFaceEmbeddingCacheModel.__table__
 
 # Visible, non-deleted faces are the same eligibility filter used everywhere else a person's faces
-# are counted/read (see services/immich_service.py's get_random_asset_with_named_faces).
+# are counted/read (see services/immich/faces.py's get_random_asset_with_named_faces).
 _FACE_COUNT_QUERY = text("""
     SELECT count(*) FROM asset_face
     WHERE "personId" = :person_id AND "deletedAt" IS NULL AND "isVisible"

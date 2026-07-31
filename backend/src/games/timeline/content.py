@@ -8,7 +8,7 @@ from uuid import UUID
 
 from domain.asset import Asset
 from games.shared.picking import pick_spread_asset
-from services.immich_service import ImmichService
+from services.immich import ImmichService
 
 # How many random photos to sample when looking for one far enough from every card already on the
 # board - see games/shared/picking.py's pick_spread_asset. Same role as Dateguessr's homonymous
