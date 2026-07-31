@@ -19,7 +19,7 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  if (!loading && user) return <Navigate to="/profile" replace />
+  if (!loading && user) return <Navigate to="/" replace />
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -28,10 +28,10 @@ export function LoginPage() {
     try {
       await login({ email, password })
       // A session that expired mid-use lands the user back where they were (the
-      // 401 interceptor in AuthProvider.tsx sets this via pendingRedirect.ts), not just on their
-      // profile.
+      // 401 interceptor in AuthProvider.tsx sets this via pendingRedirect.ts), otherwise the main
+      // menu rather than their profile.
       const from = consumePendingRedirectFrom()
-      navigate(from ?? "/profile", { replace: true })
+      navigate(from ?? "/", { replace: true })
     } catch (err) {
       setError(apiErrorMessage(err) ?? t("auth.error.generic"))
     } finally {

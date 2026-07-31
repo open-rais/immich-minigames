@@ -111,6 +111,16 @@ export function TimelineRuler({
   useNonPassiveWheel(containerRef, (e) => {
     if (disabled) return
     e.preventDefault()
+
+    // A trackpad's two-finger horizontal swipe arrives as deltaX on the same wheel event a mouse
+    // wheel/pinch sends deltaY on - treat a deltaX-dominant event as panning the ruler sideways
+    // instead of zooming, the same gesture MoreOrLess/Geoguessr's own scroll areas don't need
+    // (this is the one game screen with genuine horizontal content to pan).
+    if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+      setCenterDayIndex((prev) => prev + e.deltaX / pxPerDay)
+      return
+    }
+
     const rect = containerRef.current!.getBoundingClientRect()
     const cursorOffset = e.clientX - rect.left - rect.width / 2
     setPxPerDay((prevPxPerDay) => {

@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { Navigate, useNavigate, useParams } from "react-router-dom"
+import { Navigate, useLocation, useNavigate, useParams } from "react-router-dom"
 
 import { getGame } from "../../api/games"
 import type { GameOut } from "../../api/types/common"
@@ -15,6 +15,7 @@ type LoadState = { status: "loading" } | { status: "error" } | { status: "ready"
 export function RoundsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const location = useLocation()
   const { gameType, mode, gameId } = useParams<{ gameType: string; mode: string; gameId: string }>()
   const catalogMode = gameType && mode ? findCatalogMode(gameType, mode) : undefined
   const catalogGame = GAME_CATALOG.find((g) => g.gameType === gameType)
@@ -68,7 +69,12 @@ export function RoundsPage() {
   }
 
   const RoundsComponent = catalogMode.roundsComponent
-  const onBack = () => navigate(`/${gameType}/${mode}`)
+  // GameScreens.tsx's "Ver rondas" button threads whether this game was reached via /daily/...
+  // through router state (a single route serves both, so it can't be read off the URL here) - a
+  // direct visit/reload of this URL (no state) falls back to the non-daily target, matching
+  // today's behavior.
+  const cameFromDaily = (location.state as { daily?: boolean } | null)?.daily === true
+  const onBack = () => navigate(cameFromDaily ? `/daily/${gameType}/${mode}` : `/${gameType}/${mode}`)
 
   // "Fullscreen" family (Geoguessr/Dateguessr/Who'sThatPerson) owns the whole viewport itself -
   // MapPicker/TimelineRuler/AssetPhoto are fixed full-screen components that don't belong inside
