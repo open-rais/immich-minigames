@@ -34,10 +34,10 @@ class TestCreateGame:
         assert game["total_people"] is None
         assert len(game["rounds"]) == 1
         round_ = game["rounds"][0]
-        assert round_["candidate_asset_count"] is None
+        assert round_["candidate_value"] is None
         assert round_["guess"] is None
         assert round_["correct"] is None
-        assert round_["reference_asset_count"] is not None
+        assert round_["reference_value"] is not None
 
     def test_without_a_cookie_returns_401(self, client):
         client.cookies.clear()
@@ -98,7 +98,7 @@ class TestPlayRound:
         rounds_played = 0
         while not game["finished"] and rounds_played < 40:
             pending = game["rounds"][-1]
-            # An external client can only ever see reference_asset_count for the pending round -
+            # An external client can only ever see reference_value for the pending round -
             # simulate a real guess by asking the server for the game state again and comparing
             # against what's already known (reference) is not possible without the hidden count,
             # so instead we play both branches implicitly by checking the response afterwards.
@@ -111,7 +111,7 @@ class TestPlayRound:
 
             state = logged_client.get(f"/api/v1/games/{game['id']}").json()
             answered = next(r for r in state["rounds"] if r["id"] == pending["id"])
-            assert answered["candidate_asset_count"] is not None
+            assert answered["candidate_value"] is not None
             assert answered["guess"] == "more"
             assert answered["correct"] == result["correct"]
 

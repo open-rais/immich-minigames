@@ -17,7 +17,7 @@ from games.geoguessr import MODE_DISTANCE_BETWEEN_GUESS
 from games.immichdle import GAME_TYPE as IMMICHDLE_TYPE
 from games.immichdle import MODE_PERSON
 from games.more_or_less import GAME_TYPE as MORE_OR_LESS_TYPE
-from games.more_or_less import MODE_ALBUM_ASSETS, MODE_PERSON_ASSETS
+from games.more_or_less import MODE_ALBUM_ASSETS, MODE_PERSON_ASSETS, MODE_PERSON_BIRTH_DATE
 from games.timeline import GAME_TYPE as TIMELINE_TYPE
 from games.timeline import MODE_ARCADE as TIMELINE_MODE_ARCADE
 from games.whos_that_person import GAME_TYPE as WHOS_THAT_PERSON_TYPE
@@ -79,6 +79,18 @@ class TestSpecShapePerGame:
         challenge = daily_challenge_service.get_or_create_challenge(_next_date(), MORE_OR_LESS_TYPE, MODE_ALBUM_ASSETS)
 
         assert len(challenge.spec["chain"]) == 11
+
+    def test_more_or_less_person_birth_date_chain_length(self, daily_challenge_service, daily_settings_service):
+        daily_settings_service.update_settings(
+            MORE_OR_LESS_TYPE, MODE_PERSON_BIRTH_DATE, values={"chain_length": 10}
+        )
+
+        challenge = daily_challenge_service.get_or_create_challenge(
+            _next_date(), MORE_OR_LESS_TYPE, MODE_PERSON_BIRTH_DATE
+        )
+
+        assert len(challenge.spec["chain"]) == 11
+        assert isinstance(challenge.spec["chain"][0]["value"], str)  # ISO date, not an asset-count int
 
     def test_geoguessr_rounds(self, daily_challenge_service, daily_settings_service):
         daily_settings_service.update_settings(GEOGUESSR_TYPE, MODE_DISTANCE_BETWEEN_GUESS, values={"total_rounds": 2})

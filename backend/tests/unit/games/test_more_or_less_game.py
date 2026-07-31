@@ -7,12 +7,14 @@ from games.more_or_less import (
     _RECENT_EXCLUDE_WINDOW,
     MODE_ALBUM_ASSETS,
     MODE_PERSON_ASSETS,
+    MODE_PERSON_BIRTH_DATE,
     AlbumAssetsProvider,
     CandidateProvider,
     EntitySnapshot,
     MoreOrLessGame,
     MoreOrLessRound,
     PersonAssetsProvider,
+    PersonBirthDateProvider,
 )
 
 
@@ -164,6 +166,27 @@ class TestMoreOrLessAlbumMode:
         game = MoreOrLessGame.start(id=uuid4(), mode=MODE_ALBUM_ASSETS, provider=AlbumAssetsProvider(immich_service))
         assert game.mode == MODE_ALBUM_ASSETS
         first_round = game.current_round
+
+        result = game.play_round(_correct_guess(first_round))
+
+        assert result.score_delta == 1
+        assert not game.finished
+
+
+class TestMoreOrLessPersonBirthDateMode:
+    """Integration against the dev library's real named people with a birth date set (see
+    conftest) - personBirthDate excludes anyone without one (PersonBirthDateProvider)."""
+
+    def test_birth_date_mode_plays_a_round(self, immich_service):
+        game = MoreOrLessGame.start(
+            id=uuid4(), mode=MODE_PERSON_BIRTH_DATE, provider=PersonBirthDateProvider(immich_service)
+        )
+        assert game.mode == MODE_PERSON_BIRTH_DATE
+        first_round = game.current_round
+        # value is an ISO-8601 "YYYY-MM-DD" string for this mode - a plain sanity check that it
+        # actually is one, not an asset-count int leaking through from the wrong provider.
+        assert isinstance(first_round.reference.value, str)
+        assert isinstance(first_round.candidate.value, str)
 
         result = game.play_round(_correct_guess(first_round))
 
