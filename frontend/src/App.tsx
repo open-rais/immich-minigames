@@ -27,6 +27,9 @@ const ProfilePage = lazy(() =>
 const RoundsPage = lazy(() =>
   import("./games/rounds/RoundsPage").then((m) => ({ default: m.RoundsPage })),
 )
+const SettingsPage = lazy(() =>
+  import("./settings/SettingsPage").then((m) => ({ default: m.SettingsPage })),
+)
 const DailyLeaderboardPage = lazy(() =>
   import("./menu/DailyLeaderboardPage").then((m) => ({ default: m.DailyLeaderboardPage })),
 )
@@ -52,6 +55,7 @@ function App() {
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/profile/edit" element={<EditProfilePage />} />
                 <Route path="/profile/password" element={<ChangePasswordPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/admin" element={<AdminPage />} />
                 <Route path="/:gameType/:mode/leaderboard" element={<LeaderboardPage />} />
                 <Route path="/:gameType/:mode/game/:gameId/rounds" element={<RoundsPage />} />

@@ -4,7 +4,11 @@
   },
   "userMenu": {
     "trigger": "Account menu",
-    "adminPanel": "Admin",
+    "settings": "Settings",
+    "adminPanel": "Admin"
+  },
+  "settings": {
+    "title": "Settings",
     "language": "Language",
     "theme": "Theme",
     "themeOptions": {
