@@ -29,7 +29,7 @@ class ImmichdleRoundOut(BaseModel):
     id: UUID
     round_index: int
     # Redacted (null) until this round has been answered - same rationale as
-    # MoreOrLessRoundOut.candidate_asset_count. The target itself is never in a round's output at
+    # MoreOrLessRoundOut.candidate_value. The target itself is never in a round's output at
     # all - see GameOut.target_person_id/name.
     guess_person_id: UUID | None
     guess_person_name: str | None

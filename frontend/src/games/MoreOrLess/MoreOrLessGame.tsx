@@ -50,10 +50,13 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameC
   const thumbnailUrl = config.thumbnailUrl
 
   const [game, setGame] = useState<GameOut | null>(null)
-  const [reference, setReference] = useState<(PersonRef & { assetCount: number }) | null>(null)
+  const [reference, setReference] = useState<(PersonRef & { value: number | string }) | null>(null)
   const [candidate, setCandidate] = useState<(PersonRef & { roundId: string }) | null>(null)
   const [candidatePhase, setCandidatePhase] = useState<CandidatePhase>("guessing")
   const [countTarget, setCountTarget] = useState<number | null>(null)
+  // Only used for valueKind "date" - unlike countTarget/useCountUp, a date is never animated, so
+  // this just holds the final value to show once revealed (see handleGuess/handleSlideEnd).
+  const [revealValue, setRevealValue] = useState<string | null>(null)
   // Set together once a guess resolves, reset together once the next round starts - see
   // handleGuess/handleSlideEnd.
   const [revealResult, setRevealResult] = useState<{
@@ -80,11 +83,12 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameC
     setReference({
       id: round.reference_id,
       name: round.reference_name,
-      assetCount: round.reference_asset_count,
+      value: round.reference_value,
     })
     setCandidate({ id: round.candidate_id, name: round.candidate_name, roundId: round.id })
     setCandidatePhase("guessing")
     setCountTarget(null)
+    setRevealValue(null)
     setRevealResult(null)
     setSliding(false)
     return true
@@ -143,7 +147,13 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameC
   async function handleGuess(guess: MoreOrLessGuess) {
     if (!game || !candidate || candidatePhase !== "guessing") return
     await guarded(guessInFlightRef, async (token) => {
-      setCandidatePhase("counting")
+      // "count" gets an animated count-up on reveal (see the countDone effect below), so it shows
+      // an intermediate "counting" phase right away. "date" has no such animation - it stays
+      // "guessing" through the request and jumps straight to "revealed" once the answer is known
+      // (guessInFlightRef above still blocks a second submit in the meantime).
+      if (config.valueKind === "count") {
+        setCandidatePhase("counting")
+      }
       try {
         const result = await playRound(game.id, candidate.roundId, { guess })
         if (!isCurrent(token)) return
@@ -157,7 +167,12 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameC
         }
         setGame((g) => (g ? { ...g, score: result.score, finished: result.finished } : g))
         setRevealResult({ correct: result.correct, nextRound: result.next_round })
-        setCountTarget(result.answered_round.candidate_asset_count)
+        if (config.valueKind === "count") {
+          setCountTarget(result.answered_round.candidate_value as number)
+        } else {
+          setRevealValue(result.answered_round.candidate_value as string)
+          setCandidatePhase("revealed")
+        }
       } catch {
         if (isCurrent(token)) setScreen("error")
       }
@@ -166,12 +181,13 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameC
 
   function handleSlideEnd(e: TransitionEvent<HTMLDivElement>) {
     if (e.target !== e.currentTarget || e.propertyName !== "transform") return
-    if (!revealResult?.nextRound || countTarget === null || !candidate) return
+    const finalValue = config.valueKind === "count" ? countTarget : revealValue
+    if (!revealResult?.nextRound || finalValue === null || !candidate) return
     const nextRound = revealResult.nextRound
 
     setTransitionEnabled(false)
     setSliding(false)
-    setReference({ id: candidate.id, name: candidate.name, assetCount: countTarget })
+    setReference({ id: candidate.id, name: candidate.name, value: finalValue })
     setCandidate({
       id: nextRound.candidate_id,
       name: nextRound.candidate_name,
@@ -179,6 +195,7 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameC
     })
     setCandidatePhase("guessing")
     setCountTarget(null)
+    setRevealValue(null)
     setRevealResult(null)
   }
 
@@ -230,6 +247,10 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameC
 
   if (!game || !reference || !candidate) return null
 
+  const displayValue = config.valueKind === "count" ? displayCount : (revealValue ?? "")
+  const primaryLabel = t(config.primaryLabelKey)
+  const secondaryLabel = t(config.secondaryLabelKey)
+
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-app-bg px-[18px] py-[22px] md:px-10 md:py-7">
       {/* Fixed/floating, not in normal flow - on mobile they sit over the top card rather than
@@ -242,7 +263,9 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameC
           <PersonCard
             key={reference.id}
             name={reference.name}
-            assetCount={reference.assetCount}
+            value={reference.value}
+            valueKind={config.valueKind}
+            subtitle={t(config.hasLabelKey)}
             thumbnailUrl={thumbnailUrl(reference.id)}
           />
         </div>
@@ -255,7 +278,12 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameC
                 name={revealResult.nextRound.candidate_name}
                 thumbnailUrl={thumbnailUrl(revealResult.nextRound.candidate_id)}
                 phase="guessing"
-                displayCount={0}
+                displayValue={0}
+                valueKind={config.valueKind}
+                subtitle={t(config.questionKey, { name: revealResult.nextRound.candidate_name })}
+                primaryGuess={config.primaryGuess}
+                primaryLabel={primaryLabel}
+                secondaryLabel={secondaryLabel}
                 correct={null}
                 onGuess={() => {}}
               />
@@ -277,7 +305,12 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameC
               name={candidate.name}
               thumbnailUrl={thumbnailUrl(candidate.id)}
               phase={candidatePhase}
-              displayCount={displayCount}
+              displayValue={displayValue}
+              valueKind={config.valueKind}
+              subtitle={t(config.questionKey, { name: candidate.name })}
+              primaryGuess={config.primaryGuess}
+              primaryLabel={primaryLabel}
+              secondaryLabel={secondaryLabel}
               correct={revealResult?.correct ?? null}
               onGuess={handleGuess}
             />

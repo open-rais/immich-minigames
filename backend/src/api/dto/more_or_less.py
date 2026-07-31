@@ -15,15 +15,15 @@ class MoreOrLessRoundOut(BaseModel):
     round_index: int
     reference_id: UUID
     reference_name: str
-    # The game's generic comparable `value` (games/more_or_less.py's EntitySnapshot). For both
-    # implemented modes (personAssets, albumAssets) that value *is* an asset count, so it's exposed
-    # under this count-oriented name; a future non-count mode would widen this.
-    reference_asset_count: int
+    # The game's generic comparable `value` (games/more_or_less/round.py's EntitySnapshot) - an
+    # asset count (personAssets/albumAssets) or an ISO-8601 birth date string (personBirthDate), so
+    # this stays `int | str` rather than a count-specific name/type.
+    reference_value: int | str
     candidate_id: UUID
     candidate_name: str
     # Redacted (null) until this round has been answered - otherwise the correct answer could be
     # read straight out of the HTTP response before guessing.
-    candidate_asset_count: int | None
+    candidate_value: int | str | None
     guess: Literal["more", "less"] | None
     correct: bool | None
 
@@ -35,10 +35,10 @@ class MoreOrLessRoundOut(BaseModel):
             round_index=round_.round_index,
             reference_id=round_.reference.id,
             reference_name=round_.reference.name,
-            reference_asset_count=round_.reference.value,
+            reference_value=round_.reference.value,
             candidate_id=round_.candidate.id,
             candidate_name=round_.candidate.name,
-            candidate_asset_count=round_.candidate.value if answered else None,
+            candidate_value=round_.candidate.value if answered else None,
             guess=round_.guess if answered else None,
             correct=round_.correct,
         )

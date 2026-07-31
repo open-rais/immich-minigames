@@ -22,6 +22,7 @@ from games.more_or_less.round import MoreOrLessRound
 GAME_TYPE = "more-or-less"
 MODE_PERSON_ASSETS = "personAssets"
 MODE_ALBUM_ASSETS = "albumAssets"
+MODE_PERSON_BIRTH_DATE = "personBirthDate"
 
 # How many of the most-recently-shown entities to avoid repeating immediately. The game is infinite
 # (it never ends by running out of candidates - see create_next_round's fallback) - once an entity

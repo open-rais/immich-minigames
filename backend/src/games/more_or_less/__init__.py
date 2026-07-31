@@ -9,15 +9,18 @@ from games.more_or_less.game import (
     GAME_TYPE,
     MODE_ALBUM_ASSETS,
     MODE_PERSON_ASSETS,
+    MODE_PERSON_BIRTH_DATE,
     MoreOrLessGame,
 )
 from games.more_or_less.person_assets import PersonAssetsProvider
+from games.more_or_less.person_birth_date import PersonBirthDateProvider
 from games.more_or_less.round import EntitySnapshot, Guess, MoreOrLessRound
 
 __all__ = [
     "GAME_TYPE",
     "MODE_ALBUM_ASSETS",
     "MODE_PERSON_ASSETS",
+    "MODE_PERSON_BIRTH_DATE",
     "AlbumAssetsProvider",
     "CandidateProvider",
     "EntitySnapshot",
@@ -25,4 +28,5 @@ __all__ = [
     "MoreOrLessGame",
     "MoreOrLessRound",
     "PersonAssetsProvider",
+    "PersonBirthDateProvider",
 ]

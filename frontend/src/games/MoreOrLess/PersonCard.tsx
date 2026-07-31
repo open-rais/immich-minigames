@@ -1,20 +1,18 @@
-import { useTranslation } from "react-i18next"
-
-import { CountBadge } from "./CountBadge"
 import { StatCard } from "./StatCard"
+import { ValueBadge } from "./ValueBadge"
 
 interface PersonCardProps {
   name: string
-  assetCount: number
+  value: number | string
+  valueKind: "count" | "date"
+  subtitle: string
   thumbnailUrl: string
 }
 
-export function PersonCard({ name, assetCount, thumbnailUrl }: PersonCardProps) {
-  const { t } = useTranslation()
-
+export function PersonCard({ name, value, valueKind, subtitle, thumbnailUrl }: PersonCardProps) {
   return (
-    <StatCard thumbnailUrl={thumbnailUrl} name={name} subtitle={t("moreOrLess.has")}>
-      <CountBadge value={assetCount} />
+    <StatCard thumbnailUrl={thumbnailUrl} name={name} subtitle={subtitle}>
+      <ValueBadge value={value} kind={valueKind} />
     </StatCard>
   )
 }

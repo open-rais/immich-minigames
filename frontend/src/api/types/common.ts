@@ -26,6 +26,7 @@ export type GameType = (typeof GameType)[keyof typeof GameType]
 export const Mode = {
   PersonAssets: "personAssets",
   AlbumAssets: "albumAssets",
+  PersonBirthDate: "personBirthDate",
   DistanceBetweenGuess: "distanceBetweenGuess",
   DaysToDate: "daysToDate",
   Person: "person",

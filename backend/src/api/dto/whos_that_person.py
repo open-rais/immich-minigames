@@ -19,7 +19,7 @@ class HiddenFaceOut(BaseModel):
     bounding_box_x2: int
     bounding_box_y2: int
     # Redacted (null) until this round has been answered - same rationale as
-    # MoreOrLessRoundOut.candidate_asset_count.
+    # MoreOrLessRoundOut.candidate_value.
     person_id: UUID | None
     person_name: str | None
     correct: bool | None

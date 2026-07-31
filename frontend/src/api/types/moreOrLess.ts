@@ -10,11 +10,13 @@ export interface MoreOrLessRoundOut {
   round_index: number
   reference_id: string
   reference_name: string
-  reference_asset_count: number
+  // An asset count (personAssets/albumAssets) or an ISO-8601 birth date string
+  // (personBirthDate) - see modeConfig.ts's ModeConfig.valueKind for how the UI tells them apart.
+  reference_value: number | string
   candidate_id: string
   candidate_name: string
   // Redacted (null) until this round has been answered.
-  candidate_asset_count: number | null
+  candidate_value: number | string | null
   guess: MoreOrLessGuess | null
   correct: boolean | null
 }

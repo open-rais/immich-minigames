@@ -2,15 +2,16 @@
 games/settings_registry.py for how every game's specs get assembled into one registry and
 services/game_settings_service.py for how they're read/written."""
 
-from games.more_or_less.game import MODE_ALBUM_ASSETS, MODE_PERSON_ASSETS
+from games.more_or_less.game import MODE_ALBUM_ASSETS, MODE_PERSON_ASSETS, MODE_PERSON_BIRTH_DATE
 from games.settings_spec import CHAIN_LENGTH_SPEC, SettingSpec
 
-# No scoring/difficulty knob worth exposing today for either mode - kept as explicit empty entries
-# (rather than omitted) so GET /admin/games/settings still lists both of MoreOrLess's modes, each
-# as its own admin row/entry.
+# No scoring/difficulty knob worth exposing today for any mode - kept as explicit empty entries
+# (rather than omitted) so GET /admin/games/settings still lists every MoreOrLess mode, each as its
+# own admin row/entry.
 SETTING_SPECS: dict[str, list[SettingSpec]] = {
     MODE_PERSON_ASSETS: [],
     MODE_ALBUM_ASSETS: [],
+    MODE_PERSON_BIRTH_DATE: [],
 }
 
 # MoreOrLess's daily build_spec pre-generates a fixed-length chain instead of avoiding repeats
