@@ -1,5 +1,5 @@
 """Admin-editable game settings DTOs - both the normal per-game_type ones (ADMIN-FEATURE.md point
-#4, see services/game_settings.py) and the daily-only ones (roadmap point #G, see
+#4, see games/settings_registry.py) and the daily-only ones (roadmap point #G, see
 services/daily_settings.py), which share the same GameSettingOut shape. Also invitations (roadmap
 #H, F1, see services/invite_service.py) - unrelated to game settings, just the same "admin-only
 DTOs" module."""
@@ -11,8 +11,8 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
+from games.settings_spec import SettingSpec
 from persistence.invites import InviteModel
-from services.game_settings import SettingSpec
 
 
 class GameSettingOut(BaseModel):

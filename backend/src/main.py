@@ -17,32 +17,14 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from api.api import router
 from api.auth_middleware import AuthMiddleware
+from api.error_handlers import register_error_handlers
 from api.rate_limit import limiter, session_or_ip_key
 from api.request_log_middleware import RequestLogMiddleware
 from audit import audit
 from config import get_settings
-from games.immichdle import DuplicateGuessError, InvalidGuessError
-from games.whos_that_person import IncompleteGuessError
 from logging_setup import configure_logging
 from persistence.base import get_session_factory
 from services.admin_bootstrap import ensure_admin
-from services.auth_service import (
-    EmailAlreadyExistsError,
-    InvalidCredentialsError,
-    UnauthorizedError,
-    UsernameAlreadyExistsError,
-)
-from services.game_settings import InvalidGameSettingValueError, UnknownGameSettingError
-from services.games_service import (
-    DailyAlreadyPlayedError,
-    DailyNotEnabledError,
-    GameNotFoundError,
-    GameOwnershipError,
-    NotEnoughContentError,
-    RoundNotPendingError,
-    UnsupportedGameError,
-)
-from services.invite_service import InvalidInviteError, InviteNotFoundError
 
 
 @asynccontextmanager
@@ -73,13 +55,6 @@ app.add_middleware(AuthMiddleware)
 app.add_middleware(RequestLogMiddleware)
 
 
-def _error_handler(status_code: int):
-    async def handler(request: Request, exc: Exception) -> JSONResponse:
-        return JSONResponse(status_code=status_code, content={"detail": str(exc)})
-
-    return handler
-
-
 async def _rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
     audit("rate_limited", path=request.url.path, scope="route", key=session_or_ip_key(request))
     response = JSONResponse(status_code=429, content={"detail": f"rate limit exceeded: {exc.detail}"})
@@ -87,23 +62,6 @@ async def _rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONR
 
 
 app.add_exception_handler(RateLimitExceeded, _rate_limit_handler)
-app.add_exception_handler(UnsupportedGameError, _error_handler(400))
-app.add_exception_handler(NotEnoughContentError, _error_handler(422))
-app.add_exception_handler(DuplicateGuessError, _error_handler(400))
-app.add_exception_handler(InvalidGuessError, _error_handler(400))
-app.add_exception_handler(IncompleteGuessError, _error_handler(422))
-app.add_exception_handler(GameOwnershipError, _error_handler(403))
-app.add_exception_handler(GameNotFoundError, _error_handler(404))
-app.add_exception_handler(RoundNotPendingError, _error_handler(409))
-app.add_exception_handler(InvalidCredentialsError, _error_handler(401))
-app.add_exception_handler(UnauthorizedError, _error_handler(401))
-app.add_exception_handler(EmailAlreadyExistsError, _error_handler(409))
-app.add_exception_handler(UsernameAlreadyExistsError, _error_handler(409))
-app.add_exception_handler(UnknownGameSettingError, _error_handler(400))
-app.add_exception_handler(InvalidGameSettingValueError, _error_handler(400))
-app.add_exception_handler(DailyNotEnabledError, _error_handler(404))
-app.add_exception_handler(DailyAlreadyPlayedError, _error_handler(409))
-app.add_exception_handler(InvalidInviteError, _error_handler(400))
-app.add_exception_handler(InviteNotFoundError, _error_handler(404))
+register_error_handlers(app)
 
 app.include_router(router)

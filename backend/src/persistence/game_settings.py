@@ -1,6 +1,6 @@
 """Admin feature (ADMIN-FEATURE.md point #4) - per-(game_type, mode) admin overrides for the
 scoring/difficulty constants each games/*.py module defines as its default (see
-services/game_settings.py for the registry of which keys are configurable and what those defaults
+games/settings_registry.py for the registry of which keys are configurable and what those defaults
 are). One row per (game_type, mode) (roadmap point #f - modes of the same game_type used to share
 one row, keyed by game_type alone); a (game_type, mode) with no row (or a key missing from its
 `values` JSONB) just falls back to that module's hardcoded default - "reset to defaults" is
