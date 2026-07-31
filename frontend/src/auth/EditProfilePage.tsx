@@ -119,7 +119,7 @@ export function EditProfilePage() {
           autoComplete="username"
           minLength={3}
           maxLength={32}
-          pattern="^[a-zA-Z0-9_-]+$"
+          pattern="^[a-zA-Z0-9_\-]+$"
           required
           value={username}
           onChange={(e) => {

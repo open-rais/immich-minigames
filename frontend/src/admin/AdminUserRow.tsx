@@ -110,7 +110,7 @@ export function AdminUserRow({ user, onUpdated }: AdminUserRowProps) {
           label={t("auth.fields.username")}
           minLength={3}
           maxLength={32}
-          pattern="^[a-zA-Z0-9_-]+$"
+          pattern="^[a-zA-Z0-9_\-]+$"
           required
           value={username}
           onChange={(e) => {
