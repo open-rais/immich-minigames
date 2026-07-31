@@ -24,7 +24,7 @@ from uuid import UUID, uuid4
 from games.base import BaseGame, PlayRoundResult
 from games.whos_that_person.content import WhosThatPersonContent
 from games.whos_that_person.round import WhosThatPersonRound
-from services.immich import ImmichService
+from services.immich import ContentQueries
 
 GAME_TYPE = "whos-that-person"
 MODE_NAMED_FACES = "namedFaces"
@@ -46,7 +46,7 @@ class WhosThatPersonGame(BaseGame):
         self,
         id: UUID,
         rounds: list[WhosThatPersonRound],
-        immich_service: ImmichService,
+        immich_service: ContentQueries,
         content: WhosThatPersonContent,
         score: int = 0,
         finished: bool = False,
@@ -94,7 +94,7 @@ class WhosThatPersonGame(BaseGame):
     def start(
         cls,
         id: UUID,
-        immich_service: ImmichService,
+        immich_service: ContentQueries,
         content: WhosThatPersonContent,
         settings: Mapping[str, float] | None = None,
     ) -> "WhosThatPersonGame":
@@ -139,8 +139,6 @@ class WhosThatPersonGame(BaseGame):
             raise ValueError("no more eligible photos left - has_next_round() should have returned False")
         asset_id, faces = picked
 
-        if previous.ending_streak is None:
-            raise RuntimeError("create_next_round() called before calculate_score() set ending_streak")
         return WhosThatPersonRound(
             id=uuid4(),
             game_id=self.id,

@@ -12,11 +12,11 @@ from uuid import UUID
 
 from games.immichdle.game import ASSET_COUNT_WEIGHT_EXPONENT
 from games.immichdle.round import PersonSnapshot
-from services.immich import ImmichService
+from services.immich import ContentQueries, ImmichService
 from services.ml_service import MLService
 
 
-def build_spec(mode: str, immich_service: ImmichService, settings: dict[str, float]) -> dict[str, Any]:
+def build_spec(mode: str, immich_service: ContentQueries, settings: dict[str, float]) -> dict[str, Any]:
     # Replicates ImmichdleGame.start()'s target-selection directly rather than driving a full game
     # instance, since there's no round sequence to precompute.
     weight = float(settings.get("asset_count_weight", ASSET_COUNT_WEIGHT_EXPONENT))

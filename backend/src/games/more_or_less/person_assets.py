@@ -4,11 +4,11 @@ from uuid import UUID
 
 from games.more_or_less.content import CandidateProvider
 from games.more_or_less.round import EntitySnapshot
-from services.immich import ImmichService
+from services.immich import ContentQueries
 
 
 class PersonAssetsProvider(CandidateProvider):
-    def __init__(self, immich_service: ImmichService) -> None:
+    def __init__(self, immich_service: ContentQueries) -> None:
         self._immich_service = immich_service
 
     def sample(self, *, limit: int, exclude_ids: frozenset[UUID]) -> list[EntitySnapshot]:

@@ -11,6 +11,7 @@ was rather than forcing each call site to depend on multiple injected services.
 """
 
 from datetime import date
+from typing import Protocol
 from uuid import UUID
 
 from sqlalchemy.engine import Engine
@@ -25,7 +26,7 @@ from persistence.immich_db import get_immich_engine
 from . import albums, assets, faces, images, persons
 from .assets import MediaType
 
-__all__ = ["ImmichService", "MediaType"]
+__all__ = ["ContentQueries", "ImmichService", "MediaType"]
 
 
 class ImmichService:
@@ -120,3 +121,51 @@ class ImmichService:
 
     def get_person_thumbnail(self, person_id: UUID) -> tuple[bytes, str]:
         return images.get_person_thumbnail(self._settings, person_id)
+
+
+class ContentQueries(Protocol):
+    """The subset of ImmichService's surface that picking a round's content actually needs
+    (LiveContent/CandidateProvider classes, and each game's daily.py build_spec) - ImmichService
+    satisfies this structurally already. Exists so services/daily_challenge_service.py's cross-day
+    exclusion wrapper (_ExcludingImmichService) can be passed anywhere a live game or a build_spec
+    expects Immich content queries without erasing the type to Any, even though the wrapper isn't
+    (and by design doesn't want to be, see its own docstring) an ImmichService subclass."""
+
+    def get_assets(
+        self,
+        *,
+        media_type: MediaType = "any",
+        with_location: bool | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
+        local_date: date | None = None,
+        local_month: int | None = None,
+        near_km: tuple[float, float, float] | None = None,
+        randomize: bool = False,
+        limit: int = 1,
+        exclude_ids: frozenset[UUID] = frozenset(),
+    ) -> list[Asset]: ...
+
+    def get_persons(
+        self,
+        *,
+        named_only: bool = True,
+        with_birthdate: bool | None = None,
+        min_asset_count: int | None = None,
+        name_query: str | None = None,
+        ids: frozenset[UUID] | None = None,
+        randomize: bool = False,
+        asset_count_weight: float | None = None,
+        limit: int = 1,
+        exclude_ids: frozenset[UUID] = frozenset(),
+    ) -> list[Person]: ...
+
+    def get_albums(
+        self, *, randomize: bool = False, limit: int = 1, exclude_ids: frozenset[UUID] = frozenset()
+    ) -> list[Album]: ...
+
+    def get_random_asset_with_named_faces(
+        self, *, max_faces: int, exclude_asset_ids: frozenset[UUID] = frozenset()
+    ) -> list[Face]: ...
+
+    def get_person_first_asset_date(self, person_id: UUID) -> date | None: ...

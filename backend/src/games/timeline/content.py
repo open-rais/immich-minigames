@@ -8,7 +8,7 @@ from uuid import UUID
 
 from domain.asset import Asset
 from games.shared.picking import pick_spread_asset
-from services.immich import ImmichService
+from services.immich import ContentQueries
 
 # How many random photos to sample when looking for one far enough from every card already on the
 # board - see games/shared/picking.py's pick_spread_asset. Same role as Dateguessr's homonymous
@@ -39,7 +39,7 @@ class TimelineContent(Protocol):
 class LiveContent:
     """Normal-play TimelineContent - samples eligible photos straight from Immich."""
 
-    def __init__(self, immich_service: ImmichService) -> None:
+    def __init__(self, immich_service: ContentQueries) -> None:
         self._immich_service = immich_service
 
     def _query_assets(self, exclude_ids: frozenset[UUID], *, limit: int, randomize: bool) -> list[Asset]:

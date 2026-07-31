@@ -7,7 +7,7 @@ from typing import Protocol
 from uuid import UUID
 
 from games.whos_that_person.round import HiddenFace
-from services.immich import ImmichService
+from services.immich import ContentQueries
 
 
 class WhosThatPersonContent(Protocol):
@@ -33,7 +33,7 @@ class WhosThatPersonContent(Protocol):
 class LiveContent:
     """Normal-play WhosThatPersonContent - samples an eligible photo straight from Immich."""
 
-    def __init__(self, immich_service: ImmichService) -> None:
+    def __init__(self, immich_service: ContentQueries) -> None:
         self._immich_service = immich_service
 
     def pick_round(self, max_faces: int, exclude_asset_ids: frozenset[UUID]) -> tuple[UUID, list[HiddenFace]] | None:

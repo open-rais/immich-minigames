@@ -9,17 +9,20 @@ games/registry.py holds the module directly.
 from typing import Any, Protocol
 from uuid import UUID
 
-from services.immich import ImmichService
+from services.immich import ContentQueries, ImmichService
 from services.ml_service import MLService
 
 
 class DailySupport(Protocol):
     @staticmethod
-    def build_spec(mode: str, immich_service: ImmichService, settings: dict[str, float]) -> dict[str, Any]:
+    def build_spec(mode: str, immich_service: ContentQueries, settings: dict[str, float]) -> dict[str, Any]:
         """Generates one day's shared content for this (game_type, mode) by driving a throwaway
         instance of this game's own start()/create_next_round() - the same picking logic (candidate
         sampling, spread/separation, weighted target selection) a normal game already uses, never
-        reimplemented here. Raises ValueError if the library doesn't have enough content."""
+        reimplemented here. Raises ValueError if the library doesn't have enough content.
+        `immich_service` is typed as ContentQueries (not the full ImmichService) because
+        services/daily_challenge_service.py sometimes passes its cross-day exclusion wrapper here
+        instead of a real ImmichService."""
         ...
 
     @staticmethod

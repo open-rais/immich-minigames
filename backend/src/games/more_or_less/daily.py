@@ -11,7 +11,7 @@ from games.more_or_less.content import CandidateProvider
 from games.more_or_less.game import MODE_PERSON_ASSETS, MoreOrLessGame
 from games.more_or_less.person_assets import PersonAssetsProvider
 from games.more_or_less.round import EntitySnapshot
-from services.immich import ImmichService
+from services.immich import ContentQueries, ImmichService
 from services.ml_service import MLService
 
 
@@ -76,7 +76,7 @@ class ScriptedCandidateProvider(CandidateProvider):
         return self._next_index < len(self._chain)
 
 
-def build_spec(mode: str, immich_service: ImmichService, settings: dict[str, float]) -> dict[str, Any]:
+def build_spec(mode: str, immich_service: ContentQueries, settings: dict[str, float]) -> dict[str, Any]:
     # MoreOrLessGame.has_next_round() checks the *previous* round's score_delta (a real guess) -
     # meaningless for a precomputed chain, so this drives create_next_round() directly for a fixed
     # length instead (mirroring the real game's own infinite-chain fallback - see

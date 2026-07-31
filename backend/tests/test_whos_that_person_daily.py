@@ -38,7 +38,6 @@ class TestWhosThatPersonScriptedContent:
         assert len(game.rounds[0].faces) == 1
         assert game.has_next_round() is True
 
-        game.current_round.ending_streak = 0  # normally set by calculate_score() during real play
         game.rounds.append(game.create_next_round())
         assert len(game.rounds[1].faces) == 2
         assert game.has_next_round() is False  # total_people (3) reached

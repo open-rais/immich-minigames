@@ -11,7 +11,7 @@ from domain.asset import Asset
 from games.geoguessr.content import LiveContent
 from games.geoguessr.game import GeoguessrGame
 from games.geoguessr.round import AssetSnapshot
-from services.immich import ImmichService
+from services.immich import ContentQueries, ImmichService
 from services.ml_service import MLService
 
 
@@ -68,7 +68,7 @@ class ScriptedContent:
         return self._next_index < len(self._rounds_spec)
 
 
-def build_spec(mode: str, immich_service: ImmichService, settings: dict[str, float]) -> dict[str, Any]:
+def build_spec(mode: str, immich_service: ContentQueries, settings: dict[str, float]) -> dict[str, Any]:
     # GeoguessrGame.has_next_round() never looks at the previous round's guess - it's already
     # guess-independent, so the real has_next_round()/create_next_round() pair can drive this loop
     # as-is, on a throwaway game built from live content.

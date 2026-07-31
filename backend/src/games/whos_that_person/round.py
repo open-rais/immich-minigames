@@ -64,9 +64,8 @@ class WhosThatPersonRound(BaseRound):
         # Empty (not None) for a round played before this field existed - see from_payload.
         self.guess_names: dict[UUID, str] = {}
         # Set at construction (the previous round's ending_streak, or 0 for the game's first
-        # round) rather than injected later - see calculate_score().
+        # round) rather than injected later - see the ending_streak property.
         self.incoming_streak = incoming_streak
-        self.ending_streak: int | None = None
 
     @property
     def results(self) -> list[bool]:
@@ -84,24 +83,35 @@ class WhosThatPersonRound(BaseRound):
             return None
         return all(self.results)
 
+    def _streak_after_each_face(self) -> list[int]:
+        """Streak value after each face in results order - resets to 0 on a miss. A miss anywhere
+        in this round zeroes the streak before any of the round's own hits are scored - not just
+        from the point of the miss onward (see games/whos_that_person/game.py's module
+        docstring)."""
+        results = self.results
+        streak = self.incoming_streak if all(results) else 0
+        sequence = []
+        for is_correct in results:
+            streak = streak + 1 if is_correct else 0
+            sequence.append(streak)
+        return sequence
+
+    @property
+    def ending_streak(self) -> int:
+        """Streak carried into the next round's incoming_streak - derived from results rather than
+        stored, so it can't drift out of sync or depend on calculate_score() having run first (it
+        used to be set as a side effect there, which made create_next_round() order-dependent). 0
+        for an unanswered round: games/whos_that_person/daily.py's build_spec walks unplayed rounds
+        to pick content, where there's no streak yet to carry."""
+        if self.guess is None:
+            return 0
+        return self._streak_after_each_face()[-1]
+
     def calculate_score(self, settings: Mapping[str, float] | None = None) -> int:
         # No admin-configurable knob affects this game's scoring (only its length, see
         # WhosThatPersonGame's total_people/_max_hidden_faces) - settings is accepted only to
         # satisfy BaseRound's shared signature.
-        results = self.results
-        # A miss anywhere in this round zeroes the streak before any of the round's own hits are
-        # scored - not just from the point of the miss onward (see games/whos_that_person/game.py's
-        # module docstring).
-        streak = self.incoming_streak if all(results) else 0
-        delta = 0
-        for is_correct in results:
-            if is_correct:
-                streak += 1
-                delta += streak
-            else:
-                streak = 0
-        self.ending_streak = streak
-        return delta
+        return sum(self._streak_after_each_face())
 
     def to_payload(self) -> dict[str, Any]:
         return {
@@ -110,7 +120,6 @@ class WhosThatPersonRound(BaseRound):
             "guess": {str(k): str(v) for k, v in self.guess.items()} if self.guess is not None else None,
             "guess_names": {str(k): v for k, v in self.guess_names.items()},
             "incoming_streak": self.incoming_streak,
-            "ending_streak": self.ending_streak,
         }
 
     @classmethod
@@ -130,6 +139,5 @@ class WhosThatPersonRound(BaseRound):
         # field existed has no such key at all; it just shows "?" instead of a name in the "Tu
         # respuesta" rounds-review view (ROUNDS-VIEW.md §4.3), not a KeyError.
         round_.guess_names = {UUID(k): v for k, v in (payload.get("guess_names") or {}).items()}
-        round_.ending_streak = payload["ending_streak"]
         round_.score_delta = score_delta
         return round_

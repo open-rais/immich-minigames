@@ -24,7 +24,7 @@ from games.registry import GAMES
 from persistence.daily import DailyChallengeModel
 from services.daily_settings import DailySettingsService
 from services.errors import NotEnoughContentError, UnsupportedGameError
-from services.immich import ImmichService
+from services.immich import ContentQueries, ImmichService
 
 
 class _ExcludingImmichService:
@@ -32,7 +32,10 @@ class _ExcludingImmichService:
     the cross-day no-repeat window (docs/TODO/DAILY-GAMES.md §4.3's "No-repetición"). Only the
     query methods any game's build_spec() actually calls are overridden; everything else (thumbnail
     fetches, person search, ...) is delegated straight through via __getattr__ - this is
-    composition, not a subclass, so nothing here depends on ImmichService's own __init__."""
+    composition, not a subclass, so nothing here depends on ImmichService's own __init__. Satisfies
+    ContentQueries structurally (never declared as its subclass - a Protocol doesn't need that),
+    which is what lets _build_spec pass this in place of a real ImmichService without widening the
+    type to Any."""
 
     def __init__(self, inner: ImmichService, extra_exclude_ids: frozenset[UUID]) -> None:
         self._inner = inner
@@ -160,7 +163,7 @@ class DailyChallengeService:
         spec_entry = GAMES.get((game_type, mode))
         if spec_entry is None or spec_entry.daily is None:
             raise UnsupportedGameError(f"unsupported daily game/mode: {game_type}/{mode}")
-        excluding_service: Any = (
+        excluding_service: ContentQueries = (
             _ExcludingImmichService(self._immich_service, exclude_ids) if exclude_ids else self._immich_service
         )
         return spec_entry.daily.build_spec(mode, excluding_service, settings)
