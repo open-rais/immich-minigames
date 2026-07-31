@@ -1,12 +1,11 @@
 """Single source of truth for which (game_type, mode) maps to which game/round classes and, for
 the daily-enabled ones, which `games/<game>/daily.py` module implements the `DailySupport`
-contract (games/daily.py) - see docs/TODO/DECOUPLING.md decision E. Lives in `games/` (pure
-knowledge of which game/mode maps to what, no persistence/business logic) rather than
-`services/games_service.py`, where this registry used to live - `services/daily_challenge_service.py`
-needs to read it too without creating the same import cycle services/errors.py's docstring already
-documents for NotEnoughContentError: services/daily_games_service.py depends on
-daily_challenge_service.py (to delegate challenge generation), so daily_challenge_service.py must
-never depend back on either of them.
+contract (games/daily.py). Lives in `games/` (pure knowledge of which game/mode maps to what, no
+persistence/business logic) rather than `services/games_service.py`, since
+`services/daily_challenge_service.py` needs to read it too without creating the same import cycle
+services/errors.py's docstring already documents for NotEnoughContentError:
+services/daily_games_service.py depends on daily_challenge_service.py (to delegate challenge
+generation), so daily_challenge_service.py must never depend back on either of them.
 """
 
 from collections.abc import Callable

@@ -42,7 +42,7 @@ from services.scores_service import ScoresService
 
 class _LogCapture(logging.Handler):
     """Captures records directly off a logger, bypassing caplog - `audit`/`access` both set
-    propagate=False (logging_setup.py, decision [H]), so records emitted on them never reach
+    propagate=False (logging_setup.py), so records emitted on them never reach
     caplog's root-attached handler. Also snapshots api.request_context.context_fields() at the same
     point emit() runs (still inside the request's own task/context, unlike by the time a test
     asserts afterward) - a raw record's own __dict__ only has whatever a call site explicitly put in
@@ -182,10 +182,9 @@ def client():
 
 @pytest.fixture
 def logged_client(client):
-    """Roadmap #H, F3 - the default-deny middleware (api/auth_middleware.py) now rejects every
+    """The default-deny middleware (api/auth_middleware.py) rejects every
     request without a valid session cookie, so any test hitting a real endpoint (not calling a
-    service directly) needs one - this is the "cut over the whole suite" fixture the doc's own
-    risk section calls for. Registers a disposable throwaway account and returns the same `client`,
+    service directly) needs one. Registers a disposable throwaway account and returns the same `client`,
     now carrying its session cookie."""
     unique = uuid.uuid4().hex[:8]
     response = client.post(
@@ -203,7 +202,7 @@ def logged_client(client):
 
 
 def mint_invite_code(kind: str = "invite") -> str:
-    """Roadmap #H, F1 - registration now requires a valid invite_code (except for the very first
+    """Registration requires a valid invite_code (except for the very first
     account). A plain function, not a fixture: every test file's own `_register()` helper stays a
     plain function too, and this lets it mint a real, valid invite with a one-line change to its
     default body dict rather than threading an invite_service fixture through every one of the
@@ -213,7 +212,7 @@ def mint_invite_code(kind: str = "invite") -> str:
     the `client` fixture's own, separate request-scoped session right after.
 
     Bootstrap-aware: if `users` is currently empty, the *next* registration hits AuthService's
-    bootstrap branch (decision [H]), which never checks the `invites` table at all - it only
+    bootstrap branch, which never checks the `invites` table at all - it only
     accepts INITIAL_INVITE_TOKEN (or, if that's unset, anything). A freshly-minted real invite
     would be silently ignored there, which is harmless when INITIAL_INVITE_TOKEN is unset, but
     wrong when a developer's own .env has it set (as this one does) - so return that value

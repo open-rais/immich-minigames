@@ -3,14 +3,13 @@ Based on the Timeline board game. Photos are "cards" with their date printed bel
 starts with one card already placed (date visible) and, round after round, must insert a new card
 (date hidden) into the chronologically correct slot relative to the cards already on the board. A
 correct guess chains into a new round (the new card joins the board at its real position); a wrong
-guess ends the game (score = the streak of correctly placed cards). See docs/GAMES/TIMELINE.md and
-docs/TODO/TIMELINE.md (design doc, decisions [A]-[K]).
+guess ends the game (score = the streak of correctly placed cards). See docs/GAMES/TIMELINE.md.
 
 Mirrors Dateguessr's split of *which* asset a round gets (games/timeline/content.py's
 TimelineContent protocol - live Immich queries here, a frozen daily spec in
 games/timeline/daily.py's ScriptedContent) from the game loop itself (insertion, board
-rehydration, scoring), which lives entirely here - docs/TODO/DECOUPLING.md decision [J]: zero
-logic shared with any other game beyond games/shared/'s pure helpers. games/timeline/round.py holds
+rehydration, scoring), which lives entirely here: zero logic shared with any other game beyond
+games/shared/'s pure helpers. games/timeline/round.py holds
 the round itself (its board/card snapshot and accepted-slot/scoring math).
 """
 
@@ -25,7 +24,7 @@ GAME_TYPE = "timeline"
 MODE_ARCADE = "arcade"
 
 MIN_SEPARATION_DAYS = 30
-MAX_CARDS = 0  # 0 = no limit - decision [F]
+MAX_CARDS = 0  # 0 = no limit
 
 
 class TimelineGame(BaseGame):
@@ -70,7 +69,7 @@ class TimelineGame(BaseGame):
             next_board.insert(round_.correct_slot, round_.card)
             board = next_board
 
-    # -- admin-configurable (ADMIN-FEATURE.md point #4, see games/settings_registry.py) ----------
+    # -- admin-configurable (see games/settings_registry.py) ----------
 
     @property
     def _tolerance_days(self) -> int:
@@ -130,7 +129,7 @@ class TimelineGame(BaseGame):
         max_cards = self._max_cards
         if max_cards and current.round_index + 1 >= max_cards:
             # Total cards ever drawn (the round-1 initial board card + one per round played) has
-            # reached the admin-configured cap - ends as a perfect run, not a loss, decision [F].
+            # reached the admin-configured cap - ends as a perfect run, not a loss.
             return False
         return self._content.has_more(self._shown_asset_ids)
 

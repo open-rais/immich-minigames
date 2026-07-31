@@ -4,10 +4,9 @@ a day on a timeline guessing when it was taken. 5 rounds are always played (unli
 wrong guess doesn't end the game early), and the final score is the sum of all 5 rounds' scores.
 See docs/GAMES/DATEGUESSR.md.
 
-Owns its entire game loop (round count, next-round creation, exponential-decay scoring) -
-previously factored out into a shared base class with Geoguessr (games/asset_rounds.py),
-deliberately un-shared per docs/TODO/DECOUPLING.md so a change to this game's loop never requires
-touching Geoguessr's. *Which* asset/extras a round gets is a separate axis of variation
+Owns its entire game loop (round count, next-round creation, exponential-decay scoring),
+deliberately un-shared with Geoguessr so a change to this game's loop never requires touching
+Geoguessr's. *Which* asset/extras a round gets is a separate axis of variation
 (games/dateguessr/content.py's DateguessrContent) - live Immich queries normally, a frozen daily
 spec for the daily flow (games/dateguessr/daily.py's ScriptedContent) - mirroring how MoreOrLess
 already varies its content via CandidateProvider. games/dateguessr/round.py holds the round itself
@@ -59,7 +58,7 @@ class DateguessrGame(BaseGame):
         )
         self._content = content
 
-    # -- admin-configurable (ADMIN-FEATURE.md point #4, see games/settings_registry.py) ----------
+    # -- admin-configurable (see games/settings_registry.py) --------------------------------------
 
     @property
     def total_rounds(self) -> int:

@@ -79,7 +79,7 @@ class TestCreateGame:
 
 
 class TestCreateGameAbandonsPreviousActiveGame:
-    """Roadmap #e - creating a new game marks any other still-active game of the same
+    """Creating a new game marks any other still-active game of the same
     (user, game_type, mode) as abandoned, so the idle screen's "Continuar" lookup
     (get_current_game) only ever finds the most recently started one."""
 
@@ -188,9 +188,9 @@ class TestPlayRoundConcurrency:
         self, games_service, immich_service, ml_service, auth_service
     ):
         # Two independent sessions, exactly like two real concurrent HTTP requests would get
-        # (api/deps.py's get_db_session hands out a fresh Session per request) - this is what
-        # docs/TODO/CODE-REVIEW.md #6 is about: without the FOR UPDATE lock in _load_game, both
-        # could pass play_loaded_round's current_round.id check and both score.
+        # (api/deps.py's get_db_session hands out a fresh Session per request): without the FOR
+        # UPDATE lock in _load_game, both could pass play_loaded_round's current_round.id check
+        # and both score.
         user = _register_user(auth_service)
         game = games_service.create_game(game_type="more-or-less", mode="personAssets", user_id=user.id)
         first_round = game.rounds[0]
@@ -288,10 +288,10 @@ class TestLeaderboard:
     """Same persistence-layer-query testing philosophy as TestPersonalRecords - games are seeded
     directly at whatever score/finished/created_at state a test needs, not played out for real.
     Every assertion here checks membership/absence of its own known users rather than an exact
-    count or `== []`, filtering by username or a distinctive seeded score - roadmap #H, F3 means
-    this table is no longer written to exclusively by this file (an HTTP-level game test can now
+    count or `== []`, filtering by username or a distinctive seeded score - this table is not
+    written to exclusively by this file (an HTTP-level game test can
     create and finish a real, logged-in game against the same game_type/mode), so an exact-count
-    assertion can't assume isolation anymore. test_limit_is_15 additionally seeds scores far above
+    assertion can't assume isolation. test_limit_is_15 additionally seeds scores far above
     any realistically-reachable real one so its top-15 boundary check stays deterministic."""
 
     def _seed_game(
@@ -379,8 +379,8 @@ class TestLeaderboard:
         weekly = scores_service.get_leaderboard("immichdle", "person", "weekly")
         daily = scores_service.get_leaderboard("immichdle", "person", "daily")
 
-        # Subset/absence checks, not exact set equality (roadmap #H, F3 - see this class's own
-        # docstring: real HTTP-created entries can legitimately share this table now).
+        # Subset/absence checks, not exact set equality (see this class's own
+        # docstring: real HTTP-created entries can legitimately share this table).
         assert {recent_user.username, old_user.username} <= {e.username for e in all_time}
         assert recent_user.username in {e.username for e in weekly}
         assert old_user.username not in {e.username for e in weekly}
@@ -388,8 +388,8 @@ class TestLeaderboard:
         assert old_user.username not in {e.username for e in daily}
 
     def test_limit_is_15(self, games_service, scores_service, db_session, auth_service):
-        # Scores start comfortably above any realistically-reachable real score (roadmap #H, F3 -
-        # an HTTP-level geoguessr test can now finish a real, logged-in game against this same
+        # Scores start comfortably above any realistically-reachable real score (an HTTP-level
+        # geoguessr test can finish a real, logged-in game against this same
         # table) - guarantees our 16 seeded rows occupy the entire top of the ranking regardless of
         # how many lower-scored real entries also exist, so the "16th squeezed out" boundary this
         # test checks stays deterministic.
@@ -427,7 +427,7 @@ class TestLeaderboard:
 
 
 class TestGetCurrentGame:
-    """Roadmap #e - the idle screen's "Continuar" lookup."""
+    """The idle screen's "Continuar" lookup."""
 
     def test_no_active_game_returns_none(self, games_service, auth_service):
         user = _register_user(auth_service)
@@ -475,7 +475,7 @@ class TestGetCurrentGame:
 
 
 class TestGetRecentGames:
-    """Roadmap #e - the profile "Ver juegos" modal's last-5 list."""
+    """The profile "Ver juegos" modal's last-5 list."""
 
     def _seed_game(self, games_service, db_session, *, user_id, finished=True, abandoned=False, created_at=None):
         game = games_service.create_game(game_type="more-or-less", mode="personAssets", user_id=user_id)

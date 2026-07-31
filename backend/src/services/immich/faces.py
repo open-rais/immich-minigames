@@ -19,9 +19,9 @@ def get_random_asset_with_named_faces(
     """Picks one random asset that has at least one visible, non-deleted face already assigned
     to a named, non-hidden person, then returns the faces Who'sThatPerson blacks out for a
     round: every one of that asset's named, non-hidden faces if it has `max_faces` or fewer,
-    otherwise a *random* number of them between 1 and `max_faces` (confirmed with the project
-    owner - not always exactly `max_faces`, so a photo with plenty of named people doesn't
-    deterministically always hide the maximum). Faces without a name are never returned -
+    otherwise a *random* number of them between 1 and `max_faces` (not always exactly `max_faces`,
+    so a photo with plenty of named people doesn't deterministically always hide the maximum).
+    Faces without a name are never returned -
     there'd be nothing to grade against, so they're left unblacked in the photo, purely
     decorative. Hidden people (Immich's own `isHidden` flag) are excluded the same way
     get_persons/search_persons already exclude them from the guess search box - otherwise a

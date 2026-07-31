@@ -75,7 +75,7 @@ class TestEnsureAdmin:
 
 
 class TestAuditEvents:
-    """docs/TODO/LOGGING.md §4.4, phase F2."""
+    """Audit log coverage for admin bootstrap/promotion."""
 
     def test_promoting_emits_admin_promoted(self, db_session, auth_service, audit_log):
         user = _register(auth_service)

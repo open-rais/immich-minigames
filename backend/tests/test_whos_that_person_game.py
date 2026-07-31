@@ -98,7 +98,7 @@ class TestWhosThatPersonGame:
             game.play_round({})
 
     def test_correct_guess_freezes_the_guessed_names(self, immich_service):
-        # Roadmap #10 (rounds review, ROUNDS-VIEW.md §4.3) - names are resolved in one query and
+        # Names are resolved in one query and
         # stored on the round itself, not looked up again whenever it's displayed later.
         game = WhosThatPersonGame.start(id=uuid4(), immich_service=immich_service, content=LiveContent(immich_service))
         first_round = game.current_round
@@ -122,7 +122,7 @@ class TestWhosThatPersonGame:
 class TestWhosThatPersonRoundPayloadCompatibility:
     def test_from_payload_tolerates_a_payload_with_no_guess_names(self, immich_service):
         # A round persisted before this field existed has no "guess_names" key at all - from_payload
-        # must not KeyError on that, just fall back to an empty dict (ROUNDS-VIEW.md §4.3).
+        # must not KeyError on that, just fall back to an empty dict.
         game = WhosThatPersonGame.start(id=uuid4(), immich_service=immich_service, content=LiveContent(immich_service))
         round_ = game.current_round
         game.play_round(_correct_guess(round_))
@@ -142,7 +142,7 @@ class TestWhosThatPersonRoundPayloadCompatibility:
 
 
 class TestWhosThatPersonAdminSettings:
-    """ADMIN-FEATURE.md point #4 - confirms an override actually changes live behavior, not just
+    """Confirms an override actually changes live behavior, not just
     what GameSettingsService reports (see test_game_settings_service.py for that)."""
 
     def test_total_people_override_changes_how_many_are_asked(self, immich_service):

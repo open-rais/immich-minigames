@@ -1,4 +1,4 @@
-"""Roadmap #G, phase F3 - pure unit tests (no DB) for Who'sThatPerson's daily support
+"""Pure unit tests (no DB) for Who'sThatPerson's daily support
 (games/whos_that_person/daily.py::ScriptedContent). Hand-constructed content, so none of this
 needs the immich_service/db_session fixtures."""
 

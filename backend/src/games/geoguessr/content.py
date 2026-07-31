@@ -1,4 +1,4 @@
-"""The single point of variation between a normal Geoguessr game and a daily one (roadmap #G) -
+"""The single point of variation between a normal Geoguessr game and a daily one -
 live Immich queries (LiveContent below) vs. a frozen daily spec (games/geoguessr/daily.py's
 ScriptedContent). games/geoguessr/game.py's GeoguessrGame never knows which."""
 
@@ -32,7 +32,7 @@ _EXTRA_RADIUS_KM = 0.5
 
 
 class GeoguessrContent(Protocol):
-    """The single point of variation between a normal Geoguessr game and a daily one (roadmap #G) -
+    """The single point of variation between a normal Geoguessr game and a daily one -
     live Immich queries (LiveContent below) vs. a frozen daily spec (games/geoguessr/daily.py's
     ScriptedContent). The game engine below never knows which."""
 

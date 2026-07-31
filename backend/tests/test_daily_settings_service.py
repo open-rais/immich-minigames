@@ -42,9 +42,8 @@ class TestGetSpecsAndSettings:
         assert "no_repeat_days" not in keys
 
     def test_timeline_gets_both_chain_length_and_no_repeat_days(self, daily_settings_service):
-        # docs/TODO/TIMELINE.md decision [G] - the first mode that needs both at once. The two
-        # tests above (unchanged) already pin that Geoguessr/MoreOrLess keep their own single-spec
-        # behavior after this composition change.
+        # The first mode that needs both chain_length and no_repeat_days at once. The two tests
+        # above already pin that Geoguessr/MoreOrLess keep their own single-spec behavior.
         specs = daily_settings_service.get_specs(TIMELINE_TYPE, TIMELINE_MODE_ARCADE)
 
         keys = {s.key for s in specs}
@@ -100,5 +99,5 @@ class TestResetSettings:
 
         enabled, values = daily_settings_service.reset_settings(GEOGUESSR_TYPE, MODE_DISTANCE_BETWEEN_GUESS)
 
-        assert enabled is True  # "enabled no se resetea" - docs/TODO/DAILY-GAMES.md §4.6
+        assert enabled is True  # "enabled no se resetea"
         assert values["no_repeat_days"] == 30

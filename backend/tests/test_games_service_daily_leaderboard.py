@@ -1,4 +1,4 @@
-"""Roadmap #G, phase F5 - ScoresService.get_daily_leaderboard. Integration tests against the real
+"""Tests for ScoresService.get_daily_leaderboard. Integration tests against the real
 dev Immich DB (see conftest.py's module docstring)."""
 
 import itertools

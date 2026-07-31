@@ -21,11 +21,11 @@ def _play(client, game_id: str, round_id: str, guesses: dict) -> dict:
 
 
 def _owning_user(db_session, game_id: str) -> UserModel:
-    # Roadmap #H, F3 - every game is now created by a logged-in account (see _create_game's caller,
-    # logged_client), so GamesService.get_game's own ownership check (services/games_service.py's
-    # _load_game) needs a matching UserModel. Looked up by the game's own user_id rather than
-    # threading the account through every caller - logged_client's own fixture only ever exposes
-    # the HTTP client, not which account it registered as.
+    # Every game is created by a logged-in account (see _create_game's caller, logged_client), so
+    # GamesService.get_game's own ownership check (services/games_service.py's _load_game) needs a
+    # matching UserModel. Looked up by the game's own user_id rather than threading the account
+    # through every caller - logged_client's own fixture only ever exposes the HTTP client, not
+    # which account it registered as.
     game_row = db_session.get(GameModel, UUID(game_id))
     return db_session.get(UserModel, game_row.user_id)
 
@@ -49,7 +49,7 @@ class TestCreateGame:
 
         assert game["score"] == 0
         assert game["finished"] is False
-        # ADMIN-FEATURE.md point #4 - the live configured total, not a hardcoded frontend mirror.
+        # The live configured total, not a hardcoded frontend mirror.
         assert game["total_people"] == 15
         assert len(game["rounds"]) == 1
         round_ = game["rounds"][0]
@@ -92,10 +92,10 @@ class TestPlayRound:
         domain_game = games_service.get_game(game["id"], _owning_user(db_session, game["id"]))
         first_round = domain_game.current_round
         guesses = {face.face_id: face.person_id for face in first_round.faces}
-        # _load_game reads the row with SELECT ... FOR UPDATE (docs/TODO/CODE-REVIEW.md #6) - this
-        # inspection-only read would otherwise hold that lock for the rest of the test (games_service
-        # here shares db_session, only closed at teardown) and deadlock against the HTTP call below,
-        # which loads the same game_id through its own request-scoped session.
+        # _load_game reads the row with SELECT ... FOR UPDATE - this inspection-only read would
+        # otherwise hold that lock for the rest of the test (games_service here shares db_session,
+        # only closed at teardown) and deadlock against the HTTP call below, which loads the same
+        # game_id through its own request-scoped session.
         db_session.rollback()
 
         response = _play(logged_client, game["id"], round_id, guesses)
@@ -110,8 +110,7 @@ class TestPlayRound:
         for face in answered["faces"]:
             assert face["person_id"] is not None
             assert face["correct"] is True
-            # Roadmap #10 (rounds review) - guessed the true person_id, a real named person, so
-            # both are resolved.
+            # Guessed the true person_id, a real named person, so both are resolved.
             assert face["guess_person_id"] == str(guesses[UUID(face["face_id"])])
             assert face["guess_person_name"] is not None
 
@@ -131,8 +130,8 @@ class TestPlayRound:
         assert result["score_delta"] == 0
         assert result["finished"] is False
         for face in result["answered_round"]["faces"]:
-            # Roadmap #10 - the guess itself is always shown (guess_person_id == what was
-            # submitted), but these are random uuid4()s, so none resolve to a real person's name.
+            # The guess itself is always shown (guess_person_id == what was submitted), but these
+            # are random uuid4()s, so none resolve to a real person's name.
             assert face["guess_person_id"] == str(guesses[UUID(face["face_id"])])
             assert face["guess_person_name"] is None
 

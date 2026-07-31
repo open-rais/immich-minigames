@@ -107,7 +107,7 @@ class TestImmichdleGame:
 
 
 class TestImmichdleAdminSettings:
-    """ADMIN-FEATURE.md point #4 - confirms an override actually changes live behavior, not just
+    """Confirms an override actually changes live behavior, not just
     what GameSettingsService reports (see test_game_settings_service.py for that)."""
 
     def test_starting_score_override_changes_the_initial_score(self, immich_service):

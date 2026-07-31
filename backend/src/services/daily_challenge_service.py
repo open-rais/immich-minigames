@@ -1,11 +1,10 @@
 """
-Roadmap #G (daily games) - generates the shared, pre-computed content every player of a
-(challenge_date, game_type, mode) plays that day (see persistence/daily.py's DailyChallengeModel
-and docs/TODO/DAILY-GAMES.md §4.3). Content generation itself is entirely delegated to each game's
-own `games/<game>/daily.py::build_spec()` (games/daily.py's DailySupport contract) - this module
-owns only what's genuinely generic across every game: the challenge date, the advisory lock, the
-race-safe insert, the cross-day exclusion window, and the wrapper (_ExcludingImmichService) that
-applies it.
+Generates the shared, pre-computed content every player of a (challenge_date, game_type, mode)
+plays that day (see persistence/daily.py's DailyChallengeModel). Content generation itself is
+entirely delegated to each game's own `games/<game>/daily.py::build_spec()` (games/daily.py's
+DailySupport contract) - this module owns only what's genuinely generic across every game: the
+challenge date, the advisory lock, the race-safe insert, the cross-day exclusion window, and the
+wrapper (_ExcludingImmichService) that applies it.
 
 Named DailyChallengeService (not "daily games") because services/daily_games_service.py's
 DailyGamesService is a different thing - this one generates the shared challenge content, that one
@@ -29,9 +28,9 @@ from services.immich import ContentQueries, ImmichService
 
 class _ExcludingImmichService:
     """Wraps ImmichService to always widen exclude_ids/exclude_asset_ids with a fixed extra set -
-    the cross-day no-repeat window (docs/TODO/DAILY-GAMES.md §4.3's "No-repetición"). Only the
-    query methods any game's build_spec() actually calls are overridden; everything else (thumbnail
-    fetches, person search, ...) is delegated straight through via __getattr__ - this is
+    the cross-day no-repeat window. Only the query methods any game's build_spec() actually calls
+    are overridden; everything else (thumbnail fetches, person search, ...) is delegated straight
+    through via __getattr__ - this is
     composition, not a subclass, so nothing here depends on ImmichService's own __init__. Satisfies
     ContentQueries structurally (never declared as its subclass - a Protocol doesn't need that),
     which is what lets _build_spec pass this in place of a real ImmichService without widening the
@@ -95,16 +94,16 @@ class DailyChallengeService:
         except ValueError as exc:
             if not exclude_ids:
                 raise NotEnoughContentError(str(exc)) from exc
-            # Fallback (§4.3): the exclusion window, not the library itself, may be what's too
-            # tight - retry once with no historical exclusion at all.
+            # Fallback: the exclusion window, not the library itself, may be what's too tight -
+            # retry once with no historical exclusion at all.
             try:
                 spec = self._build_spec(game_type, mode, settings, frozenset())
             except ValueError as retry_exc:
                 raise NotEnoughContentError(str(retry_exc)) from retry_exc
 
-        # INSERT ... ON CONFLICT DO NOTHING + re-SELECT (§4.3's "Carrera") - if two requests race
-        # to generate the same day's first challenge, whichever INSERT lands first wins and the
-        # loser just reads that row back, no locking needed.
+        # INSERT ... ON CONFLICT DO NOTHING + re-SELECT - if two requests race to generate the
+        # same day's first challenge, whichever INSERT lands first wins and the loser just reads
+        # that row back, no locking needed.
         stmt = (
             pg_insert(DailyChallengeModel)
             .values(
@@ -152,8 +151,8 @@ class DailyChallengeService:
         )
         ids: set[UUID] = set()
         for spec in specs:
-            # decision [F] (docs/TODO/DAILY-GAMES.md) - MoreOrLess's exclusion_ids() always returns
-            # set(), so this naturally stays empty for it without any game-type special case here.
+            # MoreOrLess's exclusion_ids() always returns set(), so this naturally stays empty for
+            # it without any game-type special case here.
             ids |= spec_entry.daily.exclusion_ids(spec)
         return frozenset(ids)
 

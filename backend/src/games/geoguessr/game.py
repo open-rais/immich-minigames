@@ -4,10 +4,9 @@ point on a map guessing where it was taken. 5 rounds are always played (unlike M
 guess doesn't end the game early), and the final score is the sum of all 5 rounds' scores. See
 docs/GAMES/GEOGUESSR.md.
 
-Owns its entire game loop (round count, next-round creation, exponential-decay scoring) -
-previously factored out into a shared base class with Dateguessr (games/asset_rounds.py),
-deliberately un-shared per docs/TODO/DECOUPLING.md so a change to this game's loop never requires
-touching Dateguessr's. *Which* asset/extras a round gets is a separate axis of variation
+Owns its entire game loop (round count, next-round creation, exponential-decay scoring),
+deliberately un-shared with Dateguessr so a change to this game's loop never requires touching
+Dateguessr's. *Which* asset/extras a round gets is a separate axis of variation
 (games/geoguessr/content.py's GeoguessrContent) - live Immich queries normally, a frozen daily spec
 for the daily flow (games/geoguessr/daily.py's ScriptedContent) - mirroring how MoreOrLess already
 varies its content via CandidateProvider. games/geoguessr/round.py holds the round itself (its
@@ -58,7 +57,7 @@ class GeoguessrGame(BaseGame):
         )
         self._content = content
 
-    # -- admin-configurable (ADMIN-FEATURE.md point #4, see games/settings_registry.py) ----------
+    # -- admin-configurable (see games/settings_registry.py) --------------------------------------
 
     @property
     def total_rounds(self) -> int:

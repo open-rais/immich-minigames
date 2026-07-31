@@ -1,4 +1,4 @@
-"""Roadmap #G, phase F3 - pure unit test (no DB) for Immichdle's daily support. Immichdle needs no
+"""Pure unit test (no DB) for Immichdle's daily support. Immichdle needs no
 content seam of its own (games/immichdle/daily.py's docstring explains why) - ImmichdleGame.start()
 already accepts a pre-picked `target`, which this covers directly."""
 

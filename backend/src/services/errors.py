@@ -38,12 +38,11 @@ class RoundNotPendingError(Exception):
 
 
 class DailyNotEnabledError(Exception):
-    """Roadmap #G - raised by create_daily_game when the (game_type, mode) isn't in today's daily
-    rotation (either genuinely unsupported, or a real mode the admin hasn't enabled) - main.py maps
-    this to a 404, matching docs/TODO/DAILY-GAMES.md §4.6."""
+    """Raised by create_daily_game when the (game_type, mode) isn't in today's daily rotation
+    (either genuinely unsupported, or a real mode the admin hasn't enabled) - main.py maps this to
+    a 404."""
 
 
 class DailyAlreadyPlayedError(Exception):
-    """Roadmap #G - raised by create_daily_game when the caller already has a game for today's
-    challenge of this (game_type, mode) - "1 intento por día" (decision [C]). main.py maps this to
-    a 409."""
+    """Raised by create_daily_game when the caller already has a game for today's challenge of
+    this (game_type, mode) - one attempt per day. main.py maps this to a 409."""

@@ -1,8 +1,7 @@
-"""audit() helper tests (docs/TODO/LOGGING.md §4.4/§4.5, phase F2): field validation, basic
-emission via the `audit_log` fixture (conftest.py), and the secrets test §4.5 calls for - a full
-register/login/change-password/admin-reset/reset-password sequence through the real `client`, with
-every record emitted anywhere (root, `audit`, `access`) checked for the plaintext passwords and
-tokens involved."""
+"""audit() helper tests: field validation, basic emission via the `audit_log` fixture (conftest.py),
+and a full register/login/change-password/admin-reset/reset-password sequence through the real
+`client`, with every record emitted anywhere (root, `audit`, `access`) checked for the plaintext
+passwords and tokens involved."""
 
 import logging
 import uuid
@@ -32,9 +31,9 @@ class _AllCapture(logging.Handler):
 
 @contextmanager
 def _capture_root_audit_and_access():
-    # "" (root) catches ordinary app logging (propagates up); `audit`/`access` don't propagate
-    # (decision [H]) so they need their own handler attached directly - see conftest.py's
-    # _LogCapture docstring for the same point.
+    # "" (root) catches ordinary app logging (propagates up); `audit`/`access` don't propagate,
+    # so they need their own handler attached directly - see conftest.py's _LogCapture docstring
+    # for the same point.
     handler = _AllCapture()
     loggers = [logging.getLogger(name) for name in ("", "audit", "access")]
     for logger in loggers:

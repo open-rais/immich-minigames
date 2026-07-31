@@ -300,7 +300,7 @@ class TestTimelineGame:
 
 
 class TestTimelineAdminSettings:
-    """ADMIN-FEATURE.md point #4 - confirms an override actually changes live behavior, not just
+    """Confirms an override actually changes live behavior, not just
     what GameSettingsService reports (see test_game_settings_service.py for that)."""
 
     def test_max_cards_ends_the_game_as_a_perfect_run(self):

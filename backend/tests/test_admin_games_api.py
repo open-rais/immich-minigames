@@ -78,7 +78,7 @@ class TestListGameSettings:
 
         assert response.status_code == 200
         by_mode = {(g["game_type"], g["mode"]): g for g in response.json()}
-        # Roadmap #f - MoreOrLess's two modes are now separate entries, each still empty.
+        # MoreOrLess's two modes are separate entries, each still empty.
         assert (MORE_OR_LESS_TYPE, MODE_PERSON_ASSETS) in by_mode
         assert (MORE_OR_LESS_TYPE, MODE_ALBUM_ASSETS) in by_mode
         assert by_mode[(MORE_OR_LESS_TYPE, MODE_PERSON_ASSETS)]["settings"] == []

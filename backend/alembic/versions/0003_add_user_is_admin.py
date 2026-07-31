@@ -1,4 +1,4 @@
-"""add users.is_admin (ADMIN-FEATURE.md point #1)
+"""add users.is_admin
 
 Not-null with a server default so no backfill is needed - every existing account starts as a
 non-admin, matching the safe default. Promoted at backend startup via ADMIN_EMAIL, see

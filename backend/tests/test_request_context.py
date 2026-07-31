@@ -1,6 +1,6 @@
-"""Per-request contextvars (docs/TODO/LOGGING.md §4.2, phase F1): the raw context_fields()
+"""Per-request contextvars: the raw context_fields()
 snapshot, and that logging_setup's formatters merge it into every record - not just ones an app
-call site explicitly passes as `extra`. Same direct-formatter style as test_logging_setup.py (F0),
+call site explicitly passes as `extra`. Same direct-formatter style as test_logging_setup.py,
 no dictConfig/global logging state touched here."""
 
 import io

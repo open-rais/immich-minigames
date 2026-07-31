@@ -1,6 +1,6 @@
-"""Roadmap #G, phase F0 - "daily games live in a separate world" (docs/TODO/DAILY-GAMES.md §4.5).
+"""Daily games live in a separate world.
 
-create_daily_game doesn't exist yet (that's F3) - these tests seed a daily game the same way the
+create_daily_game doesn't exist yet - these tests seed a daily game the same way the
 rest of the suite seeds any other row state (create a normal game, then mutate its row directly),
 attaching it to a directly-inserted DailyChallengeModel row.
 """
@@ -110,7 +110,7 @@ class TestDailyGamesDoNotInteractWithAbandon:
         assert row.abandoned is False
 
     # The reverse direction - creating a daily game must never abandon an in-progress normal game -
-    # needs create_daily_game itself (F3) to exercise for real; covered there.
+    # needs create_daily_game itself to exercise for real; covered there.
 
 
 class TestGetRecentGamesFlagsDaily:

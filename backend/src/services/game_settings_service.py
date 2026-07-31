@@ -1,6 +1,5 @@
-"""Admin feature (ADMIN-FEATURE.md point #4) - reads/writes per-(game_type, mode) admin overrides
-of the settings each game declared (games/settings_registry.py's GAME_SETTING_SPECS), persisted in
-persistence/game_settings.py."""
+"""Reads/writes per-(game_type, mode) admin overrides of the settings each game declared
+(games/settings_registry.py's GAME_SETTING_SPECS), persisted in persistence/game_settings.py."""
 
 import math
 

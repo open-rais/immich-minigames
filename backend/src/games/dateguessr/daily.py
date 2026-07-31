@@ -1,7 +1,6 @@
-"""Roadmap #G (daily games) - Dateguessr's DailySupport implementation (games/daily.py's
-contract): generates a day's shared content, decides which ids future days must avoid repeating,
-and builds the kwargs to replay it against the *same* DateguessrGame class a normal game uses (see
-docs/TODO/DECOUPLING.md decision C)."""
+"""Dateguessr's DailySupport implementation (games/daily.py's contract): generates a day's shared
+content, decides which ids future days must avoid repeating, and builds the kwargs to replay it
+against the *same* DateguessrGame class a normal game uses."""
 
 from datetime import date, datetime
 from typing import Any

@@ -1,7 +1,6 @@
-"""The single point of variation between a normal Who'sThatPerson game and a daily one
-(roadmap #G) - live Immich queries (LiveContent below) vs. a frozen daily spec
-(games/whos_that_person/daily.py's ScriptedContent). games/whos_that_person/game.py's
-WhosThatPersonGame never knows which."""
+"""The single point of variation between a normal Who'sThatPerson game and a daily one - live
+Immich queries (LiveContent below) vs. a frozen daily spec (games/whos_that_person/daily.py's
+ScriptedContent). games/whos_that_person/game.py's WhosThatPersonGame never knows which."""
 
 from typing import Protocol
 from uuid import UUID
@@ -11,9 +10,9 @@ from services.immich import ContentQueries
 
 
 class WhosThatPersonContent(Protocol):
-    """The single point of variation between a normal Who'sThatPerson game and a daily one
-    (roadmap #G) - live Immich queries (LiveContent below) vs. a frozen daily spec
-    (games/whos_that_person/daily.py's ScriptedContent). The game engine below never knows which.
+    """The single point of variation between a normal Who'sThatPerson game and a daily one - live
+    Immich queries (LiveContent below) vs. a frozen daily spec (games/whos_that_person/daily.py's
+    ScriptedContent). The game engine below never knows which.
 
     `has_more` and `pick_round` are deliberately separate methods, not "call pick_round and discard
     the result" - LiveContent's query is idempotent to repeat, but ScriptedContent's pick_round

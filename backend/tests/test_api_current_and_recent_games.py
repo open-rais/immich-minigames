@@ -1,4 +1,4 @@
-"""Route-level coverage for roadmap #e's two new endpoints - GamesService-level behavior (the
+"""Route-level coverage for the current/recent-games endpoints - GamesService-level behavior (the
 abandon side effect, the scoping/filtering rules) is already covered by test_games_service.py; this
 file only checks the HTTP-layer conventions (status codes, auth requirements, response shape)."""
 

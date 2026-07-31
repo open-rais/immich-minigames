@@ -1,4 +1,4 @@
-"""Roadmap #G, phase F3 - DailyGamesService.create_daily_game / get_daily_status / the daily branch
+"""Tests for DailyGamesService.create_daily_game / get_daily_status / the daily branch
 of GameFactory.from_row. Integration tests against the real dev Immich DB (see conftest.py's module
 docstring)."""
 
@@ -211,7 +211,7 @@ class TestResumeDailyGame:
     def test_resuming_past_the_boundary_still_plays_against_the_original_challenge(
         self, games_service, daily_games_service, daily_settings_service, auth_service
     ):
-        # "resume pasada la medianoche" (docs/TODO/DAILY-GAMES.md) - loading an in-progress daily
+        # Resuming after midnight: loading an in-progress daily
         # game must always reconstruct it from *its own* challenge, never "today's", regardless of
         # what today actually is when it's reloaded.
         daily_settings_service.update_settings(

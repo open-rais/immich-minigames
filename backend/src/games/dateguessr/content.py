@@ -1,4 +1,4 @@
-"""The single point of variation between a normal Dateguessr game and a daily one (roadmap #G) -
+"""The single point of variation between a normal Dateguessr game and a daily one -
 live Immich queries (LiveContent below) vs. a frozen daily spec (games/dateguessr/daily.py's
 ScriptedContent). games/dateguessr/game.py's DateguessrGame never knows which."""
 
@@ -28,7 +28,7 @@ _MIN_CANDIDATE_SEPARATION_DAYS = 100
 
 
 class DateguessrContent(Protocol):
-    """The single point of variation between a normal Dateguessr game and a daily one (roadmap #G) -
+    """The single point of variation between a normal Dateguessr game and a daily one -
     live Immich queries (LiveContent below) vs. a frozen daily spec (games/dateguessr/daily.py's
     ScriptedContent). The game engine below never knows which."""
 

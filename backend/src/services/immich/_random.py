@@ -1,9 +1,9 @@
-"""Uniform random sampling over Immich's Postgres tables without `ORDER BY random()` (docs/TODO/
-CODE-REVIEW-BACK.md B-1). `ORDER BY random()` forces Postgres to scan and sort every row matching
-the query before returning the top `limit`, so its cost scales with the size of the whole matching
-set instead of `limit` - invisible on a small dev library, a real cost at real-world scale (a
-synthetic-data benchmark confirmed the query plan stays a full Seq Scan/Hash Join -> Sort at 20k
-rows, while the pivot below stays flat, sub-3ms, at every scale tested from 1k to 20k).
+"""Uniform random sampling over Immich's Postgres tables without `ORDER BY random()`.
+`ORDER BY random()` forces Postgres to scan and sort every row matching the query before returning
+the top `limit`, so its cost scales with the size of the whole matching set instead of `limit` -
+invisible on a small dev library, a real cost at real-world scale (a synthetic-data benchmark
+confirmed the query plan stays a full Seq Scan/Hash Join -> Sort at 20k rows, while the pivot below
+stays flat, sub-3ms, at every scale tested from 1k to 20k).
 
 Only worth applying where the sort is actually the bottleneck - `get_persons`/`get_albums` sort a
 small already-aggregated result (one row per person/album), so their real cost lives in the join
@@ -27,7 +27,7 @@ def sample_by_id_pivot(conn: Connection, stmt: Select, id_column: Column, limit:
     Immich's asset/asset_face ids are `uuid_generate_v4()` (random by construction), never the
     time-ordered `uuid_v7()` `updateId` column. Pivoting on a column that correlates with anything
     a player could notice (upload time, location) would bias which rows come back - see this
-    module's docstring and docs/TODO/CODE-REVIEW-BACK.md B-1 for why that doesn't apply here."""
+    module's docstring for why that doesn't apply here."""
     if limit <= 0:
         return []
     pivot = uuid4()

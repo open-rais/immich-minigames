@@ -1,6 +1,5 @@
-"""Admin REST endpoints for daily-game config (roadmap point #G, closes the pending roadmap #f
-sub-point "cada modo tendrá una casilla 'Activar juego diario'") - lets an is_admin account
-enable/disable each mode's daily rotation and edit its daily-only settings (see
+"""Admin REST endpoints for daily-game config - lets an is_admin account enable/disable each mode's
+daily rotation and edit its daily-only settings (see
 services/daily_settings.py's DAILY_SETTING_SPECS for what's configurable and why). Mounted under
 /admin/daily by api/api.py. Mirrors api/admin_games_api.py's shape closely - same
 get_current_admin_user dependency, same list/update/reset routes - just against the daily config

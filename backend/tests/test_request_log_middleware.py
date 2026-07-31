@@ -1,8 +1,8 @@
-"""Access log middleware tests (docs/TODO/LOGGING.md §4.3, phase F1) - capture the `access`
+"""Access log middleware tests - capture the `access`
 logger's own records directly rather than through caplog: caplog's handler attaches to the root
-logger, and `access`/`audit` both set propagate=False (logging_setup.py, decision [H]), so records
+logger, and `access`/`audit` both set propagate=False (logging_setup.py), so records
 emitted on them never reach it. The `access_log` fixture itself lives in conftest.py (shared with
-`audit_log`, phase F2's audit tests)."""
+`audit_log`)."""
 
 
 def test_logged_in_request_records_status_duration_and_user(logged_client, access_log):

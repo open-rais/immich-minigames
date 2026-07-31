@@ -1,7 +1,7 @@
 """App entrypoint. Mounts the API router and maps this app's domain exceptions to HTTP responses
 in one place (routes just let them propagate - see api/api.py).
 
-Own-schema DB tables are no longer created here - schema is Alembic-owned (see backend/alembic/):
+Schema is Alembic-owned (see backend/alembic/):
 the packaged Docker image runs `alembic upgrade head` in docker-entrypoint.sh before starting this
 app, and bare `uv run uvicorn` dev usage expects that same command to have been run manually once
 (see README.md's Development Setup). persistence/base.py's init_db/reset_db still exist for
@@ -49,9 +49,8 @@ app.add_middleware(SlowAPIMiddleware)
 # registration order) - an unauthenticated request to a protected route 401s immediately without
 # touching rate-limit state at all, rather than being rate-limited on its way to a 401 anyway.
 app.add_middleware(AuthMiddleware)
-# Added last so it's the outermost of all (docs/TODO/LOGGING.md §4.3, same reverse-registration-
-# order reasoning as above) - it measures/logs the 401s AuthMiddleware cuts too, not just what
-# makes it past it.
+# Added last so it's the outermost of all (same reverse-registration-order reasoning as above) -
+# it measures/logs the 401s AuthMiddleware cuts too, not just what makes it past it.
 app.add_middleware(RequestLogMiddleware)
 
 

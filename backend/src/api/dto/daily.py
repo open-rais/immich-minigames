@@ -1,4 +1,4 @@
-"""Daily-game player-facing status DTOs (roadmap point #G, see services/daily_games_service.py's
+"""Daily-game player-facing status DTOs (see services/daily_games_service.py's
 DailyGamesService.get_daily_status/create_daily_game). Admin config DTOs live in api/dto/admin.py;
 the leaderboard DTO lives in api/dto/leaderboard.py."""
 
@@ -32,8 +32,8 @@ class DailyModeStatusOut(BaseModel):
 
 
 class DailyStatusOut(BaseModel):
-    # ISO datetimes (server time, decision [G]) - the frontend's countdown ticks off the offset
-    # between these two rather than trusting its own clock alone (docs/TODO/DAILY-GAMES.md §4.7).
+    # ISO datetimes (server time) - the frontend's countdown ticks off the offset
+    # between these two rather than trusting its own clock alone.
     resets_at: datetime
     server_now: datetime
     modes: list[DailyModeStatusOut]

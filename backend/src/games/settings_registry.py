@@ -1,5 +1,5 @@
-"""Admin feature (ADMIN-FEATURE.md point #4) - assembles every game's own admin-editable settings
-(each game's own `games/<game>/settings.py::SETTING_SPECS`, keyed by mode) into one
+"""Assembles every game's own admin-editable settings (each game's own
+`games/<game>/settings.py::SETTING_SPECS`, keyed by mode) into one
 (game_type, mode)-keyed registry. Which knobs are exposed at all is decided per-game, in that
 game's own settings.py (see games/settings_spec.py for the shared SettingSpec/ValueType contract) -
 this module never makes that call itself, only assembles what each game already declared. Pure

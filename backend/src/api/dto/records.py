@@ -1,4 +1,4 @@
-"""Personal-best records DTOs (roadmap point E, see ScoresService.get_personal_records)."""
+"""Personal-best records DTOs (see ScoresService.get_personal_records)."""
 
 from pydantic import BaseModel
 

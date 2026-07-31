@@ -1,7 +1,6 @@
-"""Roadmap #G (daily games) - MoreOrLess's DailySupport implementation (games/daily.py's
-contract): generates a day's shared content, decides which ids future days must avoid repeating,
-and builds the kwargs to replay it against the *same* MoreOrLessGame class a normal game uses (see
-docs/TODO/DECOUPLING.md decision C)."""
+"""MoreOrLess's DailySupport implementation (games/daily.py's contract): generates a day's shared
+content, decides which ids future days must avoid repeating, and builds the kwargs to replay it
+against the *same* MoreOrLessGame class a normal game uses."""
 
 from typing import Any
 from uuid import UUID, uuid4
@@ -58,8 +57,8 @@ class ScriptedCandidateProvider(CandidateProvider):
     already built repeat-free (or intentionally allowing a repeat, mirroring the real game's own
     small-pool fallback - see games/more_or_less/game.py's create_next_round) at generation time,
     so re-filtering it here would be redundant. Once the chain is exhausted, `any_exist()` turns
-    False, which makes MoreOrLessGame.has_next_round() end the game as "perfect" (decision [F],
-    docs/TODO/DAILY-GAMES.md) rather than as a loss."""
+    False, which makes MoreOrLessGame.has_next_round() end the game as "perfect" rather than as a
+    loss."""
 
     def __init__(self, chain: list[EntitySnapshot], next_index: int) -> None:
         self._chain = chain
@@ -99,11 +98,10 @@ def build_spec(mode: str, immich_service: ContentQueries, settings: dict[str, fl
 
 
 def exclusion_ids(spec: dict[str, Any]) -> set[UUID]:
-    """Decision [F] (docs/TODO/DAILY-GAMES.md) - MoreOrLess never gets cross-day exclusion at all,
-    unlike every other game. Always returning the empty set is what keeps
-    GamesService._collect_recent_exclusion_ids empty for this game, so the daily generator never
-    wraps its immich_service in _ExcludingImmichService. This is the deliberate decision itself,
-    not a stub left to "fill in later"."""
+    """MoreOrLess never gets cross-day exclusion at all, unlike every other game. Always returning
+    the empty set is what keeps GamesService._collect_recent_exclusion_ids empty for this game, so
+    the daily generator never wraps its immich_service in _ExcludingImmichService. This is the
+    deliberate design itself, not a stub left to "fill in later"."""
     return set()
 
 

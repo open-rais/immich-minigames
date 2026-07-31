@@ -1,4 +1,4 @@
-"""Roadmap #G, phase F5 - pure unit tests (no DB) for Timeline's daily support
+"""Pure unit tests (no DB) for Timeline's daily support
 (games/timeline/daily.py::ScriptedContent/exclusion_ids). Hand-constructed content, so none of this
 needs the immich_service/db_session fixtures - see tests/test_daily_challenge_service.py's
 TestSpecShapePerGame/TestExclusionWindow for the integration-level coverage (build_spec's actual
@@ -61,13 +61,13 @@ class TestTimelineScriptedContent:
 
     def test_ends_as_a_perfect_run_once_the_chain_is_exhausted(self):
         # Only 2 cards: start() consumes both (index 0 as the seed, index 1 as the first card to
-        # place) - nothing left at all, so even a correct guess must end the game as a perfect run
-        # (decision [F]), not a loss.
+        # place) - nothing left at all, so even a correct guess must end the game as a perfect run,
+        # not a loss.
         same_day = date(2020, 1, 1)
         cards = [CardSnapshot(uuid4(), same_day), CardSnapshot(uuid4(), same_day)]
         game = TimelineGame.start(id=uuid4(), content=ScriptedContent(cards, next_index=0), settings={})
 
-        result = game.play_round(0)  # both slots are always accepted when dates tie (decision [D])
+        result = game.play_round(0)  # both slots are always accepted when dates tie
 
         assert result.finished is True
         assert result.score_delta == 1  # ended because the chain ran out, not a wrong guess

@@ -1,4 +1,4 @@
-"""The single point of variation between a normal Timeline game and a daily one (decision [G]) -
+"""The single point of variation between a normal Timeline game and a daily one -
 live Immich queries (LiveContent below) vs. a frozen daily spec (games/timeline/daily.py's
 ScriptedContent). games/timeline/game.py's TimelineGame never knows which."""
 
@@ -17,7 +17,7 @@ _CANDIDATE_SAMPLE_SIZE = 10
 
 
 class TimelineContent(Protocol):
-    """The single point of variation between a normal Timeline game and a daily one (decision [G]) -
+    """The single point of variation between a normal Timeline game and a daily one -
     live Immich queries (LiveContent below) vs. a frozen daily spec (games/timeline/daily.py's
     ScriptedContent). The game engine below never knows which."""
 

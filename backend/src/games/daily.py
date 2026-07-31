@@ -1,9 +1,8 @@
-"""Contract-only module (no logic) - roadmap #G (daily games). Each `<game>/daily.py` implements
-this Protocol so services/daily_challenge_service.py and services/game_factory.py can generate and
-replay a daily challenge for any game without knowing that game's own content/picking logic - see
-docs/TODO/DECOUPLING.md §4, Fase 4. Structurally, an implementation is the `<game>/daily.py` module
-itself (its three top-level functions), not a class instance - `GameSpec.daily` in
-games/registry.py holds the module directly.
+"""Contract-only module (no logic) for daily games. Each `<game>/daily.py` implements this Protocol
+so services/daily_challenge_service.py and services/game_factory.py can generate and replay a daily
+challenge for any game without knowing that game's own content/picking logic. Structurally, an
+implementation is the `<game>/daily.py` module itself (its three top-level functions), not a class
+instance - `GameSpec.daily` in games/registry.py holds the module directly.
 """
 
 from typing import Any, Protocol
@@ -29,7 +28,7 @@ class DailySupport(Protocol):
     def exclusion_ids(spec: dict[str, Any]) -> set[UUID]:
         """Which ids from an already-generated spec should be excluded from a future day's
         challenge of the same (game_type, mode) - only the *answer* content, never decorative
-        extras (docs/TODO/DAILY-GAMES.md §4.3)."""
+        extras."""
         ...
 
     @staticmethod
@@ -43,10 +42,9 @@ class DailySupport(Protocol):
         ml_service: MLService,
     ) -> dict[str, Any]:
         """Constructor/start() kwargs for this game's own class (the *same* class a normal game
-        uses - see docs/TODO/DECOUPLING.md decision C), sourcing content from the frozen
-        `spec`/`settings` instead of live Immich queries or live admin settings. `rounds_played` is
-        how many rounds already exist (0 right before calling .start(), or len(persisted rounds)
-        when reconstructing an in-progress game) - only a game whose scripted source needs to
-        resume mid-sequence (MoreOrLess's chain, Geoguessr/Dateguessr/WhosThatPerson's rounds_spec
-        index) actually uses it."""
+        uses), sourcing content from the frozen `spec`/`settings` instead of live Immich queries or
+        live admin settings. `rounds_played` is how many rounds already exist (0 right before
+        calling .start(), or len(persisted rounds) when reconstructing an in-progress game) - only
+        a game whose scripted source needs to resume mid-sequence (MoreOrLess's chain,
+        Geoguessr/Dateguessr/WhosThatPerson's rounds_spec index) actually uses it."""
         ...

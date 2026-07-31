@@ -1,13 +1,13 @@
 """
-Auth service - registers/authenticates this app's own user accounts (roadmap point B) and
-issues/verifies their login JWT. Entirely separate from Immich's own users (never touches
-Immich's Postgres schema). Every game is tied to the account that created it via
-GameModel.user_id (roadmap point E, see games_service.py) - login is mandatory (roadmap #H).
+Auth service - registers/authenticates this app's own user accounts and issues/verifies their
+login JWT. Entirely separate from Immich's own users (never touches Immich's Postgres schema).
+Every game is tied to the account that created it via GameModel.user_id (see games_service.py) -
+login is mandatory.
 
 Session model: stateless JWT in an httpOnly cookie, no server-side session table - "logout" just
 clears the cookie client-side, a token copied before logout stays valid until it expires
-(JWT_EXPIRE_DAYS). Accepted tradeoff for "lo básico" (see docs/TODO/ROADMAP.md point B) - revisit
-if real revocation is ever needed.
+(JWT_EXPIRE_DAYS). Accepted tradeoff (see docs/TODO/ROADMAP.md) - revisit if real revocation is
+ever needed.
 """
 
 import secrets
@@ -57,32 +57,31 @@ class AuthService:
         self._invite_service = invite_service or InviteService(session)
 
     def list_users(self, *, offset: int = 0, limit: int = 5) -> list[UserModel]:
-        """Admin feature (ADMIN-FEATURE.md point #3) - newest-registered first, paginated (roadmap
-        infinite-scroll UI, see api/admin_api.py) - offset/limit, same convention as
-        ImmichService.search_persons."""
+        """Newest-registered first, paginated (infinite-scroll UI, see api/admin_api.py) -
+        offset/limit, same convention as ImmichService.search_persons."""
         stmt = select(UserModel).order_by(UserModel.created_at.desc()).offset(offset).limit(limit)
         return list(self._session.scalars(stmt))
 
     def get_user_by_id(self, user_id: UUID) -> UserModel | None:
-        """Admin feature (ADMIN-FEATURE.md point #3) - looks up any account by id, not just the
-        caller's own (unlike get_user_from_token, which is JWT-subject-bound)."""
+        """Looks up any account by id, not just the caller's own (unlike get_user_from_token,
+        which is JWT-subject-bound)."""
         return self._session.get(UserModel, user_id)
 
     def _is_first_user(self) -> bool:
         return self._session.scalar(select(UserModel.id).limit(1)) is None
 
     def _authorize_registration(self, email: str, invite_code: str | None) -> str:
-        """Roadmap #H, F1 - registration is invite-only, except for the very first account (which
-        can't have an invite yet - decision [H]). Raises InvalidInviteError, never returns a
-        reason to the caller - same anti-enumeration shape as InviteService.consume_invite (the
-        real reason still goes to the audit log via register_rejected, LOGGING.md §4.4, decision
-        [D] - only the HTTP response stays generic). Returns `via` ("first_user"/"bootstrap_token"/
-        "invite") for register()'s register_ok event on the success path."""
+        """Registration is invite-only, except for the very first account (which can't have an
+        invite yet). Raises InvalidInviteError, never returns a reason to the caller - same
+        anti-enumeration shape as InviteService.consume_invite (the real reason still goes to the
+        audit log via register_rejected - only the HTTP response stays generic). Returns `via`
+        ("first_user"/"bootstrap_token"/"invite") for register()'s register_ok event on the
+        success path."""
         if self._is_first_user():
             token = self._settings.initial_invite_token
             if not token:
-                # Falsy, not `is None` - roadmap #H, F6 found that an unset INITIAL_INVITE_TOKEN
-                # reaches here as "" (empty string), not None, whenever it's set via a blank
+                # Falsy, not `is None` - an unset INITIAL_INVITE_TOKEN reaches here as ""
+                # (empty string), not None, whenever it's set via a blank
                 # `INITIAL_INVITE_TOKEN=` line (.env.example's own documented default) or Docker
                 # Compose's `${INITIAL_INVITE_TOKEN}` interpolation with no var defined (Compose
                 # always injects the key with an empty-string value in that case, never omits it -
@@ -131,8 +130,8 @@ class AuthService:
             self._session.commit()
         except IntegrityError:
             # Lost the race against another registration between the checks above and this commit
-            # (docs/TODO/CODE-REVIEW.md #8) - re-run the same checks to surface the right typed
-            # error instead of letting the raw IntegrityError reach main.py unmapped (500). The
+            # - re-run the same checks to surface the right typed error instead of letting the
+            # raw IntegrityError reach main.py unmapped (500). The
             # commit only fails on email or username, so one of these two is guaranteed to hit now.
             self._session.rollback()
             if self._session.scalar(select(UserModel).where(UserModel.email == email)) is not None:
@@ -142,8 +141,8 @@ class AuthService:
         return user
 
     def update_profile(self, user: UserModel, username: str | None = None, full_name: str | None = None) -> UserModel:
-        """Roadmap point E - profile edit page. Both args are None-means-"leave unchanged" (PATCH
-        semantics), mirroring UpdateProfileIn."""
+        """Profile edit page. Both args are None-means-"leave unchanged" (PATCH semantics),
+        mirroring UpdateProfileIn."""
         changed = []
         if username is not None and username != user.username:
             existing = self._session.scalar(select(UserModel).where(UserModel.username == username))
@@ -161,16 +160,16 @@ class AuthService:
             self._session.rollback()
             raise UsernameAlreadyExistsError(f"username {username} is already taken") from None
         # The actor (self-service caller or an admin editing someone else) is implicit in the
-        # request context (LOGGING.md §4.4) - one event covers both cases, since AuthService has no
+        # request context - one event covers both cases, since AuthService has no
         # way to tell them apart itself (both routes call this same method).
         if changed:
             audit("profile_updated", target_user_id=str(user.id), fields=changed)
         return user
 
     def set_skin(self, user: UserModel, person_id: UUID | None) -> UserModel:
-        """Roadmap point E - cosmetic avatar. Person existence against Immich is validated by the
-        route handler (api/auth_api.py), not here - AuthService has no ImmichService dependency by
-        design, same separation as the rest of this module."""
+        """Cosmetic avatar. Person existence against Immich is validated by the route handler
+        (api/auth_api.py), not here - AuthService has no ImmichService dependency by design, same
+        separation as the rest of this module."""
         user.skin_person_id = person_id
         self._session.commit()
         audit("skin_updated", target_user_id=str(user.id), fields=["skin_person_id"])
@@ -208,10 +207,10 @@ class AuthService:
         if user is None:
             raise UnauthorizedError("invalid or expired session")
 
-        # Session revocation (roadmap #H, F0): a token minted before the last password change is
-        # stale even if it hasn't expired yet - reject it so "change password" really does log out
-        # every other device. `iat` is read with .get, not [], because tokens issued before this
-        # code shipped have no `iat` claim at all - treating that as "nothing to compare, don't
+        # Session revocation: a token minted before the last password change is stale even if it
+        # hasn't expired yet - reject it so "change password" really does log out every other
+        # device. `iat` is read with .get, not [], because tokens issued before this revocation
+        # check existed have no `iat` claim at all - treating that as "nothing to compare, don't
         # reject" avoids a mass forced-logout the moment this deploys; those old tokens just don't
         # get revocation coverage until they naturally expire. Strict `<` with `password_changed_at`
         # truncated to whole seconds: PATCH /auth/me/password re-issues the cookie in the same
@@ -244,11 +243,11 @@ class AuthService:
         return user
 
     def reset_password(self, token: str, new_password: str) -> UserModel:
-        """Roadmap #H, F2 - the public counterpart of change_password: proof of identity is the
-        admin-issued token (services/invite_service.py, kind="password_reset") instead of the
-        current password, for a caller who's locked out and by definition has no session to
-        re-issue a cookie for (unlike change_password, this never touches the response cookie -
-        the frontend sends them to /login afterward)."""
+        """The public counterpart of change_password: proof of identity is the admin-issued token
+        (services/invite_service.py, kind="password_reset") instead of the current password, for a
+        caller who's locked out and by definition has no session to re-issue a cookie for (unlike
+        change_password, this never touches the response cookie - the frontend sends them to
+        /login afterward)."""
         try:
             invite = self._invite_service.consume_invite(token, kind="password_reset")
         except InvalidInviteError as exc:

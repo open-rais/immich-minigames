@@ -140,7 +140,7 @@ class TestResetSettings:
 
 
 class TestSettingsAreIndependentPerMode:
-    """Roadmap #f - proves the composite (game_type, mode) primary key actually isolates two modes
+    """Proves the composite (game_type, mode) primary key actually isolates two modes
     of the same game_type, using MoreOrLess (the one real game with two modes today) even though
     neither mode has a registered SettingSpec (see games/settings_registry.py's module docstring) -
     inserts raw rows directly via db_session, bypassing update_settings's spec validation, purely

@@ -35,8 +35,8 @@ class MoreOrLessRound(BaseRound):
         self.guess: Guess | None = None
 
     def calculate_score(self, settings: Mapping[str, float] | None = None) -> int:
-        # No admin-configurable knob affects this game (ADMIN-FEATURE.md point #4) - settings is
-        # accepted only to satisfy BaseRound's shared signature.
+        # No admin-configurable knob affects this game - settings is accepted only to satisfy
+        # BaseRound's shared signature.
         if self.candidate.value == self.reference.value:
             # A tie isn't a fair "wrong" either way - always counts as a win.
             return 1

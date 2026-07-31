@@ -1,5 +1,5 @@
-"""Leaderboard DTOs (roadmap point F, see ScoresService.get_leaderboard) plus the daily-challenge
-leaderboard (roadmap point #G, F5 - see ScoresService.get_daily_leaderboard)."""
+"""Leaderboard DTOs (see ScoresService.get_leaderboard) plus the daily-challenge
+leaderboard (see ScoresService.get_daily_leaderboard)."""
 
 from datetime import date
 from typing import Literal

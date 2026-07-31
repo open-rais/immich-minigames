@@ -29,10 +29,9 @@ from services.immich import ContentQueries
 GAME_TYPE = "whos-that-person"
 MODE_NAMED_FACES = "namedFaces"
 
-# Admin feature (ADMIN-FEATURE.md point #4) - public (no leading underscore) since
-# games/settings_registry.py assembles these as defaults for the admin-configurable
-# total_people/max_hidden_faces settings, same convention already used by e.g.
-# games/geoguessr/game.py's TOTAL_ROUNDS/MAX_SCORE.
+# Admin feature - public (no leading underscore) since games/settings_registry.py assembles these
+# as defaults for the admin-configurable total_people/max_hidden_faces settings, same convention
+# already used by e.g. games/geoguessr/game.py's TOTAL_ROUNDS/MAX_SCORE.
 TOTAL_PEOPLE = 15
 MAX_HIDDEN_FACES = 5
 
@@ -71,7 +70,7 @@ class WhosThatPersonGame(BaseGame):
     def _people_asked(self) -> int:
         return sum(len(round_.faces) for round_ in self.rounds)
 
-    # -- admin-configurable (ADMIN-FEATURE.md point #4, see games/settings_registry.py) ----------
+    # -- admin-configurable (see games/settings_registry.py) ----------
 
     @property
     def total_people(self) -> int:
@@ -114,10 +113,10 @@ class WhosThatPersonGame(BaseGame):
         expected_face_ids = {face.face_id for face in self.current_round.faces}
         if set(guess) != expected_face_ids:
             raise IncompleteGuessError("guess must include exactly one entry per hidden face in the round")
-        # Frozen here (roadmap #10's rounds review, ROUNDS-VIEW.md §4.3) rather than looked up again
-        # whenever the round is later displayed - one query for every guessed person in this round,
-        # not one per face. A guessed id that no longer resolves to a real person (deleted from
-        # Immich since) just doesn't show up in the result, leaving that face's name unresolved.
+        # Frozen here rather than looked up again whenever the round is later displayed - one query
+        # for every guessed person in this round, not one per face. A guessed id that no longer
+        # resolves to a real person (deleted from Immich since) just doesn't show up in the result,
+        # leaving that face's name unresolved.
         guessed_person_ids = frozenset(guess.values())
         persons = self._immich_service.get_persons(
             named_only=True, ids=guessed_person_ids, limit=len(guessed_person_ids)

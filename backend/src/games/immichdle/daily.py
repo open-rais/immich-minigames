@@ -1,11 +1,10 @@
-"""Roadmap #G (daily games) - Immichdle's DailySupport implementation (games/daily.py's contract):
-generates a day's shared content, decides which ids future days must avoid repeating, and builds
-the kwargs to replay it against the *same* ImmichdleGame class a normal game uses (see
-docs/TODO/DECOUPLING.md decision C). Immichdle has no round sequence to precompute - its only
-content is the target, and guesses stay live either way (ImmichdleGame.play_round always queries
-immich_service for whatever the player types) - so unlike the other games, this needs no separate
-content seam in games/immichdle/game.py; ImmichdleGame.start()'s existing optional `target` param
-already covers it."""
+"""Immichdle's DailySupport implementation (games/daily.py's contract): generates a day's shared
+content, decides which ids future days must avoid repeating, and builds the kwargs to replay it
+against the *same* ImmichdleGame class a normal game uses. Immichdle has no round sequence to
+precompute - its only content is the target, and guesses stay live either way
+(ImmichdleGame.play_round always queries immich_service for whatever the player types) - so unlike
+the other games, this needs no separate content seam in games/immichdle/game.py;
+ImmichdleGame.start()'s existing optional `target` param already covers it."""
 
 from typing import Any
 from uuid import UUID

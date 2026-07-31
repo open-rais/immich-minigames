@@ -1,7 +1,7 @@
 """
 Cached per-person representative face embedding - the average pgvector embedding across a
 person's currently visible, non-deleted faces (see services/ml_service.py's
-`_get_person_embedding`), replacing an earlier O(n*m) MAX-over-every-face-pair query for
+`_get_person_embedding`), avoiding an O(n*m) MAX-over-every-face-pair comparison for
 Immichdle's MLSimilarity clue. Lives in this app's own database (see base.py) rather than
 Immich's: Immich's database is read-only for this app's DB role (docs/ARCHITECTURE/IMMICH.md), so
 a cache we write to has nowhere to go but here - even though the embeddings it's computed from are
@@ -10,7 +10,7 @@ read from Immich's `face_search` table.
 Freshness is deliberately cheap, not exact: a cached row is considered stale (and recomputed)
 whenever `face_count` no longer matches that person's current count of visible, non-deleted
 `asset_face` rows. Swapping one face for another without changing the total count is not detected
-- accepted imprecision, confirmed with the project owner.
+- accepted imprecision.
 """
 
 from datetime import datetime

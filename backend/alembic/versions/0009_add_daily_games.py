@@ -1,12 +1,12 @@
-"""add daily_configs, daily_challenges, games.daily_challenge_id (roadmap point #G)
+"""add daily_configs, daily_challenges, games.daily_challenge_id
 
 Daily games (Wordle-style: same content for every player each day, one attempt, its own
 leaderboard) live in two new tables plus one new column, deliberately kept separate from every
 existing table rather than overloading them:
 
 `daily_configs` - one row per (game_type, mode), admin-owned - whether that mode participates in
-the daily rotation (the "Activar juego diario" checkbox from roadmap #f) plus its daily-only
-setting overrides. Mirrors game_settings' existing one-row-per-(game_type,mode)-with-JSONB shape.
+the daily rotation (the "Activar juego diario" checkbox) plus its daily-only setting overrides.
+Mirrors game_settings' existing one-row-per-(game_type,mode)-with-JSONB shape.
 
 `daily_challenges` - one row per (day, game_type, mode) - the pre-generated content every player of
 that mode plays that day, generated lazily on the first "Jugar daily" of the day (see

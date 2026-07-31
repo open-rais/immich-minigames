@@ -152,8 +152,8 @@ class TestLogout:
         assert me.status_code == 401
 
     def test_deletes_the_cookie_with_the_same_attributes_it_was_set_with(self, client):
-        # docs/TODO/CODE-REVIEW.md #12 - browsers can fail to process the deletion if these don't
-        # match what the cookie was created with.
+        # Browsers can fail to process the deletion if these don't match what the cookie was
+        # created with.
         _register(client)
 
         response = client.post("/api/v1/auth/logout")

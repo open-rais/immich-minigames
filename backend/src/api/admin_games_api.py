@@ -1,5 +1,5 @@
-"""Admin REST endpoints (ADMIN-FEATURE.md point #4) - lets an is_admin account view/edit/reset the
-scoring/difficulty settings each game exposes (see games/settings_registry.py's GAME_SETTING_SPECS
+"""Admin REST endpoints that let an is_admin account view/edit/reset the scoring/difficulty settings
+each game exposes (see games/settings_registry.py's GAME_SETTING_SPECS
 for what's configurable and why). Mounted under /admin/games by api/api.py. Reuses admin_api.py's
 get_current_admin_user dependency rather than reimplementing the is_admin check."""
 

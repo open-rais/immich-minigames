@@ -220,7 +220,7 @@ class TestCreatePasswordReset:
 
 
 class TestAuditEvents:
-    """docs/TODO/LOGGING.md §4.4, phase F2."""
+    """Audit log coverage for admin-triggered password resets."""
 
     def test_password_reset_creation_emits_password_reset_created(self, client, db_session, audit_log):
         target = _register(client)

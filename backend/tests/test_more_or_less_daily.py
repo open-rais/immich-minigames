@@ -1,4 +1,4 @@
-"""Roadmap #G, phase F3 - pure unit tests (no DB) for MoreOrLess's daily support
+"""Pure unit tests (no DB) for MoreOrLess's daily support
 (games/more_or_less/daily.py::ScriptedCandidateProvider, _BufferedProvider). Hand-constructed
 content, so none of this needs the immich_service/db_session fixtures."""
 
@@ -79,7 +79,7 @@ class TestScriptedCandidateProvider:
 
     def test_ends_as_finished_once_the_chain_is_exhausted(self):
         # 2 entities: start() consumes both (index 0 as reference, index 1 as candidate) - nothing
-        # left at all, so even a correct guess must end the game (decision [F]).
+        # left at all, so even a correct guess must end the game.
         chain = [_entity(1), _entity(2)]
         provider = ScriptedCandidateProvider(chain, next_index=0)
         game = MoreOrLessGame.start(id=uuid4(), mode=MODE_PERSON_ASSETS, provider=provider)

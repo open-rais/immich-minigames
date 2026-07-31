@@ -1,5 +1,5 @@
-"""Daily-challenge attempts (roadmap #G) - create_daily_game (the player's one attempt at today's
-challenge) and get_daily_status (the `GET /daily` menu listing). Challenge *generation* itself is
+"""Daily-challenge attempts - create_daily_game (the player's one attempt at today's challenge) and
+get_daily_status (the `GET /daily` menu listing). Challenge *generation* itself is
 services/daily_challenge_service.py's job; this module only turns an already-generated challenge
 into a specific player's played GameModel row, via the same persistence/games_repository.py and
 services/game_factory.py glue services/games_service.py uses for live games.
@@ -23,9 +23,8 @@ from services.game_factory import GameFactory
 
 @dataclass(frozen=True)
 class DailyModeStatus:
-    """One entry of the `GET /daily` menu listing (roadmap #G, docs/TODO/DAILY-GAMES.md §4.6) - the
-    caller's status for one enabled daily mode, without generating a challenge just to list it (see
-    DailyGamesService.get_daily_status)."""
+    """One entry of the `GET /daily` menu listing - the caller's status for one enabled daily mode,
+    without generating a challenge just to list it (see DailyGamesService.get_daily_status)."""
 
     game_type: str
     mode: str
@@ -51,8 +50,8 @@ class DailyGamesService:
         """Creates (and consumes) the caller's single daily attempt for today's challenge of this
         (game_type, mode). Never abandons a normal game of the same mode, nor a previous daily one
         - a challenge only ever gets one game per player at all, enforced below + by the DB's
-        partial unique indexes (see docs/TODO/DAILY-GAMES.md §4.5). `today` is only ever overridden
-        by tests; real callers always mean the server's actual today."""
+        partial unique indexes. `today` is only ever overridden by tests; real callers always mean
+        the server's actual today."""
         if (game_type, mode) not in GAMES:
             raise UnsupportedGameError(f"unsupported game/mode: {game_type}/{mode}")
         if not self._daily_settings_service.is_enabled(game_type, mode):

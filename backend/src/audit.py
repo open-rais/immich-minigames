@@ -1,8 +1,7 @@
-"""Audit events (docs/TODO/LOGGING.md §4.4, phase F2) - the single entry point for the `audit`
-logger (INFO, never filtered by LOG_LEVEL - decision [H], logging_setup.py). Call sites pass a
-static event name and whatever scalar fields are specific to that event; the actor/request context
-(user, request_id, ip...) is never passed here - it's merged in later, at format time, from the
-contextvars in api/request_context.py."""
+"""Audit events - the single entry point for the `audit` logger (INFO, never filtered by
+LOG_LEVEL, see logging_setup.py). Call sites pass a static event name and whatever scalar fields
+are specific to that event; the actor/request context (user, request_id, ip...) is never passed
+here - it's merged in later, at format time, from the contextvars in api/request_context.py."""
 
 import logging
 

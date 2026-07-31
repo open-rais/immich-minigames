@@ -1,4 +1,4 @@
-"""Invitations and admin-initiated password resets (roadmap #H, F1/F2) - one table
+"""Invitations and admin-initiated password resets - one table
 (persistence/invites.py's InviteModel), `kind` distinguishes the two ('invite' |
 'password_reset'). Registration invites are admin-generated, single-use, expiring tokens; the
 plain token is only ever available at creation time - only its SHA-256 hash is persisted
@@ -54,7 +54,7 @@ class InviteService:
     def consume_invite(self, token: str, kind: str) -> InviteModel:
         """Single atomic UPDATE...RETURNING, no read-then-write window a concurrent consumer could
         slip through. Deliberately only flushes, never commits - the caller (AuthService.register,
-        and F2's reset-password) does its own write in the same transaction, so a failure there
+        and reset-password) does its own write in the same transaction, so a failure there
         (e.g. a duplicate email) rolls this back too instead of burning the invite for nothing."""
         stmt = (
             sa.update(InviteModel)
@@ -72,7 +72,7 @@ class InviteService:
             # Deliberately one message for missing/already-used/expired - same anti-enumeration
             # reasoning as AuthService.authenticate's InvalidCredentialsError. "token", not "invite
             # code" - this same message surfaces for both kind="invite" (registration) and
-            # kind="password_reset" (F2), and "invite code" reads wrong in the latter context.
+            # kind="password_reset", and "invite code" reads wrong in the latter context.
             raise InvalidInviteError("invalid, used, or expired token")
         self._session.flush()
         return self._session.get(InviteModel, invite_id)

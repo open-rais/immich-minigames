@@ -1,4 +1,4 @@
-"""Cross-game utilities - see docs/TODO/DECOUPLING.md §1 for the full rationale.
+"""Cross-game utilities.
 
 Operative rule: this package holds **only pure, stateless functions that make no design decision
 for any specific game** (`scoring.py`'s `exp_decay_score`, `picking.py`'s `pick_spread_asset`,

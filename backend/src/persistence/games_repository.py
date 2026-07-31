@@ -107,7 +107,7 @@ class GameRepository:
         )
         if window != "all":
             # Postgres's date_trunc('week', ...) is Monday-based (ISO 8601), matching "semanal
-            # desde el lunes" as confirmed with the project owner.
+            # desde el lunes".
             trunc_unit = "day" if window == "daily" else "week"
             stmt = stmt.where(GameModel.created_at >= func.date_trunc(trunc_unit, func.now()))
         return self._session.execute(stmt).all()

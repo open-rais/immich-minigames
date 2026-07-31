@@ -1,4 +1,4 @@
-"""Roadmap #G, phase F2 - DailyChallengeService.get_or_create_challenge. Integration tests against the real
+"""DailyChallengeService.get_or_create_challenge. Integration tests against the real
 dev Immich DB (see conftest.py's module docstring) - every (challenge_date, game_type, mode) used
 here must be unique across this whole test session, hence the ever-increasing _next_date() below
 (mirrors test_daily_games_service.py's own date counter, anchored to a different base date so the
@@ -130,8 +130,8 @@ class TestSpecShapePerGame:
         assert challenge.settings["decay_km"] == 1500.0  # untouched key still falls back to its default
 
     def test_timeline_cards_chain_length(self, daily_challenge_service, daily_settings_service):
-        # docs/TODO/TIMELINE.md decision [G] - the first mode with both chain_length *and*
-        # no_repeat_days (see TestExclusionWindow's own timeline test below for that half).
+        # The first mode with both chain_length *and* no_repeat_days (see TestExclusionWindow's own
+        # timeline test below for that half).
         daily_settings_service.update_settings(TIMELINE_TYPE, TIMELINE_MODE_ARCADE, values={"chain_length": 10})
 
         challenge = daily_challenge_service.get_or_create_challenge(_next_date(), TIMELINE_TYPE, TIMELINE_MODE_ARCADE)
@@ -152,9 +152,9 @@ class TestGetOrCreateIsIdempotent:
         assert first.spec == second.spec
 
     def test_timeline_two_players_get_the_same_card_sequence(self, daily_challenge_service):
-        # docs/TODO/TIMELINE.md F5 - "dos jugadores ven la misma secuencia": the second call is a
-        # different player's own request for the same day, not a retry - it must land on the exact
-        # same persisted spec rather than generating a fresh chain.
+        # "Dos jugadores ven la misma secuencia": the second call is a different player's own
+        # request for the same day, not a retry - it must land on the exact same persisted spec
+        # rather than generating a fresh chain.
         d = _next_date()
 
         first = daily_challenge_service.get_or_create_challenge(d, TIMELINE_TYPE, TIMELINE_MODE_ARCADE)
@@ -189,9 +189,9 @@ class TestExclusionWindow:
         assert second is not None
 
     def test_more_or_less_never_applies_cross_day_exclusion(self, daily_challenge_service, daily_settings_service):
-        # Decision [F] (docs/TODO/DAILY-GAMES.md §3) - MoreOrLess has no no_repeat_days setting at
-        # all, so setting an unrelated one shouldn't matter; this just documents/pins that two
-        # consecutive days' chains are each generated independently without error.
+        # MoreOrLess has no no_repeat_days setting at all, so setting an unrelated one shouldn't
+        # matter; this just documents/pins that two consecutive days' chains are each generated
+        # independently without error.
         daily_settings_service.update_settings(MORE_OR_LESS_TYPE, MODE_PERSON_ASSETS, values={"chain_length": 10})
         day1 = _next_date()
         day2 = day1 + timedelta(days=1)
@@ -206,7 +206,7 @@ class TestExclusionWindow:
         self, daily_challenge_service, daily_settings_service
     ):
         # Unlike MoreOrLess just above, Timeline's own content *is* concrete assets, so it keeps
-        # the normal no_repeat_days exclusion on top of its chain_length cap (decision [G]).
+        # the normal no_repeat_days exclusion on top of its chain_length cap.
         daily_settings_service.update_settings(
             TIMELINE_TYPE, TIMELINE_MODE_ARCADE, values={"chain_length": 10, "no_repeat_days": 3}
         )

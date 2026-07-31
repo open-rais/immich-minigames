@@ -135,7 +135,7 @@ class TestRegisterBootstrap:
         assert user.id is not None
 
     def test_blank_initial_token_also_allows_free_registration(self, db_session, monkeypatch):
-        # Roadmap #H, F6 - "" (not None) is exactly what INITIAL_INVITE_TOKEN parses to whenever
+        # "" (not None) is exactly what INITIAL_INVITE_TOKEN parses to whenever
         # it's left blank rather than fully absent: .env.example's own documented default
         # (`INITIAL_INVITE_TOKEN=`) and Docker Compose's `${INITIAL_INVITE_TOKEN}` interpolation
         # with no var defined (verified via `docker compose config`) both produce "", never None.
@@ -152,7 +152,7 @@ class TestRegisterBootstrap:
 
 class TestRegisterConcurrency:
     def test_losing_a_registration_race_raises_the_typed_error(self, db_session):
-        # docs/TODO/CODE-REVIEW.md #8: two registrations for the same email can both pass the
+        # Two registrations for the same email can both pass the
         # pre-check before either commits. Reproduced deterministically (not sleep-and-hope):
         # Postgres blocks a second INSERT against an uncommitted-but-conflicting unique value until
         # the first transaction resolves, then re-checks - so holding "A"'s insert open reliably
@@ -473,7 +473,7 @@ class TestSetSkin:
 
 
 class TestAuditEvents:
-    """docs/TODO/LOGGING.md §4.4/§4.5, phase F2 - the catalog of events AuthService emits."""
+    """The catalog of events AuthService emits."""
 
     def test_register_emits_register_ok_with_via_invite(self, auth_service, audit_log):
         user = _register(auth_service)

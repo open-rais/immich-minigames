@@ -58,9 +58,9 @@ class WhosThatPersonRound(BaseRound):
         self.asset_id = asset_id
         self.faces = faces
         self.guess: dict[UUID, UUID] | None = None  # face_id -> guessed person_id
-        # person_id -> name, frozen at guess time by WhosThatPersonGame.play_round (roadmap #10's
-        # rounds review, ROUNDS-VIEW.md §4.3) - same "snapshot" rationale as every other game's
-        # *Snapshot types: the name the player *saw* shouldn't depend on Immich data staying put.
+        # person_id -> name, frozen at guess time by WhosThatPersonGame.play_round - same
+        # "snapshot" rationale as every other game's *Snapshot types: the name the player *saw*
+        # shouldn't depend on Immich data staying put.
         # Empty (not None) for a round played before this field existed - see from_payload.
         self.guess_names: dict[UUID, str] = {}
         # Set at construction (the previous round's ending_streak, or 0 for the game's first
@@ -99,8 +99,7 @@ class WhosThatPersonRound(BaseRound):
     @property
     def ending_streak(self) -> int:
         """Streak carried into the next round's incoming_streak - derived from results rather than
-        stored, so it can't drift out of sync or depend on calculate_score() having run first (it
-        used to be set as a side effect there, which made create_next_round() order-dependent). 0
+        stored, so it can't drift out of sync or depend on calculate_score() having run first. 0
         for an unanswered round: games/whos_that_person/daily.py's build_spec walks unplayed rounds
         to pick content, where there's no streak yet to carry."""
         if self.guess is None:
@@ -137,7 +136,7 @@ class WhosThatPersonRound(BaseRound):
         round_.guess = {UUID(k): UUID(v) for k, v in payload["guess"].items()} if payload["guess"] is not None else None
         # payload.get(...) or {} rather than payload["guess_names"] - a round played before this
         # field existed has no such key at all; it just shows "?" instead of a name in the "Tu
-        # respuesta" rounds-review view (ROUNDS-VIEW.md §4.3), not a KeyError.
+        # respuesta" rounds-review view, not a KeyError.
         round_.guess_names = {UUID(k): v for k, v in (payload.get("guess_names") or {}).items()}
         round_.score_delta = score_delta
         return round_

@@ -1,16 +1,15 @@
-"""Roadmap #G (daily games) - admin-editable per-(game_type, mode) daily configuration: whether
-that mode is in the daily rotation at all (the "Activar juego diario" checkbox from roadmap #f),
-plus its daily-only setting overrides (see persistence/daily.py's DailyConfigModel).
+"""Admin-editable per-(game_type, mode) daily configuration: whether that mode is in the daily
+rotation at all (the "Activar juego diario" checkbox), plus its daily-only setting overrides (see
+persistence/daily.py's DailyConfigModel).
 
 Mirrors services/game_settings_service.py closely (same SettingSpec dataclass, same
 get/update/reset-settings shape) with two differences: every (game_type, mode) here starts from
 games/settings_registry.py's GAME_SETTING_SPECS as a base (a daily game plays with the same knobs
 a normal game does, just possibly different values) plus that game's own extra daily-only spec(s)
-(each game's own `settings.py::DAILY_SETTING_SPECS` - docs/TODO/DECOUPLING.md decision, this module
-never decides *which* game needs `chain_length` vs `no_repeat_days`, only assembles what each game
-already declared); and there's an `enabled` flag alongside the values, which `reset_settings`
-deliberately leaves untouched (only the value overrides reset to defaults - see
-docs/TODO/DAILY-GAMES.md §4.6, "enabled no se resetea")."""
+(each game's own `settings.py::DAILY_SETTING_SPECS` - this module never decides *which* game needs
+`chain_length` vs `no_repeat_days`, only assembles what each game already declared); and there's an
+`enabled` flag alongside the values, which `reset_settings` deliberately leaves untouched (only the
+value overrides reset to defaults)."""
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -39,7 +38,7 @@ from services.game_settings_service import (
 # Each game's own settings.py declares its extra daily-only spec(s) (games/settings_spec.py's
 # NO_REPEAT_DAYS_SPEC/CHAIN_LENGTH_SPEC) - this module only assembles them onto GAME_SETTING_SPECS
 # below, it never decides per-mode which one a game needs (that decision lives with the game
-# itself, see docs/TODO/DECOUPLING.md).
+# itself).
 _EXTRA_DAILY_SPECS_BY_GAME_TYPE: dict[str, list[SettingSpec]] = {
     GEOGUESSR_TYPE: GEOGUESSR_DAILY_SPECS,
     DATEGUESSR_TYPE: DATEGUESSR_DAILY_SPECS,
@@ -69,8 +68,7 @@ class DailySettingsService:
     def list_enabled(self) -> list[tuple[str, str]]:
         """Every (game_type, mode) currently in the daily rotation - `GET /daily`'s menu listing
         (services/games_service.py's get_daily_status) iterates this rather than every known mode,
-        so a disabled mode simply doesn't show up (docs/TODO/DAILY-GAMES.md §5's "Challenge de un
-        modo deshabilitado a mitad del día" - existing in-progress games stay playable by id
+        so a disabled mode simply doesn't show up (existing in-progress games stay playable by id
         regardless, only the menu card disappears)."""
         rows = self._session.execute(
             select(DailyConfigModel.game_type, DailyConfigModel.mode).where(DailyConfigModel.enabled.is_(True))
@@ -114,9 +112,9 @@ class DailySettingsService:
         return self.get_config(game_type, mode)
 
     def reset_settings(self, game_type: str, mode: str) -> tuple[bool, dict[str, float]]:
-        """Clears value overrides back to defaults - `enabled` is untouched (§4.6's "enabled no se
-        resetea"), so the row itself is never deleted outright (unlike
-        GameSettingsService.reset_settings, which has no other field worth preserving)."""
+        """Clears value overrides back to defaults - `enabled` is untouched, so the row itself is
+        never deleted outright (unlike GameSettingsService.reset_settings, which has no other
+        field worth preserving)."""
         row = self._session.get(DailyConfigModel, (game_type, mode))
         if row is not None:
             row.values = {}

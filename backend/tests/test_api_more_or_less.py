@@ -28,8 +28,8 @@ class TestCreateGame:
 
         assert game["score"] == 0
         assert game["finished"] is False
-        # ADMIN-FEATURE.md point #4 - MoreOrLess has no configured total (no fixed round count),
-        # unlike Geoguessr/Dateguessr's total_rounds or WhosThatPerson's total_people.
+        # MoreOrLess has no configured total (no fixed round count), unlike Geoguessr/Dateguessr's
+        # total_rounds or WhosThatPerson's total_people.
         assert game["total_rounds"] is None
         assert game["total_people"] is None
         assert len(game["rounds"]) == 1
@@ -67,9 +67,9 @@ class TestGetGame:
         assert response.status_code == 200
 
     def test_returns_401_once_logged_out(self, client):
-        # Roadmap #H, F3 - "logged out" now means no session cookie at all, which the default-deny
-        # middleware rejects before the request ever reaches GamesService's own ownership check
-        # (GameOwnershipError/403) - this used to be a 403, see docs/TODO/NEW-AUTH.md §6 F3.
+        # "Logged out" means no session cookie at all, which the default-deny middleware rejects
+        # before the request ever reaches GamesService's own ownership check
+        # (GameOwnershipError/403).
         _register(client)
         game = _create_game(client)
         client.cookies.clear()
@@ -79,8 +79,8 @@ class TestGetGame:
         assert response.status_code == 401
 
     def test_returns_403_for_a_different_account(self, client):
-        # This is the actual bug #3 fixes: a leaked/guessed X-Owner-Id used to be enough on its
-        # own to read and play someone else's logged-in game - now only the owning account can.
+        # Regression guard: a leaked/guessed X-Owner-Id must not be enough on its own to read or
+        # play someone else's logged-in game - only the owning account can.
         _register(client)
         game = _create_game(client)
         client.cookies.clear()

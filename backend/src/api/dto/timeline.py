@@ -22,8 +22,8 @@ class TimelineRoundOut(BaseModel):
     board: list[TimelineCardOut]
     card_asset_id: UUID
     guess_slot: int | None
-    # Redacted (null) until this round has been answered - it IS the answer (docs/TODO/TIMELINE.md
-    # decision [H]'s "partida en curso abierta por URL" risk row).
+    # Redacted (null) until this round has been answered - it IS the answer, and an in-progress
+    # game reopened by URL must not leak it early.
     card_date: date | None
     correct_slot: int | None
     correct: bool | None
@@ -53,7 +53,7 @@ class TimelinePlayRoundIn(BaseModel):
         # The upper bound (len(board)) is per-round, not a static schema constraint - api/dto/
         # common.py's parse_guess passes the pending round in via model_validate's `context` so this
         # rejects an out-of-range slot here (422), rather than letting it reach the domain layer as
-        # a guess that's merely never correct (docs/TODO/TIMELINE.md §4.3).
+        # a guess that's merely never correct.
         round_ = (info.context or {}).get("round") if info.context else None
         if isinstance(round_, TimelineRound) and self.slot > len(round_.board):
             raise ValueError(f"slot must be between 0 and {len(round_.board)}")

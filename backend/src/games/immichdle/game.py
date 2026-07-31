@@ -24,16 +24,15 @@ from services.ml_service import MLService
 GAME_TYPE = "immichdle"
 MODE_PERSON = "person"
 
-# Admin feature (ADMIN-FEATURE.md point #4) - public (no leading underscore) since
-# games/settings_registry.py assembles these as defaults for the admin-configurable
-# starting_score/wrong_guess_penalty settings, same convention already used by e.g.
-# games/geoguessr/game.py's TOTAL_ROUNDS/MAX_SCORE.
+# Admin feature - public (no leading underscore) since games/settings_registry.py assembles these
+# as defaults for the admin-configurable starting_score/wrong_guess_penalty settings, same
+# convention already used by e.g. games/geoguessr/game.py's TOTAL_ROUNDS/MAX_SCORE.
 STARTING_SCORE = 100
 # Exponent `w` in `peso = c_fotos ^ w` (services/immich/persons.py's get_persons
 # asset_count_weight), applied only to the target person's selection at game start
 # (ImmichdleGame.start). w=0 makes every named person equally likely regardless of photo count;
-# w=1 makes a person with 1000 photos 1000x as likely as one with 1 photo. Confirmed with the
-# project owner: default is a mild bias towards people with more photos (0.2), not a strong one.
+# w=1 makes a person with 1000 photos 1000x as likely as one with 1 photo. Default is a mild bias
+# towards people with more photos (0.2), not a strong one.
 ASSET_COUNT_WEIGHT_EXPONENT = 0.2
 
 
@@ -89,11 +88,10 @@ class ImmichdleGame(BaseGame):
         settings: Mapping[str, float] | None = None,
         target: PersonSnapshot | None = None,
     ) -> "ImmichdleGame":
-        # Roadmap #G - a daily game hands in its pre-generated target (games/immichdle/daily.py's
-        # build_spec) instead of sampling one here; guesses stay live either way
-        # (play_round below always queries immich_service for whatever the player types), so
-        # nothing downstream of this needs to know whether the target came from a live sample or a
-        # frozen spec.
+        # A daily game hands in its pre-generated target (games/immichdle/daily.py's build_spec)
+        # instead of sampling one here; guesses stay live either way (play_round below always
+        # queries immich_service for whatever the player types), so nothing downstream of this
+        # needs to know whether the target came from a live sample or a frozen spec.
         if target is None:
             asset_count_weight = float((settings or {}).get("asset_count_weight", ASSET_COUNT_WEIGHT_EXPONENT))
             # limit=2 in one call instead of a second get_persons just to check an alternative

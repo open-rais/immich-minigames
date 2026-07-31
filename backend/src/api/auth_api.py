@@ -1,5 +1,5 @@
-"""Auth REST endpoints - registration/login/logout/current-user for this app's own accounts
-(roadmap point B). Mounted under /auth by api/api.py. Routes don't catch auth_service's domain
+"""Auth REST endpoints - registration/login/logout/current-user for this app's own accounts.
+Mounted under /auth by api/api.py. Routes don't catch auth_service's domain
 exceptions (EmailAlreadyExistsError etc.) - those propagate to the app-level handlers registered
 in main.py, same pattern as api/api.py's own routes."""
 
@@ -35,12 +35,12 @@ def get_auth_service(session: Annotated[Session, Depends(get_db_session)]) -> Au
 
 
 def get_current_user(request: Request) -> UserModel:
-    """Roadmap #H, F3 - no longer parses the cookie itself: api/auth_middleware.py already did
-    that for every request that reaches here (anything outside its allow-list), leaving the
-    resolved user on request.state. Routes still declare Depends(get_current_user) exactly as
-    before, unchanged - only where the identity comes from changed. The defensive None-check below
-    should never actually trigger (the middleware guarantees state.user is set for anything that
-    isn't allow-listed, and no allow-listed route uses this dependency), but costs nothing to keep."""
+    """Resolves the current user from request.state, where api/auth_middleware.py already placed
+    it for every request that reaches here (anything outside its allow-list). Routes declare
+    Depends(get_current_user) as their auth dependency, decoupled from where the identity itself
+    comes from. The defensive None-check below should never actually trigger (the middleware
+    guarantees state.user is set for anything that isn't allow-listed, and no allow-listed route
+    uses this dependency), but costs nothing to keep."""
     user = getattr(request.state, "user", None)
     if user is None:
         raise UnauthorizedError("not authenticated")
@@ -50,11 +50,11 @@ def get_current_user(request: Request) -> UserModel:
 def _cookie_attrs() -> dict[str, object]:
     """Shared between _set_session_cookie and logout - browsers match a cookie for deletion by
     (name, domain, path), but several also expect SameSite/Secure/HttpOnly to match for the
-    deletion to reliably take (docs/TODO/CODE-REVIEW.md #12) - reading both from here means they
-    can't drift again. SameSite=Lax already blocks the cookie from riding along on cross-site
-    POSTs, which covers CSRF for what this endpoint set does today. secure comes from
-    settings.cookie_secure (docs/TODO/CODE-REVIEW.md #11) - false by default since the dev stack
-    and docker-compose.app.yml both serve plain HTTP, set true behind a TLS-terminating proxy."""
+    deletion to reliably take - reading both from here means they can't drift again. SameSite=Lax
+    already blocks the cookie from riding along on cross-site POSTs, which covers CSRF for what
+    this endpoint set does today. secure comes from settings.cookie_secure - false by default
+    since the dev stack and docker-compose.app.yml both serve plain HTTP, set true behind a
+    TLS-terminating proxy."""
     return {
         "path": "/",
         "httponly": True,
@@ -73,7 +73,7 @@ def _set_session_cookie(response: Response, token: str) -> None:
 
 
 @router.post("/register", response_model=UserOut, status_code=201)
-# Roadmap #H, F5 - IP-keyed, not the shared limiter's default session-or-IP key: this route is
+# IP-keyed, not the shared limiter's default session-or-IP key: this route is
 # what *mints* the session, so keying it by session would let each successful call escape into a
 # fresh, unlimited budget of its own (the very next request would carry the brand-new account's
 # cookie instead of matching against the count of registrations already made from this network
@@ -105,7 +105,7 @@ def login(
     response: Response,
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> UserOut:
-    # Roadmap #H, F5 - on top of the IP-keyed decorator above (a loose global cap), this bounds
+    # On top of the IP-keyed decorator above (a loose global cap), this bounds
     # attempts against one specific email regardless of which IP/session they come from - see
     # api/rate_limit.py's enforce_login_email_limit for why the decorator alone can't do this.
     enforce_login_email_limit(body.email, request.url.path)

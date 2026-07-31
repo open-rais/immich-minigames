@@ -1,5 +1,5 @@
-"""Score/history reporting - personal records (roadmap point E), leaderboards (roadmap point F,
-normal + daily), and the profile's recent-games list (roadmap #e). Every query is read-only against
+"""Score/history reporting - personal records, leaderboards (normal + daily), and the profile's
+recent-games list. Every query is read-only against
 persistence/games_repository.py's GameRepository; unlike services/games_service.py and
 services/daily_games_service.py, this service never builds or mutates a BaseGame, so it has no
 dependency on services/game_factory.py.
@@ -17,8 +17,8 @@ from services.errors import UnsupportedGameError
 
 @dataclass(frozen=True)
 class GameRecord:
-    """One personal-best entry (roadmap point E) - a mode the account has at least one finished
-    game for, with their highest score in it."""
+    """One personal-best entry - a mode the account has at least one finished game for, with their
+    highest score in it."""
 
     game_type: str
     mode: str
@@ -27,7 +27,7 @@ class GameRecord:
 
 @dataclass(frozen=True)
 class RecentGame:
-    """One row of the profile's "Ver juegos" modal (roadmap point #e) - a logged-in account's last
+    """One row of the profile's "Ver juegos" modal - a logged-in account's last
     N games that reached a final state, either by finishing naturally or by being abandoned when
     the player started a new one of that (game_type, mode). A still-active game never appears here
     - see ScoresService.get_recent_games."""
@@ -41,15 +41,15 @@ class RecentGame:
     created_at: datetime
     # Whether this was a daily-challenge game rather than a normal one. Unlike every other
     # per-player query in this file, get_recent_games doesn't filter daily games out (it's personal
-    # history, not a score comparison) - it just flags them so the "Ver juegos" modal can label them
-    # (see docs/TODO/DAILY-GAMES.md §4.5).
+    # history, not a score comparison) - it just flags them so the "Ver juegos" modal can label
+    # them.
     is_daily: bool
 
 
 @dataclass(frozen=True)
 class LeaderboardEntry:
-    """One leaderboard row (roadmap point F) - a distinct account's best score for a (game_type,
-    mode) within a time window, 1-indexed by rank."""
+    """One leaderboard row - a distinct account's best score for a (game_type, mode) within a time
+    window, 1-indexed by rank."""
 
     rank: int
     username: str
@@ -62,7 +62,7 @@ class ScoresService:
         self._repository = repository
 
     def get_personal_records(self, user_id: UUID) -> list[GameRecord]:
-        """Roadmap point E - personal-best score per (game_type, mode), shown in the main menu -
+        """Personal-best score per (game_type, mode), shown in the main menu -
         every game's score is higher-is-better (see games/shared/scoring.py's exp_decay_score and
         each game's win/streak-based deltas), so MAX(score) among finished games is a valid "best"
         for every existing game/mode."""
@@ -72,7 +72,7 @@ class ScoresService:
     def get_leaderboard(
         self, game_type: str, mode: str, window: Literal["all", "weekly", "daily"]
     ) -> list[LeaderboardEntry]:
-        """Roadmap point F - top 15 distinct accounts by their best score for this (game_type,
+        """Top 15 distinct accounts by their best score for this (game_type,
         mode), optionally restricted to games created since this week's/today's midnight (server
         time, computed in Postgres so the cutoff is never skewed by a client/server clock or
         timezone mismatch)."""
@@ -85,7 +85,7 @@ class ScoresService:
         ]
 
     def get_daily_leaderboard(self, game_type: str, mode: str, challenge_date: date) -> list[LeaderboardEntry]:
-        """Roadmap #G, F5 - top 15 accounts by score for *one specific day's* challenge, not a
+        """Top 15 accounts by score for *one specific day's* challenge, not a
         rolling window like get_leaderboard's all/weekly/daily - a date with no challenge for this
         (game_type, mode) simply has no entries, not an error."""
         if (game_type, mode) not in GAMES:
@@ -102,7 +102,7 @@ class ScoresService:
         ]
 
     def get_recent_games(self, user_id: UUID, limit: int = 5) -> list[RecentGame]:
-        """ "Ver juegos" profile modal (roadmap #e) - a logged-in player's last `limit` games that
+        """ "Ver juegos" profile modal - a logged-in player's last `limit` games that
         reached a final state (finished naturally, or abandoned by starting a new one), most recent
         first. A game still actively in progress is intentionally excluded - it belongs on that
         mode's idle screen as "Continuar", not in this history list."""

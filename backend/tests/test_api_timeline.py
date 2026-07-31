@@ -76,10 +76,10 @@ class TestPlayRound:
         domain_game = games_service.get_game(game["id"], _owning_user(db_session, game["id"]))
         first_round = domain_game.current_round
         correct_slot = first_round.correct_slot
-        # _load_game reads the row with SELECT ... FOR UPDATE (docs/TODO/CODE-REVIEW.md #6) - this
-        # inspection-only read would otherwise hold that lock for the rest of the test (games_service
-        # here shares db_session, only closed at teardown) and deadlock against the HTTP call below,
-        # which loads the same game_id through its own request-scoped session.
+        # _load_game reads the row with SELECT ... FOR UPDATE - this inspection-only read would
+        # otherwise hold that lock for the rest of the test (games_service here shares db_session,
+        # only closed at teardown) and deadlock against the HTTP call below, which loads the same
+        # game_id through its own request-scoped session.
         db_session.rollback()
 
         response = _play(logged_client, game["id"], round_id, correct_slot)
@@ -109,8 +109,7 @@ class TestPlayRound:
 
         if accepted == {0, 1}:
             # Both slots of a board-of-1 game are only ever both accepted when the drawn card ties
-            # the starting card's date exactly (docs/TODO/TIMELINE.md decision [D]) - there's no
-            # "wrong" slot to submit in that case.
+            # the starting card's date exactly - there's no "wrong" slot to submit in that case.
             pytest.skip("both slots tied - no wrong slot exists for this round")
         wrong_slot = next(slot for slot in (0, 1) if slot not in accepted)
 

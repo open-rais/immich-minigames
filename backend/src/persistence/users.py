@@ -1,8 +1,8 @@
 """
-Own persistence layer for this app's user accounts (roadmap point B) - entirely separate from
-Immich's own users (see docs/ARCHITECTURE/BACKEND.md). Shares this app's own database/Base with
-games.py (persistence/base.py). GameModel.user_id (roadmap point E) links every game to the
-account that created it - login is mandatory (roadmap #H, see services/games_service.py).
+Own persistence layer for this app's user accounts - entirely separate from Immich's own users
+(see docs/ARCHITECTURE/BACKEND.md). Shares this app's own database/Base with games.py
+(persistence/base.py). GameModel.user_id links every game to the account that created it - login
+is mandatory (see services/games_service.py).
 """
 
 from datetime import datetime
@@ -22,17 +22,16 @@ class UserModel(Base):
     username: Mapped[str] = mapped_column(unique=True)
     full_name: Mapped[str]
     password_hash: Mapped[str]
-    # Cosmetic avatar (roadmap point E): a Person id from the Immich library, shown in the header's
-    # user circle. Deliberately not a FK - and now it couldn't be one even in principle: Immich's
-    # `person` table lives in a different Postgres database, which foreign keys cannot span (see
-    # docs/ARCHITECTURE/BACKEND.md). Multiple accounts may pick the same person, it's purely
-    # decorative and not identity-linked.
+    # Cosmetic avatar: a Person id from the Immich library, shown in the header's user circle.
+    # Deliberately not a FK - Immich's `person` table lives in a different Postgres database, which
+    # foreign keys cannot span (see docs/ARCHITECTURE/BACKEND.md). Multiple accounts may pick the
+    # same person, it's purely decorative and not identity-linked.
     skin_person_id: Mapped[UUID | None] = mapped_column(default=None)
-    # Admin feature (ADMIN-FEATURE.md point #1) - promoted via ADMIN_EMAIL at backend startup
-    # (see services/admin_bootstrap.py), never set through a registration/profile endpoint.
+    # Promoted via ADMIN_EMAIL at backend startup (see services/admin_bootstrap.py), never set
+    # through a registration/profile endpoint.
     is_admin: Mapped[bool] = mapped_column(default=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    # Session revocation (roadmap #H, F0) - set on every password change (AuthService.change_password
+    # Session revocation - set on every password change (AuthService.change_password
     # and, later, the reset-password flow); services/auth_service.py rejects any JWT whose `iat`
     # predates this, which is the only way to invalidate other devices' sessions without a
     # server-side session table. NULL for every pre-existing account until its first password

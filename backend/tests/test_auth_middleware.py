@@ -1,4 +1,4 @@
-"""Structural coverage for api/auth_middleware.py (roadmap #H, F3) - walks every route actually
+"""Structural coverage for api/auth_middleware.py - walks every route actually
 registered on the app and asserts each one outside the allow-list 401s without a cookie, so a
 route added tomorrow and never wired up for auth is covered by construction rather than by someone
 remembering to add a test for it."""

@@ -1,4 +1,4 @@
-"""add users.password_changed_at and the invites table (roadmap #H, F0)
+"""add users.password_changed_at and the invites table
 
 `password_changed_at` backs session revocation (services/auth_service.py's get_user_from_token):
 a JWT whose `iat` predates this timestamp is rejected, so changing a password logs out every other
@@ -6,10 +6,11 @@ device - the only revocation possible without a server-side session table. NULL 
 until it changes its password for the first time; that NULL is treated as "nothing to compare
 against" (no rejection), so existing accounts aren't affected until they opt in.
 
-`invites` backs registration-by-invitation and admin-initiated password reset (F1/F2) - one table,
+`invites` backs registration-by-invitation and admin-initiated password reset - one table,
 `kind` distinguishes the two ('invite' | 'password_reset'), consumed via a single atomic
-`UPDATE ... RETURNING`. Created here (schema now) even though nothing reads/writes it until F1, so
-the two phases don't each need their own migration for what's really one small piece of schema.
+`UPDATE ... RETURNING`. Created here (schema now) even though nothing reads/writes it yet, so the
+features that consume it later don't each need their own migration for what's really one small
+piece of schema.
 `token_hash` is a SHA-256 hex digest, never the token itself - the token
 (`secrets.token_urlsafe(32)`) is high-entropy and app-generated, not a human-chosen password, so an
 unsalted hash is enough.

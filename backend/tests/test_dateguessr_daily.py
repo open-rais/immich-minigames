@@ -1,4 +1,4 @@
-"""Roadmap #G, phase F3 - pure unit tests (no DB) for Dateguessr's daily support
+"""Pure unit tests (no DB) for Dateguessr's daily support
 (games/dateguessr/daily.py::ScriptedContent). Hand-constructed content, so none of this needs the
 immich_service/db_session fixtures."""
 

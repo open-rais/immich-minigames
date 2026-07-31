@@ -1,4 +1,4 @@
-"""Roadmap #H, F5 - api/rate_limit.py's session-or-IP key function, and the per-email login limit
+"""Tests for api/rate_limit.py's session-or-IP key function, and the per-email login limit
 that shares its storage with the shared Limiter."""
 
 import uuid
@@ -64,9 +64,8 @@ class TestSessionOrIpKey:
         assert session_or_ip_key(request) == "9.9.9.9"
 
     def test_does_not_trust_x_real_ip_or_x_forwarded_for(self):
-        # Decision [A] (docs/TODO/NEW-AUTH.md) - this app assumes nothing about what's in front of
-        # it, unlike the old get_client_ip this replaced (which trusted X-Real-IP unconditionally,
-        # a deployment-specific assumption this app no longer makes).
+        # This app assumes nothing about what's in front of it, so it never trusts X-Real-IP or
+        # X-Forwarded-For - a deployment-specific assumption this app deliberately avoids making.
         request = _fake_request(
             client_host="1.2.3.4",
             extra_headers=[(b"x-real-ip", b"6.6.6.6"), (b"x-forwarded-for", b"7.7.7.7")],
@@ -160,7 +159,7 @@ class TestLoginRateLimitEndToEnd:
 
 
 class TestAuditEvents:
-    """docs/TODO/LOGGING.md §4.4, phase F2 - both 429 paths (main._rate_limit_handler's global one
+    """Both 429 paths (main._rate_limit_handler's global one
     and enforce_login_email_limit's per-email one) audit rate_limited, distinguished by `scope`."""
 
     def test_login_email_limit_emits_rate_limited_with_login_email_scope(self, audit_log):

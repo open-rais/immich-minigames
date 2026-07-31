@@ -1,5 +1,5 @@
-"""Unit tests against the formatters directly (docs/TODO/LOGGING.md §4.5, phase F0) - no
-dictConfig, no touching global logging state (that wiring is verified live per §6's F0 checklist,
+"""Unit tests against the formatters directly - no
+dictConfig, no touching global logging state (that wiring is verified live separately,
 not here - see the module's own docstring risk notes about pytest/caplog interaction)."""
 
 import io

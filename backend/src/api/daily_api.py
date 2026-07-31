@@ -1,4 +1,4 @@
-"""Player-facing daily-game endpoints (roadmap #G) - status listing + creating today's attempt.
+"""Player-facing daily-game endpoints - status listing + creating today's attempt.
 Admin config lives in api/admin_daily_api.py. Mounted under `/daily` by api/api.py (which is itself
 mounted at `/api/v1`, so the full path is `/api/v1/daily/...`). Playing rounds reuses the existing
 `POST /games/{id}/rounds/{roundId}` and `GET /games/{id}` routes unchanged - a daily game is a
@@ -24,9 +24,9 @@ router = APIRouter(prefix="/daily", tags=["daily"])
 
 
 def _resets_at(today: date) -> datetime:
-    # Server-local midnight of the day after `today` (decision [G], docs/TODO/DAILY-GAMES.md §4.6)
-    # - naive datetimes throughout, matching the server-time convention ScoresService.get_leaderboard
-    # already uses for its own daily/weekly windows (Postgres's date_trunc('day', now())).
+    # Server-local midnight of the day after `today` - naive datetimes throughout, matching the
+    # server-time convention ScoresService.get_leaderboard already uses for its own daily/weekly
+    # windows (Postgres's date_trunc('day', now())).
     return datetime.combine(today + timedelta(days=1), time.min)
 
 
@@ -60,8 +60,8 @@ def get_daily_leaderboard(
     scores_service: Annotated[ScoresService, Depends(get_scores_service)],
     date_: Annotated[date | None, Query(alias="date")] = None,
 ) -> DailyLeaderboardOut:
-    # No auth dependency of its own, but roadmap #H, F3's default-deny middleware now requires a
-    # session for every route regardless - this route just never needed one on top of that.
+    # No auth dependency of its own, but the default-deny middleware now requires a session for
+    # every route regardless - this route just never needed one on top of that.
     # Defaults to today; a date with no challenge for this (game_type, mode) just reads empty.
     challenge_date = date_ or date.today()
     entries = scores_service.get_daily_leaderboard(game_type, mode, challenge_date)

@@ -140,7 +140,7 @@ class TestGeoguessrScoring:
 
 
 class TestGeoguessrAdminSettings:
-    """ADMIN-FEATURE.md point #4 - confirms an override actually changes live behavior, not just
+    """Confirms an override actually changes live behavior, not just
     what GameSettingsService reports (see test_game_settings_service.py for that)."""
 
     def test_total_rounds_override_changes_how_many_rounds_are_played(self, immich_service):

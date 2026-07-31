@@ -1,8 +1,8 @@
-"""add game_settings.mode column, composite (game_type, mode) primary key (roadmap point #f)
+"""add game_settings.mode column, composite (game_type, mode) primary key
 
-Roadmap #f splits the admin "Juegos" accordion into one top-level accordion per game with a
-nested row per mode (see admin/AdminGamesSection.tsx) - each mode now needs its own independently
-overridable settings row instead of sharing one row per game_type. MoreOrLess is the only game
+The admin "Juegos" accordion has one top-level accordion per game with a nested row per mode (see
+admin/AdminGamesSection.tsx) - each mode needs its own independently overridable settings row
+instead of sharing one row per game_type. MoreOrLess is the only game
 with more than one mode today (personAssets/albumAssets) and has never had a persisted row (its
 spec list is empty - update_settings always raises UnknownGameSettingError for it, see
 services/game_settings.py), so there's nothing to backfill for it; the four other games each have

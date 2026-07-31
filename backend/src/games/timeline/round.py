@@ -28,8 +28,7 @@ class CardSnapshot(DictCodec):
 
     @classmethod
     def of(cls, asset: Asset) -> "CardSnapshot":
-        # Local calendar day, not the UTC day of file_created_at - see domain/asset.py's local_date
-        # and decision [C].
+        # Local calendar day, not the UTC day of file_created_at - see domain/asset.py's local_date.
         return cls(id=asset.id, date=asset.local_date)
 
 
@@ -45,15 +44,15 @@ class TimelineRound(BaseRound):
     @property
     def correct_slot(self) -> int:
         """How many board cards are strictly earlier than `card` - the exact insertion index
-        (`list.insert(i, x)` semantics, decision §2) that keeps the board chronologically correct.
+        (`list.insert(i, x)` semantics) that keeps the board chronologically correct.
         With duplicate dates on the board, this always lands right before the first equal-or-later
         one - fine, since accepted_slots() below is what actually decides whether a guess counts."""
         dates = [c.date for c in self.board]
         return bisect.bisect_left(dates, self.card.date)
 
     def accepted_slots(self, tolerance_days: int) -> range:
-        """Every slot whose neighbors don't contradict `card`'s real date beyond `tolerance_days` -
-        decision [D]. Always contains correct_slot, and is always a contiguous range: the left
+        """Every slot whose neighbors don't contradict `card`'s real date beyond `tolerance_days`.
+        Always contains correct_slot, and is always a contiguous range: the left
         endpoint is the first slot whose left neighbor doesn't undercut `card.date - tol` and the
         right endpoint is the last slot whose right neighbor doesn't overshoot `card.date + tol`,
         so both bounds are plain binary searches on the (sorted) board dates."""

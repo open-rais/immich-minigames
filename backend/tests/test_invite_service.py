@@ -60,7 +60,7 @@ class TestCreateAndConsume:
             service.consume_invite(token, kind=kind)
 
     def test_consume_does_not_commit_by_itself(self, db_session):
-        # AuthService.register (and F2's reset-password) rely on this: consume_invite only
+        # AuthService.register (and reset-password) rely on this: consume_invite only
         # flushes, so a rollback after it (e.g. a duplicate email) undoes the consumption too.
         service = InviteService(db_session)
         kind = _unique_kind()
@@ -152,8 +152,6 @@ class TestRevokeInvite:
 
 
 class TestAuditEvents:
-    """docs/TODO/LOGGING.md §4.4, phase F2."""
-
     def test_create_invite_emits_invite_created_for_either_kind(self, db_session, audit_log):
         service = InviteService(db_session)
 
