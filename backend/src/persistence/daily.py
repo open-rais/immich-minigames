@@ -9,7 +9,8 @@ shape as persistence/game_settings.py's GameSettingsModel, just with an extra `e
 services/daily_settings.py).
 
 `DailyChallengeModel` - one row per (day, game_type, mode) - the pre-generated, shared content every
-player of that mode plays that day (`spec`, shape documented per-game in services/daily_service.py)
+player of that mode plays that day (`spec`, shape documented per-game in
+services/daily_challenge_service.py)
 plus a frozen snapshot of that day's effective settings (`settings` - see docs/TODO/DAILY-GAMES.md
 §4.2 for why this is snapshotted rather than read live like a normal game's settings). Referenced by
 persistence/games.py's GameModel.daily_challenge_id.

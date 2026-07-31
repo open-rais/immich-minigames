@@ -80,7 +80,7 @@ class DailySettingsService:
     def get_settings(self, game_type: str, mode: str) -> dict[str, float]:
         """Effective daily-only values for this (game_type, mode) - every spec's default,
         overridden by whatever's persisted. Read fresh every time a challenge is generated (see
-        services/daily_service.py), same "always live, never cached" rationale as
+        services/daily_challenge_service.py), same "always live, never cached" rationale as
         GameSettingsService.get_settings - the *challenge* is what freezes these, not this call."""
         defaults = {spec.key: spec.default for spec in self.get_specs(game_type, mode)}
         row = self._session.get(DailyConfigModel, (game_type, mode))

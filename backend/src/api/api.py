@@ -19,7 +19,7 @@ from api.admin_invites_api import router as admin_invites_router
 from api.auth_api import get_current_user
 from api.auth_api import router as auth_router
 from api.daily_api import router as daily_router
-from api.deps import get_games_service, get_immich_service
+from api.deps import get_games_service, get_immich_service, get_scores_service
 from api.dto.common import CreateGameIn, CurrentGameOut, GameOut, PlayRoundOut, RecentGamesOut, parse_guess
 from api.dto.config import ConfigOut
 from api.dto.leaderboard import LeaderboardOut, LeaderboardWindow
@@ -30,6 +30,7 @@ from config import Settings, get_settings
 from persistence.users import UserModel
 from services.games_service import GamesService
 from services.immich_service import ImmichService
+from services.scores_service import ScoresService
 
 router = APIRouter(prefix="/api/v1")
 router.include_router(auth_router)
@@ -66,9 +67,9 @@ def create_game(
 @router.get("/games/records", response_model=GameRecordsOut)
 def get_game_records(
     user: Annotated[UserModel, Depends(get_current_user)],
-    games_service: Annotated[GamesService, Depends(get_games_service)],
+    scores_service: Annotated[ScoresService, Depends(get_scores_service)],
 ) -> GameRecordsOut:
-    records = games_service.get_personal_records(user.id)
+    records = scores_service.get_personal_records(user.id)
     return GameRecordsOut.from_records(records)
 
 
@@ -89,12 +90,12 @@ def get_current_game(
 @router.get("/games/recent", response_model=RecentGamesOut)
 def get_recent_games(
     user: Annotated[UserModel, Depends(get_current_user)],
-    games_service: Annotated[GamesService, Depends(get_games_service)],
+    scores_service: Annotated[ScoresService, Depends(get_scores_service)],
 ) -> RecentGamesOut:
     # "Ver juegos" profile modal (roadmap #e) - login required (unlike get_current_game above),
     # matching the roadmap's "del jugador con sesión iniciada" - there's no anonymous equivalent of
     # a persistent game history to look up.
-    games = games_service.get_recent_games(user.id)
+    games = scores_service.get_recent_games(user.id)
     return RecentGamesOut.from_recent_games(games)
 
 
@@ -102,13 +103,13 @@ def get_recent_games(
 def get_leaderboard(
     game_type: str,
     mode: str,
-    games_service: Annotated[GamesService, Depends(get_games_service)],
+    scores_service: Annotated[ScoresService, Depends(get_scores_service)],
     window: LeaderboardWindow = "all",
 ) -> LeaderboardOut:
     # No auth dependency of its own, but roadmap #H, F3's default-deny middleware now requires a
     # session for every route regardless ("sin sesión no se ve nada: ni... leaderboards", see
     # docs/TODO/NEW-AUTH.md §2) - this route just never needed one on top of that.
-    entries = games_service.get_leaderboard(game_type, mode, window)
+    entries = scores_service.get_leaderboard(game_type, mode, window)
     return LeaderboardOut.from_entries(window, entries)
 
 

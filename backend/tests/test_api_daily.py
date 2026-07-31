@@ -1,6 +1,6 @@
 """Route-level HTTP-layer coverage for roadmap #G's player-facing daily endpoints
 (api/daily_api.py) - GamesService-level behavior (challenge generation, world separation, scripted
-replay) is already covered by test_daily_service.py/test_games_service_daily.py; this file only
+replay) is already covered by test_daily_challenge_service.py/test_games_service_daily.py; this file only
 checks status codes/response shape, mirroring test_api_current_and_recent_games.py's approach."""
 
 import pytest

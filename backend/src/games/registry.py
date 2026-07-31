@@ -2,10 +2,11 @@
 the daily-enabled ones, which `games/<game>/daily.py` module implements the `DailySupport`
 contract (games/daily.py) - see docs/TODO/DECOUPLING.md decision E. Lives in `games/` (pure
 knowledge of which game/mode maps to what, no persistence/business logic) rather than
-`services/games_service.py`, where this registry used to live - `services/daily_service.py` needs
-to read it too without creating the same import cycle services/errors.py's docstring already
-documents for NotEnoughContentError: games_service.py depends on daily_service.py (to delegate
-challenge generation), so daily_service.py must never depend back on games_service.py.
+`services/games_service.py`, where this registry used to live - `services/daily_challenge_service.py`
+needs to read it too without creating the same import cycle services/errors.py's docstring already
+documents for NotEnoughContentError: services/daily_games_service.py depends on
+daily_challenge_service.py (to delegate challenge generation), so daily_challenge_service.py must
+never depend back on either of them.
 """
 
 from collections.abc import Callable

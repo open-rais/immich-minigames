@@ -60,7 +60,8 @@ def build_spec(mode: str, immich_service: ImmichService, settings: dict[str, flo
 
 def exclusion_ids(spec: dict[str, Any]) -> set[UUID]:
     # Only the shown asset, not the hidden faces' person ids - get_random_asset_with_named_faces
-    # only supports excluding assets (see services/daily_service.py's _ExcludingImmichService), and
+    # only supports excluding assets (see services/daily_challenge_service.py's
+    # _ExcludingImmichService), and
     # repeating the same asset is what actually gives away/duplicates a round; a person reappearing
     # in a *different* photo is fine.
     return {UUID(round_["asset_id"]) for round_ in spec["rounds"]}

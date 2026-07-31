@@ -1,5 +1,5 @@
-"""Roadmap #G, phase F3 - GamesService.create_daily_game / get_daily_status / the daily branch of
-_row_to_game. Integration tests against the real dev Immich DB (see conftest.py's module
+"""Roadmap #G, phase F3 - DailyGamesService.create_daily_game / get_daily_status / the daily branch
+of GameFactory.from_row. Integration tests against the real dev Immich DB (see conftest.py's module
 docstring)."""
 
 import itertools
@@ -17,7 +17,7 @@ from games.more_or_less import GAME_TYPE as MORE_OR_LESS_TYPE
 from games.more_or_less import MODE_PERSON_ASSETS
 from persistence.daily import DailyConfigModel
 from persistence.games import GameModel
-from services.games_service import DailyAlreadyPlayedError, DailyNotEnabledError, UnsupportedGameError
+from services.errors import DailyAlreadyPlayedError, DailyNotEnabledError, UnsupportedGameError
 
 _date_counter = itertools.count()
 _BASE_DATE = date(2030, 1, 1)
@@ -54,49 +54,55 @@ def _clean_daily_configs(db_session):
 
 
 class TestCreateDailyGame:
-    def test_not_enabled_raises(self, games_service, auth_service):
+    def test_not_enabled_raises(self, games_service, daily_games_service, auth_service):
         user = _register_user(auth_service)
         with pytest.raises(DailyNotEnabledError):
-            games_service.create_daily_game(
+            daily_games_service.create_daily_game(
                 game_type=GEOGUESSR_TYPE, mode=MODE_DISTANCE_BETWEEN_GUESS, user_id=user.id, today=_next_date()
             )
 
-    def test_unsupported_mode_raises(self, games_service, auth_service):
+    def test_unsupported_mode_raises(self, games_service, daily_games_service, auth_service):
         user = _register_user(auth_service)
         with pytest.raises(UnsupportedGameError):
-            games_service.create_daily_game(
+            daily_games_service.create_daily_game(
                 game_type=GEOGUESSR_TYPE, mode="not-a-real-mode", user_id=user.id, today=_next_date()
             )
 
-    def test_creates_a_game_with_the_challenge_content(self, games_service, daily_settings_service, auth_service):
+    def test_creates_a_game_with_the_challenge_content(
+        self, games_service, daily_games_service, daily_settings_service, auth_service
+    ):
         daily_settings_service.update_settings(
             GEOGUESSR_TYPE, MODE_DISTANCE_BETWEEN_GUESS, enabled=True, values={"total_rounds": 2}
         )
         user = _register_user(auth_service)
         d = _next_date()
 
-        game = games_service.create_daily_game(
+        game = daily_games_service.create_daily_game(
             game_type=GEOGUESSR_TYPE, mode=MODE_DISTANCE_BETWEEN_GUESS, user_id=user.id, today=d
         )
 
         assert game.total_rounds == 2
         assert game.daily_challenge_date == d
 
-    def test_second_attempt_by_the_same_player_raises(self, games_service, daily_settings_service, auth_service):
+    def test_second_attempt_by_the_same_player_raises(
+        self, games_service, daily_games_service, daily_settings_service, auth_service
+    ):
         daily_settings_service.update_settings(
             MORE_OR_LESS_TYPE, MODE_PERSON_ASSETS, enabled=True, values={"chain_length": 10}
         )
         user = _register_user(auth_service)
         d = _next_date()
-        games_service.create_daily_game(game_type=MORE_OR_LESS_TYPE, mode=MODE_PERSON_ASSETS, user_id=user.id, today=d)
+        daily_games_service.create_daily_game(
+            game_type=MORE_OR_LESS_TYPE, mode=MODE_PERSON_ASSETS, user_id=user.id, today=d
+        )
 
         with pytest.raises(DailyAlreadyPlayedError):
-            games_service.create_daily_game(
+            daily_games_service.create_daily_game(
                 game_type=MORE_OR_LESS_TYPE, mode=MODE_PERSON_ASSETS, user_id=user.id, today=d
             )
 
     def test_a_different_player_can_still_play_the_same_challenge(
-        self, games_service, daily_settings_service, auth_service
+        self, games_service, daily_games_service, daily_settings_service, auth_service
     ):
         daily_settings_service.update_settings(
             MORE_OR_LESS_TYPE, MODE_PERSON_ASSETS, enabled=True, values={"chain_length": 10}
@@ -104,15 +110,19 @@ class TestCreateDailyGame:
         alice = _register_user(auth_service)
         bob = _register_user(auth_service)
         d = _next_date()
-        games_service.create_daily_game(game_type=MORE_OR_LESS_TYPE, mode=MODE_PERSON_ASSETS, user_id=alice.id, today=d)
+        daily_games_service.create_daily_game(
+            game_type=MORE_OR_LESS_TYPE, mode=MODE_PERSON_ASSETS, user_id=alice.id, today=d
+        )
 
-        second = games_service.create_daily_game(
+        second = daily_games_service.create_daily_game(
             game_type=MORE_OR_LESS_TYPE, mode=MODE_PERSON_ASSETS, user_id=bob.id, today=d
         )
 
         assert second is not None
 
-    def test_two_players_get_identical_scripted_content(self, games_service, daily_settings_service, auth_service):
+    def test_two_players_get_identical_scripted_content(
+        self, games_service, daily_games_service, daily_settings_service, auth_service
+    ):
         daily_settings_service.update_settings(
             GEOGUESSR_TYPE, MODE_DISTANCE_BETWEEN_GUESS, enabled=True, values={"total_rounds": 3}
         )
@@ -120,10 +130,10 @@ class TestCreateDailyGame:
         bob = _register_user(auth_service)
         d = _next_date()
 
-        a = games_service.create_daily_game(
+        a = daily_games_service.create_daily_game(
             game_type=GEOGUESSR_TYPE, mode=MODE_DISTANCE_BETWEEN_GUESS, user_id=alice.id, today=d
         )
-        b = games_service.create_daily_game(
+        b = daily_games_service.create_daily_game(
             game_type=GEOGUESSR_TYPE, mode=MODE_DISTANCE_BETWEEN_GUESS, user_id=bob.id, today=d
         )
 
@@ -131,7 +141,7 @@ class TestCreateDailyGame:
         assert a.rounds[0].asset.longitude == b.rounds[0].asset.longitude
 
     def test_does_not_abandon_an_in_progress_normal_game(
-        self, games_service, daily_settings_service, db_session, auth_service
+        self, games_service, daily_games_service, daily_settings_service, db_session, auth_service
     ):
         daily_settings_service.update_settings(
             MORE_OR_LESS_TYPE, MODE_PERSON_ASSETS, enabled=True, values={"chain_length": 10}
@@ -139,7 +149,7 @@ class TestCreateDailyGame:
         user = _register_user(auth_service)
         normal_game = games_service.create_game(game_type=MORE_OR_LESS_TYPE, mode=MODE_PERSON_ASSETS, user_id=user.id)
 
-        games_service.create_daily_game(
+        daily_games_service.create_daily_game(
             game_type=MORE_OR_LESS_TYPE, mode=MODE_PERSON_ASSETS, user_id=user.id, today=_next_date()
         )
 
@@ -148,13 +158,15 @@ class TestCreateDailyGame:
 
 
 class TestMoreOrLessDailyChainExhaustion:
-    def test_playing_through_the_whole_chain_ends_as_perfect(self, games_service, daily_settings_service, auth_service):
+    def test_playing_through_the_whole_chain_ends_as_perfect(
+        self, games_service, daily_games_service, daily_settings_service, auth_service
+    ):
         daily_settings_service.update_settings(
             MORE_OR_LESS_TYPE, MODE_PERSON_ASSETS, enabled=True, values={"chain_length": 10}
         )
         user = _register_user(auth_service)
         d = _next_date()
-        game = games_service.create_daily_game(
+        game = daily_games_service.create_daily_game(
             game_type=MORE_OR_LESS_TYPE, mode=MODE_PERSON_ASSETS, user_id=user.id, today=d
         )
         game_id = game.id
@@ -175,13 +187,15 @@ class TestMoreOrLessDailyChainExhaustion:
 
 
 class TestResumeDailyGame:
-    def test_resuming_continues_the_chain_at_the_right_index(self, games_service, daily_settings_service, auth_service):
+    def test_resuming_continues_the_chain_at_the_right_index(
+        self, games_service, daily_games_service, daily_settings_service, auth_service
+    ):
         daily_settings_service.update_settings(
             MORE_OR_LESS_TYPE, MODE_PERSON_ASSETS, enabled=True, values={"chain_length": 10}
         )
         user = _register_user(auth_service)
         d = _next_date()
-        game = games_service.create_daily_game(
+        game = daily_games_service.create_daily_game(
             game_type=MORE_OR_LESS_TYPE, mode=MODE_PERSON_ASSETS, user_id=user.id, today=d
         )
         first_round = game.current_round
@@ -195,7 +209,7 @@ class TestResumeDailyGame:
         assert reloaded.daily_challenge_date == d
 
     def test_resuming_past_the_boundary_still_plays_against_the_original_challenge(
-        self, games_service, daily_settings_service, auth_service
+        self, games_service, daily_games_service, daily_settings_service, auth_service
     ):
         # "resume pasada la medianoche" (docs/TODO/DAILY-GAMES.md) - loading an in-progress daily
         # game must always reconstruct it from *its own* challenge, never "today's", regardless of
@@ -205,7 +219,7 @@ class TestResumeDailyGame:
         )
         user = _register_user(auth_service)
         d = _next_date()
-        game = games_service.create_daily_game(
+        game = daily_games_service.create_daily_game(
             game_type=GEOGUESSR_TYPE, mode=MODE_DISTANCE_BETWEEN_GUESS, user_id=user.id, today=d
         )
 
@@ -216,24 +230,28 @@ class TestResumeDailyGame:
 
 
 class TestGetDailyStatus:
-    def test_not_played_when_no_game_exists(self, games_service, daily_settings_service, auth_service):
+    def test_not_played_when_no_game_exists(
+        self, games_service, daily_games_service, daily_settings_service, auth_service
+    ):
         daily_settings_service.update_settings(GEOGUESSR_TYPE, MODE_DISTANCE_BETWEEN_GUESS, enabled=True)
         user = _register_user(auth_service)
         d = _next_date()
 
-        statuses = games_service.get_daily_status(user.id, d)
+        statuses = daily_games_service.get_daily_status(user.id, d)
 
         geo = next(s for s in statuses if s.game_type == GEOGUESSR_TYPE)
         assert geo.status == "not_played"
         assert geo.game_id is None
 
-    def test_in_progress_then_finished(self, games_service, daily_settings_service, auth_service):
+    def test_in_progress_then_finished(self, games_service, daily_games_service, daily_settings_service, auth_service):
         daily_settings_service.update_settings(IMMICHDLE_TYPE, MODE_PERSON, enabled=True)
         user = _register_user(auth_service)
         d = _next_date()
-        game = games_service.create_daily_game(game_type=IMMICHDLE_TYPE, mode=MODE_PERSON, user_id=user.id, today=d)
+        game = daily_games_service.create_daily_game(
+            game_type=IMMICHDLE_TYPE, mode=MODE_PERSON, user_id=user.id, today=d
+        )
 
-        statuses = games_service.get_daily_status(user.id, d)
+        statuses = daily_games_service.get_daily_status(user.id, d)
         in_progress = next(s for s in statuses if s.game_type == IMMICHDLE_TYPE)
         assert in_progress.status == "in_progress"
         assert in_progress.game_id == game.id
@@ -241,15 +259,15 @@ class TestGetDailyStatus:
         played = games_service.play_round(game.id, user, game.current_round.id, game.target.id)
         assert played.finished is True
 
-        statuses_after = games_service.get_daily_status(user.id, d)
+        statuses_after = daily_games_service.get_daily_status(user.id, d)
         finished = next(s for s in statuses_after if s.game_type == IMMICHDLE_TYPE)
         assert finished.status == "finished"
         assert finished.score == played.score
 
-    def test_disabled_mode_is_not_listed(self, games_service, auth_service):
+    def test_disabled_mode_is_not_listed(self, games_service, daily_games_service, auth_service):
         user = _register_user(auth_service)
         d = _next_date()
 
-        statuses = games_service.get_daily_status(user.id, d)
+        statuses = daily_games_service.get_daily_status(user.id, d)
 
         assert not any(s.game_type == GEOGUESSR_TYPE for s in statuses)

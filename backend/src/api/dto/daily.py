@@ -1,6 +1,6 @@
-"""Daily-game player-facing status DTOs (roadmap point #G, see services/games_service.py's
-GamesService.get_daily_status/create_daily_game). Admin config DTOs live in api/dto/admin.py; the
-leaderboard DTO lives in api/dto/leaderboard.py."""
+"""Daily-game player-facing status DTOs (roadmap point #G, see services/daily_games_service.py's
+DailyGamesService.get_daily_status/create_daily_game). Admin config DTOs live in api/dto/admin.py;
+the leaderboard DTO lives in api/dto/leaderboard.py."""
 
 from datetime import datetime
 from typing import Literal
@@ -8,7 +8,7 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-from services.games_service import DailyModeStatus
+from services.daily_games_service import DailyModeStatus
 
 DailyModeStatusValue = Literal["not_played", "in_progress", "finished"]
 

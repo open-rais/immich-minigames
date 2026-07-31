@@ -1,6 +1,6 @@
 """Contract-only module (no logic) - roadmap #G (daily games). Each `<game>/daily.py` implements
-this Protocol so services/daily_service.py and services/games_service.py can generate and replay a
-daily challenge for any game without knowing that game's own content/picking logic - see
+this Protocol so services/daily_challenge_service.py and services/game_factory.py can generate and
+replay a daily challenge for any game without knowing that game's own content/picking logic - see
 docs/TODO/DECOUPLING.md §4, Fase 4. Structurally, an implementation is the `<game>/daily.py` module
 itself (its three top-level functions), not a class instance - `GameSpec.daily` in
 games/registry.py holds the module directly.

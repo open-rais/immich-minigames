@@ -24,16 +24,20 @@ from api.request_context import context_fields
 from config import get_settings
 from main import app
 from persistence.base import get_app_engine, get_session_factory, reset_db
+from persistence.games_repository import GameRepository
 from persistence.immich_db import get_immich_engine
 from persistence.users import UserModel
 from services.auth_service import AuthService
-from services.daily_service import DailyService
+from services.daily_challenge_service import DailyChallengeService
+from services.daily_games_service import DailyGamesService
 from services.daily_settings import DailySettingsService
+from services.game_factory import GameFactory
 from services.game_settings_service import GameSettingsService
 from services.games_service import GamesService
 from services.immich_service import ImmichService
 from services.invite_service import InviteService
 from services.ml_service import MLService
+from services.scores_service import ScoresService
 
 
 class _LogCapture(logging.Handler):
@@ -118,8 +122,18 @@ def db_session():
 
 
 @pytest.fixture
-def games_service(db_session, immich_service, ml_service):
-    return GamesService(db_session, immich_service, ml_service)
+def game_repository(db_session):
+    return GameRepository(db_session)
+
+
+@pytest.fixture
+def game_factory(db_session, immich_service, ml_service, game_settings_service):
+    return GameFactory(db_session, immich_service, ml_service, game_settings_service)
+
+
+@pytest.fixture
+def games_service(game_repository, game_factory):
+    return GamesService(game_repository, game_factory)
 
 
 @pytest.fixture
@@ -138,8 +152,18 @@ def daily_settings_service(db_session):
 
 
 @pytest.fixture
-def daily_service(db_session, immich_service):
-    return DailyService(db_session, immich_service)
+def daily_challenge_service(db_session, immich_service):
+    return DailyChallengeService(db_session, immich_service)
+
+
+@pytest.fixture
+def daily_games_service(game_repository, game_factory, daily_settings_service, daily_challenge_service):
+    return DailyGamesService(game_repository, game_factory, daily_settings_service, daily_challenge_service)
+
+
+@pytest.fixture
+def scores_service(game_repository):
+    return ScoresService(game_repository)
 
 
 @pytest.fixture(autouse=True)

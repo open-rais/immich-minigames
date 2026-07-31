@@ -1,8 +1,8 @@
-"""Personal-best records DTOs (roadmap point E, see GamesService.get_personal_records)."""
+"""Personal-best records DTOs (roadmap point E, see ScoresService.get_personal_records)."""
 
 from pydantic import BaseModel
 
-from services.games_service import GameRecord
+from services.scores_service import GameRecord
 
 
 class GameRecordOut(BaseModel):

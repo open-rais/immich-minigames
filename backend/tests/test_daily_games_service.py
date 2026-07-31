@@ -15,7 +15,7 @@ from sqlalchemy.exc import IntegrityError
 
 from persistence.daily import DailyChallengeModel
 from persistence.games import GameModel
-from services.games_service import UnsupportedGameError
+from services.errors import UnsupportedGameError
 
 # (challenge_date, game_type, mode) is uniquely constrained (DailyChallengeModel) - these
 # integration tests share one real DB across the whole session (no per-test transaction rollback,
@@ -60,7 +60,9 @@ def _make_daily_game(games_service, db_session, *, user_id, game_type="more-or-l
 
 
 class TestDailyGamesExcludedFromPersonalRecords:
-    def test_a_finished_daily_game_does_not_produce_a_record(self, games_service, db_session, auth_service):
+    def test_a_finished_daily_game_does_not_produce_a_record(
+        self, games_service, scores_service, db_session, auth_service
+    ):
         user = _register_user(auth_service)
         game, _ = _make_daily_game(games_service, db_session, user_id=user.id)
         row = db_session.get(GameModel, game.id)
@@ -68,11 +70,11 @@ class TestDailyGamesExcludedFromPersonalRecords:
         row.score = 999
         db_session.commit()
 
-        assert games_service.get_personal_records(user.id) == []
+        assert scores_service.get_personal_records(user.id) == []
 
 
 class TestDailyGamesExcludedFromLeaderboard:
-    def test_a_finished_daily_game_does_not_appear(self, games_service, db_session, auth_service):
+    def test_a_finished_daily_game_does_not_appear(self, games_service, scores_service, db_session, auth_service):
         user = _register_user(auth_service)
         game, _ = _make_daily_game(
             games_service, db_session, user_id=user.id, game_type="dateguessr", mode="daysToDate"
@@ -82,7 +84,7 @@ class TestDailyGamesExcludedFromLeaderboard:
         row.score = 999
         db_session.commit()
 
-        entries = games_service.get_leaderboard("dateguessr", "daysToDate", "all")
+        entries = scores_service.get_leaderboard("dateguessr", "daysToDate", "all")
 
         assert user.username not in {e.username for e in entries}
 
@@ -112,7 +114,7 @@ class TestDailyGamesDoNotInteractWithAbandon:
 
 
 class TestGetRecentGamesFlagsDaily:
-    def test_is_daily_flag_reflects_daily_challenge_id(self, games_service, db_session, auth_service):
+    def test_is_daily_flag_reflects_daily_challenge_id(self, games_service, scores_service, db_session, auth_service):
         user = _register_user(auth_service)
         daily_game, _ = _make_daily_game(games_service, db_session, user_id=user.id)
         db_session.get(GameModel, daily_game.id).finished = True
@@ -120,7 +122,7 @@ class TestGetRecentGamesFlagsDaily:
         db_session.get(GameModel, normal_game.id).finished = True
         db_session.commit()
 
-        recent = games_service.get_recent_games(user.id)
+        recent = scores_service.get_recent_games(user.id)
 
         by_id = {g.id: g for g in recent}
         assert by_id[daily_game.id].is_daily is True
@@ -147,6 +149,6 @@ class TestGamesDailyChallengeIdRoundTrips:
             db_session.commit()
         db_session.rollback()
 
-    def test_unsupported_game_type_still_raises_for_get_leaderboard(self, games_service):
+    def test_unsupported_game_type_still_raises_for_get_leaderboard(self, scores_service):
         with pytest.raises(UnsupportedGameError):
-            games_service.get_leaderboard("more-or-less", "not-a-real-mode", "all")
+            scores_service.get_leaderboard("more-or-less", "not-a-real-mode", "all")

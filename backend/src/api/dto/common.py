@@ -33,7 +33,8 @@ from games.immichdle import ImmichdleGame, ImmichdleRound
 from games.more_or_less import MoreOrLessRound
 from games.timeline import TimelineRound
 from games.whos_that_person import WhosThatPersonRound
-from services.games_service import RecentGame, UnsupportedGameError
+from services.errors import UnsupportedGameError
+from services.scores_service import RecentGame
 
 
 class CreateGameIn(BaseModel):

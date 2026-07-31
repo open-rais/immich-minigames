@@ -6,6 +6,10 @@ own `games/<game>/daily.py::build_spec()` (games/daily.py's DailySupport contrac
 owns only what's genuinely generic across every game: the challenge date, the advisory lock, the
 race-safe insert, the cross-day exclusion window, and the wrapper (_ExcludingImmichService) that
 applies it.
+
+Named DailyChallengeService (not "daily games") because services/daily_games_service.py's
+DailyGamesService is a different thing - this one generates the shared challenge content, that one
+turns a generated challenge into a specific player's played game.
 """
 
 from datetime import date, timedelta
@@ -54,7 +58,7 @@ class _ExcludingImmichService:
         return getattr(self._inner, name)
 
 
-class DailyService:
+class DailyChallengeService:
     def __init__(self, session: Session, immich_service: ImmichService) -> None:
         self._session = session
         self._immich_service = immich_service
