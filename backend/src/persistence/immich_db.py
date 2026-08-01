@@ -22,4 +22,8 @@ from config import get_settings
 
 @lru_cache(maxsize=1)
 def get_immich_engine() -> Engine:
-    return create_engine(get_settings().immich_db_url, pool_pre_ping=True)
+    """pool_size/max_overflow raised from SQLAlchemy's defaults (5/10), matching base.py's own
+    engine - not on the hot path of the "Ver rondas" burst today, but exposed to the same
+    exhaustion risk if queries against Immich's DB ever run more concurrently
+    (docs/TODO/ISSUE-SUMMARY-PAGE.md)."""
+    return create_engine(get_settings().immich_db_url, pool_pre_ping=True, pool_size=10, max_overflow=20)

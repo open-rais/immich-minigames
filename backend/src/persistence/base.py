@@ -33,8 +33,10 @@ def get_app_engine() -> Engine:
     """Engine for this app's own database. The backend runs two pools, one per database - this one
     and immich_db.py's read-only one; they share credentials (a single login role) but nothing
     else. pool_pre_ping=True since Postgres restarts/idle-closed connections shouldn't surface as
-    a request-time error."""
-    return create_engine(get_settings().app_db_url, pool_pre_ping=True)
+    a request-time error. pool_size/max_overflow raised from SQLAlchemy's defaults (5/10) - a
+    "Ver rondas" screen with many thumbnails can otherwise exhaust the default pool on its own
+    (docs/TODO/ISSUE-SUMMARY-PAGE.md)."""
+    return create_engine(get_settings().app_db_url, pool_pre_ping=True, pool_size=10, max_overflow=20)
 
 
 def get_session_factory(engine: Engine | None = None) -> sessionmaker:
