@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useQueuedThumbnail } from "./thumbnailQueue"
 
 // Small round avatar for a guess row / search result - same failed-image placeholder convention as
 // games/MoreOrLess/PersonPhoto.tsx and games/shared/AssetPhoto.tsx, just compact and circular
@@ -30,19 +30,12 @@ export function PersonAvatar({
   alt: string
   size?: keyof typeof SIZE_CLASSES
 }) {
-  const [failed, setFailed] = useState(false)
+  const { url, failed } = useQueuedThumbnail(src)
   const sizingClass = `${SIZE_CLASSES[size]} flex-none rounded-full`
 
-  if (!src || failed) {
+  if (!url || failed) {
     return <div className={sizingClass} style={placeholderStyle} />
   }
 
-  return (
-    <img
-      src={src}
-      alt={alt}
-      onError={() => setFailed(true)}
-      className={`${sizingClass} object-cover`}
-    />
-  )
+  return <img src={url} alt={alt} className={`${sizingClass} object-cover`} />
 }

@@ -1,9 +1,9 @@
 import type { ReactNode } from "react"
-import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 
 import { assetThumbnailUrl } from "../../api/games"
 import { Spinner } from "../shared/Spinner"
+import { useQueuedThumbnail } from "../shared/thumbnailQueue"
 
 // Mirrors MoreOrLess/PersonPhoto.tsx's failed-image placeholder pattern.
 const placeholderStyle = {
@@ -70,18 +70,7 @@ export function TimelineCard({
   onClick,
 }: TimelineCardProps) {
   const { i18n } = useTranslation()
-  const [failed, setFailed] = useState(false)
-  const [loaded, setLoaded] = useState(false)
-
-  // A caller that doesn't also key this component by assetId (it should - see TimelineGame.tsx/
-  // TimelineTrack.tsx) would otherwise keep this same <img> node across a card swap: the browser
-  // then keeps painting the OLD photo's bytes until the new ones finish downloading, instead of
-  // showing nothing - a stale-image flash exactly at the moment a new round starts. Resetting here
-  // too makes that safe even if a future caller forgets the key.
-  useEffect(() => {
-    setFailed(false)
-    setLoaded(false)
-  }, [assetId])
+  const { url, failed } = useQueuedThumbnail(assetThumbnailUrl(assetId))
 
   // Two lines - "month, day" on top, "year" below - rather than one combined string, per the
   // roadmap's request for a taller/more legible date strip.
@@ -119,18 +108,15 @@ export function TimelineCard({
       <div className="relative flex-1 overflow-hidden bg-app-bg">
         {failed ? (
           <div className="absolute inset-0" style={placeholderStyle} />
-        ) : (
+        ) : url ? (
           <img
-            key={assetId}
-            src={assetThumbnailUrl(assetId)}
+            src={url}
             alt=""
             draggable={false}
-            onLoad={() => setLoaded(true)}
-            onError={() => setFailed(true)}
-            className={`h-full w-full rounded-sm select-none ${IMG_FIT_CLASS} transition-opacity duration-150 ${loaded ? "opacity-100" : "opacity-0"}`}
+            className={`h-full w-full rounded-sm select-none ${IMG_FIT_CLASS}`}
           />
-        )}
-        {!loaded && !failed && (
+        ) : null}
+        {!url && !failed && (
           <div className="absolute inset-0 flex items-center justify-center">
             <Spinner className="h-6 w-6" />
           </div>
