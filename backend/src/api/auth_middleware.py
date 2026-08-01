@@ -6,11 +6,14 @@ default. See tests/test_auth_middleware.py for the structural test that keeps th
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response
 
 from api.request_context import user_var
 from persistence.base import get_session_factory
+from persistence.users import UserModel
 from services.auth_service import AuthService, UnauthorizedError
 
 _COOKIE_NAME = "access_token"
@@ -38,6 +41,23 @@ def _unauthorized(detail: str) -> JSONResponse:
     return JSONResponse(status_code=401, content={"detail": detail})
 
 
+def _authenticate(token: str) -> tuple[Session, UserModel]:
+    # Runs off the event loop (see the run_in_threadpool call below) - session creation and the
+    # token lookup both do blocking I/O (a DB connection checkout can itself block on the pool),
+    # and this middleware runs for every request on a single-worker event loop. Doing this inline
+    # in an `async def` used to mean a slow/exhausted pool froze the *entire* backend - every other
+    # request, DB-bound or not - for up to the pool checkout timeout, not just this one.
+    session = get_session_factory()()
+    try:
+        # Reused as-is, not reimplemented - already has the iat vs password_changed_at
+        # revocation check, so that logic exists in exactly one place.
+        user = AuthService(session).get_user_from_token(token)
+    except UnauthorizedError:
+        session.close()
+        raise
+    return session, user
+
+
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         if _normalize(request.url.path) in _ALLOW_LIST:
@@ -58,17 +78,13 @@ class AuthMiddleware(BaseHTTPMiddleware):
         # route's own dependencies (AuthService, GamesService, ...) go on to use. Without that, a
         # route mutating the user (e.g. change_password) would be mutating a detached object on an
         # already-closed session - the change is silently never flushed anywhere.
-        session = get_session_factory()()
-        request.state.db_session = session
         try:
-            # Reused as-is, not reimplemented - already has the iat vs password_changed_at
-            # revocation check, so that logic exists in exactly one place.
-            user = AuthService(session).get_user_from_token(token)
+            session, user = await run_in_threadpool(_authenticate, token)
         except UnauthorizedError as exc:
-            session.close()
             request.state.auth_fail = str(exc)
             return _unauthorized(str(exc))
 
+        request.state.db_session = session
         request.state.user = user
         # Scalars captured now, not read back off `user` later: RequestLogMiddleware (outermost)
         # logs the access record only after call_next returns here -
