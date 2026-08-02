@@ -49,6 +49,13 @@ export function updateCached<T>(key: string, update: (prev: T | undefined) => T)
   setCached(key, update(cache.get(key) as T | undefined))
 }
 
+// Non-subscribing read of whatever is currently cached for a key, for callers that need to decide
+// *whether* to write (e.g. "is this score actually higher than the cached best?") without mounting
+// a useLiveQuery subscription (which would fire a real, unwanted request every time).
+export function peekCached<T>(key: string): T | undefined {
+  return cache.get(key) as T | undefined
+}
+
 // Clears everything. AuthProvider calls this on login/register/logout - the in-memory cache is
 // scoped to the tab, not the session, so without this a second account signing in on the same tab
 // would briefly see the previous account's cached data.

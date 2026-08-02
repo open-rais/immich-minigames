@@ -110,6 +110,7 @@ export function ImmichdleGame({ coverUrl, hasRoundsView, daily = false }: GameCo
     resumeGame,
     backToIdle,
     markDailyFinished,
+    markRecordBeaten,
     isCurrent,
     guarded,
   } = useGameSession({ gameType: GAME_TYPE, mode: MODE, daily, applyGame, hydrateFinishedDaily })
@@ -138,7 +139,10 @@ export function ImmichdleGame({ coverUrl, hasRoundsView, daily = false }: GameCo
             : g,
         )
         setPendingRoundId(result.next_round ? result.next_round.id : null)
-        if (result.finished) markDailyFinished(game.id, result.score)
+        if (result.finished) {
+          markDailyFinished(game.id, result.score)
+          markRecordBeaten(result.score)
+        }
 
         // Kicks off the row's own entrance/reveal timers (AnimatedGuessRow, via GuessTable) - the
         // watcher effect below advances the screen once it reports done.
