@@ -1,14 +1,16 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 
 import { getDailyStatus } from "../api/daily"
 import { getGame } from "../api/games"
+import { useLiveQuery } from "../api/queryCache"
 import type { GameOut } from "../api/types/common"
 import type { DailyModeStatusOut, DailyStatusOut } from "../api/types/daily"
 import { findCatalogMode, GAME_CATALOG } from "../games/catalog"
 import { buildDailyShareAllMessage } from "../games/shared/dailyShareText"
 import { ShareModal } from "../games/shared/ShareModal"
+import { DAILY_STATUS_KEY } from "../games/shared/useGameSession"
 import { DailyCountdown } from "./DailyCountdown"
 import { ModeCard } from "./ModeCard"
 
@@ -41,20 +43,10 @@ function ShareIcon() {
 export function DailySection() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [status, setStatus] = useState<DailyStatusOut | null>(null)
+  const { value: status, refresh } = useLiveQuery<DailyStatusOut>(DAILY_STATUS_KEY, getDailyStatus)
   const [expanded, setExpanded] = useState(true)
   const [shareBusy, setShareBusy] = useState(false)
   const [shareText, setShareText] = useState<string | null>(null)
-
-  function load() {
-    getDailyStatus()
-      .then(setStatus)
-      .catch(() => setStatus(null))
-  }
-
-  useEffect(() => {
-    load()
-  }, [])
 
   // Reserves this section's space from first paint instead of popping in once getDailyStatus()
   // resolves (a stutter that shifts every GameSection below it down) - same header shape and a
@@ -162,7 +154,7 @@ export function DailySection() {
           key={status.resets_at}
           resetsAt={status.resets_at}
           serverNow={status.server_now}
-          onExpire={load}
+          onExpire={refresh}
         />
         {allFinished && (
           <button
