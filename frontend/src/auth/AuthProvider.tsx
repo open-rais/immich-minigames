@@ -12,6 +12,7 @@ import {
   updateSkin as apiUpdateSkin,
 } from "../api/auth"
 import { apiClient } from "../api/client"
+import { clearCache } from "../api/queryCache"
 import type {
   ChangePasswordIn,
   LoginIn,
@@ -65,18 +66,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function login(body: LoginIn) {
     const loggedInUser = await apiLogin(body)
     setUser(loggedInUser)
+    clearCache()
     return loggedInUser
   }
 
   async function register(body: RegisterIn) {
     const registeredUser = await apiRegister(body)
     setUser(registeredUser)
+    clearCache()
     return registeredUser
   }
 
   async function logout() {
     await apiLogout()
     setUser(null)
+    clearCache()
   }
 
   async function updateProfile(body: UpdateProfileIn) {
