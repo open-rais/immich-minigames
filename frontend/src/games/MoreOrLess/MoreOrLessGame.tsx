@@ -108,6 +108,7 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameC
     resumeGame,
     backToIdle,
     markDailyFinished,
+    markRecordBeaten,
     isCurrent,
     guarded,
   } = useGameSession({ gameType: GAME_TYPE, mode, daily, applyGame, hydrateFinishedDaily })
@@ -167,7 +168,10 @@ export function MoreOrLessGame({ coverUrl, hasRoundsView, daily = false }: GameC
           return
         }
         setGame((g) => (g ? { ...g, score: result.score, finished: result.finished } : g))
-        if (result.finished) markDailyFinished(game.id, result.score)
+        if (result.finished) {
+          markDailyFinished(game.id, result.score)
+          markRecordBeaten(result.score)
+        }
         setRevealResult({ correct: result.correct, nextRound: result.next_round })
         if (config.valueKind === "count") {
           setCountTarget(result.answered_round.candidate_value as number)

@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react"
-
-import { getGameRecords } from "../api/games"
+import { GAME_RECORDS_KEY, getGameRecords } from "../api/games"
+import { useLiveQuery } from "../api/queryCache"
+import type { GameRecordsOut } from "../api/types/records"
 import { GAME_CATALOG } from "../games/catalog"
 import { AppHeader } from "./AppHeader"
 import { DailySection } from "./DailySection"
@@ -12,15 +12,13 @@ import { GameSection } from "./GameSection"
 export function MainMenu() {
   // Personal-best badge - fetched once here rather than per-ModeCard so N
   // modes don't mean N requests; keyed by "gameType:mode" to match GameSection's lookup.
-  const [records, setRecords] = useState<Map<string, number>>(new Map())
-
-  useEffect(() => {
-    getGameRecords()
-      .then(({ records }) => {
-        setRecords(new Map(records.map((r) => [`${r.game_type}:${r.mode}`, r.best_score])))
-      })
-      .catch(() => setRecords(new Map()))
-  }, [])
+  // "Show cached now, always ask" (docs/TODO/CACHE.md §4.2) - games/shared/useGameSession.ts's
+  // markRecordBeaten optimistically updates this same cache entry when a finished game beats the
+  // stored best, so a beaten record shows here without waiting for this to remount and revalidate.
+  const { value: recordsOut } = useLiveQuery<GameRecordsOut>(GAME_RECORDS_KEY, getGameRecords)
+  const records = new Map(
+    (recordsOut?.records ?? []).map((r) => [`${r.game_type}:${r.mode}`, r.best_score]),
+  )
 
   return (
     <div className="min-h-screen bg-app-bg">
