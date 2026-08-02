@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from "react"
 
 import { createDailyGame, getDailyStatus } from "../../api/daily"
 import { apiErrorStatus } from "../../api/errors"
-import { createGame, getCurrentGame, getGame } from "../../api/games"
-import { revalidate, updateCached, useLiveQuery } from "../../api/queryCache"
+import { createGame, GAME_RECORDS_KEY, getCurrentGame, getGame } from "../../api/games"
+import { peekCached, revalidate, updateCached, useLiveQuery } from "../../api/queryCache"
 import type { GameOut } from "../../api/types/common"
 import type { DailyStatusOut } from "../../api/types/daily"
+import type { GameRecordsOut } from "../../api/types/records"
 import { useGuardedRequests } from "./useGuardedRequests"
 
 export type Screen = "idle" | "playing" | "finished" | "error"
@@ -225,6 +226,33 @@ export function useGameSession({
     })
   }
 
+  // For when the player's own action just finished a *non-daily* game with a new personal best -
+  // pushes it into the "game-records" cache immediately (docs/TODO/CACHE.md §4.2) instead of
+  // waiting for the next time the main menu mounts and revalidates. Daily games never touch this
+  // key: ScoresService.get_personal_records excludes them (a daily score isn't comparable to
+  // normal play), same reason markDailyFinished above is a no-op for non-daily games.
+  function markRecordBeaten(score: number) {
+    if (daily) return
+    const prev = peekCached<GameRecordsOut>(GAME_RECORDS_KEY)
+    // Nothing to read-modify-write if the main menu's own useLiveQuery never populated this key in
+    // this tab session yet - skip rather than fabricate a records list missing every other mode;
+    // the next real mount of the menu fills it in correctly (with this score already included,
+    // since it's already persisted server-side by the time this runs).
+    if (!prev) return
+    const existing = prev.records.find((r) => r.game_type === gameType && r.mode === mode)
+    if (existing && existing.best_score >= score) return
+    updateCached<GameRecordsOut>(GAME_RECORDS_KEY, (p) => {
+      const base = p ?? prev
+      return {
+        records: existing
+          ? base.records.map((r) =>
+              r.game_type === gameType && r.mode === mode ? { ...r, best_score: score } : r,
+            )
+          : [...base.records, { game_type: gameType, mode, best_score: score }],
+      }
+    })
+  }
+
   return {
     screen,
     setScreen,
@@ -235,6 +263,7 @@ export function useGameSession({
     resumeGame,
     backToIdle,
     markDailyFinished,
+    markRecordBeaten,
     isCurrent,
     guarded,
   }
