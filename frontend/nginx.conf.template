@@ -14,13 +14,17 @@ server {
     # flash-prevention snippet was moved from an inline <script> to public/theme-init.js so
     # script-src doesn't need 'unsafe-inline', and React's style={{}} prop sets styles via the
     # CSSOM, not style="" attributes, so style-src isn't affected by inline styles either); img-src
-    # needs data: for maplibre-gl's own CSS (data:image/svg+xml zoom-control icons); connect-src
-    # and worker-src need to allow Geoguessr's map (games/Geoguessr/mapStyle.ts), which fetches
-    # vector tiles/glyphs live from tiles.openfreemap.org and parses them in a worker.
+    # needs data: for maplibre-gl's own CSS (data:image/svg+xml zoom-control icons) and blob: for
+    # games/shared/thumbnailQueue.ts (issue #44, docs/TODO/ISSUE-SUMMARY-PAGE.md) - it fetches
+    # thumbnails through a dedupe+concurrency queue and hands `<img>` a `URL.createObjectURL()`
+    # blob: URL instead of the real endpoint URL, so img-src has to allow that scheme too, not just
+    # 'self'; connect-src and worker-src need to allow Geoguessr's map
+    # (games/Geoguessr/mapStyle.ts), which fetches vector tiles/glyphs live from
+    # tiles.openfreemap.org and parses them in a worker.
     add_header X-Content-Type-Options nosniff always;
     add_header X-Frame-Options DENY always;
     add_header Referrer-Policy strict-origin-when-cross-origin always;
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://tiles.openfreemap.org; worker-src 'self' blob:; frame-ancestors 'self'; base-uri 'self'; form-action 'self';" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://tiles.openfreemap.org; worker-src 'self' blob:; frame-ancestors 'self'; base-uri 'self'; form-action 'self';" always;
 
     gzip on;
     gzip_min_length 512;
