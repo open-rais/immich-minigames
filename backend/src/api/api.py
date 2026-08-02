@@ -4,6 +4,7 @@ Routes don't catch this app's own domain exceptions (GameNotFoundError etc.) - t
 the app-level handlers registered in main.py, which is the single place mapping them to HTTP
 status codes."""
 
+import hashlib
 from collections.abc import Callable
 from typing import Annotated, Any
 from uuid import UUID
@@ -149,9 +150,25 @@ def play_round(
     return PlayRoundOut.from_answered(game, answered_round)
 
 
-def _proxy_thumbnail(fetch: Callable[[], tuple[bytes, str]]) -> Response:
+# Fixed, not env-configurable (single-user/household app, see ISSUE-SUMMARY-PAGE.md [DECISIÓN 2] for
+# the same reasoning applied to the pool size). max-age is short on purpose - disk/bandwidth aren't a
+# real concern at this app's scale, so there's no reason not to revalidate often; stale-while-
+# revalidate is what actually keeps thumbnails feeling instant past that point, by letting the
+# browser serve the cached copy immediately and refresh it in the background instead of blocking on a
+# new response (docs/TODO/ISSUE-SUMMARY-PAGE.md §6.5/§7 F6).
+_THUMBNAIL_MAX_AGE_SECONDS = 30 * 60
+_THUMBNAIL_STALE_WHILE_REVALIDATE_SECONDS = 24 * 60 * 60
+
+
+def _proxy_thumbnail(request: Request, fetch: Callable[[], tuple[bytes, str]]) -> Response:
     """Runs an ImmichService thumbnail fetch and maps its httpx errors to HTTP responses - shared by
-    the person and asset thumbnail endpoints, which only differ in which fetch they call."""
+    the person and asset thumbnail endpoints, which only differ in which fetch they call.
+
+    Adds Cache-Control/ETag so the browser (native <img> and the frontend's own fetch-based thumbnail
+    queue alike) can skip re-downloading bytes it already has (docs/TODO/ISSUE-SUMMARY-PAGE.md §6.4).
+    The ETag is computed here from the fetched bytes rather than forwarded from Immich's own response
+    - Immich isn't confirmed to send one on these endpoints, and computing it ourselves works
+    regardless."""
     try:
         content, content_type = fetch()
     except httpx.HTTPStatusError as exc:
@@ -163,7 +180,16 @@ def _proxy_thumbnail(fetch: Callable[[], tuple[bytes, str]]) -> Response:
         raise HTTPException(status_code=404, detail="thumbnail not found") from exc
     except httpx.RequestError as exc:
         raise HTTPException(status_code=502, detail="could not reach Immich") from exc
-    return Response(content=content, media_type=content_type)
+
+    etag = hashlib.sha1(content).hexdigest()  # noqa: S324 - cache validator, not security-sensitive
+    headers = {
+        "Cache-Control": f"private, max-age={_THUMBNAIL_MAX_AGE_SECONDS}, "
+        f"stale-while-revalidate={_THUMBNAIL_STALE_WHILE_REVALIDATE_SECONDS}",
+        "ETag": etag,
+    }
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=304, headers=headers)
+    return Response(content=content, media_type=content_type, headers=headers)
 
 
 @router.get("/persons/search", response_model=PersonSearchOut)
@@ -204,7 +230,7 @@ def get_person_thumbnail(
     person_id: UUID,
     immich_service: Annotated[ImmichService, Depends(get_immich_service)],
 ) -> Response:
-    return _proxy_thumbnail(lambda: immich_service.get_person_thumbnail(person_id))
+    return _proxy_thumbnail(request, lambda: immich_service.get_person_thumbnail(person_id))
 
 
 @router.get("/assets/{asset_id}/thumbnail")
@@ -214,7 +240,7 @@ def get_asset_thumbnail(
     asset_id: UUID,
     immich_service: Annotated[ImmichService, Depends(get_immich_service)],
 ) -> Response:
-    return _proxy_thumbnail(lambda: immich_service.get_asset_thumbnail(asset_id))
+    return _proxy_thumbnail(request, lambda: immich_service.get_asset_thumbnail(asset_id))
 
 
 @router.get("/albums/{album_id}/thumbnail")
@@ -229,4 +255,4 @@ def get_album_thumbnail(
     cover_asset_id = immich_service.get_album_cover_asset_id(album_id)
     if cover_asset_id is None:
         raise HTTPException(status_code=404, detail="album has no cover")
-    return _proxy_thumbnail(lambda: immich_service.get_asset_thumbnail(cover_asset_id))
+    return _proxy_thumbnail(request, lambda: immich_service.get_asset_thumbnail(cover_asset_id))
