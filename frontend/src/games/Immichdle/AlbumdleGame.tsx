@@ -94,6 +94,7 @@ export function AlbumdleGame({ coverUrl, hasRoundsView, daily = false }: GameCom
     startGame,
     resumeGame,
     backToIdle,
+    markDailyFinished,
     isCurrent,
     guarded,
   } = useGameSession({ gameType: GAME_TYPE, mode: MODE, daily, applyGame, hydrateFinishedDaily })
@@ -122,6 +123,7 @@ export function AlbumdleGame({ coverUrl, hasRoundsView, daily = false }: GameCom
             : g,
         )
         setPendingRoundId(result.next_round ? result.next_round.id : null)
+        if (result.finished) markDailyFinished(game.id, result.score)
 
         setAnimatingRoundId(answeredRound.id)
         setRowAnimationDone(false)

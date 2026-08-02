@@ -6,20 +6,9 @@ import type { DailyLeaderboardOut } from "./types/leaderboard"
 // backend/src/api/daily_api.py. Login is mandatory for every route, so no anonymous-vs-account
 // branching to note here anymore.
 
-// Dedupes concurrent callers (menu + the game it navigates into both ask for this on mount) onto
-// a single in-flight request. Cleared as soon as it settles, so it never serves stale data.
-let dailyStatusInFlight: Promise<DailyStatusOut> | null = null
-
 export async function getDailyStatus(): Promise<DailyStatusOut> {
-  if (!dailyStatusInFlight) {
-    dailyStatusInFlight = apiClient
-      .get<DailyStatusOut>("/daily")
-      .then(({ data }) => data)
-      .finally(() => {
-        dailyStatusInFlight = null
-      })
-  }
-  return dailyStatusInFlight
+  const { data } = await apiClient.get<DailyStatusOut>("/daily")
+  return data
 }
 
 export async function createDailyGame(gameType: string, mode: string): Promise<GameOut> {

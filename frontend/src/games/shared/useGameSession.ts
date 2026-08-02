@@ -3,10 +3,26 @@ import { useEffect, useRef, useState } from "react"
 import { createDailyGame, getDailyStatus } from "../../api/daily"
 import { apiErrorStatus } from "../../api/errors"
 import { createGame, getCurrentGame, getGame } from "../../api/games"
+import { revalidate, updateCached, useLiveQuery } from "../../api/queryCache"
 import type { GameOut } from "../../api/types/common"
+import type { DailyStatusOut } from "../../api/types/daily"
 import { useGuardedRequests } from "./useGuardedRequests"
 
 export type Screen = "idle" | "playing" | "finished" | "error"
+
+// Shared with menu/DailySection.tsx, which caches/revalidates the same GET /daily under this key -
+// see docs/TODO/CACHE.md §4.1.
+export const DAILY_STATUS_KEY = "daily-status"
+
+// A non-daily instance still has to call useLiveQuery every render (Rules of Hooks), but must never
+// hit the network for it - `daily` is stable for this hook's whole lifetime (it comes from a route
+// literal, menu/DailyGameRoute.tsx), so keying off it here doesn't change the hook call order across
+// renders, only its arguments. The dummy value is never read: the idle effect below bails out on
+// `!daily` before looking at it.
+const INACTIVE_DAILY_STATUS_KEY = "daily-status:inactive"
+async function emptyDailyStatus(): Promise<DailyStatusOut> {
+  return { resets_at: "", server_now: "", modes: [] }
+}
 
 // Game-lifecycle layer extracted out of useRoundGame/MoreOrLessGame/ImmichdleGame (CODE-REVIEW-
 // FRONT.md A-1) - all three had copied this same block character-for-character since useRoundGame
@@ -52,9 +68,6 @@ export function useGameSession({
   // anything - resumeGame() reads this instead of calling getCurrentGame (which never returns a
   // daily game).
   const dailyGameIdRef = useRef<string | null>(null)
-  // Bumped when the idle-screen status needs re-fetching while the screen is already "idle" -
-  // today only the daily 409 fallback in startGame below.
-  const [idleRefresh, setIdleRefresh] = useState(0)
 
   const { isCurrent, guarded, discardInFlight } = useGuardedRequests()
   const startInFlightRef = useRef(false)
@@ -66,40 +79,61 @@ export function useGameSession({
   const hydrateFinishedDailyRef = useRef(hydrateFinishedDaily)
   hydrateFinishedDailyRef.current = hydrateFinishedDaily
 
-  // Re-checked every time the idle screen is (re-)shown - e.g. after backToIdle, not just on mount.
+  // "Show cached now, always ask" (docs/TODO/CACHE.md §3) - menu/DailySection.tsx reads/revalidates
+  // the same "daily-status" key, so finishing a daily here and going back to the menu (or vice
+  // versa) shows the fresh state without a round trip's worth of flash.
+  const dailyStatusQuery = useLiveQuery<DailyStatusOut>(
+    daily ? DAILY_STATUS_KEY : INACTIVE_DAILY_STATUS_KEY,
+    daily ? getDailyStatus : emptyDailyStatus,
+  )
+
+  // Derived from dailyStatusQuery.value instead of chained off the fetch promise directly, since
+  // that value can now change for reasons other than this effect re-running (another mounted
+  // consumer's revalidate(), or this hook's own markDailyFinished() below) - the `screen !== "idle"`
+  // guard is what keeps those from interfering with an active/just-finished game.
   useEffect(() => {
-    if (screen !== "idle") return
-    let cancelled = false
+    if (screen !== "idle" || !daily) return
 
-    if (daily) {
-      getDailyStatus()
-        .then((status) => {
+    if (dailyStatusQuery.error && !dailyStatusQuery.value) {
+      setHasCurrentGame(false)
+      return
+    }
+    const status = dailyStatusQuery.value
+    if (!status) return
+
+    const modeStatus = status.modes.find((m) => m.game_type === gameType && m.mode === mode)
+    dailyGameIdRef.current = modeStatus?.game_id ?? null
+
+    if (modeStatus?.status === "finished" && modeStatus.game_id) {
+      // hasCurrentGame stays null (not false) until this resolves - every game component's own
+      // `if (daily && hasCurrentGame === null) return <blank>` guard is what's keeping the screen
+      // blank right now, and setting it false early would release that guard while screen is still
+      // "idle", showing a stutter of the idle/play screen before the fetch below flips to
+      // "finished". Setting it together with the screen transition (both branches below) means the
+      // guard only lifts once there's something real to show.
+      let cancelled = false
+      getGame(modeStatus.game_id)
+        .then((g) => {
           if (cancelled) return
-          const modeStatus = status.modes.find((m) => m.game_type === gameType && m.mode === mode)
-          dailyGameIdRef.current = modeStatus?.game_id ?? null
-
-          if (modeStatus?.status === "finished" && modeStatus.game_id) {
-            setHasCurrentGame(false)
-            getGame(modeStatus.game_id)
-              .then((g) => {
-                if (cancelled) return
-                setScreen(hydrateFinishedDailyRef.current(g) ? "finished" : "error")
-              })
-              .catch(() => {
-                if (!cancelled) setScreen("error")
-              })
-            return
-          }
-          setHasCurrentGame(modeStatus?.status === "in_progress")
+          setScreen(hydrateFinishedDailyRef.current(g) ? "finished" : "error")
+          setHasCurrentGame(false)
         })
         .catch(() => {
-          if (!cancelled) setHasCurrentGame(false)
+          if (cancelled) return
+          setScreen("error")
+          setHasCurrentGame(false)
         })
       return () => {
         cancelled = true
       }
     }
+    setHasCurrentGame(modeStatus?.status === "in_progress")
+  }, [screen, daily, gameType, mode, dailyStatusQuery.value, dailyStatusQuery.error])
 
+  // Non-daily "has an active game" check - unaffected by the cache migration above.
+  useEffect(() => {
+    if (screen !== "idle" || daily) return
+    let cancelled = false
     getCurrentGame(gameType, mode)
       .then((g) => {
         if (!cancelled) setHasCurrentGame(g !== null)
@@ -110,7 +144,7 @@ export function useGameSession({
     return () => {
       cancelled = true
     }
-  }, [screen, gameType, mode, daily, idleRefresh])
+  }, [screen, gameType, mode, daily])
 
   async function startGame() {
     await guarded(startInFlightRef, async (token) => {
@@ -126,7 +160,7 @@ export function useGameSession({
           // tab/device) - re-run the status check instead of showing a generic error; it lands on
           // the finished (or in-progress) state instead, the "already played today" behavior.
           setHasCurrentGame(null)
-          setIdleRefresh((n) => n + 1)
+          revalidate(DAILY_STATUS_KEY, getDailyStatus)
           return
         }
         setScreen("error")
@@ -160,6 +194,35 @@ export function useGameSession({
   function backToIdle() {
     discardInFlight() // discard any in-flight guess/start response that arrives later
     setScreen("idle")
+    // The idle effect above only re-derives from dailyStatusQuery.value, it doesn't itself fetch -
+    // without this explicit revalidate, returning to idle would keep showing whatever "daily-status"
+    // last resolved to instead of re-checking (e.g. after a finished/in-progress game was abandoned).
+    if (daily) revalidate(DAILY_STATUS_KEY, getDailyStatus)
+  }
+
+  // For when the player's own action just finished today's daily (the round hook/game component
+  // already has the final GameOut's id and score in hand) - pushes it into the "daily-status" cache
+  // immediately instead of waiting for the next revalidation's round trip. `gameId` is needed
+  // because the cached entry for this mode was last written while still "not_played" (game_id
+  // null) - without passing it here, DailySection's "share all" would drop this mode until the next
+  // real revalidation fills game_id back in. No-op for non-daily games.
+  function markDailyFinished(gameId: string, score: number) {
+    // Nothing to read-modify-write if this mode's status was never fetched yet (shouldn't happen in
+    // practice: reaching a playable daily round means the idle screen's own useLiveQuery already
+    // populated this key) - skip rather than fabricate a DailyStatusOut for the other modes we don't
+    // know about; the next real revalidation (e.g. backToIdle's) fills it in correctly.
+    if (!daily || !dailyStatusQuery.value) return
+    updateCached<DailyStatusOut>(DAILY_STATUS_KEY, (prev) => {
+      const base = prev ?? dailyStatusQuery.value!
+      return {
+        ...base,
+        modes: base.modes.map((m) =>
+          m.game_type === gameType && m.mode === mode
+            ? { ...m, status: "finished", game_id: gameId, score }
+            : m,
+        ),
+      }
+    })
   }
 
   return {
@@ -171,6 +234,7 @@ export function useGameSession({
     startGame,
     resumeGame,
     backToIdle,
+    markDailyFinished,
     isCurrent,
     guarded,
   }
