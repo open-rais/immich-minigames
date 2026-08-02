@@ -117,6 +117,7 @@ export function useRoundGame<TRound extends RoundOut, TGuess>({
     startGame,
     resumeGame,
     backToIdle,
+    markDailyFinished,
     isCurrent,
     guarded,
   } = useGameSession({ gameType, mode, daily, applyGame, hydrateFinishedDaily })
@@ -137,6 +138,7 @@ export function useRoundGame<TRound extends RoundOut, TGuess>({
         setRound(result.answered_round)
         setPendingNextRound(result.next_round as TRound | null)
         setPhase("revealed")
+        if (result.finished) markDailyFinished(game.id, result.score)
       } catch {
         if (isCurrent(token)) setScreen("error")
       } finally {
