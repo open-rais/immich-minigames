@@ -145,16 +145,14 @@ function FaceBox({
           className={`h-full w-full overflow-hidden rounded-md border-2 transition-colors duration-500 disabled:cursor-default ${borderClass}`}
         >
           <div
-            className={`h-full w-full transition-opacity duration-700 ease-out ${revealed ? "opacity-0" : "opacity-100"}`}
+            className={`h-full w-full bg-blackout transition-opacity duration-700 ease-out ${revealed ? "opacity-0" : "opacity-100"}`}
           >
-            {guessedPersonId ? (
+            {guessedPersonId && (
               <img
                 src={personThumbnailUrl(guessedPersonId)}
                 alt=""
                 className="h-full w-full object-cover"
               />
-            ) : (
-              <div className="h-full w-full bg-blackout" />
             )}
           </div>
         </button>
