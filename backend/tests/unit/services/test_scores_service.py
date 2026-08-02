@@ -376,7 +376,9 @@ class TestGetDailyLeaderboard:
                 daily_games_service, db_session, game_type=IMMICHDLE_TYPE, mode=MODE_PERSON, user_id=user.id, today=day
             )
 
-        entries = scores_service.get_daily_leaderboard(IMMICHDLE_TYPE, MODE_PERSON, day3)
+        # today=day3: the streak is only computed for the leaderboard of the current day, and every
+        # date here is a synthetic far-future one (see _next_date).
+        entries = scores_service.get_daily_leaderboard(IMMICHDLE_TYPE, MODE_PERSON, day3, today=day3)
 
         assert [e.streak for e in entries] == [3]
 
@@ -394,7 +396,7 @@ class TestGetDailyLeaderboard:
             daily_games_service, db_session, game_type=IMMICHDLE_TYPE, mode=MODE_PERSON, user_id=user.id, today=day3
         )
 
-        entries = scores_service.get_daily_leaderboard(IMMICHDLE_TYPE, MODE_PERSON, day3)
+        entries = scores_service.get_daily_leaderboard(IMMICHDLE_TYPE, MODE_PERSON, day3, today=day3)
 
         assert [e.streak for e in entries] == [1]
 
@@ -423,8 +425,10 @@ class TestGetDailyLeaderboard:
             today=day2,
         )
 
-        mode_a_entries = scores_service.get_daily_leaderboard(IMMICHDLE_TYPE, MODE_PERSON, day2)
-        mode_b_entries = scores_service.get_daily_leaderboard(WHOS_THAT_PERSON_TYPE, MODE_NAMED_FACES, day2)
+        mode_a_entries = scores_service.get_daily_leaderboard(IMMICHDLE_TYPE, MODE_PERSON, day2, today=day2)
+        mode_b_entries = scores_service.get_daily_leaderboard(
+            WHOS_THAT_PERSON_TYPE, MODE_NAMED_FACES, day2, today=day2
+        )
 
         assert [e.streak for e in mode_a_entries] == [2]
         assert [e.streak for e in mode_b_entries] == [1]
@@ -446,6 +450,24 @@ class TestGetDailyLeaderboard:
             daily_games_service, db_session, game_type=IMMICHDLE_TYPE, mode=MODE_PERSON, user_id=user.id, today=day3
         )
 
-        entries = scores_service.get_daily_leaderboard(IMMICHDLE_TYPE, MODE_PERSON, day3)
+        entries = scores_service.get_daily_leaderboard(IMMICHDLE_TYPE, MODE_PERSON, day3, today=day3)
 
         assert [e.streak for e in entries] == [1]
+
+    def test_streak_is_none_on_a_date_other_than_today(
+        self, daily_games_service, scores_service, daily_settings_service, db_session, auth_service
+    ):
+        daily_settings_service.update_settings(IMMICHDLE_TYPE, MODE_PERSON, enabled=True)
+        day1 = _next_date()
+        day2 = day1 + timedelta(days=1)
+        user = _register_user(auth_service)
+        for day in (day1, day2):
+            self._finish_daily(
+                daily_games_service, db_session, game_type=IMMICHDLE_TYPE, mode=MODE_PERSON, user_id=user.id, today=day
+            )
+
+        # Same history that reads as a streak of 2 on day2 - but day1's board is a past date, and a
+        # streak is only ever shown (so only ever computed) for the current day.
+        entries = scores_service.get_daily_leaderboard(IMMICHDLE_TYPE, MODE_PERSON, day1, today=day2)
+
+        assert [e.streak for e in entries] == [None]

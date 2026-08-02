@@ -38,7 +38,8 @@ class LeaderboardOut(BaseModel):
 
 
 class DailyLeaderboardEntryOut(LeaderboardEntryOut):
-    streak: int
+    # None on any date other than today - see ScoresService.DailyLeaderboardEntry.
+    streak: int | None
 
     @classmethod
     def from_entry(cls, entry: DailyLeaderboardEntry) -> "DailyLeaderboardEntryOut":

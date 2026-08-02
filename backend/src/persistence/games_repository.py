@@ -152,6 +152,13 @@ class GameRepository:
                 DailyChallengeModel.mode == mode,
                 GameModel.finished.is_(True),
                 GameModel.user_id.in_(user_ids),
+                # Redundant with the join (a daily game is always built from its own challenge's
+                # game_type/mode - see DailyGamesService.build_daily), but stated on GameModel too
+                # so ix_games_user_type_mode is usable past its leading user_id column: without
+                # these the index scan returns *every* game of these users - daily and normal, all
+                # six games - and only the join discards them.
+                GameModel.game_type == game_type,
+                GameModel.mode == mode,
                 DailyChallengeModel.challenge_date <= challenge_date,
             )
         ).all()

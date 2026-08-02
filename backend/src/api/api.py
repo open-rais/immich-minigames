@@ -150,12 +150,11 @@ def play_round(
     return PlayRoundOut.from_answered(game, answered_round)
 
 
-# Fixed, not env-configurable (single-user/household app, see ISSUE-SUMMARY-PAGE.md [DECISIÓN 2] for
-# the same reasoning applied to the pool size). max-age is short on purpose - disk/bandwidth aren't a
+# Fixed, not env-configurable yet (single-user/household app. max-age is short on purpose - disk/bandwidth aren't a
 # real concern at this app's scale, so there's no reason not to revalidate often; stale-while-
 # revalidate is what actually keeps thumbnails feeling instant past that point, by letting the
 # browser serve the cached copy immediately and refresh it in the background instead of blocking on a
-# new response (docs/TODO/ISSUE-SUMMARY-PAGE.md §6.5/§7 F6).
+# new response
 _THUMBNAIL_MAX_AGE_SECONDS = 30 * 60
 _THUMBNAIL_STALE_WHILE_REVALIDATE_SECONDS = 24 * 60 * 60
 
@@ -165,10 +164,9 @@ def _proxy_thumbnail(request: Request, fetch: Callable[[], tuple[bytes, str]]) -
     the person and asset thumbnail endpoints, which only differ in which fetch they call.
 
     Adds Cache-Control/ETag so the browser (native <img> and the frontend's own fetch-based thumbnail
-    queue alike) can skip re-downloading bytes it already has (docs/TODO/ISSUE-SUMMARY-PAGE.md §6.4).
-    The ETag is computed here from the fetched bytes rather than forwarded from Immich's own response
-    - Immich isn't confirmed to send one on these endpoints, and computing it ourselves works
-    regardless."""
+    queue alike) can skip re-downloading bytes it already has The ETag is computed here from the fetched
+    bytes rather than forwarded from Immich's own response - Immich isn't confirmed to send one on these
+    endpoints, and computing it ourselves works regardless."""
     try:
         content, content_type = fetch()
     except httpx.HTTPStatusError as exc:

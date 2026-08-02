@@ -16,9 +16,10 @@ export interface LeaderboardOut {
 }
 
 // Same entry shape as the normal LeaderboardOut plus a streak, scoped to one specific day's
-// challenge instead of a rolling window.
+// challenge instead of a rolling window. The streak is null on any date other than today - the
+// backend only computes it for the current day, since that's the only one showing the badge.
 export interface DailyLeaderboardEntryOut extends LeaderboardEntryOut {
-  streak: number
+  streak: number | null
 }
 
 export interface DailyLeaderboardOut {

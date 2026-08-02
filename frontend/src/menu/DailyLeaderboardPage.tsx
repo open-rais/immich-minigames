@@ -110,12 +110,17 @@ export function DailyLeaderboardPage() {
                 <span className="min-w-0 flex-1 truncate font-semibold text-ink">
                   {entry.username}
                 </span>
-                <span
-                  className="flex flex-none items-center gap-0.5 rounded-full bg-badge-bg px-2 py-1.5 font-mono text-xs leading-none font-bold text-badge-value"
-                  title={t("daily.leaderboard.streak", { count: entry.streak })}
-                >
-                  🔥{entry.streak}
-                </span>
+                {/* Only on today's board: a streak is "consecutive days up to *now*", so showing
+                    one next to a past date would read as that date's streak - which the backend
+                    deliberately no longer computes (it sends null there). */}
+                {isToday && entry.streak !== null && (
+                  <span
+                    className="flex flex-none items-center gap-0.5 rounded-full bg-badge-bg px-2 py-1.5 font-mono text-xs leading-none font-bold text-badge-value"
+                    title={t("daily.leaderboard.streak", { count: entry.streak })}
+                  >
+                    🔥{entry.streak}
+                  </span>
+                )}
                 <span className="flex-none font-mono font-bold text-ink">{entry.best_score}</span>
               </li>
             ))}
