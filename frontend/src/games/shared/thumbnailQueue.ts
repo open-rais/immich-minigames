@@ -1,18 +1,5 @@
 import { useEffect, useState } from "react"
 
-// Mitigation for issue #44 (docs/TODO/ISSUE-SUMMARY-PAGE.md §3.3) - "Ver rondas" screens render
-// every round's thumbnail at once, which used to fire one request per entry with no limit and no
-// dedupe, exhausting the backend's DB connection pool. This module gives those screens a shared
-// dedupe cache + concurrency cap; scoping it to "Ver rondas" only (not live play) happens at the
-// call site (F3), not here - this module doesn't know who's calling it.
-//
-// F6 (§6.2/§6.5) added two more pieces on top of that original fix: releasing a request's
-// concurrency slot when its last consumer unmounts instead of only when the fetch itself finishes
-// (an orphaned request used to keep occupying a slot other screens needed), and an app-level
-// stale-while-revalidate cache so a thumbnail that's already been seen this session repaints
-// instantly while a fresh copy loads silently in the background, instead of showing the loading
-// placeholder again.
-
 // Matches the browser's own per-host HTTP/1.1 concurrency limit - generous for what Immich needs
 // to serve, while still capping how many requests this app can pile onto the backend at once.
 const MAX_CONCURRENT = 4
@@ -48,9 +35,8 @@ interface CacheEntry {
 }
 
 // Resolved entries are cached forever (module-level singleton) and object URLs are never revoked,
-// including ones replaced by a later revalidation - acceptable for this fix's scope
-// (docs/TODO/ISSUE-SUMMARY-PAGE.md §4), a long-lived session growing this cache unbounded is a
-// problem for another day.
+// including ones replaced by a later revalidation - acceptable for this fix's scope,
+// a long-lived session growing this cache unbounded is a problem for another day.
 const cache = new Map<string, CacheEntry>()
 const inFlight = new Map<string, Promise<CacheEntry>>()
 const controllers = new Map<string, AbortController>()
@@ -142,8 +128,7 @@ function unsubscribe(url: string, listener: (entry: CacheEntry) => void): void {
   // (the request would still complete over the network - hence a stray 304 in devtools - but reject
   // on our side with AbortError, leaving the new subscriber stuck on the failed placeholder).
   // Deferring one microtask lets that resubscribe happen first; if the URL is genuinely orphaned by
-  // the time this runs, abort it so it stops occupying a concurrency slot other screens need
-  // (docs/TODO/ISSUE-SUMMARY-PAGE.md §6.2 point 3).
+  // the time this runs, abort it so it stops occupying a concurrency slot other screens need.
   queueMicrotask(() => {
     if (!subscribers.has(url)) {
       controllers.get(url)?.abort()

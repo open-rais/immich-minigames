@@ -527,7 +527,6 @@ After installation, verify:
 
 ## Getting Help
 
-- Check `docs/TODO/DEV_NOTES.md` for development tips
 - Review `docs/ARCHITECTURE/` for technical details
 - Check the GitHub issues: https://github.com/open-rais/immich-minigames/issues
 - Review the main `README.md` for project overview

@@ -66,7 +66,7 @@ def create_password_reset(
 ) -> CreateInviteOut:
     target = _get_target_user(auth_service, user_id)
     invite, token = invite_service.create_invite(kind="password_reset", user_id=target.id)
-    # In addition to invite_service's own generic invite_created (LOGGING.md §4.4) - this one
+    # In addition to invite_service's own generic invite_created - this one
     # carries target_user_id, which invite_service has no reason to know about.
     audit(
         "password_reset_created",

@@ -237,7 +237,7 @@ class TestAuditEvents:
 
     def test_admin_editing_someone_else_records_admin_as_actor_and_other_as_target(self, client, db_session, audit_log):
         # The actor (whoever the request is authenticated as) lives in the request context, not an
-        # explicit field (LOGGING.md §4.4) - target_user_id is the only explicit field, so this is
+        # explicit field - target_user_id is the only explicit field, so this is
         # the only way to tell an admin's edit of someone else apart from self-service from the
         # audit trail alone.
         target = _register(client)
