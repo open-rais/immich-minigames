@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 
 import { getDailyStatus } from "../api/daily"
+import { apiErrorMessage } from "../api/errors"
 import { getGame } from "../api/games"
 import { useLiveQuery } from "../api/queryCache"
 import type { GameOut } from "../api/types/common"
@@ -43,7 +44,11 @@ function ShareIcon() {
 export function DailySection() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { value: status, refresh } = useLiveQuery<DailyStatusOut>(DAILY_STATUS_KEY, getDailyStatus)
+  const {
+    value: status,
+    error,
+    refresh,
+  } = useLiveQuery<DailyStatusOut>(DAILY_STATUS_KEY, getDailyStatus)
   const [expanded, setExpanded] = useState(true)
   const [shareBusy, setShareBusy] = useState(false)
   const [shareText, setShareText] = useState<string | null>(null)
@@ -52,6 +57,24 @@ export function DailySection() {
   // resolves (a stutter that shifts every GameSection below it down) - same header shape and a
   // ModeCard-shaped placeholder grid, so there's no layout jump once the real content lands.
   if (!status) {
+    if (error) {
+      return (
+        <section>
+          <div className="mb-1 flex items-center gap-2">
+            <h2 className="text-3xl font-bold text-ink md:text-4xl">{t("daily.title")}</h2>
+          </div>
+          <hr className="mb-6 border-line" />
+          <p className="text-sm text-body">{apiErrorMessage(error) ?? t("common.error.message")}</p>
+          <button
+            type="button"
+            onClick={refresh}
+            className="mt-2 text-sm font-semibold text-primary underline"
+          >
+            {t("common.error.retry")}
+          </button>
+        </section>
+      )
+    }
     return (
       <section className="animate-pulse">
         <div className="mb-1 flex items-center gap-2">

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react"
 import { createDailyGame, getDailyStatus } from "../../api/daily"
 import { apiErrorStatus } from "../../api/errors"
 import { createGame, GAME_RECORDS_KEY, getCurrentGame, getGame } from "../../api/games"
-import { peekCached, revalidate, updateCached, useLiveQuery } from "../../api/queryCache"
+import { peekCached, revalidate, setCached, updateCached, useLiveQuery } from "../../api/queryCache"
 import type { GameOut } from "../../api/types/common"
 import type { DailyStatusOut } from "../../api/types/daily"
 import type { GameRecordsOut } from "../../api/types/records"
@@ -158,8 +158,17 @@ export function useGameSession({
           // Today's attempt was consumed between the idle status check and this create (another
           // tab/device) - re-run the status check instead of showing a generic error; it lands on
           // the finished (or in-progress) state instead, the "already played today" behavior.
+          // Bypasses revalidate()'s dedup/version guard on purpose: this must always be a real,
+          // fresh fetch, and must never leave hasCurrentGame stuck at null - on failure it falls
+          // back to false, same as before the cache migration.
           setHasCurrentGame(null)
-          revalidate(DAILY_STATUS_KEY, getDailyStatus)
+          getDailyStatus()
+            .then((status) => {
+              if (isCurrent(token)) setCached(DAILY_STATUS_KEY, status)
+            })
+            .catch(() => {
+              if (isCurrent(token)) setHasCurrentGame(false)
+            })
           return
         }
         setScreen("error")

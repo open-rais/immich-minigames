@@ -20,7 +20,14 @@ export function revalidate<T>(key: string, fetcher: () => Promise<T>): Promise<T
   const startedAt = versions.get(key) ?? 0
   const promise = fetcher()
     .then((value) => {
-      if ((versions.get(key) ?? 0) !== startedAt) return cache.get(key) as T
+      if ((versions.get(key) ?? 0) !== startedAt) {
+        // A newer setCached() landed while this was in flight - don't clobber it, but still
+        // notify every subscriber (not just this call's own awaiter) so nobody is left waiting on
+        // a first value that will never arrive.
+        const current = cache.get(key) as T
+        subscribers.get(key)?.forEach((notify) => notify(current))
+        return current
+      }
       cache.set(key, value)
       subscribers.get(key)?.forEach((notify) => notify(value))
       return value
