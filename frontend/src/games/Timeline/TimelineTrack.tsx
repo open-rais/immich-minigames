@@ -89,7 +89,7 @@ export function TimelineTrack({
     const el = elementsRef.current.get(`${focusTarget.kind}-${focusTarget.index}`)
     el?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" })
     // focusToken is the re-run trigger, not a value read inside the effect.
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line
   }, [focusToken])
 
   function setRef(kind: TrackSlotKind, index: number, el: HTMLDivElement | null) {

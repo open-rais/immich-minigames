@@ -76,7 +76,7 @@ export function useInfiniteAdminList<T>(
   // case for either caller.
   useEffect(() => {
     void fetchAndSet(0, "replace")
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line
   }, [])
 
   // A page of pageSize short rows often doesn't overflow the scroll container at all, so onScroll

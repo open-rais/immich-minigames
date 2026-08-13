@@ -31,13 +31,17 @@ let inFlight: Promise<ImmichLinks | null> | null = null
 function fetchLinks(): Promise<ImmichLinks | null> {
   if (!inFlight) {
     inFlight = getConfig()
-      .then(
-        (config) =>
-          (cached = config.immich_external_url
-            ? linksFromBaseUrl(config.immich_external_url)
-            : null),
-      )
-      .catch(() => (cached = null))
+      .then((config) => {
+        cached = config.immich_external_url ? linksFromBaseUrl(config.immich_external_url) : null
+        return cached
+      })
+      .catch(() => {
+        // Only reset inFlight here, not cached: cached staying undefined (instead of being set to
+        // null, "confirmed unconfigured") is what lets the next mount retry instead of a transient
+        // /config failure disabling every Immich link for the rest of the tab's session.
+        inFlight = null
+        return null
+      })
   }
   return inFlight
 }

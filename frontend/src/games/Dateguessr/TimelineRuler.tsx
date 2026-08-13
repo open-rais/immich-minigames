@@ -180,7 +180,7 @@ export function TimelineRuler({
     // Deliberately depends only on [actual, selected, containerWidth] - it reads pxPerDay/
     // centerDayIndex just as the animation's start point, not to re-run on every tick the
     // animation itself produces.
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line
   }, [actual, selected, containerWidth])
 
   function dayIndexToX(dayIndex: number): number {
