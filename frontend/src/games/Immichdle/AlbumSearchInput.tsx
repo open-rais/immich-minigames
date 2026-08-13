@@ -9,6 +9,12 @@ const DEBOUNCE_MS = 400
 const PAGE_SIZE = 5
 // Load the next page once the results list is scrolled to within this many px of the bottom.
 const SCROLL_THRESHOLD_PX = 48
+// Caps back-to-back *automatic* page loads that each add zero new visible rows (a full raw page
+// whose every album is in excludeIds) - without this, a long contiguous run of already-guessed
+// albums in the backend's order would auto-fire one request per page until the table is exhausted,
+// since a page that adds nothing never makes the results box overflow (the auto-continue effect's
+// own stopping condition).
+const EMPTY_PAGE_STREAK_LIMIT = 5
 
 interface AlbumSearchInputProps {
   excludeIds: Set<string>
@@ -57,10 +63,14 @@ export function AlbumSearchInput({
   // selection to the first newly-loaded row once it lands, instead of leaving it stuck at the
   // old last row while the fetch is in flight.
   const advanceAfterLoadRef = useRef(false)
+  // Consecutive loadMore() calls (any trigger) that added zero visible rows - see
+  // EMPTY_PAGE_STREAK_LIMIT above. Reset on every new search and whenever a page does add rows.
+  const emptyPageStreakRef = useRef(0)
 
   useEffect(() => {
     const trimmed = query.trim()
     advanceAfterLoadRef.current = false
+    emptyPageStreakRef.current = 0
     setSelectedIndex(-1)
     if (!trimmed) {
       setResults([])
@@ -102,7 +112,9 @@ export function AlbumSearchInput({
       if (requestTokenRef.current !== token) return
       offsetRef.current += found.length
       setHasMore(found.length === PAGE_SIZE)
-      setResults((prev) => [...prev, ...found.filter((a) => !excludeIds.has(a.id))])
+      const visible = found.filter((a) => !excludeIds.has(a.id))
+      emptyPageStreakRef.current = visible.length > 0 ? 0 : emptyPageStreakRef.current + 1
+      setResults((prev) => [...prev, ...visible])
     } catch {
       if (requestTokenRef.current === token) setHasMore(false)
       advanceAfterLoadRef.current = false
@@ -111,9 +123,15 @@ export function AlbumSearchInput({
     }
   }
 
+  // A page of PAGE_SIZE short rows often doesn't overflow the results box at all, so onScroll
+  // alone would never fire to pull in the next page - keep auto-loading right after each fetch
+  // until either the box actually has something to scroll or there's nothing left to fetch. The
+  // streak check only applies here, not to a real user scroll/ArrowDown-triggered loadMore() -
+  // those are already rate-limited by human interaction, not a loop.
   useEffect(() => {
     const el = resultsBoxRef.current
     if (!el || loading || loadingMore || !hasMore) return
+    if (emptyPageStreakRef.current >= EMPTY_PAGE_STREAK_LIMIT) return
     if (el.scrollHeight <= el.clientHeight) void loadMore()
   })
 

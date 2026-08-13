@@ -9,6 +9,14 @@ const subscribers = new Map<string, Set<(value: unknown) => void>>()
 // this, finishing a daily while a GET /daily is in flight would bounce the screen back to
 // "in_progress" once that response lands.
 const versions = new Map<string, number>()
+// Bumped on every clearCache() - a coarser, always-reliable version of the same guard `versions`
+// gives per-key: a key that never had a setCached() before a clearCache() still reads as version 0
+// on both sides of the clear, so `versions` alone can't tell a stale in-flight response apart from
+// a fresh one there. This can't miss, since it isn't keyed at all.
+let epoch = 0
+// Internal-only sentinel notified through `subscribers` on clearCache() - not a real value, tells
+// useLiveQuery's callback to drop what it's showing and re-fetch instead of treating it as data.
+const RESET = Symbol("query-cache-reset")
 
 // Always fires a real request (deduped only if one is already in flight for the same key - never
 // skipped for being "still fresh", that doesn't exist in this design). On resolve, updates the
@@ -18,11 +26,12 @@ export function revalidate<T>(key: string, fetcher: () => Promise<T>): Promise<T
   if (existing) return existing as Promise<T>
 
   const startedAt = versions.get(key) ?? 0
+  const startEpoch = epoch
   // Typed explicitly: the `.then` below closes over `promise` itself (to check it's still the
   // in-flight entry before deleting it), which would otherwise make its own type circular.
   const promise: Promise<T> = fetcher()
     .then((value) => {
-      if ((versions.get(key) ?? 0) !== startedAt) {
+      if (epoch !== startEpoch || (versions.get(key) ?? 0) !== startedAt) {
         const current = cache.get(key)
         if (current !== undefined) {
           // A newer setCached() landed while this was in flight - don't clobber it, but still
@@ -82,6 +91,13 @@ export function clearCache(): void {
   cache.clear()
   inFlight.clear()
   versions.clear()
+  epoch++
+  // Tells every mounted useLiveQuery to stop showing the previous account's data and re-fetch
+  // right away, instead of only picking up the switch whenever something else happens to
+  // remount it or call refresh().
+  for (const set of subscribers.values()) {
+    set.forEach((notify) => notify(RESET))
+  }
 }
 
 // "loading" is genuinely transitory: revalidate() above never resolves successfully without a
@@ -125,31 +141,44 @@ export function useLiveQuery<T>(key: string, fetcher: () => Promise<T>): LiveQue
     setState(stateFromCache(key))
 
     let cancelled = false
-    const set = subscribers.get(key) ?? new Set<(value: unknown) => void>()
-    subscribers.set(key, set)
-    const callback = (v: unknown) => setState({ status: "success", value: v as T })
-    set.add(callback)
 
     // The `cancelled` guard is still needed even though subscribers are cleaned up below: this
     // continuation is direct, not routed through pub-sub, so without it a slow response for an old
-    // key would clobber the new key's state.
-    revalidate(key, fetcherRef.current).then(
-      (v) => {
-        if (!cancelled) setState({ status: "success", value: v as T })
-      },
-      (e) => {
-        // Functional update so a value that arrived via the subscriber callback above (or was
-        // already cached) between this effect starting and the fetch rejecting stays visible
-        // alongside the error, instead of this overwriting it with a bare error.
-        if (!cancelled) {
-          setState((prev) => ({
-            status: "error",
-            error: e,
-            value: prev.status === "loading" ? undefined : prev.value,
-          }))
-        }
-      },
-    )
+    // key would clobber the new key's state. Called both below and from the RESET branch of
+    // `callback`, so a clearCache() mid-life re-fetches the same way the initial mount does.
+    function load() {
+      revalidate(key, fetcherRef.current).then(
+        (v) => {
+          if (!cancelled) setState({ status: "success", value: v as T })
+        },
+        (e) => {
+          // Functional update so a value that arrived via the subscriber callback above (or was
+          // already cached) between this effect starting and the fetch rejecting stays visible
+          // alongside the error, instead of this overwriting it with a bare error.
+          if (!cancelled) {
+            setState((prev) => ({
+              status: "error",
+              error: e,
+              value: prev.status === "loading" ? undefined : prev.value,
+            }))
+          }
+        },
+      )
+    }
+
+    const set = subscribers.get(key) ?? new Set<(value: unknown) => void>()
+    subscribers.set(key, set)
+    const callback = (v: unknown) => {
+      if (v === RESET) {
+        setState({ status: "loading" })
+        load()
+        return
+      }
+      setState({ status: "success", value: v as T })
+    }
+    set.add(callback)
+
+    load()
 
     return () => {
       cancelled = true
