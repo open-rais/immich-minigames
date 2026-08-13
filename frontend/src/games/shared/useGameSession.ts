@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useReducer, useRef, useState } from "react"
 
 import { createDailyGame, getDailyStatus } from "../../api/daily"
 import { apiErrorStatus } from "../../api/errors"
@@ -22,6 +22,38 @@ export const DAILY_STATUS_KEY = "daily-status"
 const INACTIVE_DAILY_STATUS_KEY = "daily-status:inactive"
 async function emptyDailyStatus(): Promise<DailyStatusOut> {
   return { resets_at: "", server_now: "", modes: [] }
+}
+
+interface SessionState {
+  screen: Screen
+  // Only meaningful while screen is "idle" - every read site (the blank-guard + IdleScreen prop,
+  // duplicated identically in all six games) already only cares about it in that state. Writing it
+  // is now something this reducer refuses outright while any other screen is active, instead of
+  // trusting each of this file's three writers (the two idle-check effects, the daily 409
+  // fallback) to keep re-deriving the same guard individually.
+  hasCurrentGame: boolean | null
+}
+
+type SessionAction =
+  // hasCurrentGame is optional and applied atomically with the screen change itself, in the same
+  // dispatch - two separate dispatches (setScreen(...) then setHasCurrentGame(...)) would process
+  // in order against the already-updated state, so the second one would find screen no longer
+  // "idle" and get silently dropped by the case below, even though both calls happened in the same
+  // tick.
+  | { type: "screen"; screen: Screen; hasCurrentGame?: boolean | null }
+  | { type: "hasCurrentGame"; value: boolean | null }
+
+function sessionReducer(state: SessionState, action: SessionAction): SessionState {
+  switch (action.type) {
+    case "screen":
+      return {
+        screen: action.screen,
+        hasCurrentGame:
+          action.hasCurrentGame !== undefined ? action.hasCurrentGame : state.hasCurrentGame,
+      }
+    case "hasCurrentGame":
+      return state.screen === "idle" ? { ...state, hasCurrentGame: action.value } : state
+  }
 }
 
 // Game-lifecycle layer extracted out of useRoundGame/MoreOrLessGame/ImmichdleGame
@@ -58,12 +90,18 @@ export function useGameSession({
   hydrateFinishedDaily,
   daily = false,
 }: UseGameSessionConfig) {
-  const [screen, setScreen] = useState<Screen>("idle")
-  const [busy, setBusy] = useState(false)
   // Whether the current player has an unfinished game for this (gameType, mode); null
   // while the idle-screen check below is still in flight, which IdleScreen treats the same as
   // false (an accepted brief "plain layout, then Continue pops in" flash).
-  const [hasCurrentGame, setHasCurrentGame] = useState<boolean | null>(null)
+  const [state, dispatch] = useReducer(sessionReducer, { screen: "idle", hasCurrentGame: null })
+  const { screen, hasCurrentGame } = state
+  function setScreen(next: Screen, nextHasCurrentGame?: boolean | null) {
+    dispatch({ type: "screen", screen: next, hasCurrentGame: nextHasCurrentGame })
+  }
+  function setHasCurrentGame(value: boolean | null) {
+    dispatch({ type: "hasCurrentGame", value })
+  }
+  const [busy, setBusy] = useState(false)
   // The daily game's id, known from GET /daily's status before the player has done
   // anything - resumeGame() reads this instead of calling getCurrentGame (which never returns a
   // daily game).
@@ -115,13 +153,11 @@ export function useGameSession({
       getGame(modeStatus.game_id)
         .then((g) => {
           if (cancelled) return
-          setScreen(hydrateFinishedDailyRef.current(g) ? "finished" : "error")
-          setHasCurrentGame(false)
+          setScreen(hydrateFinishedDailyRef.current(g) ? "finished" : "error", false)
         })
         .catch(() => {
           if (cancelled) return
-          setScreen("error")
-          setHasCurrentGame(false)
+          setScreen("error", false)
         })
       return () => {
         cancelled = true
