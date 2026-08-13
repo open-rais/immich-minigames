@@ -86,18 +86,19 @@ export function useGameSession({
     daily ? getDailyStatus : emptyDailyStatus,
   )
 
-  // Derived from dailyStatusQuery.value instead of chained off the fetch promise directly, since
-  // that value can now change for reasons other than this effect re-running (another mounted
+  // Derived from dailyStatusQuery.state instead of chained off the fetch promise directly, since
+  // that state can now change for reasons other than this effect re-running (another mounted
   // consumer's revalidate(), or this hook's own markDailyFinished() below) - the `screen !== "idle"`
   // guard is what keeps those from interfering with an active/just-finished game.
   useEffect(() => {
     if (screen !== "idle" || !daily) return
 
-    if (dailyStatusQuery.error && !dailyStatusQuery.value) {
+    if (dailyStatusQuery.state.status === "error" && dailyStatusQuery.state.value === undefined) {
       setHasCurrentGame(false)
       return
     }
-    const status = dailyStatusQuery.value
+    const status =
+      dailyStatusQuery.state.status === "loading" ? undefined : dailyStatusQuery.state.value
     if (!status) return
 
     const modeStatus = status.modes.find((m) => m.game_type === gameType && m.mode === mode)
@@ -127,7 +128,7 @@ export function useGameSession({
       }
     }
     setHasCurrentGame(modeStatus?.status === "in_progress")
-  }, [screen, daily, gameType, mode, dailyStatusQuery.value, dailyStatusQuery.error])
+  }, [screen, daily, gameType, mode, dailyStatusQuery.state])
 
   // Non-daily "has an active game" check - unaffected by the cache migration above.
   useEffect(() => {
@@ -202,7 +203,7 @@ export function useGameSession({
   function backToIdle() {
     discardInFlight() // discard any in-flight guess/start response that arrives later
     setScreen("idle")
-    // The idle effect above only re-derives from dailyStatusQuery.value, it doesn't itself fetch -
+    // The idle effect above only re-derives from dailyStatusQuery.state, it doesn't itself fetch -
     // without this explicit revalidate, returning to idle would keep showing whatever "daily-status"
     // last resolved to instead of re-checking (e.g. after a finished/in-progress game was abandoned).
     if (daily) revalidate(DAILY_STATUS_KEY, getDailyStatus)
@@ -219,9 +220,11 @@ export function useGameSession({
     // practice: reaching a playable daily round means the idle screen's own useLiveQuery already
     // populated this key) - skip rather than fabricate a DailyStatusOut for the other modes we don't
     // know about; the next real revalidation (e.g. backToIdle's) fills it in correctly.
-    if (!daily || !dailyStatusQuery.value) return
+    const currentStatus =
+      dailyStatusQuery.state.status === "loading" ? undefined : dailyStatusQuery.state.value
+    if (!daily || !currentStatus) return
     updateCached<DailyStatusOut>(DAILY_STATUS_KEY, (prev) => {
-      const base = prev ?? dailyStatusQuery.value!
+      const base = prev ?? currentStatus
       return {
         ...base,
         modes: base.modes.map((m) =>

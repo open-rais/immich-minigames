@@ -21,12 +21,19 @@ export function revalidate<T>(key: string, fetcher: () => Promise<T>): Promise<T
   const promise = fetcher()
     .then((value) => {
       if ((versions.get(key) ?? 0) !== startedAt) {
-        // A newer setCached() landed while this was in flight - don't clobber it, but still
-        // notify every subscriber (not just this call's own awaiter) so nobody is left waiting on
-        // a first value that will never arrive.
-        const current = cache.get(key) as T
-        subscribers.get(key)?.forEach((notify) => notify(current))
-        return current
+        const current = cache.get(key)
+        if (current !== undefined) {
+          // A newer setCached() landed while this was in flight - don't clobber it, but still
+          // notify every subscriber (not just this call's own awaiter) so nobody is left waiting
+          // on a first value that will never arrive.
+          subscribers.get(key)?.forEach((notify) => notify(current))
+          return current as T
+        }
+        // Nothing safe to serve (e.g. clearCache() ran mid-flight) - resolving to undefined here
+        // would be indistinguishable from "still loading" forever (REACT-HOOKS.md's A-1). Retry
+        // instead of resolving blind; useLiveQuery never has to know this happened.
+        inFlight.delete(key)
+        return revalidate(key, fetcher)
       }
       cache.set(key, value)
       subscribers.get(key)?.forEach((notify) => notify(value))
@@ -69,21 +76,33 @@ export function clearCache(): void {
   versions.clear()
 }
 
+// "loading" is genuinely transitory: revalidate() above never resolves successfully without a
+// real value (it retries itself rather than doing that), so it always ends in "success" or
+// "error" - there's no fourth "discarded" state for callers to have to think about. Doesn't
+// swallow errors: callers like AdminGamesSection show a real error message and still need to. If
+// there was already a cached value it stays shown *alongside* the error - the caller decides what
+// to do with that combination.
+export type QueryState<T> =
+  | { status: "loading" }
+  | { status: "success"; value: T }
+  | { status: "error"; error: unknown; value?: T }
+
 interface LiveQuery<T> {
-  value: T | undefined
-  // Doesn't swallow errors: callers like AdminGamesSection show a real error message and still
-  // need to. If there was already a cached value it stays shown *alongside* the error - the caller
-  // decides what to do with that combination.
-  error: unknown
+  state: QueryState<T>
   refresh: () => void
 }
 
-// Consumption hook: returns whatever is cached up front (undefined the very first time, in which
-// case the caller keeps showing its current placeholder - same pattern as useQueuedThumbnail), and
-// subscribes to future updates of that key regardless of who triggers them.
+function stateFromCache<T>(key: string): QueryState<T> {
+  const cached = cache.get(key) as T | undefined
+  return cached !== undefined ? { status: "success", value: cached } : { status: "loading" }
+}
+
+// Consumption hook: returns whatever is cached up front (still "loading" the very first time, in
+// which case the caller keeps showing its current placeholder - same pattern as
+// useQueuedThumbnail), and subscribes to future updates of that key regardless of who triggers
+// them.
 export function useLiveQuery<T>(key: string, fetcher: () => Promise<T>): LiveQuery<T> {
-  const [value, setValue] = useState<T | undefined>(() => cache.get(key) as T | undefined)
-  const [error, setError] = useState<unknown>(null)
+  const [state, setState] = useState<QueryState<T>>(() => stateFromCache(key))
   const [nonce, setNonce] = useState(0)
 
   // The fetcher is re-created on every render; keeping it in a ref avoids listing it as an effect
@@ -95,13 +114,12 @@ export function useLiveQuery<T>(key: string, fetcher: () => Promise<T>): LiveQue
     // Required: useState's initializer only runs once, so without this a key change keeps showing
     // the previous key's value until the new response arrives (in the person-search case, that's
     // showing "rai"'s results under the newly typed "mart").
-    setValue(cache.get(key) as T | undefined)
-    setError(null)
+    setState(stateFromCache(key))
 
     let cancelled = false
     const set = subscribers.get(key) ?? new Set<(value: unknown) => void>()
     subscribers.set(key, set)
-    const callback = (v: unknown) => setValue(v as T)
+    const callback = (v: unknown) => setState({ status: "success", value: v as T })
     set.add(callback)
 
     // The `cancelled` guard is still needed even though subscribers are cleaned up below: this
@@ -109,10 +127,19 @@ export function useLiveQuery<T>(key: string, fetcher: () => Promise<T>): LiveQue
     // key would clobber the new key's state.
     revalidate(key, fetcherRef.current).then(
       (v) => {
-        if (!cancelled) setValue(v)
+        if (!cancelled) setState({ status: "success", value: v as T })
       },
       (e) => {
-        if (!cancelled) setError(e)
+        // Functional update so a value that arrived via the subscriber callback above (or was
+        // already cached) between this effect starting and the fetch rejecting stays visible
+        // alongside the error, instead of this overwriting it with a bare error.
+        if (!cancelled) {
+          setState((prev) => ({
+            status: "error",
+            error: e,
+            value: prev.status === "loading" ? undefined : prev.value,
+          }))
+        }
       },
     )
 
@@ -122,5 +149,5 @@ export function useLiveQuery<T>(key: string, fetcher: () => Promise<T>): LiveQue
     }
   }, [key, nonce])
 
-  return { value, error, refresh: () => setNonce((n) => n + 1) }
+  return { state, refresh: () => setNonce((n) => n + 1) }
 }

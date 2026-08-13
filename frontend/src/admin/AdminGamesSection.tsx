@@ -43,20 +43,22 @@ export function AdminGamesSection() {
   const { t } = useTranslation()
   const gameSettingsQuery = useLiveQuery<GameSettingsOut[]>(GAME_SETTINGS_KEY, listGameSettings)
   const dailySettingsQuery = useLiveQuery<DailySettingsOut[]>(DAILY_SETTINGS_KEY, listDailySettings)
+  const gameSettingsValue =
+    gameSettingsQuery.state.status === "loading" ? undefined : gameSettingsQuery.state.value
+  const dailySettingsValue =
+    dailySettingsQuery.state.status === "loading" ? undefined : dailySettingsQuery.state.value
 
   const settingsByKey = useMemo(
     () =>
-      gameSettingsQuery.value &&
-      Object.fromEntries(gameSettingsQuery.value.map((s) => [settingsKey(s.game_type, s.mode), s])),
-    [gameSettingsQuery.value],
+      gameSettingsValue &&
+      Object.fromEntries(gameSettingsValue.map((s) => [settingsKey(s.game_type, s.mode), s])),
+    [gameSettingsValue],
   )
   const dailyByKey = useMemo(
     () =>
-      dailySettingsQuery.value &&
-      Object.fromEntries(
-        dailySettingsQuery.value.map((d) => [settingsKey(d.game_type, d.mode), d]),
-      ),
-    [dailySettingsQuery.value],
+      dailySettingsValue &&
+      Object.fromEntries(dailySettingsValue.map((d) => [settingsKey(d.game_type, d.mode), d])),
+    [dailySettingsValue],
   )
 
   function handleUpdated(updated: GameSettingsOut) {
@@ -70,7 +72,9 @@ export function AdminGamesSection() {
   // Doesn't swallow the error (queryCache.ts's LiveQuery contract): a load failure still shows a
   // real message, same as before this migration - but a value already sitting in cache from an
   // earlier visit stays visible underneath it instead of being replaced by the error.
-  const loadError = gameSettingsQuery.error ?? dailySettingsQuery.error
+  const loadError =
+    (gameSettingsQuery.state.status === "error" ? gameSettingsQuery.state.error : undefined) ??
+    (dailySettingsQuery.state.status === "error" ? dailySettingsQuery.state.error : undefined)
   const errorMessage = loadError ? (apiErrorMessage(loadError) ?? t("auth.error.generic")) : null
 
   if (!settingsByKey || !dailyByKey) {
