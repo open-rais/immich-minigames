@@ -18,7 +18,9 @@ export function revalidate<T>(key: string, fetcher: () => Promise<T>): Promise<T
   if (existing) return existing as Promise<T>
 
   const startedAt = versions.get(key) ?? 0
-  const promise = fetcher()
+  // Typed explicitly: the `.then` below closes over `promise` itself (to check it's still the
+  // in-flight entry before deleting it), which would otherwise make its own type circular.
+  const promise: Promise<T> = fetcher()
     .then((value) => {
       if ((versions.get(key) ?? 0) !== startedAt) {
         const current = cache.get(key)
@@ -30,16 +32,22 @@ export function revalidate<T>(key: string, fetcher: () => Promise<T>): Promise<T
           return current as T
         }
         // Nothing safe to serve (e.g. clearCache() ran mid-flight) - resolving to undefined here
-        // would be indistinguishable from "still loading" forever (REACT-HOOKS.md's A-1). Retry
-        // instead of resolving blind; useLiveQuery never has to know this happened.
-        inFlight.delete(key)
+        // would be indistinguishable from "still loading" forever. Retry
+        // instead of resolving blind; useLiveQuery never has to know this happened. Only clear
+        // inFlight if it's still pointing at this call - otherwise the retry below has already
+        // replaced it with its own, newer entry.
+        if (inFlight.get(key) === promise) inFlight.delete(key)
         return revalidate(key, fetcher)
       }
       cache.set(key, value)
       subscribers.get(key)?.forEach((notify) => notify(value))
       return value
     })
-    .finally(() => inFlight.delete(key))
+    .finally(() => {
+      // Same identity check as above: a slower, older call finishing after a newer one has
+      // already taken over this key must not evict the newer one's still-pending entry.
+      if (inFlight.get(key) === promise) inFlight.delete(key)
+    })
   inFlight.set(key, promise)
   return promise
 }

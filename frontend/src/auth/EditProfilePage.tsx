@@ -32,13 +32,17 @@ export function EditProfilePage() {
 
   // Synced from `user` rather than a plain useState(user?.username) initializer - user arrives
   // asynchronously (AuthProvider's getMe() on mount), so the very first render (before loading
-  // finishes) would otherwise permanently lock these fields to "".
+  // finishes) would otherwise permanently lock these fields to "". Depends on user?.id, not
+  // `user` itself: applySkin() below causes AuthProvider to setUser() a new object identity for
+  // the same account, and depending on the whole object would re-run this and wipe out whatever
+  // the user was mid-typing in the form.
   useEffect(() => {
     if (user) {
       setUsername(user.username)
       setFullName(user.full_name)
     }
-  }, [user])
+    // oxlint-disable-next-line
+  }, [user?.id])
 
   // RequireAuth (App.tsx) already guarantees a session before this page ever
   // mounts; this is just a TypeScript narrowing helper (user: User | null), not reachable at

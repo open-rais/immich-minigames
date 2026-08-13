@@ -97,7 +97,11 @@ export function AdminGamesSection() {
             if (!settings || !daily) return null
             return (
               <AdminGameRow
-                key={mode.mode}
+                // AdminGameRow's several useState()s only derive from settings/daily on mount -
+                // keying by mode alone (already unique within this per-game loop) wouldn't force a
+                // remount if GAME_CATALOG's shape ever changed under it; this is a low-cost extra
+                // guard against exactly that, not a fix for values changing while mounted.
+                key={settingsKey(game.gameType, mode.mode)}
                 gameType={game.gameType}
                 mode={mode.mode}
                 title={t(mode.modeTitleKey)}
