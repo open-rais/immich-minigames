@@ -10,8 +10,7 @@ from api.request_context import context_fields
 from config import Settings
 
 # The reserved LogRecord attribute names - also used by audit.py to reject an audit() field that
-# would silently clobber one of these (§5 risk: `extra` overwriting `msg`/`args`/`levelname`... and
-# breaking with a cryptic KeyError deep inside stdlib logging).
+# would silently clobber one of these.
 RESERVED_LOG_RECORD_ATTRS = frozenset(vars(logging.LogRecord("", 0, "", 0, "", (), None)).keys()) | {
     "message",
     "asctime",

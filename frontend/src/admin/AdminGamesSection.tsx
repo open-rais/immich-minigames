@@ -19,8 +19,7 @@ function settingsKey(gameType: string, mode: string): string {
   return `${gameType}:${mode}`
 }
 
-// Read-modify-write helper for both list-of-settings caches below (§4.2's `updateCached` pattern -
-// each key caches the *whole* list, so saving/resetting one mode replaces just its entry).
+// Read-modify-write helper for both list-of-settings caches below.
 function replaceByKey<T extends { game_type: string; mode: string }>(
   list: T[] | undefined,
   updated: T,

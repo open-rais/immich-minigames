@@ -33,5 +33,4 @@ See [docs/TODO/ROADMAP.md](../TODO/ROADMAP.md) for when future modes are planned
 ## Daily
 
 The daily challenge's 5 rounds are all pre-generated once for the day; a `DailyGeoguessrGame`
-subclass replays them instead of querying Immich. See
-[docs/TODO/DAILY-GAMES.md](../TODO/DAILY-GAMES.md).
+subclass replays them instead of querying Immich.

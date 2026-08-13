@@ -21,7 +21,7 @@ const REVEAL_STEP_MS = 260
 const HOLD_MS = 500
 const COUNT_UP_DURATION_MS = 420
 // Kept in sync with index.css's `immichdle-row-grow`/`immichdle-fade-in` keyframe durations by
-// hand - same pixel/duration coupling CLAUDE.md warns about, just for a duration instead of a pixel.
+// hand.
 const ROW_GROW_ANIMATION_CLASS = "animate-[immichdle-row-grow_350ms_ease-out]"
 const FADE_IN_ANIMATION_CLASS = "animate-[immichdle-fade-in_350ms_ease-out]"
 

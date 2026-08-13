@@ -1,9 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 
-// Generic "show cached now, always ask" query cache - see docs/TODO/CACHE.md §3 for the design
-// rationale (deliberately not TTL/stale-while-revalidate like thumbnailQueue.ts: these are small
-// JSON values that change from real user actions while the app is open, not near-immutable image
-// blobs).
+// Generic "show cached now, always ask" query cache.
 const cache = new Map<string, unknown>()
 const inFlight = new Map<string, Promise<unknown>>()
 const subscribers = new Map<string, Set<(value: unknown) => void>>()

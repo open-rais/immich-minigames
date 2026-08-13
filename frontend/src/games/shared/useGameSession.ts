@@ -11,8 +11,7 @@ import { useGuardedRequests } from "./useGuardedRequests"
 
 export type Screen = "idle" | "playing" | "finished" | "error"
 
-// Shared with menu/DailySection.tsx, which caches/revalidates the same GET /daily under this key -
-// see docs/TODO/CACHE.md §4.1.
+// Shared with menu/DailySection.tsx, which caches/revalidates the same GET /daily under this key
 export const DAILY_STATUS_KEY = "daily-status"
 
 // A non-daily instance still has to call useLiveQuery every render (Rules of Hooks), but must never
@@ -25,8 +24,8 @@ async function emptyDailyStatus(): Promise<DailyStatusOut> {
   return { resets_at: "", server_now: "", modes: [] }
 }
 
-// Game-lifecycle layer extracted out of useRoundGame/MoreOrLessGame/ImmichdleGame (CODE-REVIEW-
-// FRONT.md A-1) - all three had copied this same block character-for-character since useRoundGame
+// Game-lifecycle layer extracted out of useRoundGame/MoreOrLessGame/ImmichdleGame
+// All three had copied this same block character-for-character since useRoundGame
 // only covered games whose round flow fit its own reveal-hold shape, and MoreOrLess/Immichdle's
 // don't. This hook owns only screen/busy/daily/start/resume/backToIdle/the idle-screen "has an
 // active game" check/the daily 409 fallback - every game uses it. useRoundGame is now built on top
@@ -80,9 +79,8 @@ export function useGameSession({
   const hydrateFinishedDailyRef = useRef(hydrateFinishedDaily)
   hydrateFinishedDailyRef.current = hydrateFinishedDaily
 
-  // "Show cached now, always ask" (docs/TODO/CACHE.md §3) - menu/DailySection.tsx reads/revalidates
-  // the same "daily-status" key, so finishing a daily here and going back to the menu (or vice
-  // versa) shows the fresh state without a round trip's worth of flash.
+  // menu/DailySection.tsx reads/revalidates the same "daily-status" key, so finishing a daily here
+  // and going back to the menu (or viceversa) shows the fresh state without a round trip's worth of flash.
   const dailyStatusQuery = useLiveQuery<DailyStatusOut>(
     daily ? DAILY_STATUS_KEY : INACTIVE_DAILY_STATUS_KEY,
     daily ? getDailyStatus : emptyDailyStatus,
@@ -227,7 +225,7 @@ export function useGameSession({
   }
 
   // For when the player's own action just finished a *non-daily* game with a new personal best -
-  // pushes it into the "game-records" cache immediately (docs/TODO/CACHE.md §4.2) instead of
+  // pushes it into the "game-records" cache immediately instead of
   // waiting for the next time the main menu mounts and revalidates. Daily games never touch this
   // key: ScoresService.get_personal_records excludes them (a daily score isn't comparable to
   // normal play), same reason markDailyFinished above is a no-op for non-daily games.

@@ -7,7 +7,7 @@ import type { InviteOut, InviteStatus } from "../api/types/admin"
 import { Button } from "../games/shared/Button"
 
 // Same green/amber/red semantic tokens the game clues already use (Immichdle/MoreOrLess) - reused
-// here rather than introducing new ad-hoc colors, per CLAUDE.md's design-token convention.
+// here rather than introducing new ad-hoc colors.
 const statusClass: Record<InviteStatus, string> = {
   used: "text-clue-match",
   pending: "text-clue-close",

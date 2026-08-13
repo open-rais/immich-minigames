@@ -29,5 +29,4 @@ of the person they think is there.
 ## Daily
 
 The 15 people's photos/hidden faces are all pre-generated once for the day; a
-`DailyWhosThatPersonGame` subclass replays them instead of querying Immich. See
-[docs/TODO/DAILY-GAMES.md](../TODO/DAILY-GAMES.md).
+`DailyWhosThatPersonGame` subclass replays them instead of querying Immich.

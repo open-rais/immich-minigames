@@ -42,8 +42,7 @@ const GUESS_MARKER_COLOR = "var(--color-primary)"
 const ACTUAL_MARKER_COLOR = "#e11d48"
 
 // The ruler is a full-width bar pinned to the bottom of the screen. Its height and the two derived
-// bottom offsets live here together so a height change is a single edit, not a hunt across files -
-// the pixel coupling CLAUDE.md warns about.
+// bottom offsets live here together so a height change is a single edit, not a hunt across files.
 const RULER_HEIGHT_CLASS = "h-28 md:h-36"
 // Exactly the ruler's own height (112/144px) - for anything that must stop flush against its top
 // edge, with no gap (the asset photo wrapper: a gap there would show bare `--color-app-bg` through

@@ -228,8 +228,6 @@ middleware started resolving it up front.
 
 ## Admin feature
 
-(This section replaces the never-written `ADMIN-FEATURE.md` that ~41 code comments cite.)
-
 Four pieces, referenced in comments as points #1–#4:
 
 1. **Promotion** (`services/admin_bootstrap.py`) — on every backend startup, if `ADMIN_EMAIL`
@@ -313,8 +311,7 @@ an internal Docker host in `docker-compose.app.yml`), not a URL a browser can op
 
 ## Daily games (roadmap #G)
 
-Wordle-style: the same content for every player each day, one attempt, its own leaderboard. Full
-design in `docs/TODO/DAILY-GAMES.md`; summary here.
+Wordle-style: the same content for every player each day, one attempt, its own leaderboard.
 
 Each game implements the daily side of itself as its own `games/<name>/daily.py`, conforming to
 `games/daily.py`'s `DailySupport` contract (a Protocol three top-level functions satisfy structurally -
@@ -337,7 +334,7 @@ picking logic a normal game uses - rather than reimplementing it; only the conte
 `exclusion_ids()` decides which ids from a spec count, and `DailyService` unions them across the
 window via a small `_ExcludingImmichService` wrapper; if exclusion leaves nothing, generation
 retries once without it. MoreOrLess's `exclusion_ids()` always returns an empty set - it
-deliberately never gets cross-day exclusion (decision [F] in `docs/TODO/DAILY-GAMES.md`), which
+deliberately never gets cross-day exclusion, which
 this makes automatic rather than a special case in `DailyService` itself.
 
 A **daily game** (`games.daily_challenge_id` set) is state, per player, instantiated from a
@@ -378,7 +375,7 @@ MoreOrLess). `reset` clears only the value overrides; `enabled` is untouched.
 
 ## Logging (roadmap #I)
 
-Full design in `docs/TODO/LOGGING.md`; summary here. Goal: answer "who did what, when, from
+Goal: answer "who did what, when, from
 where" on an exposed instance — structured (JSON lines) to stdout, rotation left to Docker
 (`json-file` + `max-size`/`max-file` in both compose files) rather than the app managing files or
 integrating a concrete aggregator itself (same deployment-agnostic philosophy as auth — whoever
