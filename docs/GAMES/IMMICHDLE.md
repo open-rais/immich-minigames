@@ -79,5 +79,4 @@ Both modes share the same rules:
 The target (person or album) is pre-picked once for the day (`PersondleGame.start(target=...)` /
 `AlbumdleGame.start(target=...)`); guesses stay live otherwise - clue data (counts, ML/CLIP similarity)
 is resolved at guess time same as a normal game, so two players guessing the same target on a busy
-library day could see a marginally different clue if the library changed in between (accepted, see
-[docs/TODO/DAILY-GAMES.md](../TODO/DAILY-GAMES.md) §5).
+library day could see a marginally different clue if the library changed in between.

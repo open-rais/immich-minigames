@@ -6,7 +6,7 @@ login is mandatory.
 
 Session model: stateless JWT in an httpOnly cookie, no server-side session table - "logout" just
 clears the cookie client-side, a token copied before logout stays valid until it expires
-(JWT_EXPIRE_DAYS). Accepted tradeoff (see docs/TODO/ROADMAP.md) - revisit if real revocation is
+(JWT_EXPIRE_DAYS). Accepted tradeoff - revisit if real revocation is
 ever needed.
 """
 

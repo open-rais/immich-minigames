@@ -12,10 +12,11 @@ import { GameSection } from "./GameSection"
 export function MainMenu() {
   // Personal-best badge - fetched once here rather than per-ModeCard so N
   // modes don't mean N requests; keyed by "gameType:mode" to match GameSection's lookup.
-  // "Show cached now, always ask" (docs/TODO/CACHE.md §4.2) - games/shared/useGameSession.ts's
+  // "Show cached now, always ask" - games/shared/useGameSession.ts's
   // markRecordBeaten optimistically updates this same cache entry when a finished game beats the
   // stored best, so a beaten record shows here without waiting for this to remount and revalidate.
-  const { value: recordsOut } = useLiveQuery<GameRecordsOut>(GAME_RECORDS_KEY, getGameRecords)
+  const { state } = useLiveQuery<GameRecordsOut>(GAME_RECORDS_KEY, getGameRecords)
+  const recordsOut = state.status === "loading" ? undefined : state.value
   const records = new Map(
     (recordsOut?.records ?? []).map((r) => [`${r.game_type}:${r.mode}`, r.best_score]),
   )

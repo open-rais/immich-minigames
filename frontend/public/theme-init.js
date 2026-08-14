@@ -4,7 +4,7 @@
 // its JSON.parse quirk since we store a plain string, not JSON.
 //
 // A static file (not inline in index.html) so nginx's Content-Security-Policy can use a plain
-// script-src 'self' without 'unsafe-inline' (docs/TODO/CODE-REVIEW.md #13).
+// script-src 'self' without 'unsafe-inline'.
 ;(function () {
   var KEY = "minigames-theme"
   var stored = localStorage.getItem(KEY)

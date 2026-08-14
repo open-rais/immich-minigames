@@ -70,7 +70,7 @@ component, chosen from `catalog.ts`'s `roundsComponent` (mirroring how `GameRout
   first three step through one round at a time via `games/rounds/RoundStepper.tsx` — an interactive
   `RoundBadge` with prev/next arrows — in the same top-center slot `RoundBadge` uses during play.
   `TimelineRounds.tsx` is the odd one out here: the owner explicitly asked for the *whole* final
-  board at once instead of a stepper (`docs/TODO/TIMELINE.md` decision [H]), so it reuses
+  board at once instead of a stepper, so it reuses
   `TimelineTrack.tsx` read-only rather than `RoundStepper` — same "fullscreen, no `RoundsShell`"
   family, different internal shape.
 

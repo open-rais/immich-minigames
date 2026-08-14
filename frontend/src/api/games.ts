@@ -39,7 +39,7 @@ export async function getRecentGames(): Promise<RecentGamesOut["games"]> {
 }
 
 // Shared with games/shared/useGameSession.ts, which optimistically updates the same cache entry
-// when a finished (non-daily) game beats the account's stored best - see docs/TODO/CACHE.md §4.2.
+// when a finished (non-daily) game beats the account's stored best.
 export const GAME_RECORDS_KEY = "game-records"
 
 // Personal-best score per (game_type, mode) - shown in the main menu - see

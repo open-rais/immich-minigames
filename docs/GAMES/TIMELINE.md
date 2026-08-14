@@ -51,5 +51,4 @@ The daily challenge's card sequence is pre-generated once for the day, up to an 
 `chain_length` (default 100)—reaching the end of the sequence ends the game as "perfect" instead of
 a loss, same as the `max_cards` cap above. Unlike MoreOrLess (whose chain has no cross-day exclusion
 at all), Timeline's cards are concrete assets, so it also keeps the normal `no_repeat_days` window
-every other daily mode has—the first mode that needs both settings at once. See
-[docs/TODO/DAILY-GAMES.md](../TODO/DAILY-GAMES.md).
+every other daily mode has—the first mode that needs both settings at once.

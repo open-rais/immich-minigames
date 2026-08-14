@@ -41,6 +41,10 @@ export async function createPasswordReset(userId: string): Promise<CreateInviteO
 
 // backend/src/api/admin_games_api.py.
 
+// Shared with admin/AdminGamesSection.tsx, which optimistically updates this cache entry when the
+// admin saves/resets a mode's settings.
+export const GAME_SETTINGS_KEY = "game-settings"
+
 export async function listGameSettings(): Promise<GameSettingsOut[]> {
   const { data } = await apiClient.get<GameSettingsOut[]>("/admin/games/settings")
   return data
@@ -66,6 +70,10 @@ export async function resetGameSettings(gameType: string, mode: string): Promise
 }
 
 // backend/src/api/admin_daily_api.py.
+
+// Shared with admin/AdminGamesSection.tsx, which optimistically updates this cache entry when the
+// admin saves/resets a mode's daily config.
+export const DAILY_SETTINGS_KEY = "daily-settings"
 
 export async function listDailySettings(): Promise<DailySettingsOut[]> {
   const { data } = await apiClient.get<DailySettingsOut[]>("/admin/daily/settings")

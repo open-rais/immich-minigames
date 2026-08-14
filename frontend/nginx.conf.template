@@ -4,7 +4,7 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
-    # Defense in depth (docs/TODO/CODE-REVIEW.md #13) - `always` sends these on error responses
+    # Defense in depth - `always` sends these on error responses
     # too, not just 2xx. Both location blocks below inherit these automatically since neither
     # declares its own add_header (nginx only breaks that inheritance for a location that adds its
     # own - see the asset-caching location's comment for the one place that matters here).
@@ -15,7 +15,7 @@ server {
     # script-src doesn't need 'unsafe-inline', and React's style={{}} prop sets styles via the
     # CSSOM, not style="" attributes, so style-src isn't affected by inline styles either); img-src
     # needs data: for maplibre-gl's own CSS (data:image/svg+xml zoom-control icons) and blob: for
-    # games/shared/thumbnailQueue.ts (issue #44, docs/TODO/ISSUE-SUMMARY-PAGE.md) - it fetches
+    # games/shared/thumbnailQueue.ts - it fetches
     # thumbnails through a dedupe+concurrency queue and hands `<img>` a `URL.createObjectURL()`
     # blob: URL instead of the real endpoint URL, so img-src has to allow that scheme too, not just
     # 'self'; connect-src and worker-src need to allow Geoguessr's map

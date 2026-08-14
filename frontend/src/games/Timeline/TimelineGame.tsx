@@ -133,7 +133,7 @@ export function TimelineGame({ coverUrl, hasRoundsView, daily = false }: GameCom
     })
     const raf = requestAnimationFrame(() => setFlyReady(true))
     return () => cancelAnimationFrame(raf)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [phase, round?.id])
 
   // Re-enables the transition one frame after it was turned off for an instant reset (onNewRound) -
