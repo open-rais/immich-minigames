@@ -41,7 +41,7 @@ export function EditProfilePage() {
       setUsername(user.username)
       setFullName(user.full_name)
     }
-    // oxlint-disable-next-line
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [user?.id])
 
   // RequireAuth (App.tsx) already guarantees a session before this page ever
