@@ -5,6 +5,7 @@ calling Immich-ML live - see docs/ARCHITECTURE/IMMICH.md's "face_search" section
 (immich-machine-learning isn't reachable from the host in the dev stack).
 """
 
+import logging
 from uuid import UUID
 
 import numpy as np
@@ -13,6 +14,7 @@ from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.engine import Engine
 
+from perf import timed
 from persistence.album_ml_cache import AlbumEmbeddingCacheModel
 from persistence.base import get_app_engine
 from persistence.immich_db import get_immich_engine
@@ -104,21 +106,28 @@ class MLService:
         if cached is not None and cached.face_count == current_count:
             return np.array(cached.embedding, dtype=np.float32)
 
-        with self._engine.connect() as conn:
-            avg_text = conn.execute(_AVG_EMBEDDING_QUERY, {"person_id": str(person_id)}).scalar_one()
-        embedding = _parse_vector_text(avg_text)
+        # INFO, not DEBUG: a recompute (cache miss or stale) is rare and intrinsically interesting
+        # on a live instance - a hit is the common case and stays unlogged (docs/TODO/ADMIN-WORKERS.md F0).
+        with timed(
+            "ml.recompute_embedding", level=logging.INFO, entity="person", id=str(person_id), face_count=current_count
+        ):
+            with self._engine.connect() as conn:
+                avg_text = conn.execute(_AVG_EMBEDDING_QUERY, {"person_id": str(person_id)}).scalar_one()
+            embedding = _parse_vector_text(avg_text)
 
-        with self._app_engine.begin() as conn:
-            upsert = pg_insert(_CACHE_TABLE).values(person_id=person_id, embedding=embedding, face_count=current_count)
-            upsert = upsert.on_conflict_do_update(
-                index_elements=[_CACHE_TABLE.c.person_id],
-                set_={
-                    "embedding": upsert.excluded.embedding,
-                    "face_count": upsert.excluded.face_count,
-                    "computed_at": sa.func.now(),
-                },
-            )
-            conn.execute(upsert)
+            with self._app_engine.begin() as conn:
+                upsert = pg_insert(_CACHE_TABLE).values(
+                    person_id=person_id, embedding=embedding, face_count=current_count
+                )
+                upsert = upsert.on_conflict_do_update(
+                    index_elements=[_CACHE_TABLE.c.person_id],
+                    set_={
+                        "embedding": upsert.excluded.embedding,
+                        "face_count": upsert.excluded.face_count,
+                        "computed_at": sa.func.now(),
+                    },
+                )
+                conn.execute(upsert)
 
         return np.array(embedding, dtype=np.float32)
 
@@ -159,30 +168,35 @@ class MLService:
         if cached is not None and cached.asset_count == current_count:
             return np.array(cached.embedding, dtype=np.float32)
 
-        with self._engine.connect() as conn:
-            avg_text = conn.execute(_ALBUM_AVG_EMBEDDING_QUERY, {"album_id": str(album_id)}).scalar_one()
-        if avg_text is None:
-            # Every asset in the album is either ineligible (soft-deleted/archived/hidden) or has
-            # no smart_search row yet (e.g. Immich-ML hasn't processed it) - nothing to average, so
-            # this behaves like the "no assets at all" case above rather than caching a vector.
-            with self._app_engine.begin() as conn:
-                conn.execute(sa.delete(_ALBUM_CACHE_TABLE).where(_ALBUM_CACHE_TABLE.c.album_id == album_id))
-            return None
-        embedding = _parse_vector_text(avg_text)
+        # INFO, not DEBUG: a recompute (cache miss or stale) is rare and intrinsically interesting
+        # on a live instance - a hit is the common case and stays unlogged (docs/TODO/ADMIN-WORKERS.md F0).
+        with timed(
+            "ml.recompute_embedding", level=logging.INFO, entity="album", id=str(album_id), asset_count=current_count
+        ):
+            with self._engine.connect() as conn:
+                avg_text = conn.execute(_ALBUM_AVG_EMBEDDING_QUERY, {"album_id": str(album_id)}).scalar_one()
+            if avg_text is None:
+                # Every asset in the album is either ineligible (soft-deleted/archived/hidden) or has
+                # no smart_search row yet (e.g. Immich-ML hasn't processed it) - nothing to average, so
+                # this behaves like the "no assets at all" case above rather than caching a vector.
+                with self._app_engine.begin() as conn:
+                    conn.execute(sa.delete(_ALBUM_CACHE_TABLE).where(_ALBUM_CACHE_TABLE.c.album_id == album_id))
+                return None
+            embedding = _parse_vector_text(avg_text)
 
-        with self._app_engine.begin() as conn:
-            upsert = pg_insert(_ALBUM_CACHE_TABLE).values(
-                album_id=album_id, embedding=embedding, asset_count=current_count
-            )
-            upsert = upsert.on_conflict_do_update(
-                index_elements=[_ALBUM_CACHE_TABLE.c.album_id],
-                set_={
-                    "embedding": upsert.excluded.embedding,
-                    "asset_count": upsert.excluded.asset_count,
-                    "computed_at": sa.func.now(),
-                },
-            )
-            conn.execute(upsert)
+            with self._app_engine.begin() as conn:
+                upsert = pg_insert(_ALBUM_CACHE_TABLE).values(
+                    album_id=album_id, embedding=embedding, asset_count=current_count
+                )
+                upsert = upsert.on_conflict_do_update(
+                    index_elements=[_ALBUM_CACHE_TABLE.c.album_id],
+                    set_={
+                        "embedding": upsert.excluded.embedding,
+                        "asset_count": upsert.excluded.asset_count,
+                        "computed_at": sa.func.now(),
+                    },
+                )
+                conn.execute(upsert)
 
         return np.array(embedding, dtype=np.float32)
 
