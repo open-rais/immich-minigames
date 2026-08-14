@@ -43,7 +43,10 @@ type SessionAction =
   | { type: "screen"; screen: Screen; hasCurrentGame?: boolean | null }
   | { type: "hasCurrentGame"; value: boolean | null }
 
-function sessionReducer(state: SessionState, action: SessionAction): SessionState {
+// Exported for its own unit tests: it holds the invariant this whole reducer was introduced for
+// (a "hasCurrentGame" write is refused unless the screen is idle), and as a pure function that
+// invariant can be pinned without mounting the hook or mocking the API layer.
+export function sessionReducer(state: SessionState, action: SessionAction): SessionState {
   switch (action.type) {
     case "screen":
       return {
