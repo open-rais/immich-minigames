@@ -228,15 +228,36 @@ class PersondleGame(BaseImmichdleGame):
         # a frozen spec.
         if target is None:
             asset_count_weight = float((settings or {}).get("asset_count_weight", ASSET_COUNT_WEIGHT_EXPONENT))
-            # limit=2 in one call instead of a second get_persons just to check an alternative
-            # exists - that second query repeated the full asset_face aggregation for nothing more
-            # than an existence check.
-            target_people = immich_service.get_persons(
-                named_only=True, randomize=True, limit=2, asset_count_weight=asset_count_weight
-            )
-            if len(target_people) < 2:
-                raise ValueError("not enough named people in Immich to start a Persondle game")
-            target_person = target_people[0]
+            if (settings or {}).get("require_birth_date", 0):
+                # The requirement is "the target has a birth date", not "two people with a birth
+                # date exist" - the alternative-exists check below stays unfiltered (any named
+                # person makes the target non-trivially guessable), so this can't reuse the single
+                # fused query below. Two queries instead of one, only when the setting is active.
+                target_people = immich_service.get_persons(
+                    named_only=True,
+                    with_birthdate=True,
+                    randomize=True,
+                    limit=1,
+                    asset_count_weight=asset_count_weight,
+                )
+                if not target_people:
+                    raise ValueError(
+                        "no named person with a birth date in Immich to start a Persondle game "
+                        "(require_birth_date is enabled)"
+                    )
+                if len(immich_service.get_persons(named_only=True, limit=2)) < 2:
+                    raise ValueError("not enough named people in Immich to start a Persondle game")
+                target_person = target_people[0]
+            else:
+                # limit=2 in one call instead of a second get_persons just to check an alternative
+                # exists - that second query repeated the full asset_face aggregation for nothing
+                # more than an existence check.
+                target_people = immich_service.get_persons(
+                    named_only=True, randomize=True, limit=2, asset_count_weight=asset_count_weight
+                )
+                if len(target_people) < 2:
+                    raise ValueError("not enough named people in Immich to start a Persondle game")
+                target_person = target_people[0]
 
             target = PersonSnapshot.of(
                 target_person, first_asset_date=immich_service.get_person_first_asset_date(target_person.id)
@@ -285,9 +306,22 @@ def build_spec(immich_service: ContentQueries, settings: dict[str, float]) -> di
     # Replicates PersondleGame.start()'s target-selection directly rather than driving a full game
     # instance, since there's no round sequence to precompute.
     weight = float(settings.get("asset_count_weight", ASSET_COUNT_WEIGHT_EXPONENT))
-    targets = immich_service.get_persons(named_only=True, randomize=True, limit=1, asset_count_weight=weight)
+    require_birth_date = bool(settings.get("require_birth_date", 0))
+    targets = immich_service.get_persons(
+        named_only=True,
+        with_birthdate=True if require_birth_date else None,
+        randomize=True,
+        limit=1,
+        asset_count_weight=weight,
+    )
     if not targets:
-        raise ValueError("not enough named people in Immich to generate a daily Persondle challenge")
+        message = (
+            "no named person with a birth date in Immich to generate a daily Persondle challenge "
+            "(require_birth_date is enabled)"
+            if require_birth_date
+            else "not enough named people in Immich to generate a daily Persondle challenge"
+        )
+        raise ValueError(message)
     [target_person] = targets
     # Mirrors PersondleGame.start()'s has_alternative check - with exactly one named person the
     # normal game refuses to start (the target would be trivially guessable), so the daily must

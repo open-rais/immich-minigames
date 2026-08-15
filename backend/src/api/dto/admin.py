@@ -20,7 +20,7 @@ class GameSettingOut(BaseModel):
     key: str
     value: float
     default: float
-    value_type: Literal["int", "float"]
+    value_type: Literal["int", "float", "bool"]
     min_value: float
     max_value: float
 

@@ -7,7 +7,7 @@ way."""
 from dataclasses import dataclass
 from typing import Literal
 
-ValueType = Literal["int", "float"]
+ValueType = Literal["int", "float", "bool"]
 
 
 @dataclass(frozen=True)

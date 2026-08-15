@@ -16,6 +16,7 @@ SETTING_SPECS: dict[str, list[SettingSpec]] = {
         SettingSpec("starting_score", STARTING_SCORE, "int", 1, 10000),
         SettingSpec("wrong_guess_penalty", WRONG_GUESS_PENALTY, "int", 0, 1000),
         SettingSpec("asset_count_weight", PERSON_ASSET_COUNT_WEIGHT_EXPONENT, "float", 0, 1),
+        SettingSpec("require_birth_date", 0, "bool", 0, 1),
     ],
     MODE_ALBUM: [
         SettingSpec("starting_score", STARTING_SCORE, "int", 1, 10000),
