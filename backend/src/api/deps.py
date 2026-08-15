@@ -13,6 +13,7 @@ from persistence.games_repository import GameRepository
 from services.daily_challenge_service import DailyChallengeService
 from services.daily_games_service import DailyGamesService
 from services.daily_settings import DailySettingsService
+from services.embedding_jobs import EmbeddingJobRunner
 from services.game_factory import GameFactory
 from services.game_settings_service import GameSettingsService
 from services.games_service import GamesService
@@ -56,6 +57,15 @@ def get_immich_service() -> ImmichService:
 @lru_cache(maxsize=1)
 def get_ml_service() -> MLService:
     return MLService()
+
+
+# Here (not private to a future api/admin_workers_api.py) so main.py's lifespan can also depend on
+# it (to cancel + join on shutdown) without importing an api/*_api.py router module for it. Reuses
+# get_ml_service()'s single memoized instance (see EmbeddingJobRunner's own docstring for why a
+# second, unmemoized MLService() here would mean a second pair of connection pools).
+@lru_cache(maxsize=1)
+def get_embedding_job_runner() -> EmbeddingJobRunner:
+    return EmbeddingJobRunner(get_ml_service())
 
 
 # Here (not api/admin_invites_api.py) so api/admin_api.py can also depend on it (the

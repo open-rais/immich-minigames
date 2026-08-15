@@ -5,6 +5,7 @@ import { useAuth } from "../auth/useAuth"
 import { AdminGamesSection } from "./AdminGamesSection"
 import { AdminInvitesSection } from "./AdminInvitesSection"
 import { AdminUsersSection } from "./AdminUsersSection"
+import { AdminWorkersSection } from "./AdminWorkersSection"
 import { SettingAccordion } from "./SettingAccordion"
 
 function BackArrowIcon() {
@@ -68,6 +69,13 @@ export function AdminPage() {
           description={t("admin.invites.description")}
         >
           <AdminInvitesSection />
+        </SettingAccordion>
+
+        <SettingAccordion
+          title={t("admin.workers.title")}
+          description={t("admin.workers.description")}
+        >
+          <AdminWorkersSection />
         </SettingAccordion>
 
         {/* Each game is now its own top-level accordion (AdminGamesSection renders

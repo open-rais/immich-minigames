@@ -17,6 +17,7 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from api.api import router
 from api.auth_middleware import AuthMiddleware
+from api.deps import get_embedding_job_runner
 from api.error_handlers import register_error_handlers
 from api.rate_limit import limiter, session_or_ip_key
 from api.request_log_middleware import RequestLogMiddleware
@@ -38,6 +39,10 @@ async def _lifespan(_: FastAPI) -> AsyncIterator[None]:
     finally:
         session.close()
     yield
+    # A running embedding job's thread is daemon (it wouldn't block process exit on its own), but
+    # cancelling and joining here first gives an in-flight entity a chance to finish its write
+    # instead of being cut off mid-upsert by the process disappearing under it.
+    get_embedding_job_runner().shutdown()
 
 
 configure_logging(get_settings())

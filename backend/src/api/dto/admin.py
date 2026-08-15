@@ -1,7 +1,8 @@
 """Admin-editable game settings DTOs - both the normal per-game_type ones (see
 games/settings_registry.py) and the daily-only ones (see services/daily_settings.py), which share
-the same GameSettingOut shape. Also invitations (see services/invite_service.py) - unrelated to
-game settings, just the same "admin-only DTOs" module."""
+the same GameSettingOut shape. Also invitations (see services/invite_service.py) and the embedding
+worker (see services/embedding_jobs.py) - unrelated to game settings, just the same "admin-only
+DTOs" module."""
 
 from calendar import timegm
 from datetime import UTC, datetime
@@ -12,6 +13,7 @@ from pydantic import BaseModel
 
 from games.settings_spec import SettingSpec
 from persistence.invites import InviteModel
+from services.embedding_jobs import EmbeddingJobState, Entity, JobStatus, Scope
 
 
 class GameSettingOut(BaseModel):
@@ -125,3 +127,53 @@ class CreateInviteOut(BaseModel):
     # The only time the plain token is ever available - see InviteService.create_invite.
     token: str
     expires_at: datetime
+
+
+class EmbeddingCoverageOut(BaseModel):
+    # How many of `total` currently have a fresh cached embedding - `total - cached` is exactly
+    # what a "process missing" run would touch (see MLService.stale_person_ids/stale_album_ids).
+    cached: int
+    total: int
+
+
+class EmbeddingJobOut(BaseModel):
+    id: UUID
+    entity: Entity
+    scope: Scope
+    include_ineligible: bool
+    status: JobStatus
+    total: int
+    processed: int
+    failed: int
+    started_at: datetime
+    finished_at: datetime | None
+    error: str | None
+
+    @classmethod
+    def from_state(cls, state: EmbeddingJobState) -> "EmbeddingJobOut":
+        return cls(
+            id=state.id,
+            entity=state.entity,
+            scope=state.scope,
+            include_ineligible=state.include_ineligible,
+            status=state.status,
+            total=state.total,
+            processed=state.processed,
+            failed=state.failed,
+            started_at=state.started_at,
+            finished_at=state.finished_at,
+            error=state.error,
+        )
+
+
+class EmbeddingWorkersStatusOut(BaseModel):
+    persons: EmbeddingCoverageOut
+    albums: EmbeddingCoverageOut
+    # The running job, or the last finished one, or None if nothing has ever run this process.
+    job: EmbeddingJobOut | None
+
+
+class StartEmbeddingJobIn(BaseModel):
+    entity: Entity
+    scope: Scope
+    include_ineligible: bool = False

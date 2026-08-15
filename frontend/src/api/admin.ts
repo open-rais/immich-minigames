@@ -2,8 +2,11 @@ import { apiClient } from "./client"
 import type {
   CreateInviteOut,
   DailySettingsOut,
+  EmbeddingJobOut,
+  EmbeddingWorkersStatusOut,
   GameSettingsOut,
   InviteOut,
+  StartEmbeddingJobIn,
   UpdateDailySettingsIn,
 } from "./types/admin"
 import type { UpdateProfileIn, User } from "./types/auth"
@@ -118,4 +121,23 @@ export async function listInvites(opts?: {
 
 export async function revokeInvite(inviteId: string): Promise<void> {
   await apiClient.delete(`/admin/invites/${inviteId}`)
+}
+
+// backend/src/api/admin_workers_api.py. Deliberately not read through api/queryCache.ts's
+// useLiveQuery - the panel needs to poll every ~1s while a job is running, which that cache has no
+// concept of (it only ever re-fetches when something asks) - see admin/AdminWorkersSection.tsx's
+// own polling effect.
+
+export async function getEmbeddingWorkerStatus(): Promise<EmbeddingWorkersStatusOut> {
+  const { data } = await apiClient.get<EmbeddingWorkersStatusOut>("/admin/workers/embeddings")
+  return data
+}
+
+export async function startEmbeddingJob(body: StartEmbeddingJobIn): Promise<EmbeddingJobOut> {
+  const { data } = await apiClient.post<EmbeddingJobOut>("/admin/workers/embeddings", body)
+  return data
+}
+
+export async function cancelEmbeddingJob(): Promise<void> {
+  await apiClient.delete("/admin/workers/embeddings")
 }

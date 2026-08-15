@@ -27,6 +27,7 @@ from games.immichdle.game import (
     is_close,
 )
 from games.shared.serialization import DictCodec
+from perf import timed
 from services.immich import ContentQueries, ImmichService
 from services.ml_service import MLService
 
@@ -253,18 +254,25 @@ class PersondleGame(BaseImmichdleGame):
         )
 
     def _resolve_and_score_guess(self, guess: UUID) -> tuple[PersonSnapshot, PersonClues]:
-        matches = self._immich_service.get_persons(named_only=True, ids=frozenset({guess}), limit=1)
+        # Four queries timed individually at DEBUG to find out which one actually dominates a
+        # big-person guess (roadmap #15's homelab-crash diagnosis).
+        with timed("persondle.get_persons", person_id=str(guess)):
+            matches = self._immich_service.get_persons(named_only=True, ids=frozenset({guess}), limit=1)
         if not matches:
             raise InvalidGuessError(f"person {guess} is not a valid named person to guess")
         guessed_person = matches[0]
-        guessed = PersonSnapshot.of(
-            guessed_person, first_asset_date=self._immich_service.get_person_first_asset_date(guessed_person.id)
-        )
+        with timed("persondle.get_person_first_asset_date", person_id=str(guessed_person.id)):
+            first_asset_date = self._immich_service.get_person_first_asset_date(guessed_person.id)
+        guessed = PersonSnapshot.of(guessed_person, first_asset_date=first_asset_date)
+        with timed("persondle.face_similarity", target_id=str(self.target.id), guess_id=str(guessed.id)):
+            ml_similarity = self._ml_service.face_similarity(self.target.id, guessed.id)
+        with timed("persondle.get_assets_together_count", target_id=str(self.target.id), guess_id=str(guessed.id)):
+            assets_together = self._immich_service.get_assets_together_count(self.target.id, guessed.id)
         clues = _compute_person_clues(
             target=self.target,
             guess=guessed,
-            ml_similarity=self._ml_service.face_similarity(self.target.id, guessed.id),
-            assets_together=self._immich_service.get_assets_together_count(self.target.id, guessed.id),
+            ml_similarity=ml_similarity,
+            assets_together=assets_together,
         )
         return guessed, clues
 

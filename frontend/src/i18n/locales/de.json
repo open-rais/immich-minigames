@@ -341,6 +341,29 @@
       "createdAt": "Erstellt {{date}}",
       "expiresAt": "Läuft ab {{date}}",
       "usedAt": "Verwendet {{date}}"
+    },
+    "workers": {
+      "title": "Embedding-Cache",
+      "description": "Berechnet die Gesichts-/Album-Ähnlichkeits-Caches neu, die Persondle und Albumdle verwenden",
+      "loading": "Abdeckung wird geladen...",
+      "persons": "Personen",
+      "albums": "Alben",
+      "coverage": "{{cached}} / {{total}} zwischengespeichert",
+      "processMissing": "Fehlende verarbeiten",
+      "reprocessAll": "Alle neu verarbeiten",
+      "includeIneligible": "Unbenannte/ausgeblendete einschließen",
+      "cancel": "Abbrechen",
+      "progress": "{{processed}} / {{total}}",
+      "progressWithFailed": "{{processed}} / {{total}} ({{failed}} fehlgeschlagen)",
+      "entityLabel": {
+        "person": "Personen",
+        "album": "Alben"
+      },
+      "scopeLabel": {
+        "missing": "Fehlende werden verarbeitet",
+        "all": "alle werden neu verarbeitet"
+      },
+      "failed": "Job fehlgeschlagen: {{error}}"
     }
   }
 }

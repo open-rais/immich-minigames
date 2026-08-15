@@ -168,6 +168,20 @@ epoch via `Date.UTC`) rather than `Date` objects, sidestepping the
 local-calendar-day-shifts-by-one-through-UTC pitfall. Immichdle's `ClueCell` guards the same trap by
 formatting with `timeZone: "UTC"`.
 
+**`admin/AdminWorkersSection.tsx`** (roadmap #15) — the embedding-cache admin panel: coverage
+counters and "process missing"/"reprocess all" buttons for Persondle's face-similarity cache and
+Albumdle's similarity cache, backed by `backend/src/services/embedding_jobs.py`'s single
+background job. Deliberately does **not** go through `api/queryCache.ts`'s `useLiveQuery` - that
+cache's whole model is "show what's cached, always issue a real request when something asks again",
+with no notion of a recurring interval. This panel needs to repoll roughly every second *while a
+job is running* to drive its progress bar, a different shape of problem, so it's a plain local
+`useCallback` fetch plus two `useEffect`s instead: one to load on mount, one that opens a
+`setInterval` only while `status.job` is `"running"` and tears it down (not just skips its own
+work) the moment a poll reports otherwise. Pure formatting/decision logic (`jobProgressPercent`,
+`isJobRunning`, ...) is split into `admin/embeddingWorkerFormat.ts`, kept free of React/fetch so it's
+testable without jsdom (same split `games/shared/dailyShareText.ts` uses for its own share-text
+formatting).
+
 ## i18n
 
 react-i18next, English + Spanish, 116 keys each, complete in both (verified 2026-07-20). Language
