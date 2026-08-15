@@ -313,6 +313,8 @@
         "asset_count_weight": "Peso de la cantidad de fotos (0 = uniforme, 1 = proporcional)",
         "total_people": "Personas totales",
         "max_hidden_faces": "Caras ocultas máximas por ronda",
+        "streak_scoring_off": "Puntaje lineal",
+        "streak_scoring_on": "Puntaje por racha",
         "tolerance_days": "Tolerancia de hueco (días)",
         "min_separation_days": "Separación mínima entre cartas (días)",
         "max_cards": "Cartas máximas (0 = sin límite)"

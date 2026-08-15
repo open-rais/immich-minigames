@@ -313,6 +313,8 @@
         "asset_count_weight": "Gewichtung der Fotanzahl (0 = einheitlich, 1 = proportional)",
         "total_people": "Gesamtanzahl der Personen",
         "max_hidden_faces": "Max verborgen Gesichter pro Runde",
+        "streak_scoring_off": "Lineare Punktzahl",
+        "streak_scoring_on": "Serienbasierte Punktzahl",
         "tolerance_days": "Slot-Toleranz (Tage)",
         "min_separation_days": "Mindestabstand zwischen Karten (Tage)",
         "max_cards": "Max Karten (0 = unbegrenzt)"

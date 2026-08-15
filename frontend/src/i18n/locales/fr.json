@@ -313,6 +313,8 @@
         "asset_count_weight": "Poids du nombre de photos (0 = uniforme, 1 = proportionnel)",
         "total_people": "Nombre total de personnes",
         "max_hidden_faces": "Visages cachés maximum par manche",
+        "streak_scoring_off": "Score linéaire",
+        "streak_scoring_on": "Score basé sur les séries",
         "tolerance_days": "Tolérance d'emplacement (jours)",
         "min_separation_days": "Séparation minimale entre les cartes (jours)",
         "max_cards": "Cartes maximum (0 = illimité)"

@@ -24,6 +24,36 @@ function settingLabel(t: (key: string) => string, key: string): string {
   return label === gamesKey ? t(`admin.daily.settings.${key}`) : label
 }
 
+// Special-cased instead of a generic bool value_type (see docs/TODO/MINOR-FIXES.md #3, not built
+// yet) - the two states here have their own vocabulary ("linear" vs. "streak-based"), which a
+// generic checkbox-for-any-0/1-setting wouldn't know how to label.
+function StreakScoringToggle({
+  id,
+  checked,
+  onChange,
+}: {
+  id: string
+  checked: boolean
+  onChange: (checked: boolean) => void
+}) {
+  const { t } = useTranslation()
+  return (
+    <label htmlFor={id} className="flex cursor-pointer items-center gap-3 text-sm font-semibold text-body">
+      <span className="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full bg-line-soft transition-colors has-[:checked]:bg-primary">
+        <input
+          id={id}
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          className="peer absolute inset-0 h-full w-full cursor-pointer opacity-0"
+        />
+        <span className="pointer-events-none ml-1 inline-block h-4 w-4 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+      </span>
+      {t(checked ? "admin.games.settings.streak_scoring_on" : "admin.games.settings.streak_scoring_off")}
+    </label>
+  )
+}
+
 interface AdminGameRowProps {
   gameType: string
   mode: string
@@ -61,27 +91,36 @@ function SettingsForm({
   return (
     <>
       <form onSubmit={onSave} className="flex flex-col gap-4">
-        {fields.map((setting) => (
-          <div key={setting.key} className="flex flex-col gap-1.5">
-            <label
-              htmlFor={`${idPrefix}-${setting.key}`}
-              className="text-sm font-semibold text-body"
-            >
-              {settingLabel(t, setting.key)}
-            </label>
-            <input
+        {fields.map((setting) =>
+          setting.key === "streak_scoring" ? (
+            <StreakScoringToggle
+              key={setting.key}
               id={`${idPrefix}-${setting.key}`}
-              type="number"
-              step={setting.value_type === "int" ? 1 : "any"}
-              min={setting.min_value}
-              max={setting.max_value}
-              required
-              value={values[setting.key]}
-              onChange={(e) => onChange(setting.key, Number(e.target.value))}
-              className="rounded-xl border border-line-soft bg-surface px-3.5 py-2.5 text-base text-ink outline-none transition-colors focus:border-primary"
+              checked={values[setting.key] === 1}
+              onChange={(checked) => onChange(setting.key, checked ? 1 : 0)}
             />
-          </div>
-        ))}
+          ) : (
+            <div key={setting.key} className="flex flex-col gap-1.5">
+              <label
+                htmlFor={`${idPrefix}-${setting.key}`}
+                className="text-sm font-semibold text-body"
+              >
+                {settingLabel(t, setting.key)}
+              </label>
+              <input
+                id={`${idPrefix}-${setting.key}`}
+                type="number"
+                step={setting.value_type === "int" ? 1 : "any"}
+                min={setting.min_value}
+                max={setting.max_value}
+                required
+                value={values[setting.key]}
+                onChange={(e) => onChange(setting.key, Number(e.target.value))}
+                className="rounded-xl border border-line-soft bg-surface px-3.5 py-2.5 text-base text-ink outline-none transition-colors focus:border-primary"
+              />
+            </div>
+          ),
+        )}
         <div className="flex gap-3">
           <Button type="submit" variant="primary" className="flex-1 py-2.5" disabled={busy}>
             {t("auth.profile.save")}

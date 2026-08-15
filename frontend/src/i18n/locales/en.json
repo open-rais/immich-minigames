@@ -313,6 +313,8 @@
         "asset_count_weight": "Photo count weight (0 = uniform, 1 = proportional)",
         "total_people": "Total people",
         "max_hidden_faces": "Max hidden faces per round",
+        "streak_scoring_off": "Linear score",
+        "streak_scoring_on": "Streak-based score",
         "tolerance_days": "Slot tolerance (days)",
         "min_separation_days": "Min. spread between cards (days)",
         "max_cards": "Max cards (0 = unlimited)"
