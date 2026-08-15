@@ -254,8 +254,8 @@ class PersondleGame(BaseImmichdleGame):
         )
 
     def _resolve_and_score_guess(self, guess: UUID) -> tuple[PersonSnapshot, PersonClues]:
-        # Four queries timed individually at DEBUG (docs/TODO/ADMIN-WORKERS.md F0) to find out which
-        # one actually dominates a big-person guess - see that doc's §1.1 table.
+        # Four queries timed individually at DEBUG to find out which one actually dominates a
+        # big-person guess (roadmap #15's homelab-crash diagnosis).
         with timed("persondle.get_persons", person_id=str(guess)):
             matches = self._immich_service.get_persons(named_only=True, ids=frozenset({guess}), limit=1)
         if not matches:

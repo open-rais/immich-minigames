@@ -1,4 +1,4 @@
-"""Ad-hoc timing diagnostics (roadmap #15 F0, see docs/TODO/ADMIN-WORKERS.md §4) - deliberately NOT
+"""Ad-hoc timing diagnostics (roadmap #15) - deliberately NOT
 the `audit`/`access` loggers (docs/ARCHITECTURE/BACKEND.md §Logging): `timed()` logs through
 ordinary `getLogger(__name__)` app logging, gated by `LOG_LEVEL` like everything else in that third
 bucket, so it stays silent in production unless explicitly turned on."""

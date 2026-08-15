@@ -3,9 +3,12 @@ from uuid import uuid4
 import pytest
 import sqlalchemy as sa
 
+from persistence.album_ml_cache import AlbumEmbeddingCacheModel
+from persistence.immich_tables import person as person_table
 from persistence.ml_cache import EMBEDDING_DIM, PersonFaceEmbeddingCacheModel
 
 _CACHE_TABLE = PersonFaceEmbeddingCacheModel.__table__
+_ALBUM_CACHE_TABLE = AlbumEmbeddingCacheModel.__table__
 
 
 class TestFaceSimilarity:
@@ -124,3 +127,135 @@ class TestPersonEmbeddingCache:
 
         assert embedding is None
         assert self._read_cache_row(app_engine, person_id) is None
+
+
+# compute_person_embedding/compute_album_embedding are the public entry points the admin
+# embedding worker calls - `force=True` is the "reprocess all" path, and has to actually
+# recompute even when the cache already looks fresh, unlike a normal cache hit.
+class TestForceRecompute:
+    def test_force_recomputes_person_embedding_even_when_cache_is_fresh(
+        self, immich_service, ml_service, db_session, app_engine
+    ):
+        person = TestPersonEmbeddingCache._pick_person_with_faces(immich_service)
+        ml_service._get_person_embedding(person.id)  # warm the cache with a real row
+        real_count = TestPersonEmbeddingCache._read_cache_row(app_engine, person.id).face_count
+        sentinel = [1.0] * EMBEDDING_DIM
+        db_session.execute(
+            sa.update(_CACHE_TABLE)
+            .where(_CACHE_TABLE.c.person_id == person.id)
+            .values(embedding=sentinel, face_count=real_count)
+        )
+        db_session.commit()
+
+        embedding = ml_service.compute_person_embedding(person.id, force=True)
+
+        assert embedding is not None
+        assert embedding.tolist() != pytest.approx(sentinel)
+
+    def test_without_force_a_fresh_person_cache_is_left_untouched(
+        self, immich_service, ml_service, db_session, app_engine
+    ):
+        person = TestPersonEmbeddingCache._pick_person_with_faces(immich_service)
+        ml_service._get_person_embedding(person.id)
+        real_count = TestPersonEmbeddingCache._read_cache_row(app_engine, person.id).face_count
+        sentinel = [1.0] * EMBEDDING_DIM
+        db_session.execute(
+            sa.update(_CACHE_TABLE)
+            .where(_CACHE_TABLE.c.person_id == person.id)
+            .values(embedding=sentinel, face_count=real_count)
+        )
+        db_session.commit()
+
+        embedding = ml_service.compute_person_embedding(person.id)
+
+        assert embedding.tolist() == pytest.approx(sentinel)
+
+
+# stale_person_ids/stale_album_ids - the two-query-plus-diff staleness check, exercised against
+# real dev data rather than mocks since its whole point is to match get_persons(named_only=True)'s
+# own eligibility filter exactly.
+class TestStalePersonIds:
+    def test_eligible_only_total_matches_get_persons_named_only_universe(self, immich_service, ml_service):
+        eligible = immich_service.get_persons(named_only=True, limit=10_000)
+
+        result = ml_service.stale_person_ids(eligible_only=True)
+
+        assert result.total == len(eligible)
+
+    def test_eligible_only_false_returns_the_full_person_universe(self, ml_service, immich_engine):
+        with immich_engine.connect() as conn:
+            total_persons = conn.execute(sa.select(sa.func.count()).select_from(person_table)).scalar_one()
+
+        result = ml_service.stale_person_ids(eligible_only=False)
+
+        assert result.total == total_persons
+
+    def test_never_cached_person_is_stale(self, immich_service, ml_service, db_session):
+        person = TestPersonEmbeddingCache._pick_person_with_faces(immich_service)
+        db_session.execute(sa.delete(_CACHE_TABLE).where(_CACHE_TABLE.c.person_id == person.id))
+        db_session.commit()
+
+        result = ml_service.stale_person_ids(eligible_only=True)
+
+        assert person.id in result.ids
+
+    def test_freshly_cached_person_is_not_stale(self, immich_service, ml_service):
+        person = TestPersonEmbeddingCache._pick_person_with_faces(immich_service)
+        ml_service._get_person_embedding(person.id)  # warm the cache
+
+        result = ml_service.stale_person_ids(eligible_only=True)
+
+        assert person.id not in result.ids
+
+    def test_wrong_cached_face_count_is_stale(self, immich_service, ml_service, db_session, app_engine):
+        person = TestPersonEmbeddingCache._pick_person_with_faces(immich_service)
+        ml_service._get_person_embedding(person.id)
+        real_count = TestPersonEmbeddingCache._read_cache_row(app_engine, person.id).face_count
+        db_session.execute(
+            sa.update(_CACHE_TABLE).where(_CACHE_TABLE.c.person_id == person.id).values(face_count=real_count + 1)
+        )
+        db_session.commit()
+
+        result = ml_service.stale_person_ids(eligible_only=True)
+
+        assert person.id in result.ids
+
+
+class TestStaleAlbumIds:
+    @staticmethod
+    def _pick_any_album(immich_service):
+        albums = immich_service.get_albums(limit=100)
+        assert albums, "dev data needs at least one album for this test"
+        return albums[0]
+
+    def test_total_matches_get_albums_universe(self, immich_service, ml_service):
+        albums = immich_service.get_albums(limit=10_000)
+
+        result = ml_service.stale_album_ids()
+
+        assert result.total == len(albums)
+
+    def test_never_cached_album_is_stale(self, immich_service, ml_service, db_session):
+        album = self._pick_any_album(immich_service)
+        db_session.execute(sa.delete(_ALBUM_CACHE_TABLE).where(_ALBUM_CACHE_TABLE.c.album_id == album.id))
+        db_session.commit()
+
+        result = ml_service.stale_album_ids()
+
+        assert album.id in result.ids
+
+    def test_wrong_cached_asset_count_is_stale(self, immich_service, ml_service, db_session):
+        album = self._pick_any_album(immich_service)
+        # Doesn't need a real embedding row - the diff only compares asset_count, so a synthetic
+        # cache row with a deliberately wrong count is enough to exercise the mismatch path.
+        db_session.execute(sa.delete(_ALBUM_CACHE_TABLE).where(_ALBUM_CACHE_TABLE.c.album_id == album.id))
+        db_session.execute(
+            sa.insert(_ALBUM_CACHE_TABLE).values(
+                album_id=album.id, embedding=[0.0] * EMBEDDING_DIM, asset_count=album.asset_count + 1
+            )
+        )
+        db_session.commit()
+
+        result = ml_service.stale_album_ids()
+
+        assert album.id in result.ids
