@@ -9,6 +9,7 @@ SETTING_SPECS: dict[str, list[SettingSpec]] = {
     MODE_NAMED_FACES: [
         SettingSpec("total_people", TOTAL_PEOPLE, "int", 1, 500),
         SettingSpec("max_hidden_faces", MAX_HIDDEN_FACES, "int", 1, 30),
+        SettingSpec("streak_scoring", 0, "int", 0, 1),
     ],
 }
 

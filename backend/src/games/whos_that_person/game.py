@@ -11,11 +11,12 @@ See docs/GAMES/WHOS_THAT_PERSON.md.
 The game asks about TOTAL_PEOPLE people total, across as many rounds as it takes to reach that
 count - a round's face count is capped so the running total never overshoots it.
 
-Scoring is a combo streak counted by person, not by round - see games/whos_that_person/round.py's
-WhosThatPersonRound.calculate_score for the exact streak rules. *Which* photo/faces a round gets is
-a separate axis of variation (games/whos_that_person/content.py's WhosThatPersonContent) - live
-Immich queries normally, a frozen daily spec for the daily flow
-(games/whos_that_person/daily.py's ScriptedContent).
+Scoring has two modes, selected by the admin-configurable streak_scoring setting (default off): a
+flat count (1 point per correctly guessed face) or a combo streak counted by person, not by round -
+see games/whos_that_person/round.py's WhosThatPersonRound.calculate_score for the exact rules of
+each. *Which* photo/faces a round gets is a separate axis of variation
+(games/whos_that_person/content.py's WhosThatPersonContent) - live Immich queries normally, a frozen
+daily spec for the daily flow (games/whos_that_person/daily.py's ScriptedContent).
 """
 
 from collections.abc import Mapping
