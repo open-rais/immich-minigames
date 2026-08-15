@@ -177,7 +177,7 @@ export function buildGeoguessrMapStyle(resolved: ResolvedTheme): StyleSpecificat
         layout: {
           ...placeLabelLayout,
           "text-font": ["Noto Sans Bold"],
-          "text-size": ["interpolate", ["linear"], ["zoom"], 1, 9, 4, 17],
+          "text-size": ["interpolate", ["linear"], ["zoom"], 1, 11, 4, 19],
         },
         paint: {
           "text-color": INK,
@@ -195,7 +195,7 @@ export function buildGeoguessrMapStyle(resolved: ResolvedTheme): StyleSpecificat
         layout: {
           ...placeLabelLayout,
           "text-font": ["Noto Sans Bold"],
-          "text-size": ["interpolate", ["linear"], ["zoom"], 2, 9, 5, 17],
+          "text-size": ["interpolate", ["linear"], ["zoom"], 2, 11, 5, 19],
         },
         paint: {
           "text-color": INK,
@@ -214,7 +214,7 @@ export function buildGeoguessrMapStyle(resolved: ResolvedTheme): StyleSpecificat
         layout: {
           ...placeLabelLayout,
           "text-font": ["Noto Sans Bold"],
-          "text-size": ["interpolate", ["linear"], ["zoom"], 3, 9, 7, 17],
+          "text-size": ["interpolate", ["linear"], ["zoom"], 3, 11, 7, 19],
         },
         paint: {
           "text-color": INK,
@@ -234,7 +234,7 @@ export function buildGeoguessrMapStyle(resolved: ResolvedTheme): StyleSpecificat
           ...placeLabelLayout,
           "text-font": ["Noto Sans Italic"],
           "text-letter-spacing": 0.2,
-          "text-size": ["interpolate", ["linear"], ["zoom"], 5, 10, 8, 14],
+          "text-size": ["interpolate", ["linear"], ["zoom"], 5, 12, 8, 16],
           "text-transform": "uppercase",
         },
         paint: {
@@ -254,7 +254,7 @@ export function buildGeoguessrMapStyle(resolved: ResolvedTheme): StyleSpecificat
           ...placeLabelLayout,
           "text-anchor": "center",
           "text-font": ["Noto Sans Regular"],
-          "text-size": ["interpolate", ["exponential", 1.2], ["zoom"], 4, 11, 7, 13, 11, 18],
+          "text-size": ["interpolate", ["exponential", 1.2], ["zoom"], 4, 13, 7, 15, 11, 20],
         },
         paint: {
           "text-color": INK,
@@ -273,7 +273,7 @@ export function buildGeoguessrMapStyle(resolved: ResolvedTheme): StyleSpecificat
           ...placeLabelLayout,
           "text-anchor": "center",
           "text-font": ["Noto Sans Bold"],
-          "text-size": ["interpolate", ["exponential", 1.2], ["zoom"], 4, 12, 7, 14, 11, 20],
+          "text-size": ["interpolate", ["exponential", 1.2], ["zoom"], 4, 14, 7, 16, 11, 22],
         },
         paint: {
           "text-color": INK,
@@ -292,7 +292,7 @@ export function buildGeoguessrMapStyle(resolved: ResolvedTheme): StyleSpecificat
           ...placeLabelLayout,
           "text-anchor": "center",
           "text-font": ["Noto Sans Regular"],
-          "text-size": ["interpolate", ["exponential", 1.2], ["zoom"], 7, 12, 11, 14],
+          "text-size": ["interpolate", ["exponential", 1.2], ["zoom"], 7, 14, 11, 16],
         },
         paint: {
           "text-color": BODY,
@@ -311,7 +311,7 @@ export function buildGeoguessrMapStyle(resolved: ResolvedTheme): StyleSpecificat
           ...placeLabelLayout,
           "text-font": ["Noto Sans Italic"],
           "text-letter-spacing": 0.1,
-          "text-size": ["interpolate", ["linear"], ["zoom"], 8, 9, 12, 10],
+          "text-size": ["interpolate", ["linear"], ["zoom"], 8, 11, 12, 12],
           "text-transform": "uppercase",
         },
         paint: {
