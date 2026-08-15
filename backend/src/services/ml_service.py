@@ -58,11 +58,16 @@ def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
 
 @dataclass(frozen=True)
 class StaleIds:
-    """Result of a whole-universe staleness diff (see stale_person_ids/stale_album_ids) - `total`
-    is the universe size, the denominator for the admin panel's coverage counter (it has to be the
-    eligible-only denominator, not every person/album, or coverage would never read 100%)."""
+    """Result of a whole-universe staleness diff (see stale_person_ids/stale_album_ids). `ids` is
+    the subset that actually needs (re)computing - what a "process missing" run should touch.
+    `all_ids` is every id in the universe regardless of staleness - what a "reprocess all" run
+    needs instead, since a merge/split can leave a cached embedding wrong without ever changing
+    the fingerprint (see the freshness check's own cheap-not-exact tradeoff). `total` (`=
+    len(all_ids)`) is the denominator for the admin panel's coverage counter - it has to be the
+    eligible-only denominator, not every person/album, or coverage would never read 100%."""
 
     ids: frozenset[UUID]
+    all_ids: frozenset[UUID]
     total: int
 
 
@@ -223,7 +228,7 @@ class MLService:
         stale = frozenset(
             person_id for person_id, count in current_counts.items() if cached_counts.get(person_id) != count
         )
-        return StaleIds(ids=stale, total=len(current_counts))
+        return StaleIds(ids=stale, all_ids=frozenset(current_counts), total=len(current_counts))
 
     def _album_asset_count(self, album_id: UUID) -> int:
         """The freshness fingerprint: raw `album_asset` row count, not the eligibility-filtered
@@ -342,4 +347,4 @@ class MLService:
         stale = frozenset(
             album_id for album_id, count in current_counts.items() if cached_counts.get(album_id) != count
         )
-        return StaleIds(ids=stale, total=len(current_counts))
+        return StaleIds(ids=stale, all_ids=frozenset(current_counts), total=len(current_counts))

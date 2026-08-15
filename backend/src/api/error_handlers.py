@@ -15,6 +15,7 @@ from services.auth_service import (
     UnauthorizedError,
     UsernameAlreadyExistsError,
 )
+from services.embedding_jobs import JobAlreadyRunningError
 from services.errors import (
     DailyAlreadyPlayedError,
     DailyNotEnabledError,
@@ -46,6 +47,7 @@ EXCEPTION_STATUS: dict[type[Exception], int] = {
     DailyAlreadyPlayedError: 409,
     InvalidInviteError: 400,
     InviteNotFoundError: 404,
+    JobAlreadyRunningError: 409,
 }
 
 
