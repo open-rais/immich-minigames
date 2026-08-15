@@ -173,6 +173,20 @@ class TestWhosThatPersonAdminSettings:
         assert game.finished is True
         assert sum(len(r.faces) for r in game.rounds) == 3
 
+    def test_face_box_growth_override_is_reflected_live(self, immich_service):
+        overridden = WhosThatPersonGame.start(
+            id=uuid4(),
+            immich_service=immich_service,
+            content=LiveContent(immich_service),
+            settings={"face_box_growth": 1.5},
+        )
+        default = WhosThatPersonGame.start(
+            id=uuid4(), immich_service=immich_service, content=LiveContent(immich_service)
+        )
+
+        assert overridden.face_box_growth == 1.5
+        assert default.face_box_growth == 1.3
+
 
 class TestWhosThatPersonRoundScoring:
     """Isolated from the DB - constructs rounds/faces directly to deterministically exercise the

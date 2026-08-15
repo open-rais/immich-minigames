@@ -31,10 +31,13 @@ GAME_TYPE = "whos-that-person"
 MODE_NAMED_FACES = "namedFaces"
 
 # Admin feature - public (no leading underscore) since games/settings_registry.py assembles these
-# as defaults for the admin-configurable total_people/max_hidden_faces settings, same convention
-# already used by e.g. games/geoguessr/game.py's TOTAL_ROUNDS/MAX_SCORE.
+# as defaults for the admin-configurable total_people/max_hidden_faces/face_box_growth settings, same
+# convention already used by e.g. games/geoguessr/game.py's TOTAL_ROUNDS/MAX_SCORE.
 TOTAL_PEOPLE = 15
 MAX_HIDDEN_FACES = 5
+# 1.0 = the raw Immich detection box, 1.5 = 1.5x its width/height - see
+# frontend/src/games/WhosThatPerson/faceBoxMath.ts for how this factor turns into per-side padding.
+FACE_BOX_GROWTH = 1.3
 
 
 class IncompleteGuessError(Exception):
@@ -83,6 +86,12 @@ class WhosThatPersonGame(BaseGame):
     @property
     def _max_hidden_faces(self) -> int:
         return int(self._settings.get("max_hidden_faces", MAX_HIDDEN_FACES))
+
+    @property
+    def face_box_growth(self) -> float:
+        # Public (no leading underscore) - same rationale as total_people above, but purely visual:
+        # the value itself is never used backend-side, only threaded through to the frontend.
+        return float(self._settings.get("face_box_growth", FACE_BOX_GROWTH))
 
     @property
     def _shown_asset_ids(self) -> frozenset[UUID]:

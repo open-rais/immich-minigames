@@ -3,13 +3,19 @@ games/settings_registry.py for how every game's specs get assembled into one reg
 services/game_settings_service.py for how they're read/written."""
 
 from games.settings_spec import NO_REPEAT_DAYS_SPEC, SettingSpec
-from games.whos_that_person.game import MAX_HIDDEN_FACES, MODE_NAMED_FACES, TOTAL_PEOPLE
+from games.whos_that_person.game import (
+    FACE_BOX_GROWTH,
+    MAX_HIDDEN_FACES,
+    MODE_NAMED_FACES,
+    TOTAL_PEOPLE,
+)
 
 SETTING_SPECS: dict[str, list[SettingSpec]] = {
     MODE_NAMED_FACES: [
         SettingSpec("total_people", TOTAL_PEOPLE, "int", 1, 500),
         SettingSpec("max_hidden_faces", MAX_HIDDEN_FACES, "int", 1, 30),
         SettingSpec("streak_scoring", 0, "int", 0, 1),
+        SettingSpec("face_box_growth", FACE_BOX_GROWTH, "float", 1.0, 1.5),
     ],
 }
 

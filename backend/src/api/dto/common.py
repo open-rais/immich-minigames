@@ -162,6 +162,9 @@ class GameOut(BaseModel):
     # which has no such fixed/counted total.
     total_rounds: int | None = None
     total_people: int | None = None
+    # Same rationale as total_rounds/total_people above, but purely visual (WhosThatPerson's face-box
+    # expansion factor) - the frontend has no other way to learn an admin override of it.
+    face_box_growth: float | None = None
     # Set only for a daily-challenge game (see games/base.py's BaseGame.
     # daily_challenge_date), null for every normal game. Lets the frontend tell a resumed/loaded
     # game is a daily one on a fresh page load (no separate "Nuevo juego" affordance, no re-offer
@@ -223,6 +226,7 @@ class GameOut(BaseModel):
             target_album_unique_named_person_count=target_album_unique_named_person_count,
             total_rounds=game.total_rounds,
             total_people=game.total_people,
+            face_box_growth=game.face_box_growth,
             daily_challenge_date=game.daily_challenge_date,
         )
 
