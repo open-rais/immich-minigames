@@ -341,6 +341,29 @@
       "createdAt": "Créée {{date}}",
       "expiresAt": "Expire {{date}}",
       "usedAt": "Utilisée {{date}}"
+    },
+    "workers": {
+      "title": "Cache d'embeddings",
+      "description": "Recalcule les caches de similarité visage/album utilisés par Persondle et Albumdle",
+      "loading": "Chargement de la couverture...",
+      "persons": "Personnes",
+      "albums": "Albums",
+      "coverage": "{{cached}} / {{total}} en cache",
+      "processMissing": "Traiter les manquants",
+      "reprocessAll": "Tout retraiter",
+      "includeIneligible": "Inclure sans nom / masquées",
+      "cancel": "Annuler",
+      "progress": "{{processed}} / {{total}}",
+      "progressWithFailed": "{{processed}} / {{total}} ({{failed}} échoués)",
+      "entityLabel": {
+        "person": "Personnes",
+        "album": "Albums"
+      },
+      "scopeLabel": {
+        "missing": "traitement des manquants",
+        "all": "retraitement complet"
+      },
+      "failed": "Échec du job : {{error}}"
     }
   }
 }

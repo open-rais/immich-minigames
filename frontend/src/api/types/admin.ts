@@ -49,3 +49,42 @@ export interface CreateInviteOut {
   token: string
   expires_at: string
 }
+
+// Embedding cache worker (backend/src/api/admin_workers_api.py) - recomputes Persondle's
+// face-similarity cache and Albumdle's similarity cache in the background.
+
+export type EmbeddingEntity = "person" | "album"
+export type EmbeddingScope = "missing" | "all"
+export type EmbeddingJobStatus = "running" | "done" | "cancelled" | "failed"
+
+export interface EmbeddingCoverageOut {
+  cached: number
+  total: number
+}
+
+export interface EmbeddingJobOut {
+  id: string
+  entity: EmbeddingEntity
+  scope: EmbeddingScope
+  include_ineligible: boolean
+  status: EmbeddingJobStatus
+  total: number
+  processed: number
+  failed: number
+  started_at: string
+  finished_at: string | null
+  error: string | null
+}
+
+export interface EmbeddingWorkersStatusOut {
+  persons: EmbeddingCoverageOut
+  albums: EmbeddingCoverageOut
+  // The running job, or the last finished one, or null if nothing has ever run this process.
+  job: EmbeddingJobOut | null
+}
+
+export interface StartEmbeddingJobIn {
+  entity: EmbeddingEntity
+  scope: EmbeddingScope
+  include_ineligible?: boolean
+}

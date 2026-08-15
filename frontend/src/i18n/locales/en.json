@@ -341,6 +341,29 @@
       "createdAt": "Created {{date}}",
       "expiresAt": "Expires {{date}}",
       "usedAt": "Used {{date}}"
+    },
+    "workers": {
+      "title": "Embedding cache",
+      "description": "Recompute the face/album similarity caches Persondle and Albumdle use",
+      "loading": "Loading coverage...",
+      "persons": "People",
+      "albums": "Albums",
+      "coverage": "{{cached}} / {{total}} cached",
+      "processMissing": "Process missing",
+      "reprocessAll": "Reprocess all",
+      "includeIneligible": "Include unnamed/hidden",
+      "cancel": "Cancel",
+      "progress": "{{processed}} / {{total}}",
+      "progressWithFailed": "{{processed}} / {{total}} ({{failed}} failed)",
+      "entityLabel": {
+        "person": "People",
+        "album": "Albums"
+      },
+      "scopeLabel": {
+        "missing": "processing missing",
+        "all": "reprocessing all"
+      },
+      "failed": "Job failed: {{error}}"
     }
   }
 }
