@@ -1,8 +1,8 @@
 # Backend
 
 FastAPI app in `backend/src/`. Run: `cd backend && uv run uvicorn main:app --app-dir src --port 8000`
-(needs `alembic upgrade head` once first). Tests: `cd backend && uv run pytest` (401 passing as of
-2026-07-29).
+(needs `alembic upgrade head` once first). Tests: `cd backend && uv run pytest` (610 passing, 13
+skipped, as of 2026-08-15).
 
 ## Layering
 
@@ -36,7 +36,7 @@ Routes **do not** try/except their own domain exceptions. Each service raises a 
 | `InvalidCredentialsError`, `UnauthorizedError` | 401 |
 | `GameOwnershipError` | 403 |
 | `GameNotFoundError`, `DailyNotEnabledError` | 404 |
-| `RoundNotPendingError`, `DailyAlreadyPlayedError` | 409 |
+| `RoundNotPendingError`, `DailyAlreadyPlayedError`, `JobAlreadyRunningError` | 409 |
 | `IncompleteGuessError` | 422 |
 | `RateLimitExceeded` (slowapi) | 429 |
 
@@ -121,7 +121,7 @@ base de datos separada" below. Inside it they sit in a `minigames` schema rather
 with the app owning the whole database that's cosmetic, but it keeps every already-applied
 migration (which hardcodes `schema=`) valid and untouched.
 
-Alembic owns the schema (`backend/alembic/versions/`, currently 0001–0012); `docker-entrypoint.sh`
+Alembic owns the schema (`backend/alembic/versions/`, currently 0001–0013); `docker-entrypoint.sh`
 runs `alembic upgrade head` on every container start, and `db-init` runs it too — as the app role,
 so the tables end up owned by the role that later has to `ALTER` them. `init_db`/`reset_db` in
 `persistence/base.py` exist only for tests.
@@ -134,8 +134,8 @@ so the tables end up owned by the role that later has to `ALTER` them. `init_db`
 | `invites` | Roadmap #H, F1. `token_hash` (SHA-256, never the raw token), `kind` (`'invite'` \| `'password_reset'`, one table for both), `used_at`, `expires_at`, `user_id` (nullable — set once consumed, or always for a password-reset invite). Consumed via a single atomic `UPDATE ... RETURNING`. |
 | `game_settings` | `(game_type, mode)` PK, `values` JSONB. One row per (game type, mode); a missing row or key falls back to the module constant. |
 | `legacy_import` | Marker written by the one-time move out of Immich's database. Its presence means that copy committed — see below. |
-| `person_face_embedding_cache` | `person_id` PK, `embedding vector(512)`, `face_count`, `computed_at`. Caches Persondle's `MLSimilarity` clue's per-person representative embedding (average across that person's visible faces) - see `docs/ARCHITECTURE/IMMICH.md`'s "Face similarity" section. The only own table with a non-JSON/UUID/text column type, hence `persistence/ml_cache.py`'s hand-rolled `Vector` SQLAlchemy type instead of a plain `mapped_column`. |
-| `album_embedding_cache` | Roadmap #14. `album_id` PK, `embedding vector(512)`, `asset_count`, `computed_at`. Caches Albumdle's `Similarity` clue's per-album representative CLIP embedding (average across that album's assets, from Immich's `smart_search` table - not face-based) - see `docs/ARCHITECTURE/IMMICH.md`'s "Album similarity" section. Reuses `persistence/ml_cache.py`'s `Vector` type rather than a second hand-rolled one. |
+| `person_face_embedding_cache` | `person_id` PK, `embedding vector(512)`, `face_count`, `embedding_count`, `computed_at`. Caches Persondle's `MLSimilarity` clue's per-person representative embedding (average across that person's visible faces) - see `docs/ARCHITECTURE/IMMICH.md`'s "Face similarity" section. The only own table with a non-JSON/UUID/text column type, hence `persistence/ml_cache.py`'s hand-rolled `Vector` SQLAlchemy type instead of a plain `mapped_column`. `embedding_count` (migration `0013`, roadmap #15) is how many vectors actually went into `embedding` - equal to `face_count` for persons today, kept as its own column so the incremental update (`services/ml_service.py`) has a real denominator without assuming the two coincide. `computed_at` (also `0013`) is `timestamptz`, not "when written" - it's the watermark the average is valid *as of*, taken before reading any vector, compared against Immich's own `updatedAt` columns on a different Postgres instance. |
+| `album_embedding_cache` | Roadmap #14. `album_id` PK, `embedding vector(512)`, `asset_count`, `embedding_count`, `computed_at`. Caches Albumdle's `Similarity` clue's per-album representative CLIP embedding (average across that album's assets, from Immich's `smart_search` table - not face-based) - see `docs/ARCHITECTURE/IMMICH.md`'s "Album similarity" section. Reuses `persistence/ml_cache.py`'s `Vector` type rather than a second hand-rolled one. `embedding_count` is nullable here (unlike the person table) - it genuinely differs from `asset_count` (the average only counts eligible assets with a `smart_search` row), and existing rows from before migration `0013` have no way to know their true value; `NULL` means exactly that, and forces a full recompute the next time the row is touched. |
 | `daily_configs` | Roadmap #G. `(game_type, mode)` PK, `enabled` bool, `values` JSONB - whether a mode is in the daily rotation plus its daily-only setting overrides. |
 | `daily_challenges` | Roadmap #G. `id` PK, unique `(challenge_date, game_type, mode)`, `spec` JSONB (the pre-generated shared content), `settings` JSONB (frozen effective settings for that day). `games.daily_challenge_id` (nullable FK, one partial unique index on `(daily_challenge_id, user_id)` for "one attempt per player") points into this. |
 
@@ -228,7 +228,7 @@ middleware started resolving it up front.
 
 ## Admin feature
 
-Four pieces, referenced in comments as points #1–#4:
+Five pieces, referenced in comments as points #1–#5:
 
 1. **Promotion** (`services/admin_bootstrap.py`) — on every backend startup, if `ADMIN_EMAIL`
    matches an already-registered account, its `is_admin` flips to true. Promotion only: it never
@@ -239,6 +239,19 @@ Four pieces, referenced in comments as points #1–#4:
    `user_id`.
 4. **Game settings** (`api/admin_games_api.py`, `services/game_settings.py`) — per-`game_type`
    overrides of the scoring/difficulty constants each game module defines.
+5. **Embedding cache worker** (roadmap #15; `services/embedding_jobs.py`, `api/admin_workers_api.py`)
+   — lets an admin see how much of `person_face_embedding_cache`/`album_embedding_cache` is warm
+   and kick off a background (re)compute run. `EmbeddingJobRunner` is a single-job-at-a-time
+   in-memory registry (no persistence, no Redis - state is deliberately disposable, the job is
+   idempotent and re-runnable) running on a plain daemon `threading.Thread`, not asyncio, since
+   every query this app makes is already synchronous SQLAlchemy. It takes the same `MLService`
+   instance the rest of the app shares via `api/deps.py::get_ml_service()` rather than constructing
+   its own - `get_app_engine`/`get_immich_engine` aren't memoized themselves, so a second bare
+   `MLService()` would silently open a second pair of connection pools. `main.py`'s `lifespan`
+   cancels and joins it (bounded by a timeout) on shutdown, so a long-running job doesn't hang a
+   restart. Two request-response endpoints (`GET`/`POST /admin/workers/embeddings`) plus
+   `DELETE` to cancel; `POST` raises `JobAlreadyRunningError` (409) if one is already in flight,
+   caught nowhere - it propagates to `api/error_handlers.py` like every other domain exception.
 
 `GAME_SETTING_SPECS` (`services/game_settings.py`) is the registry of what is configurable, but it
 only *assembles* it - each game declares its own knobs in its own `games/<name>/settings.py`
