@@ -32,6 +32,8 @@ def validate_setting_value(spec: SettingSpec, value: float) -> None:
         raise InvalidGameSettingValueError(f"{spec.key} must be <= {spec.max_value}")
     if spec.value_type == "int" and value != int(value):
         raise InvalidGameSettingValueError(f"{spec.key} must be a whole number")
+    if spec.value_type == "bool" and value not in (0, 1):
+        raise InvalidGameSettingValueError(f"{spec.key} must be 0 or 1")
 
 
 class GameSettingsService:

@@ -15,25 +15,22 @@ interface FaceGeometry {
   image_height: number
 }
 
-// Each side grows by this fraction of the box's own width/height, hiding a bit more of the
-// surrounding context (hair, clothes, posture) than the raw detection box alone would - makes
-// guessing a bit harder than a tight crop that outlines the exact face shape. Tweak this value
-// directly to change how much extra padding every box gets.
-export const BOX_EXPAND_RATIO = 0.15
+// Admin-configurable (games/whos_that_person/settings.py's face_box_growth) - a multiplicative
+// factor on the box's own width/height (1.0 = the raw detection box, 1.5 = 1.5x it), hiding a bit
+// more of the surrounding context (hair, clothes, posture) than a tight crop would, making guessing
+// a bit harder. Fallback for a game loaded before this setting existed (GameOut.face_box_growth
+// null) - same value as the backend's own default (games/whos_that_person/game.py's
+// FACE_BOX_GROWTH), so an old game renders exactly as it used to.
+export const DEFAULT_FACE_BOX_GROWTH = 1.3
 
-// A detection box that's a tiny fraction of the photo (a face far in the background of a group
-// shot) renders as a near-invisible, barely-tappable rectangle - and the "grow toward bottom-right
-// only" percentage sizing model makes it drift visibly off the actual face at small sizes too.
-// Enforcing this floor (via CSS `max()`, so it never shrinks below it regardless of the photo's
-// rendered size) and re-centering around it keeps every box tappable and visually anchored on the
-// face it hides, matching the >=44px touch-target guideline.
-export const MIN_BOX_PX = 44
-
-export function expandedBox(face: FaceGeometry) {
+export function expandedBox(face: FaceGeometry, growthFactor: number) {
   const boxWidth = face.bounding_box_x2 - face.bounding_box_x1
   const boxHeight = face.bounding_box_y2 - face.bounding_box_y1
-  const padX = boxWidth * BOX_EXPAND_RATIO
-  const padY = boxHeight * BOX_EXPAND_RATIO
+  // growthFactor is the total multiplicative growth (1.0-1.5); the padding is applied per side, so
+  // only half of the factor's excess goes on each edge.
+  const padRatio = (growthFactor - 1) / 2
+  const padX = boxWidth * padRatio
+  const padY = boxHeight * padRatio
   return {
     x1: Math.max(0, face.bounding_box_x1 - padX),
     y1: Math.max(0, face.bounding_box_y1 - padY),
@@ -45,24 +42,16 @@ export function expandedBox(face: FaceGeometry) {
 // Percentage box (expanded, see above) relative to the face's own detection resolution - the layer
 // this is placed in (AssetPhoto's `overlay`) is sized/positioned to exactly match the photo's
 // rendered content box, so plain percentages line up with no further offset/letterbox math needed,
-// at any zoom/pan state. Width/height are floored at MIN_BOX_PX via CSS `max()` (mixing % and px is
-// valid - the browser resolves both to lengths at layout and picks the larger), and left/top are
-// pulled back by half of whatever that floor added so the box grows symmetrically around its
-// original center instead of only toward the bottom-right. `--box-w`/`--box-h` custom properties
-// let the left/top `calc()`s below reuse the exact same `max()` result the width/height use, rather
-// than duplicating (and potentially drifting from) that expression.
-export function boxStyle(face: FaceGeometry): CSSProperties {
-  const box = expandedBox(face)
-  const leftPct = (box.x1 / face.image_width) * 100
-  const topPct = (box.y1 / face.image_height) * 100
-  const widthPct = ((box.x2 - box.x1) / face.image_width) * 100
-  const heightPct = ((box.y2 - box.y1) / face.image_height) * 100
+// at any zoom/pan state. No pixel floor here (there used to be one, MIN_BOX_PX - removed together
+// with this setting: it broke symmetry for small boxes and made a growthFactor of 1.0 not actually
+// mean "the raw detection box" for them) - a box too small to tap comfortably is handled by
+// AssetPhoto's own zoom/pan instead.
+export function boxStyle(face: FaceGeometry, growthFactor: number): CSSProperties {
+  const box = expandedBox(face, growthFactor)
   return {
-    "--box-w": `max(${widthPct}%, ${MIN_BOX_PX}px)`,
-    "--box-h": `max(${heightPct}%, ${MIN_BOX_PX}px)`,
-    width: "var(--box-w)",
-    height: "var(--box-h)",
-    left: `calc(${leftPct}% - (var(--box-w) - ${widthPct}%) / 2)`,
-    top: `calc(${topPct}% - (var(--box-h) - ${heightPct}%) / 2)`,
-  } as CSSProperties
+    left: `${(box.x1 / face.image_width) * 100}%`,
+    top: `${(box.y1 / face.image_height) * 100}%`,
+    width: `${((box.x2 - box.x1) / face.image_width) * 100}%`,
+    height: `${((box.y2 - box.y1) / face.image_height) * 100}%`,
+  }
 }

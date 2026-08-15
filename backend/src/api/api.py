@@ -12,18 +12,23 @@ from uuid import UUID
 import httpx
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response
 from pydantic import ValidationError
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from api.admin_api import router as admin_router
 from api.admin_daily_api import router as admin_daily_router
 from api.admin_games_api import router as admin_games_router
 from api.admin_invites_api import router as admin_invites_router
+from api.admin_workers_api import router as admin_workers_router
 from api.auth_api import get_current_user
 from api.auth_api import router as auth_router
 from api.daily_api import router as daily_router
-from api.deps import get_games_service, get_immich_service, get_scores_service
+from api.deps import get_db_session, get_games_service, get_immich_service, get_scores_service
 from api.dto.albums import AlbumSearchOut
 from api.dto.common import CreateGameIn, CurrentGameOut, GameOut, PlayRoundOut, RecentGamesOut, parse_guess
 from api.dto.config import ConfigOut
+from api.dto.health import HealthOut
 from api.dto.leaderboard import LeaderboardOut, LeaderboardWindow
 from api.dto.persons import PersonSearchOut
 from api.dto.records import GameRecordsOut
@@ -40,7 +45,20 @@ router.include_router(admin_router)
 router.include_router(admin_games_router)
 router.include_router(admin_daily_router)
 router.include_router(admin_invites_router)
+router.include_router(admin_workers_router)
 router.include_router(daily_router)
+
+
+@router.get("/health", response_model=HealthOut)
+def health_check(session: Annotated[Session, Depends(get_db_session)]) -> HealthOut:
+    # Allow-listed in auth_middleware.py (Docker's healthcheck request carries no session cookie).
+    # Checks only this app's own DB, not Immich's - mixing the two would make this container
+    # report unhealthy for a problem that isn't its own.
+    try:
+        session.execute(text("SELECT 1"))
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="database unavailable") from exc
+    return HealthOut(status="ok")
 
 
 @router.get("/config", response_model=ConfigOut)

@@ -311,8 +311,12 @@
         "starting_score": "Puntaje inicial",
         "wrong_guess_penalty": "Penalización por error",
         "asset_count_weight": "Peso de la cantidad de fotos (0 = uniforme, 1 = proporcional)",
+        "require_birth_date": "El misterioso debe tener fecha de nacimiento",
         "total_people": "Personas totales",
         "max_hidden_faces": "Caras ocultas máximas por ronda",
+        "streak_scoring_off": "Puntaje lineal",
+        "streak_scoring_on": "Puntaje por racha",
+        "face_box_growth": "Crecimiento de las cajas de caras (1.0-1.5)",
         "tolerance_days": "Tolerancia de hueco (días)",
         "min_separation_days": "Separación mínima entre cartas (días)",
         "max_cards": "Cartas máximas (0 = sin límite)"
@@ -341,6 +345,29 @@
       "createdAt": "Creada {{date}}",
       "expiresAt": "Expira {{date}}",
       "usedAt": "Usada {{date}}"
+    },
+    "workers": {
+      "title": "Caché de embeddings",
+      "description": "Recalcula los cachés de similitud de caras/álbumes que usan Persondle y Albumdle",
+      "loading": "Cargando cobertura...",
+      "persons": "Personas",
+      "albums": "Álbumes",
+      "coverage": "{{cached}} / {{total}} en caché",
+      "processMissing": "Procesar faltantes",
+      "reprocessAll": "Reprocesar todo",
+      "includeIneligible": "Incluir sin nombre / ocultas",
+      "cancel": "Cancelar",
+      "progress": "{{processed}} / {{total}}",
+      "progressWithFailed": "{{processed}} / {{total}} ({{failed}} fallidas)",
+      "entityLabel": {
+        "person": "Personas",
+        "album": "Álbumes"
+      },
+      "scopeLabel": {
+        "missing": "procesando faltantes",
+        "all": "reprocesando todo"
+      },
+      "failed": "El job falló: {{error}}"
     }
   }
 }

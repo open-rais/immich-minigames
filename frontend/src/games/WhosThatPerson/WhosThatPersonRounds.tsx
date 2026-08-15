@@ -16,6 +16,7 @@ import { SegmentedControl } from "../shared/SegmentedControl"
 import { useRoundStepper } from "../shared/useRoundStepper"
 import type { FaceBoxMode } from "./FaceBoxReadOnly"
 import { FaceBoxReadOnly } from "./FaceBoxReadOnly"
+import { DEFAULT_FACE_BOX_GROWTH } from "./faceBoxMath"
 
 function isWhosThatPersonRound(round: RoundOut): round is WhosThatPersonRoundOut {
   return round.game_type === GameType.WhosThatPerson
@@ -53,7 +54,12 @@ export function WhosThatPersonRounds({ game, onBack }: RoundsComponentProps) {
           overlay={
             <>
               {round.faces.map((face) => (
-                <FaceBoxReadOnly key={face.face_id} face={face} mode={mode} />
+                <FaceBoxReadOnly
+                  key={face.face_id}
+                  face={face}
+                  mode={mode}
+                  growthFactor={game.face_box_growth ?? DEFAULT_FACE_BOX_GROWTH}
+                />
               ))}
             </>
           }

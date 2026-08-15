@@ -31,7 +31,12 @@ class TestWhosThatPersonGame:
         assert all(face.person_name for face in game.current_round.faces)
 
     def test_correct_guess_reveals_answers_and_scores_the_streak(self, immich_service):
-        game = WhosThatPersonGame.start(id=uuid4(), immich_service=immich_service, content=LiveContent(immich_service))
+        game = WhosThatPersonGame.start(
+            id=uuid4(),
+            immich_service=immich_service,
+            content=LiveContent(immich_service),
+            settings={"streak_scoring": 1},
+        )
         first_round = game.current_round
         n = len(first_round.faces)
 
@@ -41,6 +46,16 @@ class TestWhosThatPersonGame:
         assert result.score == result.score_delta
         assert first_round.correct is True
         assert first_round.ending_streak == n
+
+    def test_correct_guess_scores_flat_count_by_default(self, immich_service):
+        game = WhosThatPersonGame.start(id=uuid4(), immich_service=immich_service, content=LiveContent(immich_service))
+        first_round = game.current_round
+        n = len(first_round.faces)
+
+        result = game.play_round(_correct_guess(first_round))
+
+        assert result.score_delta == n
+        assert result.score == result.score_delta
 
     def test_wrong_guess_scores_less_and_does_not_end_the_game(self, immich_service):
         # A single round's faces never reach the 15-person budget on their own (max 5 < 15), so a
@@ -158,10 +173,26 @@ class TestWhosThatPersonAdminSettings:
         assert game.finished is True
         assert sum(len(r.faces) for r in game.rounds) == 3
 
+    def test_face_box_growth_override_is_reflected_live(self, immich_service):
+        overridden = WhosThatPersonGame.start(
+            id=uuid4(),
+            immich_service=immich_service,
+            content=LiveContent(immich_service),
+            settings={"face_box_growth": 1.5},
+        )
+        default = WhosThatPersonGame.start(
+            id=uuid4(), immich_service=immich_service, content=LiveContent(immich_service)
+        )
+
+        assert overridden.face_box_growth == 1.5
+        assert default.face_box_growth == 1.3
+
 
 class TestWhosThatPersonRoundScoring:
     """Isolated from the DB - constructs rounds/faces directly to deterministically exercise the
-    streak math, same style as test_more_or_less_game.py's TestMoreOrLessRoundTieScoring."""
+    combo-streak scoring math (streak_scoring=1), same style as test_more_or_less_game.py's
+    TestMoreOrLessRoundTieScoring. See TestWhosThatPersonRoundFlatScoring for the streak_scoring=0
+    default."""
 
     def _face(self) -> HiddenFace:
         return HiddenFace(
@@ -191,13 +222,13 @@ class TestWhosThatPersonRoundScoring:
     def test_all_correct_advances_streak_by_face_count(self):
         round_ = self._round([True, True, True])
 
-        assert round_.calculate_score() == 1 + 2 + 3
+        assert round_.calculate_score({"streak_scoring": 1}) == 1 + 2 + 3
         assert round_.ending_streak == 3
 
     def test_all_correct_continues_the_incoming_streak(self):
         round_ = self._round([True, True], incoming_streak=2)
 
-        assert round_.calculate_score() == 3 + 4
+        assert round_.calculate_score({"streak_scoring": 1}) == 3 + 4
         assert round_.ending_streak == 4
 
     def test_any_miss_resets_the_streak_before_scoring_the_rounds_own_hits(self):
@@ -205,7 +236,7 @@ class TestWhosThatPersonRoundScoring:
         # hits only get to build a *new* streak from 0, not extend the incoming one.
         round_ = self._round([True, False, True], incoming_streak=5)
 
-        assert round_.calculate_score() == 1 + 0 + 1
+        assert round_.calculate_score({"streak_scoring": 1}) == 1 + 0 + 1
         assert round_.ending_streak == 1
 
     def test_worked_example_from_design_doc_as_one_grouped_round(self):
@@ -215,13 +246,13 @@ class TestWhosThatPersonRoundScoring:
         # streak resets to 0 at the miss either way.
         round_ = self._round([True, True, True, False, True, True])
 
-        assert round_.calculate_score() == 1 + 2 + 3 + 0 + 1 + 2
+        assert round_.calculate_score({"streak_scoring": 1}) == 1 + 2 + 3 + 0 + 1 + 2
         assert round_.ending_streak == 2
 
     def test_all_wrong_scores_zero_and_resets(self):
         round_ = self._round([False, False], incoming_streak=4)
 
-        assert round_.calculate_score() == 0
+        assert round_.calculate_score({"streak_scoring": 1}) == 0
         assert round_.ending_streak == 0
 
     def test_correct_property_reflects_every_face(self):
@@ -237,3 +268,63 @@ class TestWhosThatPersonRoundScoring:
         round_ = WhosThatPersonRound(id=uuid4(), game_id=uuid4(), round_index=1, asset_id=uuid4(), faces=[self._face()])
 
         assert round_.correct is None
+
+
+class TestWhosThatPersonRoundFlatScoring:
+    """Same vectors as TestWhosThatPersonRoundScoring, but exercising the flat-count default
+    (streak_scoring=0/absent) instead of the combo streak."""
+
+    def _face(self) -> HiddenFace:
+        return HiddenFace(
+            face_id=uuid4(),
+            person_id=uuid4(),
+            person_name="Someone",
+            image_width=100,
+            image_height=100,
+            bounding_box_x1=0,
+            bounding_box_y1=0,
+            bounding_box_x2=10,
+            bounding_box_y2=10,
+        )
+
+    def _round(self, correctness: list[bool], incoming_streak: int = 0) -> WhosThatPersonRound:
+        faces = [self._face() for _ in correctness]
+        guess = {
+            face.face_id: (face.person_id if is_correct else uuid4())
+            for face, is_correct in zip(faces, correctness, strict=True)
+        }
+        round_ = WhosThatPersonRound(
+            id=uuid4(), game_id=uuid4(), round_index=1, asset_id=uuid4(), faces=faces, incoming_streak=incoming_streak
+        )
+        round_.guess = guess
+        return round_
+
+    def test_all_correct_scores_one_point_per_face(self):
+        round_ = self._round([True, True, True])
+
+        assert round_.calculate_score() == 3
+        assert round_.ending_streak == 3
+
+    def test_incoming_streak_does_not_affect_the_flat_score(self):
+        round_ = self._round([True, True], incoming_streak=2)
+
+        assert round_.calculate_score() == 2
+        assert round_.ending_streak == 4
+
+    def test_a_miss_only_costs_its_own_point(self):
+        round_ = self._round([True, False, True], incoming_streak=5)
+
+        assert round_.calculate_score({"streak_scoring": 0}) == 2
+        assert round_.ending_streak == 1
+
+    def test_worked_example_from_design_doc_as_one_grouped_round(self):
+        round_ = self._round([True, True, True, False, True, True])
+
+        assert round_.calculate_score() == 5
+        assert round_.ending_streak == 2
+
+    def test_all_wrong_scores_zero(self):
+        round_ = self._round([False, False], incoming_streak=4)
+
+        assert round_.calculate_score() == 0
+        assert round_.ending_streak == 0

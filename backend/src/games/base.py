@@ -105,6 +105,12 @@ class BaseGame(ABC):
         total_rounds above."""
         return None
 
+    @property
+    def face_box_growth(self) -> float | None:
+        """Live face-box expansion factor for WhosThatPerson - None for every other game. Same
+        rationale as total_rounds above."""
+        return None
+
     def play_round(self, guess: Any) -> PlayRoundResult:
         if self.finished:
             raise ValueError("game is already finished")

@@ -311,8 +311,12 @@
         "starting_score": "Startpunktzahl",
         "wrong_guess_penalty": "Strafe für falsche Antwort",
         "asset_count_weight": "Gewichtung der Fotanzahl (0 = einheitlich, 1 = proportional)",
+        "require_birth_date": "Die gesuchte Person muss ein Geburtsdatum haben",
         "total_people": "Gesamtanzahl der Personen",
         "max_hidden_faces": "Max verborgen Gesichter pro Runde",
+        "streak_scoring_off": "Lineare Punktzahl",
+        "streak_scoring_on": "Serienbasierte Punktzahl",
+        "face_box_growth": "Vergrößerung der Gesichtsboxen (1.0-1.5)",
         "tolerance_days": "Slot-Toleranz (Tage)",
         "min_separation_days": "Mindestabstand zwischen Karten (Tage)",
         "max_cards": "Max Karten (0 = unbegrenzt)"
@@ -341,6 +345,29 @@
       "createdAt": "Erstellt {{date}}",
       "expiresAt": "Läuft ab {{date}}",
       "usedAt": "Verwendet {{date}}"
+    },
+    "workers": {
+      "title": "Embedding-Cache",
+      "description": "Berechnet die Gesichts-/Album-Ähnlichkeits-Caches neu, die Persondle und Albumdle verwenden",
+      "loading": "Abdeckung wird geladen...",
+      "persons": "Personen",
+      "albums": "Alben",
+      "coverage": "{{cached}} / {{total}} zwischengespeichert",
+      "processMissing": "Fehlende verarbeiten",
+      "reprocessAll": "Alle neu verarbeiten",
+      "includeIneligible": "Unbenannte/ausgeblendete einschließen",
+      "cancel": "Abbrechen",
+      "progress": "{{processed}} / {{total}}",
+      "progressWithFailed": "{{processed}} / {{total}} ({{failed}} fehlgeschlagen)",
+      "entityLabel": {
+        "person": "Personen",
+        "album": "Alben"
+      },
+      "scopeLabel": {
+        "missing": "Fehlende werden verarbeitet",
+        "all": "alle werden neu verarbeitet"
+      },
+      "failed": "Job fehlgeschlagen: {{error}}"
     }
   }
 }

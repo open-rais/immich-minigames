@@ -3,6 +3,7 @@ from uuid import UUID, uuid4
 
 import pytest
 
+from domain.person import Person
 from games.immichdle import (
     ASSET_COUNT_WEIGHT_EXPONENT,
     DuplicateGuessError,
@@ -11,6 +12,10 @@ from games.immichdle import (
     PersonSnapshot,
     _compute_person_clues,
 )
+
+
+def _fake_person(*, birth_date: date | None = None) -> Person:
+    return Person(id=uuid4(), name="Someone", birth_date=birth_date, asset_count=1)
 
 
 def _wrong_person_id(immich_service, game: PersondleGame) -> UUID:
@@ -148,6 +153,49 @@ class TestPersondleAdminSettings:
         PersondleGame.start(id=uuid4(), immich_service=immich_service)
 
         assert calls[0]["asset_count_weight"] == ASSET_COUNT_WEIGHT_EXPONENT
+
+    def test_require_birth_date_filters_only_the_target_selection_call(self, immich_service, monkeypatch):
+        # With the setting active, start() makes two calls (target + alternative-exists check) -
+        # only the first should carry with_birthdate.
+        calls = self._spy_on_target_selection_call(immich_service, monkeypatch)
+
+        PersondleGame.start(id=uuid4(), immich_service=immich_service, settings={"require_birth_date": 1})
+
+        assert calls[0]["with_birthdate"] is True
+        assert calls[1].get("with_birthdate") is None
+
+    def test_require_birth_date_off_by_default_does_not_filter(self, immich_service, monkeypatch):
+        calls = self._spy_on_target_selection_call(immich_service, monkeypatch)
+
+        PersondleGame.start(id=uuid4(), immich_service=immich_service)
+
+        assert "with_birthdate" not in calls[0]
+
+    def test_no_person_with_a_birth_date_raises_a_specific_error(self, immich_service, monkeypatch):
+        monkeypatch.setattr(immich_service, "get_persons", lambda **kwargs: [])
+
+        with pytest.raises(ValueError, match="require_birth_date is enabled"):
+            PersondleGame.start(id=uuid4(), immich_service=immich_service, settings={"require_birth_date": 1})
+
+    def test_one_person_with_a_birth_date_still_starts_if_a_named_alternative_exists(
+        self, immich_service, monkeypatch
+    ):
+        # The key edge case this setting has to get right: the requirement is "the target has a
+        # birth date", not "two people with a birth date exist" - a single named person with a
+        # birth date plus any other named person (with or without one) is enough to start.
+        target_with_birthdate = _fake_person(birth_date=date(1990, 1, 1))
+
+        def fake_get_persons(**kwargs):
+            if kwargs.get("with_birthdate"):
+                return [target_with_birthdate]
+            return [_fake_person(), _fake_person()]
+
+        monkeypatch.setattr(immich_service, "get_persons", fake_get_persons)
+        monkeypatch.setattr(immich_service, "get_person_first_asset_date", lambda person_id: None)
+
+        game = PersondleGame.start(id=uuid4(), immich_service=immich_service, settings={"require_birth_date": 1})
+
+        assert game.target.id == target_with_birthdate.id
 
 
 class TestComputePersonClues:

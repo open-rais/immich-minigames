@@ -158,18 +158,42 @@ This went through three designs, in order:
    without paying the cross-join cost on every comparison.
 
 **The cache**: `minigames.person_face_embedding_cache` (`persistence/ml_cache.py`) — `person_id`
-(PK), `embedding vector(512)`, `face_count`, `computed_at`. Lives in this app's own database, not
-Immich's: Immich's database is read-only for this app's DB role (see "The scoped DB role" above),
-so a cache this app writes to has nowhere to go but its own database, even though the embeddings
-it's built from are read from Immich's `face_search`. This is also why the `vector` extension now
-has to be installed in **both** databases — `scripts/bootstrap_db_role.py` runs `CREATE EXTENSION
-IF NOT EXISTS vector` in the app's own database too now (Immich's already had it, for
-`face_search`/`smart_search`).
+(PK), `embedding vector(512)`, `face_count`, `embedding_count`, `computed_at`. Lives in this app's
+own database, not Immich's: Immich's database is read-only for this app's DB role (see "The scoped
+DB role" above), so a cache this app writes to has nowhere to go but its own database, even though
+the embeddings it's built from are read from Immich's `face_search`. This is also why the `vector`
+extension now has to be installed in **both** databases — `scripts/bootstrap_db_role.py` runs
+`CREATE EXTENSION IF NOT EXISTS vector` in the app's own database too now (Immich's already had it,
+for `face_search`/`smart_search`).
 
 **Freshness** is deliberately cheap, not exact: a cached row is considered stale (and recomputed)
 whenever `face_count` no longer matches that person's current count of visible, non-deleted
 `asset_face` rows. Swapping one face for another without changing the total count is not detected
-- accepted imprecision for now (confirmed with the project owner).
+- accepted imprecision, and part of why "reprocess all" (the admin embedding worker, roadmap #15,
+below) exists: a merge/split can change *which* faces belong to a person without changing how many,
+leaving a cached embedding silently wrong until someone forces a full recompute.
+
+**Incremental update** (roadmap #15, migration `0013`): a stale row isn't always fully recomputed.
+`person_face_embedding_cache.embedding_count` tracks how many vectors actually went into the cached
+average - a different number from `face_count`'s "something changed" fingerprint - and `computed_at`
+(`timestamptz`) is the watermark that average is valid *as of*, taken from Immich's own `now()`
+before any vector is read (not the app database's clock - the two are compared across different
+Postgres instances, so a naive timestamp or the wrong server's clock would have no defined meaning).
+When a row goes stale, `MLService` first checks whether every currently-visible face that existed as
+of that watermark (`asset_face.updatedAt <= computed_at`) still adds up to `embedding_count`; if so,
+only the faces added since need averaging, and their average is folded into the cached one with a
+count-weighted mean (`merge_weighted_average`, `services/ml_service.py`) - mathematically exact, not
+an approximation, since the mean of a union of two disjoint sets equals the count-weighted mean of
+their own means.
+
+Both directions the watermark could be wrong resolve to a full recompute, never a wrong result: a
+face that really was part of the old average but looks "new" (watermark too early), or one that
+wasn't but looks "old" (watermark too late), both break the `embedding_count` match and fall back.
+A face that was *edited* rather than added also moves its `updatedAt` forward, making it
+indistinguishable from a removal here - same fallback, which is exactly what keeps it from being
+folded in twice. `force=True` (`compute_person_embedding`/"reprocess all") always skips straight to
+a full recompute - the only thing that resets the float rounding error a long chain of incremental
+merges accumulates (negligible next to the clue's comparison thresholds, but non-zero).
 
 ## Album similarity (Albumdle, roadmap #14)
 
@@ -189,12 +213,25 @@ The one query-level difference: `album_asset` rows outlive Immich's soft-delete 
 since `asset_face` rows are pruned independently via their own `deletedAt`/`isVisible` columns.
 
 **The cache**: `minigames.album_embedding_cache` (`persistence/album_ml_cache.py`) - `album_id` (PK),
-`embedding vector(512)`, `asset_count`, `computed_at`. Same rationale for living in this app's own
-database as the face cache above, reusing that module's hand-rolled `Vector` SQLAlchemy type rather
-than duplicating it.
+`embedding vector(512)`, `asset_count`, `embedding_count`, `computed_at`. Same rationale for living
+in this app's own database as the face cache above, reusing that module's hand-rolled `Vector`
+SQLAlchemy type rather than duplicating it.
 
 **Freshness** mirrors the face cache's own cheap-not-exact contract, substituting the album's current
 raw `album_asset` row count for `face_count` as the staleness fingerprint.
+
+**Incremental update**: same mechanism as the face cache above - `embedding_count`/`computed_at`
+watermark, `merge_weighted_average` - substituting `album_asset` for `asset_face`. Unlike the face
+cache, `album_embedding_cache.embedding_count` is nullable: it isn't the same number as
+`asset_count` (the average only counts *eligible* assets with a `smart_search` row, `asset_count` is
+every `album_asset` row), so a row from before migration `0013` has no way to know its true value -
+`NULL` means exactly that, and forces one full recompute before the incremental path can ever apply
+to that album. One gap the incremental update does **not** close, and isn't meant to: an asset can
+become ineligible (archived, soft-deleted) without ever touching `album_asset` -
+`deletedAt`/`status` live on `asset`, not on the join table. Neither the plain fingerprint nor the
+incremental watermark notices that, so a removed asset's contribution lingers in the cached average
+until "reprocess all" forces a full recompute - the same accepted imprecision the fingerprint always
+had, not a regression the incremental path introduced.
 
 ## Dev instance
 

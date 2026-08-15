@@ -1,7 +1,7 @@
 """WhosThatPersonRound - a single blacked-out-faces round, its frozen face snapshots, and the
-combo-streak scoring math that only the round itself needs. See games/whos_that_person/game.py for
-the loop that drives rounds and games/whos_that_person/content.py for where a round's photo/faces
-come from."""
+scoring math (flat count or combo streak, admin-selectable via the streak_scoring setting) that only
+the round itself needs. See games/whos_that_person/game.py for the loop that drives rounds and
+games/whos_that_person/content.py for where a round's photo/faces come from."""
 
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -107,10 +107,11 @@ class WhosThatPersonRound(BaseRound):
         return self._streak_after_each_face()[-1]
 
     def calculate_score(self, settings: Mapping[str, float] | None = None) -> int:
-        # No admin-configurable knob affects this game's scoring (only its length, see
-        # WhosThatPersonGame's total_people/_max_hidden_faces) - settings is accepted only to
-        # satisfy BaseRound's shared signature.
-        return sum(self._streak_after_each_face())
+        # streak_scoring (admin-configurable, default 0/off) picks between the two scoring modes:
+        # flat count (1 point per correct face) or the combo streak below.
+        if (settings or {}).get("streak_scoring", 0):
+            return sum(self._streak_after_each_face())
+        return sum(self.results)
 
     def to_payload(self) -> dict[str, Any]:
         return {

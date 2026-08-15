@@ -85,6 +85,9 @@ export interface GameOut {
   // games/shared/useRoundGame.ts's GameState).
   total_rounds?: number | null
   total_people?: number | null
+  // Same rationale as total_rounds/total_people above, but purely visual (WhosThatPerson's face-box
+  // expansion factor, 1.0-1.5) - null for every other game.
+  face_box_growth?: number | null
   // Set only for a daily-challenge game, null for every normal game. Lets the
   // frontend recognize a resumed/loaded game as a daily one after a page reload (see
   // games/shared/useRoundGame.ts).

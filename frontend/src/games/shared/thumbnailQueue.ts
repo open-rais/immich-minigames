@@ -89,6 +89,22 @@ function getQueuedThumbnail(url: string): Promise<CacheEntry> {
   return promise
 }
 
+// Fire-and-forget warm-up for a url the player hasn't navigated to yet (AssetCarousel.tsx's other
+// photos in the current round). Only the concurrency/dedup machinery below matters here, not the
+// resolved value: this primes the browser's own HTTP cache for `url` - AssetPhoto.tsx renders a
+// plain `<img src>`, never this module's cached blob, so a later real navigation there benefits
+// only if the underlying HTTP response is already cached, not from anything stored in `cache`
+// above. No subscribe() - nothing is mounted yet to notify.
+export function prefetchThumbnail(url: string): void {
+  if (cache.has(url)) {
+    return
+  }
+  getQueuedThumbnail(url).catch(() => {
+    // Not user-facing - if the player actually navigates here, useQueuedThumbnail's own fetch
+    // retries and surfaces its own failed state then.
+  })
+}
+
 // Fire-and-forget background refresh of an already-cached, stale entry. A no-op if one is already
 // running (the initial fetch, or a previous revalidation still in flight) - `getQueuedThumbnail`'s
 // dedupe covers that, this just avoids scheduling a redundant call.

@@ -27,8 +27,8 @@ const SIZE_CLASS: Record<TimelineCardSize, string> = {
 
 // Two lines (month/day, then year) - tall/large enough to read comfortably at the bigger card size.
 const DATE_STRIP_CLASS: Record<TimelineCardSize, string> = {
-  md: "h-12 text-sm md:h-14 md:text-base",
-  sm: "h-11 text-xs md:h-12 md:text-sm",
+  md: "h-12 text-base md:h-14 md:text-lg",
+  sm: "h-11 text-sm md:h-12 md:text-base",
 }
 
 const VARIANT_BORDER: Record<TimelineCardVariant, string> = {

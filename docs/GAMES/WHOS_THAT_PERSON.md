@@ -21,10 +21,12 @@ of the person they think is there.
 
 - `has_next_round()`: a new round is created while questions remain under the 15th person
   (`round_index < 15`); on the 15th round, the game ends.
-- `calculate_score()`: combo-style accumulated scoring—each correct guess adds the current streak value
-  (which grows by 1 for each consecutive correct guess, starting at 1); a wrong guess resets the streak
-  to 0 and adds no points that round (but doesn't subtract previously earned points). Example with 6 rounds
-  (correct-correct-correct-wrong-correct-correct): +1, +2, +3, +0, +1, +2 → final score 9.
+- `calculate_score()`: two modes, picked by the admin-configurable `streak_scoring` setting.
+  - **Flat count (default)**: 1 point per correctly guessed face, no streak involved.
+  - **Combo streak (opt-in)**: each correct guess adds the current streak value (which grows by 1 for
+    each consecutive correct guess, starting at 1); a wrong guess resets the streak to 0 and adds no
+    points that round (but doesn't subtract previously earned points). Example with 6 rounds
+    (correct-correct-correct-wrong-correct-correct): +1, +2, +3, +0, +1, +2 → final score 9.
 
 ## Daily
 

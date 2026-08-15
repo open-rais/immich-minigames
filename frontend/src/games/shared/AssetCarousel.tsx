@@ -1,8 +1,9 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 
 import { assetThumbnailUrl } from "../../api/games"
 import { AssetPhoto } from "./AssetPhoto"
+import { prefetchThumbnail } from "./thumbnailQueue"
 
 // Round-scoped photo browser: however many extra photos the round carries (each game caps this
 // itself, e.g. games/geoguessr/game.py's/games/dateguessr/game.py's MAX_EXTRA_ASSETS), main
@@ -18,6 +19,19 @@ export function AssetCarousel({ assetIds, alt }: { assetIds: string[]; alt: stri
   const isLast = index === assetIds.length - 1
   const goPrev = () => setIndex((i) => Math.max(i - 1, 0))
   const goNext = () => setIndex((i) => Math.min(i + 1, assetIds.length - 1))
+
+  // Warms the browser's HTTP cache for every other photo in the round while the player looks at
+  // index 0 (this component always mounts with a fresh `key={round.id}`, so index really is 0 at
+  // this point) - by the time they flip to it, AssetPhoto's own <img> load resolves instantly
+  // instead of showing a spinner. Index 0 itself is deliberately skipped: its own AssetPhoto
+  // already requests it directly, and prefetching it too would just race that request for the
+  // same resource. Runs once per round, not on every arrow click - assetIds is the only dependency.
+  useEffect(() => {
+    assetIds.forEach((assetId, i) => {
+      if (i === 0) return
+      prefetchThumbnail(assetThumbnailUrl(assetId))
+    })
+  }, [assetIds])
 
   return (
     <div className="relative h-full w-full">

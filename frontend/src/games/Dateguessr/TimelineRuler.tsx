@@ -227,6 +227,21 @@ export function TimelineRuler({
     [i18n.language],
   )
 
+  // Full "day month year" label for the selected-date badge below - same UTC-parse convention as
+  // TimelineCard.tsx's date strip, so a selected ISO date reads as the calendar day it represents
+  // regardless of the player's own timezone.
+  const selectedDateFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat(i18n.language, {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        timeZone: "UTC",
+      }),
+    [i18n.language],
+  )
+  const selectedDateLabel = selected ? selectedDateFormatter.format(new Date(selected)) : null
+
   const ticks = useMemo<Tick[]>(
     () => buildTicks(pxPerDay, centerDayIndex, containerWidth, monthFormatter),
     [pxPerDay, centerDayIndex, containerWidth, monthFormatter],
@@ -288,6 +303,13 @@ export function TimelineRuler({
         className={`fixed bottom-0 left-0 right-0 z-20 ${RULER_HEIGHT_CLASS} touch-none overflow-hidden border-t border-line bg-surface shadow-card select-none`}
       >
         <div className="relative h-full w-full">
+          {selectedDateLabel && (
+            <div className="pointer-events-none absolute top-2 left-3 z-10 rounded-full bg-badge-bg px-3 py-1 shadow-card md:top-3 md:left-4">
+              <span className="font-mono text-[11px] font-bold whitespace-nowrap text-badge-label md:text-[13px]">
+                {selectedDateLabel}
+              </span>
+            </div>
+          )}
           {ticks.map((tick) => (
             <div
               key={`${tick.kind}-${tick.dayIndex}`}
@@ -298,10 +320,10 @@ export function TimelineRuler({
                 <span
                   className={`absolute mb-1 -translate-x-1/2 whitespace-nowrap font-mono text-faint pointer-events-none ${
                     tick.kind === "year"
-                      ? "text-xs font-bold text-body"
+                      ? "text-sm font-bold text-body"
                       : tick.kind === "month"
-                        ? "text-[11px]"
-                        : "text-[9px]"
+                        ? "text-[15px]"
+                        : "text-[13px]"
                   }`}
                   style={{ bottom: "100%" }}
                 >

@@ -5,6 +5,7 @@ import { GeoJSONSource, LngLatBounds, MapLibreMap, Marker } from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css"
 
 import { useTheme } from "../../theme/useTheme"
+import { antimeridianSafeLngLats, effectiveMaxZoom } from "./mapCameraMath"
 import { buildGeoguessrMapStyle } from "./mapStyle"
 
 // Matches Tailwind's `md:` breakpoint - same convention MoreOrLessGame.tsx uses to distinguish
@@ -18,6 +19,12 @@ const GUESS_MARKER_COLOR = { light: "#3055b6", dark: "#a5c9ff" }
 // identical in both themes (already proven legible on a dark surface there), no dark variant.
 const ACTUAL_MARKER_COLOR = "#e11d48"
 const REVEAL_LINE_SOURCE_ID = "geoguessr-reveal-line"
+
+// Post-reveal camera fit (see fitToBounds below) - starting points, tune against a real map if
+// they look too tight/loose in practice.
+const BASE_MAX_ZOOM = 16 // used when the guess isn't especially close - replaces the old flat 6
+const ABSOLUTE_MAX_ZOOM = 20 // hard ceiling, even the closest guess never zooms past this
+const MIN_PIN_SEPARATION_PX = 100 // target on-screen gap effectiveMaxZoom tries to guarantee
 
 type LatLng = { lat: number; lng: number }
 
@@ -57,6 +64,19 @@ function setRevealLine(map: MapLibreMap, guess: LatLng, actual: LatLng) {
     source: REVEAL_LINE_SOURCE_ID,
     paint: { "line-color": ACTUAL_MARKER_COLOR, "line-width": 2, "line-dasharray": [2, 2] },
   })
+}
+
+// Frames both pins with a camera fit tuned by their actual distance apart (mapCameraMath.ts) -
+// called both right when `actual` first arrives and again once the map's collapsed->expanded CSS
+// transition finishes (see handleTransitionEnd below for why running it only once, against
+// whatever size the container had at that exact instant, isn't enough).
+function fitToBounds(map: MapLibreMap, pin: LatLng, actual: LatLng) {
+  const [safePin, safeActual] = antimeridianSafeLngLats(pin, actual)
+  const bounds = new LngLatBounds()
+  bounds.extend([safePin.lng, safePin.lat])
+  bounds.extend([safeActual.lng, safeActual.lat])
+  const maxZoom = effectiveMaxZoom(pin, actual, BASE_MAX_ZOOM, ABSOLUTE_MAX_ZOOM, MIN_PIN_SEPARATION_PX)
+  map.fitBounds(bounds, { padding: 48, maxZoom, duration: 600 })
 }
 
 function removeRevealLine(map: MapLibreMap) {
@@ -113,7 +133,13 @@ export function MapPicker({
       // Ignore clicks while collapsed (mobile's first tap only expands, doesn't place a pin -
       // too imprecise at that size anyway) or while a guess isn't editable (post-submit reveal).
       if (!expandedRef.current || disabledRef.current) return
-      onPinChangeRef.current({ lat: e.lngLat.lat, lng: e.lngLat.lng })
+      // MapLibre renders repeated copies of the world when zoomed out enough (default
+      // renderWorldCopies), and a click on a copy other than the "primary" one reports a raw
+      // longitude outside [-180, 180] (e.g. -190 instead of 170) - the backend's guess schema
+      // rejects that with a 422. .wrap() normalizes it back into range without changing which
+      // real-world point it represents.
+      const wrapped = e.lngLat.wrap()
+      onPinChangeRef.current({ lat: wrapped.lat, lng: wrapped.lng })
     }
     map.on("click", handleClick)
 
@@ -181,13 +207,7 @@ export function MapPicker({
 
       if (pin) {
         setRevealLine(map!, pin, actual)
-        // LngLatBounds's constructor expects its two args pre-sorted (sw, ne) - building it via
-        // .extend() from two arbitrary points instead avoids passing them in the wrong order,
-        // which produces an inverted/invalid box and makes fitBounds jump to a bogus view.
-        const bounds = new LngLatBounds()
-        bounds.extend([pin.lng, pin.lat])
-        bounds.extend([actual.lng, actual.lat])
-        map!.fitBounds(bounds, { padding: 48, maxZoom: 6, duration: 600 })
+        fitToBounds(map!, pin, actual)
       }
     }
 
@@ -214,6 +234,13 @@ export function MapPicker({
     if (e.target !== e.currentTarget) return
     if (e.propertyName !== "width" && e.propertyName !== "height") return
     mapRef.current?.resize()
+    // resize() keeps whatever center/zoom fitToBounds last computed - against whatever size the
+    // container had *then*, which for the collapsed->expanded transition (the common case: a
+    // reveal forces expansion in the same render `actual` first arrives) was still the collapsed
+    // 128-160px box. Re-running it now, against the container's real just-settled size, is the
+    // actual fix. Also fires on collapse (same CSS transition, both directions) - harmless, nobody
+    // can tell the framing apart at 128px, and the next expand corrects it again.
+    if (mapRef.current && pin && actual) fitToBounds(mapRef.current, pin, actual)
   }
 
   // Tap-outside-to-collapse on mobile - a document-level listener active only while expanded (and

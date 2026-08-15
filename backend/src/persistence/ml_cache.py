@@ -11,12 +11,28 @@ Freshness is deliberately cheap, not exact: a cached row is considered stale (an
 whenever `face_count` no longer matches that person's current count of visible, non-deleted
 `asset_face` rows. Swapping one face for another without changing the total count is not detected
 - accepted imprecision.
+
+`embedding_count` is a second, distinct number: how many vectors actually went into `embedding`
+(today always equal to `face_count` for persons, kept as its own column mainly so the two tables
+sharing this shape stay structurally identical - see album_ml_cache.py, where the two numbers
+genuinely differ). It's the denominator MLService's incremental update needs when folding newly
+added faces into the existing average rather than recomputing it from scratch.
+
+`computed_at` is not "when this row was written" - it's the watermark the average is valid *as of*:
+taken before any vector was read for this computation, so a face added after that instant is safe
+to treat as "not yet counted" even if the write itself lands a moment later. A watermark taken too
+early or too late only ever pushes MLService toward a full recompute instead of the incremental
+path (wasteful but correct) - it never causes a face to be folded into the average twice or left
+out of one that claims to include it. Timezone-aware (`timestamptz`, not the original bare
+`timestamp`) because it's compared against Immich's own `asset_face.updatedAt`, on an entirely
+different Postgres instance - a naive timestamp has no well-defined meaning across two servers.
 """
 
 from datetime import datetime
 from uuid import UUID
 
 import sqlalchemy as sa
+from sqlalchemy import DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 
 from persistence.base import Base
@@ -71,4 +87,5 @@ class PersonFaceEmbeddingCacheModel(Base):
     person_id: Mapped[UUID] = mapped_column(primary_key=True)
     embedding: Mapped[list[float]] = mapped_column(Vector(EMBEDDING_DIM))
     face_count: Mapped[int]
-    computed_at: Mapped[datetime] = mapped_column(server_default=sa.func.now())
+    embedding_count: Mapped[int]
+    computed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=sa.func.now())

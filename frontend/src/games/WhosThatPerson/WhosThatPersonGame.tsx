@@ -14,6 +14,7 @@ import { RevealResultCard } from "../shared/RevealResultCard"
 import { RoundBadge } from "../shared/RoundBadge"
 import { ScoreBadge } from "../shared/ScoreBadge"
 import { useRoundGame } from "../shared/useRoundGame"
+import { DEFAULT_FACE_BOX_GROWTH } from "./faceBoxMath"
 import { IncognitoPhoto } from "./IncognitoPhoto"
 
 const GAME_TYPE = GameType.WhosThatPerson
@@ -161,6 +162,7 @@ export function WhosThatPersonGame({ coverUrl, hasRoundsView, daily = false }: G
           onSelectFace={setActiveFaceId}
           onGuess={handleGuess}
           phase={phase}
+          growthFactor={game.faceBoxGrowth ?? DEFAULT_FACE_BOX_GROWTH}
         />
       </div>
 

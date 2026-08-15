@@ -311,8 +311,12 @@
         "starting_score": "Starting score",
         "wrong_guess_penalty": "Wrong guess penalty",
         "asset_count_weight": "Photo count weight (0 = uniform, 1 = proportional)",
+        "require_birth_date": "Mystery person must have a birth date",
         "total_people": "Total people",
         "max_hidden_faces": "Max hidden faces per round",
+        "streak_scoring_off": "Linear score",
+        "streak_scoring_on": "Streak-based score",
+        "face_box_growth": "Face box growth (1.0-1.5)",
         "tolerance_days": "Slot tolerance (days)",
         "min_separation_days": "Min. spread between cards (days)",
         "max_cards": "Max cards (0 = unlimited)"
@@ -341,6 +345,29 @@
       "createdAt": "Created {{date}}",
       "expiresAt": "Expires {{date}}",
       "usedAt": "Used {{date}}"
+    },
+    "workers": {
+      "title": "Embedding cache",
+      "description": "Recompute the face/album similarity caches Persondle and Albumdle use",
+      "loading": "Loading coverage...",
+      "persons": "People",
+      "albums": "Albums",
+      "coverage": "{{cached}} / {{total}} cached",
+      "processMissing": "Process missing",
+      "reprocessAll": "Reprocess all",
+      "includeIneligible": "Include unnamed/hidden",
+      "cancel": "Cancel",
+      "progress": "{{processed}} / {{total}}",
+      "progressWithFailed": "{{processed}} / {{total}} ({{failed}} failed)",
+      "entityLabel": {
+        "person": "People",
+        "album": "Albums"
+      },
+      "scopeLabel": {
+        "missing": "processing missing",
+        "all": "reprocessing all"
+      },
+      "failed": "Job failed: {{error}}"
     }
   }
 }

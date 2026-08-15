@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { BOX_EXPAND_RATIO, MIN_BOX_PX, boxStyle, expandedBox } from "./faceBoxMath"
+import { boxStyle, expandedBox } from "./faceBoxMath"
 
 // A 100x200 detection box at (50,50) inside an 800x400 image. Picked so that every percentage
 // boxStyle derives from it lands on an exactly representable value (4.375 / 5 / 16.25 / 65) - with
@@ -18,27 +18,43 @@ function face(overrides: Partial<Parameters<typeof expandedBox>[0]> = {}) {
 }
 
 describe("expandedBox", () => {
-  it("grows each side by the expand ratio of the box's own width and height", () => {
-    const box = expandedBox(face())
-    const padX = 100 * BOX_EXPAND_RATIO
-    const padY = 200 * BOX_EXPAND_RATIO
-    expect(box).toEqual({ x1: 50 - padX, y1: 50 - padY, x2: 150 + padX, y2: 250 + padY })
+  it("grows each side by half the growth factor's excess, of the box's own width and height", () => {
+    const box = expandedBox(face(), 1.3)
+    const padX = 100 * 0.15
+    const padY = 200 * 0.15
+    // toBeCloseTo, not toEqual - (1.3 - 1) / 2 isn't exactly representable in IEEE754, same reason
+    // boxStyle's own comment already accepts a long-tail percentage string for non-round factors.
+    expect(box.x1).toBeCloseTo(50 - padX, 10)
+    expect(box.y1).toBeCloseTo(50 - padY, 10)
+    expect(box.x2).toBeCloseTo(150 + padX, 10)
+    expect(box.y2).toBeCloseTo(250 + padY, 10)
   })
 
   it("scales the padding per axis, so a wide box is not padded like a tall one", () => {
-    const box = expandedBox(face())
-    expect(box.x2 - box.x1).toBeCloseTo(100 * (1 + 2 * BOX_EXPAND_RATIO), 10)
-    expect(box.y2 - box.y1).toBeCloseTo(200 * (1 + 2 * BOX_EXPAND_RATIO), 10)
+    const box = expandedBox(face(), 1.3)
+    expect(box.x2 - box.x1).toBeCloseTo(100 * 1.3, 10)
+    expect(box.y2 - box.y1).toBeCloseTo(200 * 1.3, 10)
+  })
+
+  it("at 1.0, reproduces the raw detection box exactly - no padding at all", () => {
+    const box = expandedBox(face(), 1.0)
+    expect(box).toEqual({ x1: 50, y1: 50, x2: 150, y2: 250 })
+  })
+
+  it("at 1.5, grows each side to the top of the admin-configurable range", () => {
+    const box = expandedBox(face(), 1.5)
+    expect(box.x2 - box.x1).toBeCloseTo(100 * 1.5, 10)
+    expect(box.y2 - box.y1).toBeCloseTo(200 * 1.5, 10)
   })
 
   it("never produces negative coordinates for a face against the top-left edge", () => {
-    const box = expandedBox(face({ bounding_box_x1: 0, bounding_box_y1: 0 }))
+    const box = expandedBox(face({ bounding_box_x1: 0, bounding_box_y1: 0 }), 1.3)
     expect(box.x1).toBe(0)
     expect(box.y1).toBe(0)
   })
 
   it("never runs past the image for a face against the bottom-right edge", () => {
-    const box = expandedBox(face({ bounding_box_x2: 800, bounding_box_y2: 400 }))
+    const box = expandedBox(face({ bounding_box_x2: 800, bounding_box_y2: 400 }), 1.3)
     expect(box.x2).toBe(800)
     expect(box.y2).toBe(400)
   })
@@ -51,44 +67,49 @@ describe("expandedBox", () => {
         bounding_box_x2: 800,
         bounding_box_y2: 400,
       }),
+      1.3,
     )
     expect(box).toEqual({ x1: 0, y1: 0, x2: 800, y2: 400 })
   })
 })
 
 describe("boxStyle", () => {
-  it("emits the exact calc() contract the CSS depends on", () => {
-    // MIN_BOX_PX is interpolated rather than hardcoded so retuning the touch-target floor doesn't
-    // fail this test - the shape of the expression is what's pinned here, not that number.
-    expect(boxStyle(face())).toEqual({
-      "--box-w": `max(16.25%, ${MIN_BOX_PX}px)`,
-      "--box-h": `max(65%, ${MIN_BOX_PX}px)`,
-      width: "var(--box-w)",
-      height: "var(--box-h)",
-      left: "calc(4.375% - (var(--box-w) - 16.25%) / 2)",
-      top: "calc(5% - (var(--box-h) - 65%) / 2)",
+  it("emits plain percentages with no pixel floor", () => {
+    // parseFloat, not a string toEqual - (1.3 - 1) / 2 isn't exactly representable in IEEE754 (see
+    // expandedBox's own test above), so the emitted string can carry a long float tail here.
+    const style = boxStyle(face(), 1.3) as Record<string, string>
+    expect(parseFloat(style.left)).toBeCloseTo(4.375, 10)
+    expect(parseFloat(style.top)).toBeCloseTo(5, 10)
+    expect(parseFloat(style.width)).toBeCloseTo(16.25, 10)
+    expect(parseFloat(style.height)).toBeCloseTo(65, 10)
+  })
+
+  it("at 1.0, the box exactly matches the detection box - no growth applied", () => {
+    expect(boxStyle(face(), 1.0)).toEqual({
+      left: "6.25%",
+      top: "12.5%",
+      width: "12.5%",
+      height: "50%",
     })
   })
 
-  it("reuses the --box-w/--box-h custom properties in the offset calc()s", () => {
-    // The whole reason those custom properties exist: left/top must resolve the same max() that
-    // width/height do, instead of repeating the expression and drifting from it.
-    const style = boxStyle(face()) as Record<string, string>
-    expect(style.left).toContain("var(--box-w)")
-    expect(style.top).toContain("var(--box-h)")
-    expect(style.left).not.toContain("max(")
-    expect(style.top).not.toContain("max(")
+  it("at 1.5, grows to the top of the admin-configurable range", () => {
+    expect(boxStyle(face(), 1.5)).toEqual({
+      left: "3.125%",
+      top: "0%",
+      width: "18.75%",
+      height: "75%",
+    })
   })
 
   it("measures percentages against the detection resolution, not a fixed one", () => {
     // Same pixel box, image reported at half the width: every horizontal percentage doubles, and
     // the vertical axis is untouched.
-    const wide = boxStyle(face()) as Record<string, string>
-    const narrow = boxStyle(face({ image_width: 400 })) as Record<string, string>
-    expect(wide["--box-w"]).toBe(`max(16.25%, ${MIN_BOX_PX}px)`)
-    expect(narrow["--box-w"]).toBe(`max(32.5%, ${MIN_BOX_PX}px)`)
-    expect(narrow.left).toBe("calc(8.75% - (var(--box-w) - 32.5%) / 2)")
-    expect(narrow["--box-h"]).toBe(wide["--box-h"])
+    const wide = boxStyle(face(), 1.3)
+    const narrow = boxStyle(face({ image_width: 400 }), 1.3)
+    expect(narrow.width).toBe("32.5%")
+    expect(narrow.left).toBe("8.75%")
+    expect(narrow.height).toBe(wide.height)
     expect(narrow.top).toBe(wide.top)
   })
 })
