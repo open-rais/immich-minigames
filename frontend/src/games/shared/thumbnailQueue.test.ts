@@ -71,9 +71,9 @@ afterEach(() => {
 
 async function freshEnv() {
   vi.resetModules()
-  const { useQueuedThumbnail } = await import("./thumbnailQueue")
+  const { useQueuedThumbnail, prefetchThumbnail } = await import("./thumbnailQueue")
   const rtl = await import("@testing-library/react")
-  return { useQueuedThumbnail, ...rtl }
+  return { useQueuedThumbnail, prefetchThumbnail, ...rtl }
 }
 
 // The still-unsettled request for a url - a revalidation is a second entry for the same url, so
@@ -292,5 +292,42 @@ describe("no url", () => {
 
     expect(result.current).toEqual({ url: null, failed: false })
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
+describe("prefetchThumbnail", () => {
+  it("fetches an uncached url", async () => {
+    const env = await freshEnv()
+    env.prefetchThumbnail("a")
+
+    await env.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    expect(fetchMock.mock.calls[0][0]).toBe("a")
+  })
+
+  it("does nothing for a url already resolved in cache", async () => {
+    const env = await freshEnv()
+    const first = env.renderHook(() => env.useQueuedThumbnail("a"))
+    await env.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    await env.act(async () => {
+      settleFor("a")
+    })
+    first.unmount()
+
+    env.prefetchThumbnail("a")
+    await env.act(async () => {})
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not throw or leave an unhandled rejection when the fetch fails", async () => {
+    const env = await freshEnv()
+    env.prefetchThumbnail("a")
+    await env.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+
+    await env.act(async () => {
+      pendingFor("a").reject(new Error("boom"))
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 })
