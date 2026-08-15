@@ -26,6 +26,8 @@ _ALLOW_LIST = frozenset(
         "/api/v1/auth/register",
         "/api/v1/auth/reset-password",
         "/api/v1/auth/logout",
+        # Docker's healthcheck request carries no session cookie.
+        "/api/v1/health",
     }
 )
 

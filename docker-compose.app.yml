@@ -98,7 +98,8 @@ services:
       BACKEND_HOST: backend
       BACKEND_PORT: '8000'
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
       - '${FRONTEND_PORT:-3000}:80'
     restart: unless-stopped
