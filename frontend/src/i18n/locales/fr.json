@@ -311,6 +311,7 @@
         "starting_score": "Score de départ",
         "wrong_guess_penalty": "Pénalité pour mauvaise réponse",
         "asset_count_weight": "Poids du nombre de photos (0 = uniforme, 1 = proportionnel)",
+        "require_birth_date": "La personne mystère doit avoir une date de naissance",
         "total_people": "Nombre total de personnes",
         "max_hidden_faces": "Visages cachés maximum par manche",
         "streak_scoring_off": "Score linéaire",

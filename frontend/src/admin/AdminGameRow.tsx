@@ -99,6 +99,21 @@ function SettingsForm({
               checked={values[setting.key] === 1}
               onChange={(checked) => onChange(setting.key, checked ? 1 : 0)}
             />
+          ) : setting.value_type === "bool" ? (
+            <label
+              key={setting.key}
+              htmlFor={`${idPrefix}-${setting.key}`}
+              className="flex cursor-pointer items-center gap-2.5 text-sm font-semibold text-body"
+            >
+              <input
+                id={`${idPrefix}-${setting.key}`}
+                type="checkbox"
+                checked={values[setting.key] === 1}
+                onChange={(e) => onChange(setting.key, e.target.checked ? 1 : 0)}
+                className="h-4 w-4 accent-primary"
+              />
+              {settingLabel(t, setting.key)}
+            </label>
           ) : (
             <div key={setting.key} className="flex flex-col gap-1.5">
               <label

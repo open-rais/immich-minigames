@@ -311,6 +311,7 @@
         "starting_score": "Startpunktzahl",
         "wrong_guess_penalty": "Strafe für falsche Antwort",
         "asset_count_weight": "Gewichtung der Fotanzahl (0 = einheitlich, 1 = proportional)",
+        "require_birth_date": "Die gesuchte Person muss ein Geburtsdatum haben",
         "total_people": "Gesamtanzahl der Personen",
         "max_hidden_faces": "Max verborgen Gesichter pro Runde",
         "streak_scoring_off": "Lineare Punktzahl",

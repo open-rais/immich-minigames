@@ -311,6 +311,7 @@
         "starting_score": "Starting score",
         "wrong_guess_penalty": "Wrong guess penalty",
         "asset_count_weight": "Photo count weight (0 = uniform, 1 = proportional)",
+        "require_birth_date": "Mystery person must have a birth date",
         "total_people": "Total people",
         "max_hidden_faces": "Max hidden faces per round",
         "streak_scoring_off": "Linear score",

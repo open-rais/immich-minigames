@@ -7,7 +7,7 @@ export interface GameSettingOut {
   key: string
   value: number
   default: number
-  value_type: "int" | "float"
+  value_type: "int" | "float" | "bool"
   min_value: number
   max_value: number
 }
