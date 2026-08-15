@@ -7,13 +7,14 @@ export type FaceBoxMode = "yourAnswer" | "real"
 interface FaceBoxReadOnlyProps {
   face: HiddenFaceOut
   mode: FaceBoxMode
+  growthFactor: number
 }
 
 // Read-only counterpart to IncognitoPhoto.tsx's internal FaceBox, for the rounds review -
 // same box geometry (faceBoxMath.ts), but none of that
 // component's popover/anchor/tap logic, which this doesn't need at all: just one of two static
 // end-states, chosen by the "Tu respuesta"/"Real" toggle.
-export function FaceBoxReadOnly({ face, mode }: FaceBoxReadOnlyProps) {
+export function FaceBoxReadOnly({ face, mode, growthFactor }: FaceBoxReadOnlyProps) {
   const yourAnswer = mode === "yourAnswer"
   // "Real" mirrors FaceBox's own revealed border coloring; "Tu respuesta" is the covered/unrevealed
   // state, which never carries a verdict color.
@@ -25,7 +26,7 @@ export function FaceBoxReadOnly({ face, mode }: FaceBoxReadOnlyProps) {
   const label = yourAnswer ? (face.guess_person_name ?? "?") : face.person_name
 
   return (
-    <div className="absolute" style={boxStyle(face)}>
+    <div className="absolute" style={boxStyle(face, growthFactor)}>
       <div className="relative h-full w-full">
         <div className={`h-full w-full overflow-hidden rounded-md border-2 ${borderClass}`}>
           {/* "Real" leaves this empty - the real, uncensored photo is already showing through

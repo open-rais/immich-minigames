@@ -17,6 +17,7 @@ interface IncognitoPhotoProps {
   onSelectFace: (faceId: string | null) => void
   onGuess: (faceId: string, personId: string) => void
   phase: RoundPhase
+  growthFactor: number
 }
 
 // The popover's own footprint, mirroring its old `w-[min(80vw,280px)]` Tailwind class now that
@@ -105,6 +106,7 @@ function FaceBox({
   onSelectFace,
   onGuess,
   phase,
+  growthFactor,
 }: {
   face: HiddenFaceOut
   guessedPersonId: string | undefined
@@ -112,6 +114,7 @@ function FaceBox({
   onSelectFace: (faceId: string | null) => void
   onGuess: (personId: string) => void
   phase: RoundPhase
+  growthFactor: number
 }) {
   const revealed = phase === "revealed"
   const borderClass = !revealed
@@ -135,7 +138,7 @@ function FaceBox({
   }, [active, phase])
 
   return (
-    <div className="absolute" style={boxStyle(face)}>
+    <div className="absolute" style={boxStyle(face, growthFactor)}>
       <div className="relative h-full w-full">
         <button
           ref={buttonRef}
@@ -190,6 +193,7 @@ export function IncognitoPhoto({
   onSelectFace,
   onGuess,
   phase,
+  growthFactor,
 }: IncognitoPhotoProps) {
   return (
     <AssetPhoto
@@ -214,6 +218,7 @@ export function IncognitoPhoto({
               onSelectFace={onSelectFace}
               onGuess={(personId) => onGuess(face.face_id, personId)}
               phase={phase}
+              growthFactor={growthFactor}
             />
           ))}
         </>

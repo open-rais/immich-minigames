@@ -315,6 +315,7 @@
         "max_hidden_faces": "Max verborgen Gesichter pro Runde",
         "streak_scoring_off": "Lineare Punktzahl",
         "streak_scoring_on": "Serienbasierte Punktzahl",
+        "face_box_growth": "Vergrößerung der Gesichtsboxen (1.0-1.5)",
         "tolerance_days": "Slot-Toleranz (Tage)",
         "min_separation_days": "Mindestabstand zwischen Karten (Tage)",
         "max_cards": "Max Karten (0 = unbegrenzt)"

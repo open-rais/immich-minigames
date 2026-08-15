@@ -17,6 +17,7 @@ interface GameState {
   // displays as its total.
   totalRounds?: number | null
   totalPeople?: number | null
+  faceBoxGrowth?: number | null
 }
 
 // Round-flow layer for the "fixed number of rounds, one picker per round, auto-advance after a
@@ -88,6 +89,7 @@ export function useRoundGame<TRound extends RoundOut, TGuess>({
       finished: g.finished,
       totalRounds: g.total_rounds,
       totalPeople: g.total_people,
+      faceBoxGrowth: g.face_box_growth,
     })
     setRound(currentRound)
     setPendingNextRound(null)
@@ -104,6 +106,7 @@ export function useRoundGame<TRound extends RoundOut, TGuess>({
       finished: true,
       totalRounds: g.total_rounds,
       totalPeople: g.total_people,
+      faceBoxGrowth: g.face_box_growth,
     })
     return true
   }

@@ -315,6 +315,7 @@
         "max_hidden_faces": "Max hidden faces per round",
         "streak_scoring_off": "Linear score",
         "streak_scoring_on": "Streak-based score",
+        "face_box_growth": "Face box growth (1.0-1.5)",
         "tolerance_days": "Slot tolerance (days)",
         "min_separation_days": "Min. spread between cards (days)",
         "max_cards": "Max cards (0 = unlimited)"

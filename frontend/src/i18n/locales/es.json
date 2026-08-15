@@ -315,6 +315,7 @@
         "max_hidden_faces": "Caras ocultas máximas por ronda",
         "streak_scoring_off": "Puntaje lineal",
         "streak_scoring_on": "Puntaje por racha",
+        "face_box_growth": "Crecimiento de las cajas de caras (1.0-1.5)",
         "tolerance_days": "Tolerancia de hueco (días)",
         "min_separation_days": "Separación mínima entre cartas (días)",
         "max_cards": "Cartas máximas (0 = sin límite)"
