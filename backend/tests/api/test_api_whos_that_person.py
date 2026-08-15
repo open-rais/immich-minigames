@@ -103,8 +103,8 @@ class TestPlayRound:
         assert response.status_code == 200
         result = response.json()
         assert result["correct"] is True
-        # Flat count (streak_scoring defaults to off, see docs/TODO/MINOR-FIXES.md #1) - one point
-        # per correctly guessed face, not the combo streak sum.
+        # Flat count (streak_scoring defaults to off) - one point per correctly guessed face, not
+        # the combo streak sum.
         assert result["score_delta"] == len(guesses)
         assert result["score"] == result["score_delta"]
         assert result["finished"] is False

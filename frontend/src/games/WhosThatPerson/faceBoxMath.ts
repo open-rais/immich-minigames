@@ -43,9 +43,9 @@ export function expandedBox(face: FaceGeometry, growthFactor: number) {
 // this is placed in (AssetPhoto's `overlay`) is sized/positioned to exactly match the photo's
 // rendered content box, so plain percentages line up with no further offset/letterbox math needed,
 // at any zoom/pan state. No pixel floor here (there used to be one, MIN_BOX_PX - removed together
-// with this setting, see docs/TODO/MINOR-FIXES.md #2: it broke symmetry for small boxes and made a
-// growthFactor of 1.0 not actually mean "the raw detection box" for them) - a box too small to tap
-// comfortably is handled by AssetPhoto's own zoom/pan instead.
+// with this setting: it broke symmetry for small boxes and made a growthFactor of 1.0 not actually
+// mean "the raw detection box" for them) - a box too small to tap comfortably is handled by
+// AssetPhoto's own zoom/pan instead.
 export function boxStyle(face: FaceGeometry, growthFactor: number): CSSProperties {
   const box = expandedBox(face, growthFactor)
   return {

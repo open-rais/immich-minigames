@@ -155,8 +155,8 @@ class TestPersondleAdminSettings:
         assert calls[0]["asset_count_weight"] == ASSET_COUNT_WEIGHT_EXPONENT
 
     def test_require_birth_date_filters_only_the_target_selection_call(self, immich_service, monkeypatch):
-        # With the setting active, start() makes two calls (target + alternative-exists check,
-        # see docs/TODO/MINOR-FIXES.md #3) - only the first should carry with_birthdate.
+        # With the setting active, start() makes two calls (target + alternative-exists check) -
+        # only the first should carry with_birthdate.
         calls = self._spy_on_target_selection_call(immich_service, monkeypatch)
 
         PersondleGame.start(id=uuid4(), immich_service=immich_service, settings={"require_birth_date": 1})

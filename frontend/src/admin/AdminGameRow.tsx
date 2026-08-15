@@ -24,9 +24,10 @@ function settingLabel(t: (key: string) => string, key: string): string {
   return label === gamesKey ? t(`admin.daily.settings.${key}`) : label
 }
 
-// Special-cased instead of a generic bool value_type (see docs/TODO/MINOR-FIXES.md #3, not built
-// yet) - the two states here have their own vocabulary ("linear" vs. "streak-based"), which a
-// generic checkbox-for-any-0/1-setting wouldn't know how to label.
+// Special-cased instead of using the generic bool value_type's plain checkbox (below) - the two
+// states here have their own vocabulary ("linear" vs. "streak-based"), which a generic
+// checkbox-for-any-0/1-setting wouldn't know how to label. streak_scoring itself stays typed
+// "int", not "bool" - see its SettingSpec in games/whos_that_person/settings.py.
 function StreakScoringToggle({
   id,
   checked,
