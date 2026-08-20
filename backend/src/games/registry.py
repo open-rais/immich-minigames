@@ -46,7 +46,7 @@ from games.timeline import LiveContent as TimelineLiveContent
 from games.whos_that_person import GAME_TYPE as WHOS_THAT_PERSON_TYPE
 from games.whos_that_person import MODE_NAMED_FACES, WhosThatPersonGame, WhosThatPersonRound
 from games.whos_that_person import LiveContent as WhosThatPersonLiveContent
-from services.immich import ImmichService
+from services.immich import ContentQueries
 
 
 @dataclass(frozen=True)
@@ -69,8 +69,8 @@ class GameSpec:
 
     game_class: type[BaseGame]
     round_class: type[BaseRound]
-    provider_factory: Callable[[ImmichService], CandidateProvider] | None = None
-    content_factory: Callable[[ImmichService], Any] | None = None
+    provider_factory: Callable[[ContentQueries], CandidateProvider] | None = None
+    content_factory: Callable[[ContentQueries], Any] | None = None
     daily: DailySupport | None = None
 
 

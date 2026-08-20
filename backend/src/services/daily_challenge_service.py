@@ -24,6 +24,7 @@ from persistence.daily import DailyChallengeModel
 from services.daily_settings import DailySettingsService
 from services.errors import NotEnoughContentError, UnsupportedGameError
 from services.immich import ContentQueries, ImmichService
+from services.reports_service import ReportsService
 
 
 class _ExcludingImmichService:
@@ -61,10 +62,15 @@ class _ExcludingImmichService:
 
 
 class DailyChallengeService:
-    def __init__(self, session: Session, immich_service: ImmichService) -> None:
+    def __init__(
+        self, session: Session, immich_service: ImmichService, reports_service: ReportsService | None = None
+    ) -> None:
         self._session = session
         self._immich_service = immich_service
         self._daily_settings_service = DailySettingsService(session)
+        # Defaults to self-constructing when omitted, same convention as GameFactory's own
+        # reports_service - existing callers that predate reports-exclusion keep working.
+        self._reports_service = reports_service or ReportsService(session)
 
     def get_or_create_challenge(self, challenge_date: date, game_type: str, mode: str) -> DailyChallengeModel:
         existing = self._get_challenge(challenge_date, game_type, mode)
@@ -165,4 +171,9 @@ class DailyChallengeService:
         excluding_service: ContentQueries = (
             _ExcludingImmichService(self._immich_service, exclude_ids) if exclude_ids else self._immich_service
         )
-        return spec_entry.daily.build_spec(mode, excluding_service, settings)
+        # Reports wrap *outside* the no-repeat window: if the reports wrapper's empty-result
+        # fallback retries without report exclusion, it still goes through excluding_service and
+        # so still respects the window. The reverse nesting (window outside reports) would let a
+        # report-emptied pool silently drop the window too when that fallback fires.
+        content_source = self._reports_service.filter_for(excluding_service, game_type, mode)
+        return spec_entry.daily.build_spec(mode, content_source, settings)

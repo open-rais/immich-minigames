@@ -234,6 +234,27 @@ class TestGetRandomAssetWithNamedFaces:
 
         assert rest == [] or rest[0].asset_id != face.asset_id
 
+    def test_exclude_person_ids_never_returns_that_persons_faces(self, immich_service):
+        # Bounded draws (not "loop until the pool is exhausted" like the two tests above) - the dev
+        # pool is large enough that exhausting it isn't reliable, and isn't the point here: this
+        # just needs to see several distinct assets and confirm none of them exposes the excluded
+        # person's face.
+        [face, *_] = immich_service.get_random_asset_with_named_faces()
+        excluded_person_id = face.person_id
+
+        excluded_assets: set = set()
+        saw_any = False
+        for _ in range(50):
+            faces = immich_service.get_random_asset_with_named_faces(
+                exclude_asset_ids=frozenset(excluded_assets), exclude_person_ids=frozenset({excluded_person_id})
+            )
+            if not faces:
+                break
+            saw_any = True
+            assert all(f.person_id != excluded_person_id for f in faces)
+            excluded_assets.add(faces[0].asset_id)
+        assert saw_any, "dev data must have other named-face assets to exercise exclude_person_ids against"
+
     def test_returns_empty_when_no_eligible_asset_exists(self, immich_service):
         # Excluding a huge batch of already-eligible assets should eventually exhaust the pool -
         # the dev data has far fewer than 100000 assets with a named face.
