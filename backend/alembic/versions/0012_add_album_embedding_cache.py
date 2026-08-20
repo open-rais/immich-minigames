@@ -4,9 +4,9 @@ Cached average CLIP embedding per album (services/ml_service.py's Albumdle simil
 roadmap #14) - averaged from Immich's own `smart_search` table (semantic/text-search embeddings,
 not `face_search`) across an album's assets, mirroring person_face_embedding_cache's shape and
 role exactly (see 0006). Raw `op.execute` for the same reason as 0006: migrations here stay
-self-contained (no import of app code, see persistence/album_ml_cache.py's reuse of ml_cache.py's
-hand-rolled `Vector` type), and this table needs the `vector` extension already installed (0006
-already did this in this app's own database).
+self-contained (no import of app code, see persistence/ml_cache.py's `AlbumEmbeddingCacheModel`
+reusing that same module's hand-rolled `Vector` type), and this table needs the `vector` extension
+already installed (0006 already did this in this app's own database).
 
 Revision ID: 0012
 Revises: 0011

@@ -17,11 +17,10 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.engine import Engine, Row
 
 from perf import timed
-from persistence.album_ml_cache import AlbumEmbeddingCacheModel
 from persistence.base import get_app_engine
 from persistence.immich_db import get_immich_engine
 from persistence.immich_tables import album, album_asset, asset_face, person
-from persistence.ml_cache import PersonFaceEmbeddingCacheModel
+from persistence.ml_cache import AlbumEmbeddingCacheModel, PersonFaceEmbeddingCacheModel
 
 _CACHE_TABLE = PersonFaceEmbeddingCacheModel.__table__
 _ALBUM_CACHE_TABLE = AlbumEmbeddingCacheModel.__table__
@@ -412,8 +411,8 @@ class MLService:
         """Album counterpart of _try_incremental_person_update - see that method's docstring for
         the guard logic, identical here. Doesn't do anything about an asset that became ineligible
         (archived/deleted) without touching album_asset - neither this nor the plain fingerprint
-        detects that, same accepted imprecision either way (see the module docstring on
-        persistence/album_ml_cache.py); "reprocess all" is still the only fix for it."""
+        detects that, same accepted imprecision either way (see `AlbumEmbeddingCacheModel`'s
+        docstring in persistence/ml_cache.py); "reprocess all" is still the only fix for it."""
         if cached.embedding_count is None:
             return None
         intact_count = self._album_intact_count(album_id, cached.computed_at)

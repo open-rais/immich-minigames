@@ -6,9 +6,8 @@ import pytest
 import sqlalchemy as sa
 from sqlalchemy import text
 
-from persistence.album_ml_cache import AlbumEmbeddingCacheModel
 from persistence.immich_tables import person as person_table
-from persistence.ml_cache import EMBEDDING_DIM, PersonFaceEmbeddingCacheModel
+from persistence.ml_cache import EMBEDDING_DIM, AlbumEmbeddingCacheModel, PersonFaceEmbeddingCacheModel
 from services.ml_service import _parse_vector_text
 
 _CACHE_TABLE = PersonFaceEmbeddingCacheModel.__table__
