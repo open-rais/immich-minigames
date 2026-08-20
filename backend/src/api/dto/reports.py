@@ -1,6 +1,6 @@
 """Metadata-reporting DTOs - see services/reports_service.py."""
 
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -13,6 +13,23 @@ class CreateReportIn(BaseModel):
     entity_id: UUID
     reasons: list[ReportReason] = Field(min_length=1)
     note: str | None = Field(default=None, max_length=200)
+
+
+class ReportContextOut(BaseModel):
+    """What the report modal shows above the reason checkboxes, so the player can see exactly
+    which person/asset/album they're about to report - sparse by design (only the fields that
+    apply to the given entity_type are set), one shape rather than a Union of three, since a
+    caller always already knows entity_type from the request it made."""
+
+    name: str | None = None  # person or album
+    birth_date: date | None = None  # person
+    latitude: float | None = None  # asset
+    longitude: float | None = None  # asset
+    city: str | None = None  # asset
+    country: str | None = None  # asset
+    start_date: date | None = None  # asset's own date, or an album's earliest asset's date
+    end_date: date | None = None  # album's most recent asset's date
+    persons: list[str] | None = None  # asset - names of people tagged in it
 
 
 class AdminReportOut(BaseModel):

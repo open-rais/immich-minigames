@@ -287,6 +287,33 @@ class TestGetRandomAssetWithNamedFaces:
         pytest.fail("never ran out of eligible assets after excluding 1000 distinct ones")
 
 
+class TestGetNamedPersonsInAsset:
+    def test_returns_the_names_of_named_faces_for_a_known_asset(self, immich_service):
+        [face, *_] = immich_service.get_random_asset_with_named_faces()
+
+        names = immich_service.get_named_persons_in_asset(face.asset_id)
+
+        assert face.person_name in names
+
+    def test_unrelated_asset_id_returns_empty(self, immich_service):
+        assert immich_service.get_named_persons_in_asset(uuid4()) == []
+
+
+class TestGetAlbumLastAssetDate:
+    def test_is_never_before_the_first_asset_date(self, immich_service):
+        [album] = immich_service.get_albums(limit=1)
+
+        first = immich_service.get_album_first_asset_date(album.id)
+        last = immich_service.get_album_last_asset_date(album.id)
+
+        assert first is not None
+        assert last is not None
+        assert last >= first
+
+    def test_unknown_album_returns_none(self, immich_service):
+        assert immich_service.get_album_last_asset_date(uuid4()) is None
+
+
 class TestSearchPersons:
     def test_single_letter_query_returns_results(self, immich_service):
         persons = immich_service.get_persons(named_only=True, limit=100)

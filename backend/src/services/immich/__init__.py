@@ -109,6 +109,9 @@ class ImmichService:
             self._engine, exclude_asset_ids=exclude_asset_ids, exclude_person_ids=exclude_person_ids
         )
 
+    def get_named_persons_in_asset(self, asset_id: UUID) -> list[str]:
+        return faces.get_named_persons_in_asset(self._engine, asset_id)
+
     def get_albums(
         self,
         *,
@@ -139,6 +142,9 @@ class ImmichService:
 
     def get_album_first_asset_date(self, album_id: UUID) -> date | None:
         return albums.get_album_first_asset_date(self._engine, album_id)
+
+    def get_album_last_asset_date(self, album_id: UUID) -> date | None:
+        return albums.get_album_last_asset_date(self._engine, album_id)
 
     def get_album_named_face_counts(self, album_id: UUID) -> list[tuple[UUID, str, int]]:
         return albums.get_album_named_face_counts(self._engine, album_id)

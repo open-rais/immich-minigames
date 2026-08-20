@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import distinct, select
 from sqlalchemy.engine import Engine
 
 from domain.face import Face
@@ -92,3 +92,24 @@ def get_random_asset_with_named_faces(
         face_rows = conn.execute(faces_stmt).all()
 
     return [row_to_face(row) for row in face_rows]
+
+
+def get_named_persons_in_asset(engine: Engine, asset_id: UUID) -> list[str]:
+    """Names of every named, non-hidden, visible person tagged in this specific asset, ordered by
+    name - same eligibility filters as get_random_asset_with_named_faces (isVisible/not deleted,
+    named, not hidden), just scoped to a given asset instead of picking one at random. Powers the
+    report modal's "who's in this photo" context - not part of round generation."""
+    visible_face = asset_face.c.isVisible.is_(True) & asset_face.c.deletedAt.is_(None)
+    stmt = (
+        select(distinct(person.c.name))
+        .select_from(asset_face.join(person, person.c.id == asset_face.c.personId))
+        .where(
+            asset_face.c.assetId == asset_id,
+            visible_face,
+            person.c.name != "",
+            person.c.isHidden.is_(False),
+        )
+        .order_by(person.c.name)
+    )
+    with engine.connect() as conn:
+        return list(conn.scalars(stmt))
