@@ -15,6 +15,19 @@
       "light": "Hell",
       "dark": "Dunkel",
       "system": "System"
+    },
+    "notifications": {
+      "title": "Benachrichtigungen",
+      "unsupported": "Erfordert, dass die App über HTTPS bereitgestellt wird",
+      "noPushManager": "Füge die App deinem Startbildschirm hinzu, um Benachrichtigungen zu aktivieren",
+      "denied": "Du hast Benachrichtigungen für diese App blockiert - aktiviere sie erneut in deinen Browsereinstellungen",
+      "enablePush": "Push-Benachrichtigungen",
+      "activationError": "Benachrichtigungen konnten nicht aktiviert werden - versuche es erneut",
+      "dailyReminders": "Erinnerungen an das tägliche Spiel",
+      "birthdays": "Geburtstage",
+      "albumAnniversary": "Album-Jahrestage",
+      "sendTest": "Testbenachrichtigung senden",
+      "testError": "Die Testbenachrichtigung konnte nicht gesendet werden"
     }
   },
   "mainMenu": {

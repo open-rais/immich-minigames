@@ -15,6 +15,19 @@
       "light": "Light",
       "dark": "Dark",
       "system": "System"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "unsupported": "Requires the app to be served over HTTPS",
+      "noPushManager": "Add the app to your home screen to enable notifications",
+      "denied": "You've blocked notifications for this app - re-enable them from your browser settings",
+      "enablePush": "Push notifications",
+      "activationError": "Couldn't activate notifications - try again",
+      "dailyReminders": "Daily game reminders",
+      "birthdays": "Birthdays",
+      "albumAnniversary": "Album anniversaries",
+      "sendTest": "Send test notification",
+      "testError": "Couldn't send the test notification"
     }
   },
   "mainMenu": {

@@ -14,6 +14,7 @@ import {
 import { apiClient } from "../api/client"
 import { clearCache } from "../api/queryCache"
 import { clearApiCache } from "../pwa/clearApiCache"
+import { unsubscribeDeviceEverywhere } from "../pwa/unsubscribeDevice"
 import type {
   ChangePasswordIn,
   LoginIn,
@@ -79,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function logout() {
+    await unsubscribeDeviceEverywhere()
     await apiLogout()
     setUser(null)
     clearCache()

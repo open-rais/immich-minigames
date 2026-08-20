@@ -6,6 +6,7 @@ import { SegmentedControl } from "../games/shared/SegmentedControl"
 import i18n, { loadLanguage } from "../i18n"
 import type { ThemePreference } from "../theme/themeContext"
 import { useTheme } from "../theme/useTheme"
+import { NotificationsCard } from "./NotificationsCard"
 
 // Language names are NOT run through i18next on purpose - a language's own display name
 // shouldn't change depending on which language is currently active (same reason browsers/OSes
@@ -73,7 +74,7 @@ function ThemeSelector() {
   return <SegmentedControl options={options} value={preference} onChange={setPreference} size="lg" />
 }
 
-function SettingCard({ label, children }: { label: string; children: ReactNode }) {
+export function SettingCard({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="mt-4 rounded-2xl border border-line bg-surface p-5">
       <p className="mb-2 text-xs font-semibold tracking-wide text-faint uppercase">{label}</p>
@@ -112,6 +113,7 @@ export function SettingsPage() {
         <SettingCard label={t("settings.theme")}>
           <ThemeSelector />
         </SettingCard>
+        <NotificationsCard />
       </main>
     </div>
   )

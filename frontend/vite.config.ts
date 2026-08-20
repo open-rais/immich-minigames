@@ -30,9 +30,14 @@ export default defineConfig({
         globPatterns: ['assets/**/*.{js,css,woff,woff2}'],
       },
       devOptions: {
-        // Caching semantics only make sense against a real build (hashed asset names, real
-        // precache manifest) - leaving this off avoids a stale SW fighting Vite's dev-mode HMR.
-        enabled: false,
+        // Runs the real src/sw.ts (push/notificationclick included) against an empty precache
+        // manifest in dev - needed so push/notifications are testable at all without a full
+        // `npm run build`. `type: "module"` since sw.ts uses `import`, unlike the 'classic'
+        // default worker type. The routing/caching logic doesn't touch anything HMR uses
+        // (Vite's own /@vite/client, /@react-refresh, unbundled /src/*.tsx module fetches match
+        // none of sw.ts's registered routes), so this doesn't fight the dev server.
+        enabled: true,
+        type: 'module',
       },
     }),
   ],

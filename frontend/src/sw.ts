@@ -57,3 +57,45 @@ registerRoute(
 // deliberately left unregistered - live per-user data that queryCache.ts already handles with its
 // own in-memory stale-while-revalidate, which is where "serve stale while refetching" belongs for
 // data that must not survive a logout on disk.
+
+interface PushPayload {
+  title: string
+  body: string
+  url: string
+  tag: string
+}
+
+// The payload is plain {title, body, url, tag} JSON composed server-side (services/notifications/
+// sender.py) - this stays deliberately dumb (no per-notification-type logic) so a future 5th
+// notification is backend-only work, never a new SW version every device has to pick up.
+self.addEventListener("push", (event) => {
+  if (!event.data) return
+  let payload: PushPayload
+  try {
+    payload = event.data.json()
+  } catch {
+    return
+  }
+  event.waitUntil(
+    self.registration.showNotification(payload.title, {
+      body: payload.body,
+      tag: payload.tag,
+      data: { url: payload.url },
+    }),
+  )
+})
+
+// tag-replaced notifications of the same type instead of stacking; a click focuses an already-open
+// tab on that same URL before falling back to opening a new one.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close()
+  const url = (event.notification.data as { url?: string } | undefined)?.url ?? "/"
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url === url && "focus" in client) return client.focus()
+      }
+      return self.clients.openWindow(url)
+    }),
+  )
+})

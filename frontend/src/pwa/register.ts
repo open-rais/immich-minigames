@@ -3,12 +3,19 @@
 // instead of throwing.
 const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000
 
+// vite-plugin-pwa's own dev server middleware only serves the dev-mode worker at this exact
+// path+query (vite.config.ts's devOptions.enabled: true) - the built prod sw.js lives at the
+// plain /sw.js this plugin's own filename option produces. `type: "module"` is required for the
+// dev one (served as real unbundled ES modules through Vite's module graph) and harmless for the
+// bundled prod one (no top-level import/export left after the build, so it's valid either way).
+const SW_URL = import.meta.env.DEV ? "/dev-sw.js?dev-sw" : "/sw.js"
+
 export function registerServiceWorker(): void {
   if (!("serviceWorker" in navigator)) return
 
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("/sw.js")
+      .register(SW_URL, { type: "module" })
       .then((registration) => {
         let lastUpdateCheck = Date.now()
         document.addEventListener("visibilitychange", () => {

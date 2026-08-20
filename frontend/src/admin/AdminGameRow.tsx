@@ -11,6 +11,7 @@ import {
 import { apiErrorMessage } from "../api/errors"
 import type { DailySettingsOut, GameSettingsOut } from "../api/types/admin"
 import { Button } from "../games/shared/Button"
+import { Switch } from "../games/shared/Switch"
 import { SettingAccordion } from "./SettingAccordion"
 
 // Setting labels live in two i18n namespaces - admin.games.settings.* for the knobs a normal game
@@ -40,16 +41,7 @@ function StreakScoringToggle({
   const { t } = useTranslation()
   return (
     <label htmlFor={id} className="flex cursor-pointer items-center gap-3 text-sm font-semibold text-body">
-      <span className="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full bg-line-soft transition-colors has-[:checked]:bg-primary">
-        <input
-          id={id}
-          type="checkbox"
-          checked={checked}
-          onChange={(e) => onChange(e.target.checked)}
-          className="peer absolute inset-0 h-full w-full cursor-pointer opacity-0"
-        />
-        <span className="pointer-events-none ml-1 inline-block h-4 w-4 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
-      </span>
+      <Switch id={id} checked={checked} onChange={onChange} />
       {t(checked ? "admin.games.settings.streak_scoring_on" : "admin.games.settings.streak_scoring_off")}
     </label>
   )
