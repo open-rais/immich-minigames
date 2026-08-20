@@ -369,5 +369,30 @@
       },
       "failed": "Échec du job : {{error}}"
     }
+  },
+  "reports": {
+    "menuItem": "Signaler",
+    "modal": {
+      "title": "Signaler un problème",
+      "notePlaceholder": "Détails supplémentaires (facultatif)",
+      "submit": "Envoyer le signalement",
+      "cancel": "Annuler",
+      "success": "Merci, votre signalement a été envoyé.",
+      "done": "Terminé",
+      "showMore": "Voir {{count}} de plus"
+    },
+    "error": {
+      "generic": "Impossible d'envoyer le signalement - réessayez"
+    },
+    "reasons": {
+      "person_birth_date": "Date de naissance manquante ou incorrecte",
+      "person_name_face_mismatch": "Le nom et le visage ne correspondent pas",
+      "person_name_spelling": "Le nom est mal orthographié",
+      "album_cover_mismatch": "La couverture et le nom de l'album ne correspondent pas",
+      "album_name_spelling": "Le nom est mal orthographié",
+      "asset_location": "Localisation manquante ou incorrecte",
+      "asset_date": "Date incorrecte",
+      "asset_face_mismatch": "Le visage ne correspond pas à cette personne"
+    }
   }
 }

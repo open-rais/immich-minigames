@@ -369,5 +369,30 @@
       },
       "failed": "El job falló: {{error}}"
     }
+  },
+  "reports": {
+    "menuItem": "Reportar",
+    "modal": {
+      "title": "Reportar un problema",
+      "notePlaceholder": "Detalles adicionales (opcional)",
+      "submit": "Enviar reporte",
+      "cancel": "Cancelar",
+      "success": "Gracias, tu reporte fue enviado.",
+      "done": "Listo",
+      "showMore": "Ver {{count}} más"
+    },
+    "error": {
+      "generic": "No se pudo enviar el reporte - intenta de nuevo"
+    },
+    "reasons": {
+      "person_birth_date": "Fecha de nacimiento mala o faltante",
+      "person_name_face_mismatch": "El nombre y la cara no hacen match",
+      "person_name_spelling": "El nombre está mal escrito",
+      "album_cover_mismatch": "La portada y el nombre del álbum no hacen match",
+      "album_name_spelling": "El nombre está mal escrito",
+      "asset_location": "Ubicación mala o faltante",
+      "asset_date": "Fecha mal ingresada",
+      "asset_face_mismatch": "La cara no corresponde a esta persona"
+    }
   }
 }

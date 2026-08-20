@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next"
 import type { ImmichdleRoundOut } from "../../api/types/immichdle"
 import { EntryOptionsMenu } from "../shared/EntryOptionsMenu"
 import { ImmichLink } from "../shared/ImmichLink"
+import { ReportMenuItem } from "../shared/ReportMenuItem"
 import type { TargetSnapshot } from "./clueColors"
 import { AnimatedGuessRow } from "./AnimatedGuessRow"
 import { ClueCell } from "./ClueCell"
@@ -76,6 +77,7 @@ export function GuessTable({
             <div className={`${ACTIONS_COL} flex items-center justify-center`}>
               <EntryOptionsMenu>
                 <ImmichLink kind="person" id={target.personId} />
+                <ReportMenuItem kind="person" id={target.personId} />
               </EntryOptionsMenu>
             </div>
           </div>
@@ -101,6 +103,7 @@ export function GuessTable({
                 <div className={`${ACTIONS_COL} flex items-center justify-center`}>
                   <EntryOptionsMenu>
                     <ImmichLink kind="person" id={round.guess_person_id!} />
+                    <ReportMenuItem kind="person" id={round.guess_person_id!} />
                   </EntryOptionsMenu>
                 </div>
               )}

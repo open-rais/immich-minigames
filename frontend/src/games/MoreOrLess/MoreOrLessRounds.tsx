@@ -6,6 +6,7 @@ import type { MoreOrLessRoundOut } from "../../api/types/moreOrLess"
 import type { RoundsComponentProps } from "../catalog"
 import { EntryOptionsMenu } from "../shared/EntryOptionsMenu"
 import { ImmichLink } from "../shared/ImmichLink"
+import { ReportMenuItem } from "../shared/ReportMenuItem"
 import { PersonAvatar } from "../shared/PersonAvatar"
 import { formatBirthDate } from "./birthDate"
 import { MODE_CONFIG } from "./modeConfig"
@@ -81,6 +82,7 @@ export function MoreOrLessRounds({ game }: RoundsComponentProps) {
           </span>
           <EntryOptionsMenu>
             <ImmichLink kind={config.linkKind} id={entry.id} />
+            <ReportMenuItem kind={config.linkKind} id={entry.id} />
           </EntryOptionsMenu>
         </li>
       ))}

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next"
 import type { AlbumdleRoundOut } from "../../api/types/immichdle"
 import { EntryOptionsMenu } from "../shared/EntryOptionsMenu"
 import { ImmichLink } from "../shared/ImmichLink"
+import { ReportMenuItem } from "../shared/ReportMenuItem"
 import type { AlbumTargetSnapshot } from "./albumClueColors"
 import {
   ALBUM_CLUE_COLUMNS_AFTER_DOMINANT_FACE,
@@ -87,6 +88,7 @@ export function AlbumGuessTable({
             <div className={`${ACTIONS_COL} flex items-center justify-center`}>
               <EntryOptionsMenu>
                 <ImmichLink kind="album" id={target.albumId} />
+                <ReportMenuItem kind="album" id={target.albumId} />
               </EntryOptionsMenu>
             </div>
           </div>
@@ -125,6 +127,7 @@ export function AlbumGuessTable({
                 <div className={`${ACTIONS_COL} flex items-center justify-center`}>
                   <EntryOptionsMenu>
                     <ImmichLink kind="album" id={round.guess_album_id!} />
+                    <ReportMenuItem kind="album" id={round.guess_album_id!} />
                   </EntryOptionsMenu>
                 </div>
               )}

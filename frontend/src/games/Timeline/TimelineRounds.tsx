@@ -7,6 +7,7 @@ import { BackButton } from "../shared/BackButton"
 import { EntryOptionsMenu } from "../shared/EntryOptionsMenu"
 import { GameModeSubtitle } from "../shared/GameModeSubtitle"
 import { ImmichLink } from "../shared/ImmichLink"
+import { ReportMenuItem } from "../shared/ReportMenuItem"
 import type { TrackCard } from "./TimelineTrack"
 import { TimelineTrack } from "./TimelineTrack"
 import { adjustedMarkerSlot, insertCard, isTimelineRound } from "./timelineBoard"
@@ -94,8 +95,9 @@ export function TimelineRounds({ game, onBack }: RoundsComponentProps) {
   const cardsWithActions: TrackCard[] = board.cards.map((card) => ({
     ...card,
     actions: (
-      <EntryOptionsMenu>
+      <EntryOptionsMenu triggerClassName="text-white/90 hover:text-white">
         <ImmichLink kind="asset" id={card.assetId} />
+        <ReportMenuItem kind="asset" id={card.assetId} />
       </EntryOptionsMenu>
     ),
   }))
