@@ -29,6 +29,7 @@ def get_assets(
     near_km: tuple[float, float, float] | None = None,
     randomize: bool = False,
     limit: int = 1,
+    ids: frozenset[UUID] | None = None,
     exclude_ids: frozenset[UUID] = frozenset(),
 ) -> list[Asset]:
     has_thumbnail = exists(
@@ -101,6 +102,8 @@ def get_assets(
             asset_exif.c.longitude.between(lon - lon_delta, lon + lon_delta),
         )
 
+    if ids is not None:
+        stmt = stmt.where(asset.c.id.in_(ids))
     if exclude_ids:
         stmt = stmt.where(asset.c.id.notin_(exclude_ids))
 

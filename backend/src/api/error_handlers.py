@@ -27,6 +27,7 @@ from services.errors import (
 )
 from services.game_settings_service import InvalidGameSettingValueError, UnknownGameSettingError
 from services.invite_service import InvalidInviteError, InviteNotFoundError
+from services.reports_service import InvalidReportReasonError, ReportNotFoundError
 
 EXCEPTION_STATUS: dict[type[Exception], int] = {
     UnsupportedGameError: 400,
@@ -48,6 +49,8 @@ EXCEPTION_STATUS: dict[type[Exception], int] = {
     InvalidInviteError: 400,
     InviteNotFoundError: 404,
     JobAlreadyRunningError: 409,
+    ReportNotFoundError: 404,
+    InvalidReportReasonError: 400,
 }
 
 

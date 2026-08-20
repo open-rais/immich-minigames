@@ -10,6 +10,7 @@ import { AssetPhoto } from "../shared/AssetPhoto"
 import { BackButton } from "../shared/BackButton"
 import { EntryOptionsMenu } from "../shared/EntryOptionsMenu"
 import { ImmichLink } from "../shared/ImmichLink"
+import { ReportMenuItem } from "../shared/ReportMenuItem"
 import { RevealResultCard } from "../shared/RevealResultCard"
 import { RoundStepper } from "../rounds/RoundStepper"
 import { SegmentedControl } from "../shared/SegmentedControl"
@@ -78,6 +79,7 @@ export function WhosThatPersonRounds({ game, onBack }: RoundsComponentProps) {
       <div className="fixed top-[18px] right-[18px] z-30 md:top-7 md:right-10">
         <EntryOptionsMenu>
           <ImmichLink kind="asset" id={round.asset_id} />
+          <ReportMenuItem kind="asset" id={round.asset_id} />
         </EntryOptionsMenu>
       </div>
 

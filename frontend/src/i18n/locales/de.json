@@ -295,6 +295,22 @@
       "description": "App-Konten verwalten",
       "loading": "Benutzer werden geladen..."
     },
+    "reports": {
+      "title": "Meldungen",
+      "description": "Von Spielern gemeldete Metadatenprobleme prüfen",
+      "sections": {
+        "asset": "Fotos",
+        "person": "Personen",
+        "album": "Alben"
+      },
+      "showSolved": "Gelöste anzeigen",
+      "loading": "Meldungen werden geladen...",
+      "empty": "Keine Meldungen hier.",
+      "deletedEntity": "(gelöscht)",
+      "reportedBy": "Gemeldet von {{username}} am {{date}}",
+      "markSolved": "Als gelöst markieren",
+      "markUnsolved": "Wieder öffnen"
+    },
     "games": {
       "description": "Konfiguration für jedes Spiel bearbeiten",
       "loading": "Spiele werden geladen...",
@@ -368,6 +384,31 @@
         "all": "alle werden neu verarbeitet"
       },
       "failed": "Job fehlgeschlagen: {{error}}"
+    }
+  },
+  "reports": {
+    "menuItem": "Melden",
+    "modal": {
+      "title": "Problem melden",
+      "notePlaceholder": "Zusätzliche Details (optional)",
+      "submit": "Meldung senden",
+      "cancel": "Abbrechen",
+      "success": "Danke, deine Meldung wurde gesendet.",
+      "done": "Fertig",
+      "showMore": "{{count}} weitere anzeigen"
+    },
+    "error": {
+      "generic": "Meldung konnte nicht gesendet werden - versuche es erneut"
+    },
+    "reasons": {
+      "person_birth_date": "Geburtsdatum fehlt oder ist falsch",
+      "person_name_face_mismatch": "Name und Gesicht passen nicht zusammen",
+      "person_name_spelling": "Name ist falsch geschrieben",
+      "album_cover_mismatch": "Cover und Albumname passen nicht zusammen",
+      "album_name_spelling": "Name ist falsch geschrieben",
+      "asset_location": "Standort fehlt oder ist falsch",
+      "asset_date": "Falsches Datum",
+      "asset_face_mismatch": "Gesicht passt nicht zu dieser Person"
     }
   }
 }

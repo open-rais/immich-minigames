@@ -20,6 +20,7 @@ from services.games_service import GamesService
 from services.immich import ImmichService
 from services.invite_service import InviteService
 from services.ml_service import MLService
+from services.reports_service import ReportsService
 from services.scores_service import ScoresService
 
 _session_factory = get_session_factory()
@@ -79,12 +80,17 @@ def get_game_repository(session: Annotated[Session, Depends(get_db_session)]) ->
     return GameRepository(session)
 
 
+def get_reports_service(session: Annotated[Session, Depends(get_db_session)]) -> ReportsService:
+    return ReportsService(session)
+
+
 def get_game_factory(
     session: Annotated[Session, Depends(get_db_session)],
     immich_service: Annotated[ImmichService, Depends(get_immich_service)],
     ml_service: Annotated[MLService, Depends(get_ml_service)],
+    reports_service: Annotated[ReportsService, Depends(get_reports_service)],
 ) -> GameFactory:
-    return GameFactory(session, immich_service, ml_service, GameSettingsService(session))
+    return GameFactory(session, immich_service, ml_service, GameSettingsService(session), reports_service)
 
 
 # Here (not private to api/api.py) so api/daily_api.py can also depend on it without api.py <->
@@ -102,9 +108,13 @@ def get_daily_games_service(
     repository: Annotated[GameRepository, Depends(get_game_repository)],
     factory: Annotated[GameFactory, Depends(get_game_factory)],
     immich_service: Annotated[ImmichService, Depends(get_immich_service)],
+    reports_service: Annotated[ReportsService, Depends(get_reports_service)],
 ) -> DailyGamesService:
     return DailyGamesService(
-        repository, factory, DailySettingsService(session), DailyChallengeService(session, immich_service)
+        repository,
+        factory,
+        DailySettingsService(session),
+        DailyChallengeService(session, immich_service, reports_service),
     )
 
 

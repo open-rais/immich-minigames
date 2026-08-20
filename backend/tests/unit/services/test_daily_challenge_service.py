@@ -6,6 +6,7 @@ two files' ranges can never collide)."""
 
 import itertools
 import threading
+import uuid
 from datetime import date, timedelta
 
 import pytest
@@ -24,6 +25,7 @@ from games.whos_that_person import GAME_TYPE as WHOS_THAT_PERSON_TYPE
 from games.whos_that_person import MODE_NAMED_FACES
 from persistence.base import get_session_factory
 from persistence.daily import DailyConfigModel
+from persistence.users import UserModel
 from services.daily_challenge_service import DailyChallengeService
 
 _date_counter = itertools.count()
@@ -266,6 +268,34 @@ class TestFallbackWithoutHistoricalExclusion:
 
         with pytest.raises(Exception, match="not enough named people"):
             daily_challenge_service.get_or_create_challenge(_next_date(), IMMICHDLE_TYPE, MODE_PERSON)
+
+
+def _make_reporter(session) -> UserModel:
+    unique = uuid.uuid4().hex[:8]
+    user = UserModel(
+        email=f"daily-report-{unique}@example.com",
+        username=f"daily-report-{unique}",
+        full_name="Daily Report Test User",
+        password_hash="irrelevant",
+    )
+    session.add(user)
+    session.commit()
+    return user
+
+
+class TestReportsExclusion:
+    def test_person_target_excludes_a_reported_person(
+        self, daily_challenge_service, reports_service, immich_service, db_session
+    ):
+        people = immich_service.get_persons(named_only=True, limit=2)
+        assert len(people) >= 2, "dev data must include at least two named people to exercise this"
+        reported, other = people
+        reporter = _make_reporter(db_session)
+        reports_service.create(reporter.id, "person", reported.id, ["person_name_face_mismatch"], None)
+
+        challenge = daily_challenge_service.get_or_create_challenge(_next_date(), IMMICHDLE_TYPE, MODE_PERSON)
+
+        assert challenge.spec["target"]["id"] != str(reported.id)
 
 
 class TestConcurrentGeneration:

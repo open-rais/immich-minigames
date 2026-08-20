@@ -133,6 +133,20 @@ def get_album_first_asset_date(engine: Engine, album_id: UUID) -> date | None:
         return conn.execute(stmt).scalar()
 
 
+def get_album_last_asset_date(engine: Engine, album_id: UUID) -> date | None:
+    """Local calendar day of this album's most recent eligible asset - twin of
+    get_album_first_asset_date (func.max instead of func.min). Powers the report modal's album
+    date-range context; nothing else needed a "last" date before this."""
+    local_date = cast(func.timezone("UTC", asset.c.localDateTime), Date)
+    stmt = (
+        select(func.max(local_date))
+        .select_from(album_asset.join(asset, asset.c.id == album_asset.c.assetId))
+        .where(album_asset.c.albumId == album_id, _ASSET_ELIGIBLE)
+    )
+    with engine.connect() as conn:
+        return conn.execute(stmt).scalar()
+
+
 def get_album_named_face_counts(engine: Engine, album_id: UUID) -> list[tuple[UUID, str, int]]:
     """(person_id, name, distinct_asset_count) for every named person appearing (via an eligible,
     visible, non-deleted face tag) in this album's eligible assets, ordered by count desc - the

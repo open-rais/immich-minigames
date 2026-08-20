@@ -4,6 +4,7 @@ import { Link, Navigate } from "react-router-dom"
 import { useAuth } from "../auth/useAuth"
 import { AdminGamesSection } from "./AdminGamesSection"
 import { AdminInvitesSection } from "./AdminInvitesSection"
+import { AdminReportsLink } from "./AdminReportsLink"
 import { AdminUsersSection } from "./AdminUsersSection"
 import { AdminWorkersSection } from "./AdminWorkersSection"
 import { SettingAccordion } from "./SettingAccordion"
@@ -77,6 +78,8 @@ export function AdminPage() {
         >
           <AdminWorkersSection />
         </SettingAccordion>
+
+        <AdminReportsLink />
 
         {/* Each game is now its own top-level accordion (AdminGamesSection renders
             one per GAME_CATALOG entry itself), replacing the single shared "Juegos" wrapper. */}

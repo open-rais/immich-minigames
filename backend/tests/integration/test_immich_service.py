@@ -58,6 +58,19 @@ class TestGetAssets:
 
         assert len(assets) == 5
 
+    def test_ids_filters_to_only_the_given_assets(self, immich_service):
+        everyone = immich_service.get_assets(limit=100)
+        wanted = {everyone[0].id, everyone[1].id}
+
+        matches = immich_service.get_assets(ids=frozenset(wanted), limit=100)
+
+        assert {a.id for a in matches} == wanted
+
+    def test_ids_with_unknown_id_returns_empty(self, immich_service):
+        matches = immich_service.get_assets(ids=frozenset({uuid4()}), limit=100)
+
+        assert matches == []
+
     def test_random_true_returns_no_duplicates(self, immich_service):
         # sample_by_id_pivot (services/immich/_random.py, B-1) answers with two disjoint queries
         # (id >= pivot, then id < pivot to wrap around) - this is the sanity check that they never
@@ -221,6 +234,27 @@ class TestGetRandomAssetWithNamedFaces:
 
         assert rest == [] or rest[0].asset_id != face.asset_id
 
+    def test_exclude_person_ids_never_returns_that_persons_faces(self, immich_service):
+        # Bounded draws (not "loop until the pool is exhausted" like the two tests above) - the dev
+        # pool is large enough that exhausting it isn't reliable, and isn't the point here: this
+        # just needs to see several distinct assets and confirm none of them exposes the excluded
+        # person's face.
+        [face, *_] = immich_service.get_random_asset_with_named_faces()
+        excluded_person_id = face.person_id
+
+        excluded_assets: set = set()
+        saw_any = False
+        for _ in range(50):
+            faces = immich_service.get_random_asset_with_named_faces(
+                exclude_asset_ids=frozenset(excluded_assets), exclude_person_ids=frozenset({excluded_person_id})
+            )
+            if not faces:
+                break
+            saw_any = True
+            assert all(f.person_id != excluded_person_id for f in faces)
+            excluded_assets.add(faces[0].asset_id)
+        assert saw_any, "dev data must have other named-face assets to exercise exclude_person_ids against"
+
     def test_returns_empty_when_no_eligible_asset_exists(self, immich_service):
         # Excluding a huge batch of already-eligible assets should eventually exhaust the pool -
         # the dev data has far fewer than 100000 assets with a named face.
@@ -251,6 +285,33 @@ class TestGetRandomAssetWithNamedFaces:
             assert all(face.person_id not in hidden_ids for face in faces)
             excluded.add(faces[0].asset_id)
         pytest.fail("never ran out of eligible assets after excluding 1000 distinct ones")
+
+
+class TestGetNamedPersonsInAsset:
+    def test_returns_the_names_of_named_faces_for_a_known_asset(self, immich_service):
+        [face, *_] = immich_service.get_random_asset_with_named_faces()
+
+        names = immich_service.get_named_persons_in_asset(face.asset_id)
+
+        assert face.person_name in names
+
+    def test_unrelated_asset_id_returns_empty(self, immich_service):
+        assert immich_service.get_named_persons_in_asset(uuid4()) == []
+
+
+class TestGetAlbumLastAssetDate:
+    def test_is_never_before_the_first_asset_date(self, immich_service):
+        [album] = immich_service.get_albums(limit=1)
+
+        first = immich_service.get_album_first_asset_date(album.id)
+        last = immich_service.get_album_last_asset_date(album.id)
+
+        assert first is not None
+        assert last is not None
+        assert last >= first
+
+    def test_unknown_album_returns_none(self, immich_service):
+        assert immich_service.get_album_last_asset_date(uuid4()) is None
 
 
 class TestSearchPersons:

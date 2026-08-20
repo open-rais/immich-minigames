@@ -295,6 +295,22 @@
       "description": "Manage app accounts",
       "loading": "Loading users..."
     },
+    "reports": {
+      "title": "Reports",
+      "description": "Review metadata issues players flagged",
+      "sections": {
+        "asset": "Photos",
+        "person": "People",
+        "album": "Albums"
+      },
+      "showSolved": "Show resolved",
+      "loading": "Loading reports...",
+      "empty": "No reports here.",
+      "deletedEntity": "(deleted)",
+      "reportedBy": "Reported by {{username}} on {{date}}",
+      "markSolved": "Mark resolved",
+      "markUnsolved": "Reopen"
+    },
     "games": {
       "description": "Edit configuration for each game",
       "loading": "Loading games...",
@@ -368,6 +384,31 @@
         "all": "reprocessing all"
       },
       "failed": "Job failed: {{error}}"
+    }
+  },
+  "reports": {
+    "menuItem": "Report",
+    "modal": {
+      "title": "Report an issue",
+      "notePlaceholder": "Additional details (optional)",
+      "submit": "Send report",
+      "cancel": "Cancel",
+      "success": "Thanks, your report was sent.",
+      "done": "Done",
+      "showMore": "Show {{count}} more"
+    },
+    "error": {
+      "generic": "Couldn't send the report - try again"
+    },
+    "reasons": {
+      "person_birth_date": "Missing or wrong birth date",
+      "person_name_face_mismatch": "Name and face don't match",
+      "person_name_spelling": "Name is misspelled",
+      "album_cover_mismatch": "Cover and album name don't match",
+      "album_name_spelling": "Name is misspelled",
+      "asset_location": "Missing or wrong location",
+      "asset_date": "Wrong date",
+      "asset_face_mismatch": "Face doesn't match this person"
     }
   }
 }
