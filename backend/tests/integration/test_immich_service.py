@@ -200,19 +200,14 @@ class TestGetAssetsTogetherCount:
 
 class TestGetRandomAssetWithNamedFaces:
     def test_returns_faces_for_a_named_person(self, immich_service):
-        faces = immich_service.get_random_asset_with_named_faces(max_faces=5)
+        faces = immich_service.get_random_asset_with_named_faces()
 
         assert faces
         assert all(face.person_name != "" for face in faces)
         assert len({face.asset_id for face in faces}) == 1, "every returned face must belong to the same asset"
 
-    def test_respects_max_faces(self, immich_service):
-        faces = immich_service.get_random_asset_with_named_faces(max_faces=1)
-
-        assert len(faces) == 1
-
     def test_bounding_box_and_image_size_are_populated(self, immich_service):
-        [face] = immich_service.get_random_asset_with_named_faces(max_faces=1)
+        [face, *_] = immich_service.get_random_asset_with_named_faces()
 
         assert face.image_width > 0
         assert face.image_height > 0
@@ -220,11 +215,9 @@ class TestGetRandomAssetWithNamedFaces:
         assert face.bounding_box_y2 > face.bounding_box_y1
 
     def test_excludes_given_asset_ids(self, immich_service):
-        [face] = immich_service.get_random_asset_with_named_faces(max_faces=1)
+        [face, *_] = immich_service.get_random_asset_with_named_faces()
 
-        rest = immich_service.get_random_asset_with_named_faces(
-            max_faces=1, exclude_asset_ids=frozenset({face.asset_id})
-        )
+        rest = immich_service.get_random_asset_with_named_faces(exclude_asset_ids=frozenset({face.asset_id}))
 
         assert rest == [] or rest[0].asset_id != face.asset_id
 
@@ -233,7 +226,7 @@ class TestGetRandomAssetWithNamedFaces:
         # the dev data has far fewer than 100000 assets with a named face.
         excluded = set()
         for _ in range(1000):
-            faces = immich_service.get_random_asset_with_named_faces(max_faces=1, exclude_asset_ids=frozenset(excluded))
+            faces = immich_service.get_random_asset_with_named_faces(exclude_asset_ids=frozenset(excluded))
             if not faces:
                 return
             excluded.add(faces[0].asset_id)
@@ -252,7 +245,7 @@ class TestGetRandomAssetWithNamedFaces:
 
         excluded = set()
         for _ in range(1000):
-            faces = immich_service.get_random_asset_with_named_faces(max_faces=5, exclude_asset_ids=frozenset(excluded))
+            faces = immich_service.get_random_asset_with_named_faces(exclude_asset_ids=frozenset(excluded))
             if not faces:
                 return
             assert all(face.person_id not in hidden_ids for face in faces)

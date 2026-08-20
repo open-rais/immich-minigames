@@ -1,6 +1,5 @@
 """Postgres queries over Immich's `asset_face` table, joined with `person` for named faces."""
 
-import random
 from uuid import UUID
 
 from sqlalchemy import select
@@ -14,13 +13,12 @@ from ._rows import row_to_face
 
 
 def get_random_asset_with_named_faces(
-    engine: Engine, *, max_faces: int, exclude_asset_ids: frozenset[UUID] = frozenset()
+    engine: Engine, *, exclude_asset_ids: frozenset[UUID] = frozenset()
 ) -> list[Face]:
     """Picks one random asset that has at least one visible, non-deleted face already assigned
-    to a named, non-hidden person, then returns the faces Who'sThatPerson blacks out for a
-    round: every one of that asset's named, non-hidden faces if it has `max_faces` or fewer,
-    otherwise a *random* number of them between 1 and `max_faces` (not always exactly `max_faces`,
-    so a photo with plenty of named people doesn't deterministically always hide the maximum).
+    to a named, non-hidden person, then returns every one of that asset's named, non-hidden
+    faces - which of them to actually black out for a Who'sThatPerson round is that game's own
+    decision (games/whos_that_person/content.py::LiveContent.pick_round), not this query's.
     Faces without a name are never returned -
     there'd be nothing to grade against, so they're left unblacked in the photo, purely
     decorative. Hidden people (Immich's own `isHidden` flag) are excluded the same way
@@ -82,9 +80,4 @@ def get_random_asset_with_named_faces(
         )
         face_rows = conn.execute(faces_stmt).all()
 
-    faces = [row_to_face(row) for row in face_rows]
-    if len(faces) <= max_faces:
-        return faces
-    # More named faces than the cap - hide a random number of them between 1 and max_faces,
-    # not always exactly max_faces (see docstring).
-    return random.sample(faces, random.randint(1, max_faces))
+    return [row_to_face(row) for row in face_rows]
