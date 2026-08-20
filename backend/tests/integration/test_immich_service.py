@@ -58,6 +58,19 @@ class TestGetAssets:
 
         assert len(assets) == 5
 
+    def test_ids_filters_to_only_the_given_assets(self, immich_service):
+        everyone = immich_service.get_assets(limit=100)
+        wanted = {everyone[0].id, everyone[1].id}
+
+        matches = immich_service.get_assets(ids=frozenset(wanted), limit=100)
+
+        assert {a.id for a in matches} == wanted
+
+    def test_ids_with_unknown_id_returns_empty(self, immich_service):
+        matches = immich_service.get_assets(ids=frozenset({uuid4()}), limit=100)
+
+        assert matches == []
+
     def test_random_true_returns_no_duplicates(self, immich_service):
         # sample_by_id_pivot (services/immich/_random.py, B-1) answers with two disjoint queries
         # (id >= pivot, then id < pivot to wrap around) - this is the sanity check that they never

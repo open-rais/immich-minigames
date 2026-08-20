@@ -20,6 +20,7 @@ from api.admin_api import router as admin_router
 from api.admin_daily_api import router as admin_daily_router
 from api.admin_games_api import router as admin_games_router
 from api.admin_invites_api import router as admin_invites_router
+from api.admin_reports_api import router as admin_reports_router
 from api.admin_workers_api import router as admin_workers_router
 from api.auth_api import get_current_user
 from api.auth_api import router as auth_router
@@ -46,6 +47,7 @@ router.include_router(admin_router)
 router.include_router(admin_games_router)
 router.include_router(admin_daily_router)
 router.include_router(admin_invites_router)
+router.include_router(admin_reports_router)
 router.include_router(admin_workers_router)
 router.include_router(daily_router)
 router.include_router(reports_router)

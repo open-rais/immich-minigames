@@ -12,6 +12,7 @@ ever needed.
 
 import secrets
 from calendar import timegm
+from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
@@ -66,6 +67,12 @@ class AuthService:
         """Looks up any account by id, not just the caller's own (unlike get_user_from_token,
         which is JWT-subject-bound)."""
         return self._session.get(UserModel, user_id)
+
+    def usernames_for(self, user_ids: Iterable[UUID]) -> dict[UUID, str]:
+        """Batch username lookup - one query per page for a list that needs to show who did
+        something (e.g. the admin reports panel), instead of a per-row round-trip."""
+        stmt = select(UserModel.id, UserModel.username).where(UserModel.id.in_(user_ids))
+        return dict(self._session.execute(stmt).all())
 
     def _is_first_user(self) -> bool:
         return self._session.scalar(select(UserModel.id).limit(1)) is None

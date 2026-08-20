@@ -99,6 +99,21 @@ class TestUpdateProfileConcurrency:
         assert isinstance(b_result.get("error"), UsernameAlreadyExistsError)
 
 
+class TestUsernamesFor:
+    def test_resolves_multiple_ids_in_one_call(self, auth_service):
+        alice = _register(auth_service)
+        bob = _register(auth_service)
+
+        usernames = auth_service.usernames_for([alice.id, bob.id])
+
+        assert usernames == {alice.id: alice.username, bob.id: bob.username}
+
+    def test_unknown_id_is_simply_absent(self, auth_service):
+        usernames = auth_service.usernames_for([uuid.uuid4()])
+
+        assert usernames == {}
+
+
 class TestSetSkin:
     def test_sets_the_skin_person_id(self, auth_service):
         user = _register(auth_service)

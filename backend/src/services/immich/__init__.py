@@ -46,6 +46,7 @@ class ImmichService:
         near_km: tuple[float, float, float] | None = None,
         randomize: bool = False,
         limit: int = 1,
+        ids: frozenset[UUID] | None = None,
         exclude_ids: frozenset[UUID] = frozenset(),
     ) -> list[Asset]:
         return assets.get_assets(
@@ -59,6 +60,7 @@ class ImmichService:
             near_km=near_km,
             randomize=randomize,
             limit=limit,
+            ids=ids,
             exclude_ids=exclude_ids,
         )
 
@@ -164,6 +166,7 @@ class ContentQueries(Protocol):
         near_km: tuple[float, float, float] | None = None,
         randomize: bool = False,
         limit: int = 1,
+        ids: frozenset[UUID] | None = None,
         exclude_ids: frozenset[UUID] = frozenset(),
     ) -> list[Asset]: ...
 
