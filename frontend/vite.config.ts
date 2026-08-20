@@ -2,10 +2,40 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    VitePWA({
+      // `src/sw.ts` is hand-written (push/notificationclick land in a later phase, and the
+      // per-route caching strategies in workbox-routing calls need real code, not just a glob
+      // list) - `generateSW` mode only supports the latter, so injectManifest is the only mode
+      // that fits.
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
+      // We register from src/pwa/register.ts ourselves (gated on the §3.1 feature-detects), not
+      // the plugin's own virtual:pwa-register module.
+      injectRegister: false,
+      // public/manifest.webmanifest is hand-written (F0) with our own icon set; disabling this
+      // stops the plugin from generating a second, competing manifest.
+      manifest: false,
+      injectManifest: {
+        // Only the hashed bundle - logo.svg/icons/covers get their own StaleWhileRevalidate route
+        // in sw.ts and index.html gets its own NetworkFirst route, so neither should also sit in
+        // the precache list under a second identity.
+        globPatterns: ['assets/**/*.{js,css,woff,woff2}'],
+      },
+      devOptions: {
+        // Caching semantics only make sense against a real build (hashed asset names, real
+        // precache manifest) - leaving this off avoids a stale SW fighting Vite's dev-mode HMR.
+        enabled: false,
+      },
+    }),
+  ],
   server: {
     // Binds 0.0.0.0 instead of just localhost, so the dev server is reachable from other devices
     // on the LAN (e.g. a phone).

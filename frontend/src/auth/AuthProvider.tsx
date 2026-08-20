@@ -13,6 +13,7 @@ import {
 } from "../api/auth"
 import { apiClient } from "../api/client"
 import { clearCache } from "../api/queryCache"
+import { clearApiCache } from "../pwa/clearApiCache"
 import type {
   ChangePasswordIn,
   LoginIn,
@@ -81,6 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await apiLogout()
     setUser(null)
     clearCache()
+    clearApiCache()
   }
 
   async function updateProfile(body: UpdateProfileIn) {

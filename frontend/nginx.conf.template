@@ -88,6 +88,28 @@ server {
         try_files $uri =404;
     }
 
+    # index.html and theme-init.js are the two remaining unhashed, fixed-name files (besides
+    # sw.js and the manifest above) that point at hashed content - heuristically caching either
+    # lets a browser miss a deploy for up to a day. Same add_header/security-header redeclaration
+    # as /sw.js above, for the same reason.
+    location = /index.html {
+        add_header Cache-Control "no-cache" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header X-Frame-Options DENY always;
+        add_header Referrer-Policy strict-origin-when-cross-origin always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://tiles.openfreemap.org; worker-src 'self' blob:; frame-ancestors 'self'; base-uri 'self'; form-action 'self';" always;
+        try_files $uri =404;
+    }
+
+    location = /theme-init.js {
+        add_header Cache-Control "no-cache" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header X-Frame-Options DENY always;
+        add_header Referrer-Policy strict-origin-when-cross-origin always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://tiles.openfreemap.org; worker-src 'self' blob:; frame-ancestors 'self'; base-uri 'self'; form-action 'self';" always;
+        try_files $uri =404;
+    }
+
     # Client-routed React app: fall back to index.html for any unknown path.
     location / {
         try_files $uri /index.html;
