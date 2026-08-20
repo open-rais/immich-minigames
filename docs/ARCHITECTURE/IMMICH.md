@@ -108,6 +108,14 @@ whenever `named_only` (the default). Faces additionally require `isVisible AND "
 Hidden people are excluded everywhere *consistently* — a Who'sThatPerson round must never black out
 a face the player cannot find in the search box.
 
+`get_random_asset_with_named_faces` (`services/immich/faces.py`) also takes an optional
+`exclude_person_ids` (roadmap #N, the metadata-reporting feature's round-generation exclusion —
+see `docs/ARCHITECTURE/BACKEND.md`), applied to both of its statements the same way `isHidden` is:
+the one that picks the candidate asset (so an asset whose only named face belongs to an excluded
+person is never picked) and the one that fetches that asset's named faces (so an excluded person's
+face never appears among an otherwise-eligible asset's candidates, even if a co-appearing person on
+the same photo isn't excluded).
+
 ## Query techniques worth knowing
 
 **Random selection** — `ORDER BY random() LIMIT n`. Note `SELECT DISTINCT … ORDER BY random()` is

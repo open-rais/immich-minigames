@@ -1,7 +1,7 @@
 # Frontend
 
 React 19 + Vite + TypeScript + Tailwind 4 + Axios + react-i18next + MapLibre GL, in `frontend/src/`.
-Dev: `npm run dev`. Typecheck: `npx tsc -b`. Lint: `npx oxlint`. Both clean as of 2026-07-20.
+Dev: `npm run dev`. Typecheck: `npx tsc -b`. Lint: `npx oxlint`. Both clean as of 2026-08-20.
 
 ## Routing
 
@@ -12,6 +12,7 @@ Dev: `npm run dev`. Typecheck: `npx tsc -b`. Lint: `npx oxlint`. Both clean as o
 | `/` | `MainMenu` |
 | `/login`, `/signup`, `/profile`, `/profile/edit` | auth pages |
 | `/admin` | `AdminPage` (redirects non-admins) |
+| `/admin/reports` | `AdminReportsPage` (redirects non-admins) - the metadata-report review panel (roadmap #N) |
 | `/:gameType/:mode` | `GameRoute` → looks up `GAME_CATALOG`, renders that mode's component |
 | `/:gameType/:mode/leaderboard` | `LeaderboardPage` |
 | `/:gameType/:mode/game/:gameId/rounds` | `RoundsPage` — post-game "Ver rondas"/"Ver juego" review (roadmap #10, see below) |
@@ -74,13 +75,24 @@ component, chosen from `catalog.ts`'s `roundsComponent` (mirroring how `GameRout
   `TimelineTrack.tsx` read-only rather than `RoundStepper` — same "fullscreen, no `RoundsShell`"
   family, different internal shape.
 
-`games/shared/EntryOptionsMenu.tsx` (a "⋯" trigger + popover, today holding just
-`games/shared/ImmichLink.tsx`) is the shared "Ver en Immich" entry point everywhere it appears. Its
-popover is positioned `fixed` from the trigger's own `getBoundingClientRect()` rather than `absolute`
-relative to the trigger — Immichdle's `GuessTable` needs it inside an `overflow-x-auto` container,
-and a mismatched-axis `overflow` (one axis non-`visible`, e.g. `overflow-x-auto`) computes the other
-axis to `auto` too, silently clipping an `absolute` popover that spills past the table's box. `fixed`
+`games/shared/EntryOptionsMenu.tsx` (a "⋯" trigger + popover) is the shared per-entity actions menu
+everywhere it appears — `games/shared/ImmichLink.tsx` ("Ver en Immich") and, since roadmap #N,
+`games/shared/ReportMenuItem.tsx` ("Reportar", opening `ReportModal.tsx`). Its popover is
+positioned `fixed` from the trigger's own `getBoundingClientRect()` rather than `absolute` relative
+to the trigger — Immichdle's `GuessTable` needs it inside an `overflow-x-auto` container, and a
+mismatched-axis `overflow` (one axis non-`visible`, e.g. `overflow-x-auto`) computes the other axis
+to `auto` too, silently clipping an `absolute` popover that spills past the table's box. `fixed`
 ignores ancestor overflow clipping entirely.
+
+`ReportModal.tsx` itself goes one step further and portals to `document.body` (unlike every other
+modal in the app, e.g. `ShareModal.tsx`/`ConfirmExitModal.tsx`, which are plain in-tree `fixed`
+overlays) - it's the one modal that can open from inside `Timeline/TimelineCard.tsx`'s per-card
+badge overlay, itself `absolute` + `z-index`ed, which creates its own stacking context that traps
+a plain `fixed` descendant no matter how high its own `z-index` goes. Portalling to `document.body`
+escapes that; the tradeoff is that `EntryOptionsMenu`'s own outside-click/scroll auto-close (see
+above) would then read every click inside the portalled modal as "outside" and cascade-unmount it
+along with the popover, since the modal's DOM node is no longer a descendant of the popover's own
+root - guarded by a `[data-report-modal]` marker those handlers explicitly skip while present.
 
 `ImmichLink` itself renders `null` whenever `useImmichLinks()` (`api/config.ts`) has no
 `IMMICH_EXTERNAL_URL`/`IMMICH_SERVER_URL` to build a link from (a single, module-scope-cached
