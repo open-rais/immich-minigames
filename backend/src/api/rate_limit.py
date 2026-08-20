@@ -53,6 +53,13 @@ THUMBNAIL_LIMIT = "60/minute"
 # POST /reports - a player flagging bad metadata; cheap (a single INSERT) but still bounded like
 # every other write endpoint.
 REPORT_LIMIT = "20/minute"
+# POST /notifications/subscriptions - each call resolves DNS for the SSRF allowlist check
+# (services/notifications/endpoint_safety.py) before ever touching the DB, tighter than a plain
+# write endpoint since a resolver round trip is the more expensive part.
+PUSH_SUBSCRIBE_LIMIT = "10/minute"
+# POST /notifications/test - sends a real push to every one of the account's devices; loose enough
+# for someone debugging their setup, tight enough that it's not a way to spam a push service.
+PUSH_TEST_LIMIT = "5/minute"
 
 # slowapi's own @limiter.limit(...) decorator can only key by request
 # (session_or_ip_key above - IP or, on /login, always IP since there's no session yet), so it

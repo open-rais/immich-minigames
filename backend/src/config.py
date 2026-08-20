@@ -84,6 +84,26 @@ class Settings(BaseSettings):
     # closes after that first account either way.
     initial_invite_token: str | None = None
 
+    # Web Push (RFC 8291/8292). All three unset (the default) turns the feature off entirely -
+    # GET /config reports push_public_key: null and the frontend hides the notifications section.
+    # Generate a pair with `uv run python -m scripts.generate_vapid_keys`. Rotating the private key
+    # invalidates every existing subscription, same as JWT_SECRET with sessions.
+    vapid_public_key: str | None = None
+    vapid_private_key: str | None = None
+    # The mailto: contact required by the VAPID spec - sent to the push service (Google/Mozilla/
+    # Apple) with every push, so it has to be an address you're fine with those seeing. No default:
+    # this is genuinely the deploying owner's own contact, not something to invent.
+    vapid_contact_email: str | None = None
+
+    # Allowlist for POST /notifications/subscriptions - the endpoint accepts a URL from the client
+    # that the backend then makes outbound requests to, so without this an authenticated user could
+    # register e.g. http://localhost:8000/... and turn the backend into an SSRF proxy into its own
+    # network. Comma-separated, `*.` prefix matches any subdomain. Covers every push service in
+    # practice as of writing; override only to add a new one, never to open it up.
+    push_allowed_hosts: str = (
+        "*.googleapis.com,*.push.services.mozilla.com,web.push.apple.com,*.notify.windows.com"
+    )
+
     # Two databases, one role. Deliberately no single `db_url` property: an ambiguous name pointing
     # at one of two databases is exactly the class of mistake the split exists to rule out.
     def _db_url(self, database: str) -> str:
@@ -114,6 +134,16 @@ class Settings(BaseSettings):
         if self.immich_external_url is None:
             return self.immich_server_url.rstrip("/")
         return self.immich_external_url.rstrip("/") or None
+
+    @property
+    def push_enabled(self) -> bool:
+        """All three VAPID settings, or none - a partial set is a misconfiguration, not a
+        half-working feature."""
+        return bool(self.vapid_public_key and self.vapid_private_key and self.vapid_contact_email)
+
+    @property
+    def push_allowed_host_patterns(self) -> list[str]:
+        return [h.strip() for h in self.push_allowed_hosts.split(",") if h.strip()]
 
 
 @lru_cache(maxsize=1)

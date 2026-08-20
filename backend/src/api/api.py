@@ -33,6 +33,7 @@ from api.dto.health import HealthOut
 from api.dto.leaderboard import LeaderboardOut, LeaderboardWindow
 from api.dto.persons import PersonSearchOut
 from api.dto.records import GameRecordsOut
+from api.notifications_api import router as notifications_router
 from api.rate_limit import GAME_ACTION_LIMIT, SEARCH_LIMIT, THUMBNAIL_LIMIT, limiter
 from api.reports_api import router as reports_router
 from config import Settings, get_settings
@@ -51,6 +52,7 @@ router.include_router(admin_reports_router)
 router.include_router(admin_workers_router)
 router.include_router(daily_router)
 router.include_router(reports_router)
+router.include_router(notifications_router)
 
 
 @router.get("/health", response_model=HealthOut)
@@ -73,7 +75,13 @@ def get_config(settings: Annotated[Settings, Depends(get_settings)]) -> ConfigOu
     # get_settings() inline (see auth_api.py) so
     # tests can override this one dependency without touching the lru_cache singleton every other
     # module shares.
-    return ConfigOut(immich_external_url=settings.immich_public_url)
+    return ConfigOut(
+        immich_external_url=settings.immich_public_url,
+        # Gated on push_enabled (all three VAPID settings), not vapid_public_key alone - exposing
+        # just the public key with the private key or contact email missing would let the frontend
+        # show the notifications section for a feature that can subscribe but can never send.
+        push_public_key=settings.vapid_public_key if settings.push_enabled else None,
+    )
 
 
 @router.post("/games", response_model=GameOut, status_code=201)

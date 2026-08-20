@@ -8,6 +8,7 @@ from typing import Annotated
 from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
+from config import Settings, get_settings
 from persistence.base import get_session_factory
 from persistence.games_repository import GameRepository
 from services.daily_challenge_service import DailyChallengeService
@@ -20,6 +21,7 @@ from services.games_service import GamesService
 from services.immich import ImmichService
 from services.invite_service import InviteService
 from services.ml_service import MLService
+from services.notifications import NotificationService
 from services.reports_service import ReportsService
 from services.scores_service import ScoresService
 
@@ -82,6 +84,13 @@ def get_game_repository(session: Annotated[Session, Depends(get_db_session)]) ->
 
 def get_reports_service(session: Annotated[Session, Depends(get_db_session)]) -> ReportsService:
     return ReportsService(session)
+
+
+def get_notifications_service(
+    session: Annotated[Session, Depends(get_db_session)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> NotificationService:
+    return NotificationService(session, settings)
 
 
 def get_game_factory(
