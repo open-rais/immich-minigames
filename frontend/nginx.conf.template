@@ -4,10 +4,10 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
-    # Defense in depth - `always` sends these on error responses
-    # too, not just 2xx. Both location blocks below inherit these automatically since neither
-    # declares its own add_header (nginx only breaks that inheritance for a location that adds its
-    # own - see the asset-caching location's comment for the one place that matters here).
+    # Defense in depth - `always` sends these on error responses too, not just 2xx. Location
+    # blocks below inherit these automatically unless they declare their own add_header (nginx
+    # only breaks that inheritance for a location that adds its own - see the asset-caching
+    # location's comment for where that matters here).
     #
     # CSP is scoped to exactly what this app needs, checked against the actual code: 'self' for
     # everything by default; script/style need nothing beyond 'self' (the old dark/light
@@ -63,6 +63,28 @@ server {
     # sub-resource fetched from here.
     location /assets/ {
         add_header Cache-Control "public, max-age=31536000, immutable" always;
+        try_files $uri =404;
+    }
+
+    # Service worker script: must never sit in the browser's heuristic HTTP cache, or a stale
+    # copy can hide a new deploy for up to a day. This location declares its own add_header, so
+    # (same nginx quirk as /assets/ above) it does NOT inherit the server-level security headers -
+    # redeclared here since X-Content-Type-Options actually matters for a script response.
+    location = /sw.js {
+        add_header Cache-Control "no-cache" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header X-Frame-Options DENY always;
+        add_header Referrer-Policy strict-origin-when-cross-origin always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://tiles.openfreemap.org; worker-src 'self' blob:; frame-ancestors 'self'; base-uri 'self'; form-action 'self';" always;
+        try_files $uri =404;
+    }
+
+    # nginx's mime.types doesn't reliably map .webmanifest to application/manifest+json, so
+    # without this it can fall back to application/octet-stream and some browsers ignore it.
+    # default_type doesn't touch add_header inheritance, so this still gets the server-level
+    # security headers above for free.
+    location = /manifest.webmanifest {
+        default_type application/manifest+json;
         try_files $uri =404;
     }
 
