@@ -33,6 +33,7 @@ from api.dto.leaderboard import LeaderboardOut, LeaderboardWindow
 from api.dto.persons import PersonSearchOut
 from api.dto.records import GameRecordsOut
 from api.rate_limit import GAME_ACTION_LIMIT, SEARCH_LIMIT, THUMBNAIL_LIMIT, limiter
+from api.reports_api import router as reports_router
 from config import Settings, get_settings
 from persistence.users import UserModel
 from services.games_service import GamesService
@@ -47,6 +48,7 @@ router.include_router(admin_daily_router)
 router.include_router(admin_invites_router)
 router.include_router(admin_workers_router)
 router.include_router(daily_router)
+router.include_router(reports_router)
 
 
 @router.get("/health", response_model=HealthOut)

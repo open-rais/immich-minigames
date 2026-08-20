@@ -20,6 +20,7 @@ from services.games_service import GamesService
 from services.immich import ImmichService
 from services.invite_service import InviteService
 from services.ml_service import MLService
+from services.reports_service import ReportsService
 from services.scores_service import ScoresService
 
 _session_factory = get_session_factory()
@@ -110,3 +111,7 @@ def get_daily_games_service(
 
 def get_scores_service(repository: Annotated[GameRepository, Depends(get_game_repository)]) -> ScoresService:
     return ScoresService(repository)
+
+
+def get_reports_service(session: Annotated[Session, Depends(get_db_session)]) -> ReportsService:
+    return ReportsService(session)

@@ -50,6 +50,9 @@ GAME_ACTION_LIMIT = "30/minute"
 SEARCH_LIMIT = "60/minute"
 # Both thumbnail proxies - each also makes a real outbound HTTP call to Immich.
 THUMBNAIL_LIMIT = "60/minute"
+# POST /reports - a player flagging bad metadata; cheap (a single INSERT) but still bounded like
+# every other write endpoint.
+REPORT_LIMIT = "20/minute"
 
 # slowapi's own @limiter.limit(...) decorator can only key by request
 # (session_or_ip_key above - IP or, on /login, always IP since there's no session yet), so it

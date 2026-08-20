@@ -3,7 +3,12 @@ import uuid
 import pytest
 
 from persistence.users import UserModel
-from services.reports_service import ReportExclusions, ReportNotFoundError, ReportsService
+from services.reports_service import (
+    InvalidReportReasonError,
+    ReportExclusions,
+    ReportNotFoundError,
+    ReportsService,
+)
 
 
 def _make_user(session) -> uuid.UUID:
@@ -56,6 +61,25 @@ class TestCreate:
         open_reports = [r for r in service.list("album", solved=False) if r.entity_id == entity_id]
         assert len(open_reports) == 1
         assert open_reports[0].id != report.id
+
+
+class TestCreateValidatesReason:
+    def test_reason_that_does_not_belong_to_entity_type_raises(self, db_session):
+        service = ReportsService(db_session)
+        user_id = _make_user(db_session)
+
+        with pytest.raises(InvalidReportReasonError):
+            service.create(user_id, "person", uuid.uuid4(), ["asset_date"], None)
+
+    def test_a_rejected_call_inserts_nothing_even_for_the_valid_reasons_in_it(self, db_session):
+        service = ReportsService(db_session)
+        user_id = _make_user(db_session)
+        entity_id = uuid.uuid4()
+
+        with pytest.raises(InvalidReportReasonError):
+            service.create(user_id, "person", entity_id, ["person_birth_date", "asset_date"], None)
+
+        assert entity_id not in {r.entity_id for r in service.list("person", solved=False)}
 
 
 class TestList:
@@ -180,12 +204,11 @@ class TestOpenIdsFor:
         service = ReportsService(db_session)
         user_id = _make_user(db_session)
         entity_id = uuid.uuid4()
-        reason = f"asset_date-{uuid.uuid4().hex[:8]}"
-        service.create(user_id, "asset", entity_id, [reason], None)
+        service.create(user_id, "asset", entity_id, ["asset_date"], None)
         [report] = [r for r in service.list("asset", solved=False) if r.entity_id == entity_id]
         service.set_solved(report.id, True)
 
-        exclusions = service.open_ids_for([reason])
+        exclusions = service.open_ids_for(["asset_date"])
 
         assert entity_id not in exclusions.asset_ids
 

@@ -2,11 +2,9 @@
 Metadata-reporting feature: a player flags a person/album/asset as having bad metadata; an admin
 reviews the open reports and marks them resolved.
 
-`reason`/`entity_type` are plain strings here, not an enum - the shared vocabulary
-(`ReportReason`/`ReportEntity`) lives in games/report_spec.py, which is what the future round-
-generation exclusion (not implemented yet) will use to decide which reasons matter to which
-(game_type, mode). This service and its persistence stay decoupled from that - it just stores and
-groups whatever reason strings it's given.
+`reason`/`entity_type` are plain strings on every method's signature (not the games/report_spec.py
+enums) - persistence and the read paths (list/counts/open_ids_for) don't need to know the fixed
+vocabulary, only create() does, to reject a reason that doesn't belong to the given entity_type.
 """
 
 from collections.abc import Iterable
@@ -19,10 +17,15 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from audit import audit
+from games.report_spec import REASON_ENTITY, ReportEntity, ReportReason
 from persistence.reports import ReportModel
 
 
 class ReportNotFoundError(Exception):
+    pass
+
+
+class InvalidReportReasonError(Exception):
     pass
 
 
@@ -47,7 +50,15 @@ class ReportsService:
         """One row per reason, in a single INSERT ... ON CONFLICT DO NOTHING against the partial
         unique index - reporting the same (user, entity, reason) again while it's still open is a
         silent no-op. `reasons` is assumed non-empty (the API DTO validates that; no other call
-        site exists yet)."""
+        site exists yet).
+
+        Raises InvalidReportReasonError, before touching the DB, if any reason doesn't belong to
+        entity_type (e.g. "asset_date" on a person) - all-or-nothing, not a partial insert of the
+        valid ones."""
+        for reason in reasons:
+            if REASON_ENTITY[ReportReason(reason)] != ReportEntity(entity_type):
+                raise InvalidReportReasonError(f"reason {reason!r} does not apply to entity_type {entity_type!r}")
+
         stmt = (
             pg_insert(ReportModel)
             .values(
