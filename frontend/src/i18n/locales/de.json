@@ -295,6 +295,22 @@
       "description": "App-Konten verwalten",
       "loading": "Benutzer werden geladen..."
     },
+    "reports": {
+      "title": "Meldungen",
+      "description": "Von Spielern gemeldete Metadatenprobleme prüfen",
+      "sections": {
+        "asset": "Fotos",
+        "person": "Personen",
+        "album": "Alben"
+      },
+      "showSolved": "Gelöste anzeigen",
+      "loading": "Meldungen werden geladen...",
+      "empty": "Keine Meldungen hier.",
+      "deletedEntity": "(gelöscht)",
+      "reportedBy": "Gemeldet von {{username}} am {{date}}",
+      "markSolved": "Als gelöst markieren",
+      "markUnsolved": "Wieder öffnen"
+    },
     "games": {
       "description": "Konfiguration für jedes Spiel bearbeiten",
       "loading": "Spiele werden geladen...",

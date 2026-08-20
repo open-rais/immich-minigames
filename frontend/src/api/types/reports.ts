@@ -39,3 +39,25 @@ export interface ReportContextOut {
   end_date: string | null
   persons: string[] | null
 }
+
+// Mirrors backend/src/api/dto/reports.py's AdminReportOut/AdminReportCountsOut.
+export interface AdminReportOut {
+  id: string
+  entity_type: ReportEntity
+  entity_id: string
+  // None when the entity no longer exists in Immich (deleted since the report was filed).
+  entity_name: string | null
+  reason: ReportReason
+  note: string | null
+  user_id: string
+  username: string
+  solved: boolean
+  solved_at: string | null
+  created_at: string
+}
+
+export interface AdminReportCountsOut {
+  asset: number
+  person: number
+  album: number
+}

@@ -56,10 +56,23 @@ export function EntryOptionsMenu({ children, triggerClassName = "" }: EntryOptio
 
   useEffect(() => {
     if (!open) return
+    // ReportMenuItem's ReportModal renders via a portal to document.body (see its own docstring
+    // for why - Timeline's per-card popover sits inside a z-indexed ancestor a plain `fixed`
+    // element can't escape) - so once open, its DOM node is a sibling of this popover, not a
+    // descendant, and every click inside it would otherwise read as "outside" below, closing this
+    // popover and - since that stops rendering `children`, unmounting the still-open modal along
+    // with it. `[data-report-modal]` is that portal's own marker; skip all three auto-close paths
+    // while it's present, so the modal's own onClose (not this popover's unrelated bookkeeping)
+    // decides when it closes.
+    function reportModalIsOpen(): boolean {
+      return document.querySelector("[data-report-modal]") !== null
+    }
     function handlePointerDown(e: PointerEvent) {
+      if (reportModalIsOpen()) return
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false)
     }
     function handleKeyDown(e: KeyboardEvent) {
+      if (reportModalIsOpen()) return
       if (e.key === "Escape") setOpen(false)
     }
     // A `fixed` popover doesn't move with the page, so it'd visually detach from its trigger on
@@ -67,6 +80,7 @@ export function EntryOptionsMenu({ children, triggerClassName = "" }: EntryOptio
     // also catches scrolling a nested container (e.g. GuessTable's own horizontal scroll), which
     // doesn't bubble a "scroll" event up to document otherwise.
     function handleScroll() {
+      if (reportModalIsOpen()) return
       setOpen(false)
     }
     document.addEventListener("pointerdown", handlePointerDown)

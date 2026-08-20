@@ -295,6 +295,22 @@
       "description": "Administra las cuentas de la app",
       "loading": "Cargando usuarios..."
     },
+    "reports": {
+      "title": "Reportes",
+      "description": "Revisa problemas de metadata que reportaron los jugadores",
+      "sections": {
+        "asset": "Fotos",
+        "person": "Personas",
+        "album": "Álbumes"
+      },
+      "showSolved": "Mostrar resueltos",
+      "loading": "Cargando reportes...",
+      "empty": "No hay reportes aquí.",
+      "deletedEntity": "(eliminado)",
+      "reportedBy": "Reportado por {{username}} el {{date}}",
+      "markSolved": "Marcar como resuelto",
+      "markUnsolved": "Reabrir"
+    },
     "games": {
       "description": "Edita la configuración de cada juego",
       "loading": "Cargando juegos...",

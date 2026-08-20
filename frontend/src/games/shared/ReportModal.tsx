@@ -43,7 +43,7 @@ function PersonsList({ persons }: { persons: string[] }) {
 
   return (
     <div>
-      <p>{shown.join(", ")}</p>
+      <p className={expanded ? "" : "truncate"}>{shown.join(", ")}</p>
       {remaining > 0 && (
         <button
           type="button"
@@ -171,7 +171,11 @@ export function ReportModal({ kind, id, onClose }: ReportModalProps) {
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-ink/40 px-6" onClick={onClose}>
+    <div
+      data-report-modal
+      className="fixed inset-0 z-40 flex items-center justify-center bg-ink/40 px-6"
+      onClick={onClose}
+    >
       <div
         className="w-full max-w-sm rounded-2xl border border-line-soft bg-surface p-6 shadow-card"
         onClick={(e) => e.stopPropagation()}

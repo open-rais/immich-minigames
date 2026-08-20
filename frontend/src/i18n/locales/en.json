@@ -295,6 +295,22 @@
       "description": "Manage app accounts",
       "loading": "Loading users..."
     },
+    "reports": {
+      "title": "Reports",
+      "description": "Review metadata issues players flagged",
+      "sections": {
+        "asset": "Photos",
+        "person": "People",
+        "album": "Albums"
+      },
+      "showSolved": "Show resolved",
+      "loading": "Loading reports...",
+      "empty": "No reports here.",
+      "deletedEntity": "(deleted)",
+      "reportedBy": "Reported by {{username}} on {{date}}",
+      "markSolved": "Mark resolved",
+      "markUnsolved": "Reopen"
+    },
     "games": {
       "description": "Edit configuration for each game",
       "loading": "Loading games...",
