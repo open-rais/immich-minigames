@@ -103,7 +103,12 @@ export function TriviumRounds({ game, onBack }: RoundsComponentProps) {
       <RoundStepper current={index + 1} total={total} onPrev={prev} onNext={next} />
 
       {entity && (
-        <div className="fixed top-[18px] right-[18px] z-30 md:top-7 md:right-10">
+        // z-40 (not the usual z-30 wrapper - see Geoguessr/WhosThatPersonRounds) - this wrapper's
+        // own `fixed` positioning makes it a stacking context, which would otherwise trap
+        // EntryOptionsMenu's popover (internally z-40) below RevealResultCard's z-30 once open:
+        // elsewhere the two never overlap (opposite corners), but here they're both top-right and
+        // close together, so the trap was actually visible.
+        <div className="fixed top-[18px] right-[18px] z-40 md:top-7 md:right-10">
           <EntryOptionsMenu>
             <ImmichLink kind={entity.kind} id={entity.id} />
             <ReportMenuItem kind={entity.kind} id={entity.id} />
