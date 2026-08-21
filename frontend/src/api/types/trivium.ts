@@ -31,11 +31,19 @@ export interface TriviumRoundOut {
   correct: boolean | null
 }
 
-// Render data for the one question_kind implemented so far - narrow TriviumRoundOut.params
-// against this once question_kind === "birthday_year" is confirmed.
-export interface BirthdayYearParams {
+// Render data shared by every birthday_* question_kind (birthday_year/birthday_day_month/
+// birthday_full_date) - narrow TriviumRoundOut.params against this once question_kind is
+// confirmed to be one of them.
+export interface BirthdayPersonParams {
   person_id: string
   person_name: string
+}
+
+// birthday_day_month's alternative shape - a birthday has no meaningful year to ask about, unlike
+// birthday_year's plain number or birthday_full_date's ISO date string alternatives.
+export interface BirthdayDayMonthAlternative {
+  month: number
+  day: number
 }
 
 // No game_type here (unlike RoundOut) - game_id already fixes a round's game/mode server-side, so

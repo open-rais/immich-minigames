@@ -252,7 +252,9 @@
       "description": "Répondez à des questions sur vos photos et les personnes qu'elles montrent. Une mauvaise réponse - ou un temps écoulé - termine la partie."
     },
     "questions": {
-      "birthdayYear": "En quelle année {{name}} est-il/elle né(e) ?"
+      "birthdayYear": "En quelle année {{name}} est-il/elle né(e) ?",
+      "birthdayDayMonth": "Quand est l'anniversaire de {{name}} ?",
+      "birthdayFullDate": "Quel jour {{name}} est-il/elle né(e) ?"
     },
     "result": {
       "correct": "Correct !",

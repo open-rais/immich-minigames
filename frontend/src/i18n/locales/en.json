@@ -252,7 +252,9 @@
       "description": "Answer trivia about your photos and the people in them. One wrong answer - or running out of time - ends the run."
     },
     "questions": {
-      "birthdayYear": "What year was {{name}} born?"
+      "birthdayYear": "What year was {{name}} born?",
+      "birthdayDayMonth": "When is {{name}}'s birthday?",
+      "birthdayFullDate": "What day was {{name}} born?"
     },
     "result": {
       "correct": "Correct!",

@@ -252,7 +252,9 @@
       "description": "Responde preguntas de trivia sobre tus fotos y las personas en ellas. Una respuesta equivocada - o quedarte sin tiempo - termina la partida."
     },
     "questions": {
-      "birthdayYear": "¿En qué año nació {{name}}?"
+      "birthdayYear": "¿En qué año nació {{name}}?",
+      "birthdayDayMonth": "¿Cuándo cumple años {{name}}?",
+      "birthdayFullDate": "¿Qué día nació {{name}}?"
     },
     "result": {
       "correct": "¡Correcto!",

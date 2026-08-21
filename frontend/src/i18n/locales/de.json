@@ -252,7 +252,9 @@
       "description": "Beantworte Trivia-Fragen zu deinen Fotos und den Personen darauf. Eine falsche Antwort - oder abgelaufene Zeit - beendet das Spiel."
     },
     "questions": {
-      "birthdayYear": "In welchem Jahr wurde {{name}} geboren?"
+      "birthdayYear": "In welchem Jahr wurde {{name}} geboren?",
+      "birthdayDayMonth": "Wann hat {{name}} Geburtstag?",
+      "birthdayFullDate": "An welchem Tag wurde {{name}} geboren?"
     },
     "result": {
       "correct": "Richtig!",

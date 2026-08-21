@@ -5,7 +5,12 @@ import { useNavigate } from "react-router-dom"
 import { personThumbnailUrl, playRound } from "../../api/games"
 import { GameType, Mode } from "../../api/types/common"
 import type { RoundOut } from "../../api/types/common"
-import type { BirthdayYearParams, TriviumPlayRoundIn, TriviumRoundOut } from "../../api/types/trivium"
+import type {
+  BirthdayDayMonthAlternative,
+  BirthdayPersonParams,
+  TriviumPlayRoundIn,
+  TriviumRoundOut,
+} from "../../api/types/trivium"
 import type { GameComponentProps } from "../catalog"
 import { ErrorScreen, FinishedScreen, IdleScreen } from "../shared/GameScreens"
 import { GuardedBackButton } from "../shared/GuardedBackButton"
@@ -44,6 +49,31 @@ function isTriviumRound(round: RoundOut): round is TriviumRoundOut {
 // falls back to the error screen rather than rendering a raw, untranslated key.
 const QUESTION_TEXT_KEYS: Record<string, string> = {
   birthday_year: "trivium.questions.birthdayYear",
+  birthday_day_month: "trivium.questions.birthdayDayMonth",
+  birthday_full_date: "trivium.questions.birthdayFullDate",
+}
+
+// Formats one alternative for display, per question_kind - birthday_year's are plain numbers
+// (rendered as-is), birthday_day_month/birthday_full_date carry no pre-built phrase either (same
+// "structured data, not a formatted string" rule as the question text itself), so the frontend
+// formats them per the active language via Intl.DateTimeFormat. UTC avoids the formatted day
+// shifting by the viewer's own timezone offset - these are calendar dates, not instants.
+function formatAlternative(questionKind: string, value: unknown, language: string): string {
+  if (questionKind === "birthday_day_month") {
+    const { month, day } = value as BirthdayDayMonthAlternative
+    const date = new Date(Date.UTC(2000, month - 1, day))
+    return new Intl.DateTimeFormat(language, { month: "long", day: "numeric", timeZone: "UTC" }).format(date)
+  }
+  if (questionKind === "birthday_full_date") {
+    const date = new Date(`${value as string}T00:00:00Z`)
+    return new Intl.DateTimeFormat(language, {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      timeZone: "UTC",
+    }).format(date)
+  }
+  return String(value)
 }
 
 // The sequence a fresh round plays before the player can answer: reveal the question one word at
@@ -55,7 +85,7 @@ const QUESTION_TEXT_KEYS: Record<string, string> = {
 type RevealStage = "revealing" | "holding" | "alternatives"
 
 export function TriviumGame({ coverUrl, hasRoundsView, daily = false }: GameComponentProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const backToMenu = () => navigate("/")
 
@@ -108,7 +138,7 @@ export function TriviumGame({ coverUrl, hasRoundsView, daily = false }: GameComp
   const mediaLoaded = personThumbnailSrc === null || personThumbnail.url !== null || personThumbnail.failed
 
   const questionTextKey = round ? QUESTION_TEXT_KEYS[round.question_kind] : undefined
-  const params = round?.params as BirthdayYearParams | undefined
+  const params = round?.params as BirthdayPersonParams | undefined
   const questionText = questionTextKey && params ? t(questionTextKey, { name: params.person_name }) : ""
   const questionWords = questionText ? questionText.split(" ") : []
 
@@ -235,7 +265,7 @@ export function TriviumGame({ coverUrl, hasRoundsView, daily = false }: GameComp
     return <ErrorScreen onRetry={startGame} onBack={backToMenu} busy={busy} />
   }
 
-  const alternatives = round.alternatives as number[]
+  const alternativeLabels = round.alternatives.map((alt) => formatAlternative(round.question_kind, alt, i18n.language))
 
   const optionState = (index: number): TriviumOptionState => {
     if (!revealed) return "idle"
@@ -303,14 +333,14 @@ export function TriviumGame({ coverUrl, hasRoundsView, daily = false }: GameComp
           >
             <TriviumTimerBar fraction={remainingMs / answerTimeMs} />
             <div className="grid w-full grid-cols-1 gap-3 md:grid-cols-2 md:gap-5">
-              {alternatives.map((alternative, index) => (
+              {alternativeLabels.map((label, index) => (
                 <TriviumOption
                   key={index}
                   state={optionState(index)}
                   disabled={phase !== "guessing"}
                   onClick={() => handlePick(index)}
                 >
-                  {alternative}
+                  {label}
                 </TriviumOption>
               ))}
             </div>
