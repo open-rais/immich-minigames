@@ -2,13 +2,15 @@
 import TriviumGame` (external callers, tests) keeps working unchanged."""
 
 from games.trivium.game import GAME_TYPE, MAX_ROUNDS, TriviumGame
-from games.trivium.modes import MODE_BIRTHDAY, MODE_LOCATION, MODE_PHOTOS, MODES
+from games.trivium.modes import MODE_BIRTHDAY, MODE_LOCATION, MODE_MIXED, MODE_PHOTOS, MODES
 from games.trivium.questions.base import GeneratedQuestion, MediaKind, MediaSpec, QuestionType
 from games.trivium.questions.birthday_day_month import BirthdayDayMonthQuestion
 from games.trivium.questions.birthday_full_date import BirthdayFullDateQuestion
 from games.trivium.questions.birthday_year import BirthYearQuestion
 from games.trivium.questions.location_city import LocationCityQuestion
 from games.trivium.questions.location_country import LocationCountryQuestion
+from games.trivium.questions.mixed_face_to_name import MixedFaceToNameQuestion
+from games.trivium.questions.mixed_name_to_face import MixedNameToFaceQuestion
 from games.trivium.questions.photos_first_asset_year import PhotosFirstAssetYearQuestion
 from games.trivium.questions.photos_together import PhotosTogetherQuestion
 from games.trivium.questions.photos_total_assets import PhotosTotalAssetsQuestion
@@ -21,6 +23,7 @@ __all__ = [
     "MAX_ROUNDS",
     "MODE_BIRTHDAY",
     "MODE_LOCATION",
+    "MODE_MIXED",
     "MODE_PHOTOS",
     "MODES",
     "Answer",
@@ -32,6 +35,8 @@ __all__ = [
     "LocationCountryQuestion",
     "MediaKind",
     "MediaSpec",
+    "MixedFaceToNameQuestion",
+    "MixedNameToFaceQuestion",
     "PhotosFirstAssetYearQuestion",
     "PhotosTogetherQuestion",
     "PhotosTotalAssetsQuestion",

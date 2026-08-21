@@ -44,7 +44,7 @@ from games.timeline import GAME_TYPE as TIMELINE_TYPE
 from games.timeline import MODE_ARCADE, TimelineGame, TimelineRound
 from games.timeline import LiveContent as TimelineLiveContent
 from games.trivium import GAME_TYPE as TRIVIUM_TYPE
-from games.trivium import MODE_BIRTHDAY, MODE_LOCATION, MODE_PHOTOS, TriviumGame, TriviumRound
+from games.trivium import MODE_BIRTHDAY, MODE_LOCATION, MODE_MIXED, MODE_PHOTOS, TriviumGame, TriviumRound
 from games.whos_that_person import GAME_TYPE as WHOS_THAT_PERSON_TYPE
 from games.whos_that_person import MODE_NAMED_FACES, WhosThatPersonGame, WhosThatPersonRound
 from games.whos_that_person import LiveContent as WhosThatPersonLiveContent
@@ -105,9 +105,10 @@ GAMES: dict[tuple[str, str], GameSpec] = {
     ),
     # No provider_factory/content_factory: TriviumGame takes immich_service directly (the "else"
     # branch of GameFactory.kwargs_for) plus a per-class question_types kwarg - see that method's
-    # TriviumGame special case. No daily yet. Both modes share the same TriviumGame/TriviumRound -
+    # TriviumGame special case. No daily yet. Every mode shares the same TriviumGame/TriviumRound -
     # only games/trivium/modes.py's MODES dict differs between them.
     (TRIVIUM_TYPE, MODE_BIRTHDAY): GameSpec(TriviumGame, TriviumRound),
     (TRIVIUM_TYPE, MODE_PHOTOS): GameSpec(TriviumGame, TriviumRound),
     (TRIVIUM_TYPE, MODE_LOCATION): GameSpec(TriviumGame, TriviumRound),
+    (TRIVIUM_TYPE, MODE_MIXED): GameSpec(TriviumGame, TriviumRound),
 }
