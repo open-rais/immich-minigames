@@ -248,7 +248,8 @@
     "modes": {
       "birthday": "Geburtstag",
       "photos": "Fotos",
-      "location": "Ort"
+      "location": "Ort",
+      "mixed": "Gemischt"
     },
     "start": {
       "description": "Beantworte Trivia-Fragen zu deinen Fotos und den Personen darauf. Eine falsche Antwort - oder abgelaufene Zeit - beendet das Spiel."
@@ -261,7 +262,9 @@
       "photosTogether": "Wer von diesen Personen hat die meisten Fotos mit {{name}}?",
       "photosFirstAssetYear": "Aus welchem Jahr stammt {{name}}s erstes Foto?",
       "locationCountry": "In welchem Land wurde dieses Foto aufgenommen?",
-      "locationCity": "In welcher Stadt wurde dieses Foto aufgenommen?"
+      "locationCity": "In welcher Stadt wurde dieses Foto aufgenommen?",
+      "mixedFaceToName": "Wie heißt diese Person?",
+      "mixedNameToFace": "Wer ist {{name}}?"
     },
     "result": {
       "correct": "Richtig!",

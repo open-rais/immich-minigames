@@ -248,7 +248,8 @@
     "modes": {
       "birthday": "Birthday",
       "photos": "Photos",
-      "location": "Location"
+      "location": "Location",
+      "mixed": "Mixed"
     },
     "start": {
       "description": "Answer trivia about your photos and the people in them. One wrong answer - or running out of time - ends the run."
@@ -261,7 +262,9 @@
       "photosTogether": "Which of these people has the most photos with {{name}}?",
       "photosFirstAssetYear": "What year is {{name}}'s first photo from?",
       "locationCountry": "In what country was this photo taken?",
-      "locationCity": "In what city was this photo taken?"
+      "locationCity": "In what city was this photo taken?",
+      "mixedFaceToName": "What's this person's name?",
+      "mixedNameToFace": "Who is {{name}}?"
     },
     "result": {
       "correct": "Correct!",

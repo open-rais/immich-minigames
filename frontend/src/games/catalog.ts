@@ -249,6 +249,14 @@ export const GAME_CATALOG: CatalogGame[] = [
         modeTitleKey: "trivium.modes.location",
         component: TriviumGame,
       },
+      {
+        // Same component again - the union of every other mode's question kinds plus its own two
+        // (face -> name, name -> face), both already covered by TriviumGame's existing
+        // photo-alternatives grid (see PERSON_ALTERNATIVE_KINDS).
+        mode: Mode.Mixed,
+        modeTitleKey: "trivium.modes.mixed",
+        component: TriviumGame,
+      },
     ],
   },
 ]

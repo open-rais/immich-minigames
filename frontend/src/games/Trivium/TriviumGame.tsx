@@ -31,6 +31,7 @@ const MODE_TITLE_KEYS: Record<string, string> = {
   [Mode.Birthday]: "trivium.modes.birthday",
   [Mode.Photos]: "trivium.modes.photos",
   [Mode.Location]: "trivium.modes.location",
+  [Mode.Mixed]: "trivium.modes.mixed",
 }
 
 // Fallback only - the real value always comes from the started game's own answer_time_seconds
@@ -64,12 +65,15 @@ const QUESTION_TEXT_KEYS: Record<string, string> = {
   photos_first_asset_year: "trivium.questions.photosFirstAssetYear",
   location_country: "trivium.questions.locationCountry",
   location_city: "trivium.questions.locationCity",
+  mixed_face_to_name: "trivium.questions.mixedFaceToName",
+  mixed_name_to_face: "trivium.questions.mixedNameToFace",
 }
 
 // question_kinds whose alternatives are people ({person_id, person_name}) rather than a raw
 // value - photos_total_assets/photos_together: the choices themselves are the candidates being
-// compared, not a number or date about a single named subject.
-const PERSON_ALTERNATIVE_KINDS = new Set(["photos_total_assets", "photos_together"])
+// compared, not a number or date about a single named subject. mixed_name_to_face: same shape,
+// its alternatives are the 4 candidate faces for "who is {name}".
+const PERSON_ALTERNATIVE_KINDS = new Set(["photos_total_assets", "photos_together", "mixed_name_to_face"])
 
 // Formats one alternative for display, per question_kind - birthday_year/photos_first_asset_year's
 // are plain numbers (rendered as-is), birthday_day_month/birthday_full_date carry no pre-built
