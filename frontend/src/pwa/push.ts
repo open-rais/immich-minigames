@@ -34,9 +34,9 @@ export function urlBase64ToUint8Array(base64Url: string): Uint8Array<ArrayBuffer
   return bytes as Uint8Array<ArrayBuffer>
 }
 
-// requestPermission() must be called from inside a user gesture (§3.2, notably iOS) - this never
-// wraps it in anything async-before-the-call, so callers must invoke it directly from a click
-// handler, not after an intermediate await.
+// requestPermission() must be called from inside a user gesture (notably iOS Safari, which
+// silently ignores the call otherwise) - this never wraps it in anything async-before-the-call,
+// so callers must invoke it directly from a click handler, not after an intermediate await.
 export function requestNotificationPermission(): Promise<NotificationPermission> {
   return Notification.requestPermission()
 }
