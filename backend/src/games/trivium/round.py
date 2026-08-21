@@ -31,7 +31,7 @@ class Answer:
     elapsed_ms: int
 
 
-def _media_to_payload(media: MediaSpec) -> dict[str, Any]:
+def media_to_payload(media: MediaSpec) -> dict[str, Any]:
     payload: dict[str, Any] = {"kind": media.kind}
     if media.asset_id is not None:
         payload["asset_id"] = str(media.asset_id)
@@ -42,7 +42,7 @@ def _media_to_payload(media: MediaSpec) -> dict[str, Any]:
     return payload
 
 
-def _media_from_payload(payload: dict[str, Any]) -> MediaSpec:
+def media_from_payload(payload: dict[str, Any]) -> MediaSpec:
     return MediaSpec(
         kind=payload["kind"],
         asset_id=UUID(payload["asset_id"]) if "asset_id" in payload else None,
@@ -119,7 +119,7 @@ class TriviumRound(BaseRound):
             "params": self.params,
             "alternatives": self.alternatives,
             "correct_index": self.correct_index,
-            "media": _media_to_payload(self.media),
+            "media": media_to_payload(self.media),
             "guess": (
                 {"alternative": self.guess.alternative, "elapsed_ms": self.guess.elapsed_ms}
                 if self.guess is not None
@@ -140,7 +140,7 @@ class TriviumRound(BaseRound):
             params=payload["params"],
             alternatives=payload["alternatives"],
             correct_index=payload["correct_index"],
-            media=_media_from_payload(payload["media"]),
+            media=media_from_payload(payload["media"]),
         )
         guess_payload = payload["guess"]
         round_.guess = (
