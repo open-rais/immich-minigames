@@ -81,6 +81,15 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       INITIAL_INVITE_TOKEN: ${INITIAL_INVITE_TOKEN}
       RATE_LIMIT_STORAGE_URI: ${RATE_LIMIT_STORAGE_URI:-memory://}
+      # All three blank (the default) turns the whole notifications feature off - see .env.example.
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
+      VAPID_CONTACT_EMAIL: ${VAPID_CONTACT_EMAIL}
+      PUSH_ALLOWED_HOSTS: ${PUSH_ALLOWED_HOSTS:-*.googleapis.com,*.push.services.mozilla.com,web.push.apple.com,*.notify.windows.com}
+      # The four scheduled notification times (services/notifications/schedule.py) are server-
+      # local, not per-user - blank here (the container's own UTC default) unless set in .env,
+      # same opt-in as the commented-out TZ example there.
+      TZ: ${TZ:-}
       # The default below (json) just restates the image's own Dockerfile ENV - listed explicitly
       # so LOG_FORMAT/LOG_LEVEL can be overridden from .env (e.g. LOG_FORMAT=console for more
       # readable ad-hoc `docker logs` reading); this allow-list is the only way anything set in
