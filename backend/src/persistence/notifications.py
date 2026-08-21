@@ -1,7 +1,7 @@
 """
-Own persistence layer for Web Push notifications (F2 of roadmap point O) - devices subscribed to
-push, one row of per-account preferences, and (unused until the scheduler lands) a log of what's
-already been sent, for idempotency. Shares this app's own database/Base with users.py/games.py
+Own persistence layer for Web Push notifications - devices subscribed to push, one row of
+per-account preferences, and a log of what's already been sent (services/notifications/runner.py's
+idempotency check). Shares this app's own database/Base with users.py/games.py
 (persistence/base.py). Tables created by migration 0015.
 """
 

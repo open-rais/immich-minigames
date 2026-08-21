@@ -1,8 +1,9 @@
 """
 Web Push facade (mirrors services/immich/ - one class re-exporting a package split by concern):
-subscription/preference CRUD plus a manual test send. The actual content/scheduling of the four
-real notifications (messages.py/content.py/schedule.py/runner.py in the doc this feature was
-planned from) lands in a later phase - this one is the pipe, not what flows through it.
+subscription/preference CRUD, a manual test send, and send_to_user - the per-device send-and-record
+loop both the manual test and runner.py's scheduled deliveries share. content.py/schedule.py decide
+*what*/*when*; runner.py orchestrates; this module is the only thing that actually touches
+push_subscriptions rows.
 """
 
 from dataclasses import dataclass
@@ -17,7 +18,7 @@ from audit import audit
 from config import Settings
 from persistence.notifications import NotificationPreferencesModel, PushSubscriptionModel
 from services.notifications.endpoint_safety import validate_push_endpoint
-from services.notifications.sender import send_push
+from services.notifications.sender import TEST_TTL_SECONDS, send_push
 
 __all__ = ["NotificationPreferences", "NotificationService", "NoPushSubscriptionsError", "PushSendFailedError"]
 
@@ -120,27 +121,48 @@ class NotificationService:
         audit("push_subscription_removed", user_id=str(user_id))
 
     def send_test(self, user_id: UUID) -> None:
+        has_subscription = self._session.scalar(
+            sa.select(PushSubscriptionModel.id).where(PushSubscriptionModel.user_id == user_id).limit(1)
+        )
+        if has_subscription is None:
+            raise NoPushSubscriptionsError(f"user {user_id} has no push subscriptions")
+
+        # Plain, non-localized copy - a manual debugging ping, not one of the four scheduled
+        # notifications messages.py composes per-language content for.
+        any_ok = self.send_to_user(
+            user_id,
+            title="Immich Minigames",
+            body="Test notification - if you can see this, push is working.",
+            url="/",
+            tag="test",
+        )
+        if not any_ok:
+            raise PushSendFailedError(f"push send failed for every subscription of user {user_id}")
+
+    def send_to_user(
+        self, user_id: UUID, *, title: str, body: str, url: str, tag: str, ttl: int = TEST_TTL_SECONDS
+    ) -> bool:
+        """Sends to every one of the user's subscribed devices, updating/deleting rows exactly
+        like send_test always has - the only difference from calling send_test's old inline loop
+        directly is this never raises, so runner.py's per-user scheduling loop can call this for
+        many users in a row without one dead device aborting the rest of the tick. Returns whether
+        at least one device received it; the caller decides what "none of them did" means for its
+        own case (send_test turns it into PushSendFailedError, runner.py just logs and moves on)."""
         subscriptions = list(
             self._session.scalars(sa.select(PushSubscriptionModel).where(PushSubscriptionModel.user_id == user_id))
         )
-        if not subscriptions:
-            raise NoPushSubscriptionsError(f"user {user_id} has no push subscriptions")
-
-        # Plain, non-localized copy - the real per-language content (services/notifications/
-        # messages.py in the design this was planned from) belongs to the four scheduled
-        # notifications, not a manual test ping.
         any_ok = False
-        last_status: int | None = None
         for subscription in subscriptions:
             result = send_push(
                 self._settings,
                 endpoint=subscription.endpoint,
                 p256dh=subscription.p256dh,
                 auth=subscription.auth,
-                title="Immich Minigames",
-                body="Test notification - if you can see this, push is working.",
-                url="/",
-                tag="test",
+                title=title,
+                body=body,
+                url=url,
+                tag=tag,
+                ttl=ttl,
             )
             if result.ok:
                 any_ok = True
@@ -151,9 +173,6 @@ class NotificationService:
                 audit("push_subscription_expired", user_id=str(user_id), status_code=result.status_code)
             else:
                 subscription.failure_count += 1
-                last_status = result.status_code
                 audit("push_send_failed", user_id=str(user_id), status_code=result.status_code)
         self._session.commit()
-
-        if not any_ok:
-            raise PushSendFailedError(f"push send failed for every subscription (last status: {last_status})")
+        return any_ok

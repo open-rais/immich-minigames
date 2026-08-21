@@ -1,9 +1,8 @@
 """add notifications tables
 
-Backs Web Push (roadmap point O, F2): device subscriptions, one row of per-account preferences,
-and an idempotency log for the scheduler that lands in a later phase - all three land together
-since they're one coherent feature, even though `notification_deliveries` isn't read or written
-anywhere yet.
+Backs Web Push: device subscriptions, one row of per-account preferences, and an idempotency log
+for the scheduler (services/notifications/runner.py) - all three land together since they're one
+coherent feature.
 
 `push_subscriptions.user_id` is ON DELETE CASCADE (unlike this app's other FKs, which cascade
 ORM-side via relationship(cascade=...)) - a device row has no other owner to clean it up through.

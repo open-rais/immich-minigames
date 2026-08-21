@@ -90,6 +90,9 @@ class ImmichService:
             exclude_ids=exclude_ids,
         )
 
+    def get_persons_with_birthday_on(self, month: int, day: int) -> list[Person]:
+        return persons.get_persons_with_birthday_on(self._engine, month, day)
+
     def search_persons(self, query: str, *, offset: int = 0, limit: int = 3) -> list[Person]:
         return persons.search_persons(self._engine, query, offset=offset, limit=limit)
 
@@ -145,6 +148,9 @@ class ImmichService:
 
     def get_album_last_asset_date(self, album_id: UUID) -> date | None:
         return albums.get_album_last_asset_date(self._engine, album_id)
+
+    def get_albums_starting_on(self, month: int, day: int) -> list[tuple[UUID, str, date]]:
+        return albums.get_albums_starting_on(self._engine, month, day)
 
     def get_album_named_face_counts(self, album_id: UUID) -> list[tuple[UUID, str, int]]:
         return albums.get_album_named_face_counts(self._engine, album_id)

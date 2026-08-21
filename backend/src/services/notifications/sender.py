@@ -45,8 +45,8 @@ class _NoRedirectSession(requests.Session):
 _session = _NoRedirectSession()
 
 # A manual test ping shouldn't outlive the settings page that requested it - unlike the four
-# scheduled notifications (§3.15's "TTL = seconds until server midnight" rule), which don't exist
-# yet in this phase.
+# scheduled notifications, which use a much longer TTL computed from time-of-day (see
+# runner.py's _seconds_until_midnight).
 TEST_TTL_SECONDS = 60
 
 
