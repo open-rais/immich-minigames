@@ -92,6 +92,12 @@ export function buildDailyShareBody(t: TFunction, game: GameOut): string {
       // shape as MoreOrLess's own streak line above.
       return `${t("daily.share.timeline", { count: game.score })}\n${t("daily.share.total", { score: game.score })}`
 
+    case GameType.Trivium:
+      // Unlike Timeline's score-is-the-streak, Trivium's score is points (time-based, see
+      // games/trivium/round.py's calculate_score), so the headline count is rounds answered, not
+      // the score itself - hence the separate total line, same shape as Immichdle/WhosThatPerson.
+      return `${t("daily.share.trivium", { count: game.rounds.length })}\n${t("daily.share.total", { score: game.score })}`
+
     default:
       return t("daily.share.total", { score: game.score })
   }
@@ -144,6 +150,9 @@ export function buildDailyShareOneLiner(t: TFunction, game: GameOut): string {
     case GameType.Timeline:
       // One-liner: just the first line - the score is already in it.
       return t("daily.share.timeline", { count: game.score })
+
+    case GameType.Trivium:
+      return t("daily.share.trivium", { count: game.rounds.length })
 
     default:
       return `${game.score}pts`

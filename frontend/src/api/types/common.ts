@@ -12,6 +12,7 @@ import type {
 } from "./immichdle"
 import type { MoreOrLessPlayRoundIn, MoreOrLessRoundOut } from "./moreOrLess"
 import type { TimelinePlayRoundIn, TimelineRoundOut } from "./timeline"
+import type { TriviumPlayRoundIn, TriviumRoundOut } from "./trivium"
 import type { WhosThatPersonPlayRoundIn, WhosThatPersonRoundOut } from "./whosThatPerson"
 
 // Canonical game_type / mode identifiers, mirroring the keys of
@@ -25,6 +26,7 @@ export const GameType = {
   Immichdle: "immichdle",
   WhosThatPerson: "whos-that-person",
   Timeline: "timeline",
+  Trivium: "trivium",
 } as const
 export type GameType = (typeof GameType)[keyof typeof GameType]
 
@@ -38,6 +40,7 @@ export const Mode = {
   Album: "album",
   NamedFaces: "namedFaces",
   Arcade: "arcade",
+  Birthday: "birthday",
 } as const
 export type Mode = (typeof Mode)[keyof typeof Mode]
 
@@ -54,6 +57,7 @@ export type RoundOut =
   | AlbumdleRoundOut
   | WhosThatPersonRoundOut
   | TimelineRoundOut
+  | TriviumRoundOut
 
 export interface GameOut {
   id: string
@@ -88,6 +92,10 @@ export interface GameOut {
   // Same rationale as total_rounds/total_people above, but purely visual (WhosThatPerson's face-box
   // expansion factor, 1.0-1.5) - null for every other game.
   face_box_growth?: number | null
+  // Same rationale again - Trivium's per-round answer window in seconds, so its countdown timer
+  // (and its own timeout auto-submit) stays in sync with the live admin-configured value instead
+  // of a hardcoded guess. Null for every other game.
+  answer_time_seconds?: number | null
   // Set only for a daily-challenge game, null for every normal game. Lets the
   // frontend recognize a resumed/loaded game as a daily one after a page reload (see
   // games/shared/useRoundGame.ts).
@@ -110,6 +118,7 @@ export type PlayRoundIn =
   | AlbumdlePlayRoundIn
   | WhosThatPersonPlayRoundIn
   | TimelinePlayRoundIn
+  | TriviumPlayRoundIn
 
 export interface PlayRoundOut {
   // Binary-guess concept (MoreOrLess) - null for games with a continuous score (Geoguessr).

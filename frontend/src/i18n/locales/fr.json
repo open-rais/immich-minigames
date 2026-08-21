@@ -58,7 +58,8 @@
       "whosThatPerson": "🧑‍🧑‍🧒‍🧒 {{correct}}/{{total}} personnes",
       "km": "{{value}}km",
       "days": "{{count}} jours",
-      "timeline": "🃏 {{count}} cartes"
+      "timeline": "🃏 {{count}} cartes",
+      "trivium": "🧠 {{count}} questions"
     }
   },
   "leaderboard": {
@@ -240,6 +241,23 @@
       "bannerLoss": "La carte qui a terminé le jeu s'affiche en rouge: où vous l'avez placée par rapport à où elle aurait dû être.",
       "startBadge": "Début",
       "orderBadge": "#{{count}}"
+    }
+  },
+  "trivium": {
+    "title": "Trivium",
+    "modes": {
+      "birthday": "Anniversaire"
+    },
+    "start": {
+      "description": "Répondez à des questions sur vos photos et les personnes qu'elles montrent. Une mauvaise réponse - ou un temps écoulé - termine la partie."
+    },
+    "questions": {
+      "birthdayYear": "En quelle année {{name}} est-il/elle né(e) ?"
+    },
+    "result": {
+      "correct": "Correct !",
+      "wrong": "Mauvaise réponse",
+      "timeout": "Temps écoulé !"
     }
   },
   "auth": {

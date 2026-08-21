@@ -53,6 +53,9 @@ const WhosThatPersonRounds = lazy(() =>
     default: m.WhosThatPersonRounds,
   })),
 )
+const TriviumGame = lazy(() =>
+  import("./Trivium/TriviumGame").then((m) => ({ default: m.TriviumGame })),
+)
 
 // Mirrors backend/src/services/game_registry.py's GAMES by hand - same
 // manual-sync convention already used for api/types.ts vs api/dto/. Add an entry here whenever a
@@ -218,6 +221,20 @@ export const GAME_CATALOG: CatalogGame[] = [
         coverUrl: "/covers/timeline.webp",
         roundsComponent: TimelineRounds,
         roundsLayout: "fullscreen",
+      },
+    ],
+  },
+  {
+    gameType: GameType.Trivium,
+    gameTitleKey: "trivium.title",
+    modes: [
+      {
+        // No coverUrl/roundsComponent yet - only the birthday_year question type and the vertical
+        // gameplay slice exist so far; cover art and the rounds-review screen are later work, same
+        // as any other mode before its art/review screen land (see coverUrl/roundsComponent above).
+        mode: Mode.Birthday,
+        modeTitleKey: "trivium.modes.birthday",
+        component: TriviumGame,
       },
     ],
   },
