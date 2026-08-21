@@ -13,6 +13,7 @@ class TestCreateGame:
 
         assert game["score"] == 0
         assert game["finished"] is False
+        assert game["answer_time_seconds"] == 10
         assert len(game["rounds"]) == 1
         round_ = game["rounds"][0]
         assert round_["game_type"] == "trivium"

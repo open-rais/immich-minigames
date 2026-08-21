@@ -50,7 +50,8 @@ class TestBirthYearQuestionAgainstRealData:
         assert 0 <= question.correct_index < 4
         assert question.params["person_id"] == str(question.subject_id)
         assert isinstance(question.params["person_name"], str) and question.params["person_name"]
-        assert question.media.kind == "none"
+        assert question.media.kind == "person_thumbnail"
+        assert question.media.person_id == question.subject_id
 
     def test_the_correct_alternative_is_the_subjects_real_birth_year(self, immich_service):
         question_type = BirthYearQuestion()

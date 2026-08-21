@@ -6,7 +6,7 @@ distractors correspond to an actual person, so a familiar face can't be used to 
 import random
 from uuid import UUID
 
-from games.trivium.questions.base import NONE_MEDIA, GeneratedQuestion
+from games.trivium.questions.base import GeneratedQuestion, MediaSpec
 from services.immich import ContentQueries
 
 KIND = "birthday_year"
@@ -78,5 +78,6 @@ class BirthYearQuestion:
             params={"person_id": str(subject.id), "person_name": subject.name},
             alternatives=alternatives,
             correct_index=alternatives.index(correct_year),
-            media=NONE_MEDIA,
+            # Confirmed by the owner: show the subject's face here too, not just the name.
+            media=MediaSpec(kind="person_thumbnail", person_id=subject.id),
         )

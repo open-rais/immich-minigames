@@ -51,6 +51,37 @@ def _start_game(questions: list[GeneratedQuestion], settings: dict[str, float] |
     )
 
 
+class _PoolQuestionType:
+    """Deterministic QuestionType test double backed by a small, fixed *pool* of distinct subjects
+    (unlike _FiniteQuestionType's straight-through, non-repeatable queue) - re-evaluated fresh on
+    every call against whatever exclude_subject_ids it's given, so a game can legitimately exhaust
+    it under one exclusion set and still find something under a smaller one. Drives
+    TriviumGame._build_round/_any_question_available's "the subject-exclusion pool ran out, allow
+    a repeat" fallback."""
+
+    def __init__(self, questions: list[GeneratedQuestion]) -> None:
+        self._questions = list(questions)
+
+    def _eligible(self, exclude_subject_ids: frozenset) -> list[GeneratedQuestion]:
+        return [q for q in self._questions if q.subject_id not in exclude_subject_ids]
+
+    def can_generate(self, immich_service, exclude_subject_ids) -> bool:
+        return bool(self._eligible(exclude_subject_ids))
+
+    def generate(self, immich_service, exclude_subject_ids) -> GeneratedQuestion:
+        return self._eligible(exclude_subject_ids)[0]
+
+
+def _start_pool_game(questions: list[GeneratedQuestion]) -> TriviumGame:
+    return TriviumGame.start(
+        id=uuid4(),
+        mode="birthday",
+        immich_service=None,
+        question_types=[_PoolQuestionType(questions)],
+        settings=None,
+    )
+
+
 class TestTriviumRoundScoring:
     """Isolated from the DB - constructs rounds directly against a known question."""
 
@@ -205,17 +236,37 @@ class TestTriviumGame:
         with pytest.raises(ValueError):
             game.play_round(Answer(alternative=0, elapsed_ms=0))
 
-    def test_a_subject_never_repeats_within_the_same_game(self):
+    def test_a_subject_does_not_repeat_while_a_fresh_one_is_still_available(self):
+        subject_a, subject_b = uuid4(), uuid4()
+        game = _start_pool_game(
+            [
+                _question(subject_id=subject_a, correct_index=1),
+                _question(subject_id=subject_b, correct_index=0),
+            ]
+        )
+        assert game.current_round.subject_id == subject_a
+
+        game.play_round(Answer(alternative=1, elapsed_ms=0))
+
+        assert game.finished is False
+        assert game.current_round.subject_id == subject_b
+
+    def test_a_subject_can_repeat_once_the_eligible_pool_is_exhausted(self):
+        # Confirmed by the owner: the game should be able to keep going indefinitely, repeating a
+        # subject if the library doesn't have enough distinct ones left - a single-subject pool is
+        # the smallest case that forces a repeat on the very next round.
         subject = uuid4()
-        # Both questions share the same subject - the pool is exhausted after round 1 since
-        # TriviumGame excludes every subject already shown, permanently.
-        game = _start_game([_question(subject_id=subject, correct_index=1)] * 2)
+        game = _start_pool_game([_question(subject_id=subject, correct_index=1)])
 
         result = game.play_round(Answer(alternative=1, elapsed_ms=0))
 
-        assert result.finished is True
-        assert result.score == 100
-        assert game.rounds[-1].correct is True
+        assert result.finished is False
+        assert game.current_round.subject_id == subject  # repeated - it's the only one available
+
+        # And it keeps going: another correct answer chains yet another (repeated) round.
+        result = game.play_round(Answer(alternative=1, elapsed_ms=0))
+        assert result.finished is False
+        assert game.current_round.subject_id == subject
 
     def test_pool_exhaustion_ends_the_game_as_a_perfect_run(self):
         game = _start_game([_question(correct_index=1), _question(correct_index=0)])
@@ -264,3 +315,10 @@ class TestTriviumAdminSettings:
         result = game.play_round(Answer(alternative=1, elapsed_ms=10_000))  # half of 20s
 
         assert result.score_delta == 25
+
+    def test_answer_time_seconds_reflects_the_live_setting(self):
+        default_game = _start_game([_question()])
+        assert default_game.answer_time_seconds == 10
+
+        custom_game = _start_game([_question()], settings={"answer_time_seconds": 20})
+        assert custom_game.answer_time_seconds == 20

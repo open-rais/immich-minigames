@@ -170,6 +170,9 @@ class GameOut(BaseModel):
     # Same rationale as total_rounds/total_people above, but purely visual (WhosThatPerson's face-box
     # expansion factor) - the frontend has no other way to learn an admin override of it.
     face_box_growth: float | None = None
+    # Same rationale again - Trivium's per-round answer window, so the frontend's countdown timer
+    # (and its own timeout auto-submit) stays in sync with whatever an admin has it configured to.
+    answer_time_seconds: int | None = None
     # Set only for a daily-challenge game (see games/base.py's BaseGame.
     # daily_challenge_date), null for every normal game. Lets the frontend tell a resumed/loaded
     # game is a daily one on a fresh page load (no separate "Nuevo juego" affordance, no re-offer
@@ -232,6 +235,7 @@ class GameOut(BaseModel):
             total_rounds=game.total_rounds,
             total_people=game.total_people,
             face_box_growth=game.face_box_growth,
+            answer_time_seconds=game.answer_time_seconds,
             daily_challenge_date=game.daily_challenge_date,
         )
 

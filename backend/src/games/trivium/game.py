@@ -10,7 +10,9 @@ the scoring itself.
 
 Scoring is linear by elapsed time, computed entirely in games/trivium/round.py's
 TriviumRound.calculate_score - this module only owns the loop: which round comes next, when the
-game is over, and the once-per-game "don't repeat a subject" exclusion.
+game is over, and the "don't repeat a subject" exclusion (falling back to allowing a repeat once
+the pool of eligible subjects runs out, so the game stays infinite even against a small library -
+see _build_round).
 """
 
 from collections.abc import Mapping
@@ -19,7 +21,7 @@ from uuid import UUID, uuid4
 from games.base import BaseGame
 from games.trivium.modes import any_question_available, pick_question
 from games.trivium.questions.base import QuestionType
-from games.trivium.round import TriviumRound
+from games.trivium.round import ANSWER_TIME_SECONDS, TriviumRound
 from services.immich import ContentQueries
 
 GAME_TYPE = "trivium"
@@ -56,9 +58,16 @@ class TriviumGame(BaseGame):
         return int(self._settings.get("max_rounds", MAX_ROUNDS))
 
     @property
+    def answer_time_seconds(self) -> int:
+        return int(self._settings.get("answer_time_seconds", ANSWER_TIME_SECONDS))
+
+    @property
     def _used_subject_ids(self) -> frozenset[UUID]:
-        """Every subject shown so far this game - permanent, not a recent-window like MoreOrLess':
-        a person/asset never repeats as a subject twice in the same game, however long it runs."""
+        """Every subject shown so far this game - a person/asset doesn't repeat as a subject
+        within the same game *as long as the library has enough of them*; once that pool is
+        exhausted, _build_round falls back to ignoring this so the game stays infinite instead of
+        ending early against a small library (confirmed by the owner: it should be able to
+        repeat)."""
         return frozenset(r.subject_id for r in self.rounds)
 
     @classmethod
@@ -86,9 +95,23 @@ class TriviumGame(BaseGame):
 
     def _build_round(self, round_index: int, exclude_subject_ids: frozenset[UUID]) -> TriviumRound | None:
         question = pick_question(self._question_types, self._immich_service, exclude_subject_ids)
+        if question is None and exclude_subject_ids:
+            # The subject-exclusion pool is exhausted (a library with fewer eligible subjects than
+            # rounds already played) - allow a repeat rather than ending the game, so it stays
+            # infinite the same way MoreOrLess/Timeline fall back to repeats once their own
+            # recent-exclude window covers the whole pool.
+            question = pick_question(self._question_types, self._immich_service, frozenset())
         if question is None:
             return None
         return TriviumRound.of(id=uuid4(), game_id=self.id, round_index=round_index, question=question)
+
+    def _any_question_available(self, exclude_subject_ids: frozenset[UUID]) -> bool:
+        if any_question_available(self._question_types, self._immich_service, exclude_subject_ids):
+            return True
+        # Same exhausted-pool fallback as _build_round.
+        return bool(exclude_subject_ids) and any_question_available(
+            self._question_types, self._immich_service, frozenset()
+        )
 
     def has_next_round(self) -> bool:
         current = self.current_round
@@ -97,7 +120,7 @@ class TriviumGame(BaseGame):
         max_rounds = self._max_rounds
         if max_rounds and current.round_index >= max_rounds:
             return False
-        return any_question_available(self._question_types, self._immich_service, self._used_subject_ids)
+        return self._any_question_available(self._used_subject_ids)
 
     def create_next_round(self) -> TriviumRound:
         next_round = self._build_round(self.current_round.round_index + 1, self._used_subject_ids)
