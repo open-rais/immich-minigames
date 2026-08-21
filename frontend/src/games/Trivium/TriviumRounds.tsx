@@ -14,7 +14,7 @@ import { ReportMenuItem } from "../shared/ReportMenuItem"
 import { RevealResultCard } from "../shared/RevealResultCard"
 import { RoundStepper } from "../rounds/RoundStepper"
 import { useRoundStepper } from "../shared/useRoundStepper"
-import { PERSON_ALTERNATIVE_KINDS, QUESTION_TEXT_KEYS, formatAlternative } from "./questionText"
+import { FACE_ONLY_ALTERNATIVE_KINDS, PERSON_ALTERNATIVE_KINDS, QUESTION_TEXT_KEYS, formatAlternative } from "./questionText"
 import type { TriviumOptionState } from "./TriviumOption"
 import { TriviumOption } from "./TriviumOption"
 
@@ -137,7 +137,13 @@ export function TriviumRounds({ game, onBack }: RoundsComponentProps) {
           className={`grid w-full gap-3 md:gap-5 ${hasPersonAlternatives ? "grid-cols-2" : "grid-cols-1 md:grid-cols-2"}`}
         >
           {alternativeLabels.map((label, i) => (
-            <TriviumOption key={i} state={optionState(i)} disabled photoUrl={optionPhotoUrls[i]}>
+            <TriviumOption
+              key={i}
+              state={optionState(i)}
+              disabled
+              photoUrl={optionPhotoUrls[i]}
+              hideCaption={FACE_ONLY_ALTERNATIVE_KINDS.has(round.question_kind)}
+            >
               {label}
             </TriviumOption>
           ))}

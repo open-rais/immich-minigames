@@ -24,6 +24,12 @@ export const QUESTION_TEXT_KEYS: Record<string, string> = {
 // its alternatives are the 4 candidate faces for "who is {name}".
 export const PERSON_ALTERNATIVE_KINDS = new Set(["photos_total_assets", "photos_together", "mixed_name_to_face"])
 
+// Of PERSON_ALTERNATIVE_KINDS, the ones meant to be told apart by face alone - mixed_name_to_face
+// ("who is {name}") would give away the answer if each candidate's name were printed under their
+// photo. photos_total_assets/photos_together are the opposite: the name is the very thing being
+// compared, so they keep their caption (see TriviumOption.tsx's hideCaption).
+export const FACE_ONLY_ALTERNATIVE_KINDS = new Set(["mixed_name_to_face"])
+
 // Formats one alternative for display, per question_kind - birthday_year/photos_first_asset_year's
 // are plain numbers (rendered as-is), birthday_day_month/birthday_full_date carry no pre-built
 // phrase either (same "structured data, not a formatted string" rule as the question text itself),

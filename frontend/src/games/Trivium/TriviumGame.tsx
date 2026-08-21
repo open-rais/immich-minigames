@@ -15,7 +15,7 @@ import { RevealResultCard } from "../shared/RevealResultCard"
 import { ScoreBadge } from "../shared/ScoreBadge"
 import { useQueuedThumbnail } from "../shared/thumbnailQueue"
 import { useRoundGame } from "../shared/useRoundGame"
-import { PERSON_ALTERNATIVE_KINDS, QUESTION_TEXT_KEYS, formatAlternative } from "./questionText"
+import { FACE_ONLY_ALTERNATIVE_KINDS, PERSON_ALTERNATIVE_KINDS, QUESTION_TEXT_KEYS, formatAlternative } from "./questionText"
 import type { TriviumOptionState } from "./TriviumOption"
 import { TriviumOption } from "./TriviumOption"
 import { TriviumTimerBar } from "./TriviumTimerBar"
@@ -388,6 +388,7 @@ export function TriviumGame({ coverUrl, hasRoundsView, daily = false }: GameComp
                   disabled={phase !== "guessing"}
                   onClick={() => handlePick(index)}
                   photoUrl={optionPhotoUrls[index]}
+                  hideCaption={FACE_ONLY_ALTERNATIVE_KINDS.has(round.question_kind)}
                 >
                   {label}
                 </TriviumOption>

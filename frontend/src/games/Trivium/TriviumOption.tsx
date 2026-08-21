@@ -29,23 +29,29 @@ interface TriviumOptionProps {
   disabled?: boolean
   onClick?: () => void
   // Set (even to null, while still loading/unresolved) for a question whose alternatives are
-  // people (photos_total_assets/photos_together) - renders their photo above the name instead of
-  // the plain text button. Left unset for every other question_kind.
+  // people (photos_total_assets/photos_together/mixed_name_to_face) - renders their photo above
+  // the name instead of the plain text button. Left unset for every other question_kind.
   photoUrl?: string | null
+  // mixed_name_to_face ("who is {name}") is meant to be answered by face alone - printing the name
+  // under each candidate would just hand over the answer. photos_total_assets/photos_together
+  // (where the name *is* the thing being compared) keep their caption; this only ever applies
+  // alongside photoUrl.
+  hideCaption?: boolean
   children: ReactNode
 }
 
-export function TriviumOption({ state, disabled, onClick, photoUrl, children }: TriviumOptionProps) {
+export function TriviumOption({ state, disabled, onClick, photoUrl, hideCaption, children }: TriviumOptionProps) {
   if (photoUrl !== undefined) {
     return (
       <button
         type="button"
         onClick={onClick}
         disabled={disabled}
+        aria-label={hideCaption && typeof children === "string" ? children : undefined}
         className={`flex w-full flex-col items-center gap-2 rounded-2xl border p-3 text-center transition-colors disabled:cursor-not-allowed md:gap-3 md:rounded-3xl md:p-4 ${STATE_CLASS[state]}`}
       >
         <PersonAvatar src={photoUrl} alt="" size="lg" />
-        <span className="text-base font-bold md:text-xl">{children}</span>
+        {!hideCaption && <span className="text-base font-bold md:text-xl">{children}</span>}
       </button>
     )
   }
