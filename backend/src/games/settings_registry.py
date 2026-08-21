@@ -18,6 +18,8 @@ from games.more_or_less.settings import SETTING_SPECS as MORE_OR_LESS_SETTING_SP
 from games.settings_spec import SettingSpec
 from games.timeline import GAME_TYPE as TIMELINE_TYPE
 from games.timeline.settings import SETTING_SPECS as TIMELINE_SETTING_SPECS
+from games.trivium import GAME_TYPE as TRIVIUM_TYPE
+from games.trivium.settings import SETTING_SPECS as TRIVIUM_SETTING_SPECS
 from games.whos_that_person import GAME_TYPE as WHOS_THAT_PERSON_TYPE
 from games.whos_that_person.settings import SETTING_SPECS as WHOS_THAT_PERSON_SETTING_SPECS
 
@@ -33,4 +35,5 @@ GAME_SETTING_SPECS: dict[tuple[str, str], list[SettingSpec]] = {
     **_flatten(WHOS_THAT_PERSON_TYPE, WHOS_THAT_PERSON_SETTING_SPECS),
     **_flatten(MORE_OR_LESS_TYPE, MORE_OR_LESS_SETTING_SPECS),
     **_flatten(TIMELINE_TYPE, TIMELINE_SETTING_SPECS),
+    **_flatten(TRIVIUM_TYPE, TRIVIUM_SETTING_SPECS),
 }

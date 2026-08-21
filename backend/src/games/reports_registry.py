@@ -17,6 +17,8 @@ from games.more_or_less.reports import REPORT_EXCLUSIONS as MORE_OR_LESS_REPORT_
 from games.report_spec import ReportReason
 from games.timeline import GAME_TYPE as TIMELINE_TYPE
 from games.timeline.reports import REPORT_EXCLUSIONS as TIMELINE_REPORT_EXCLUSIONS
+from games.trivium import GAME_TYPE as TRIVIUM_TYPE
+from games.trivium.reports import REPORT_EXCLUSIONS as TRIVIUM_REPORT_EXCLUSIONS
 from games.whos_that_person import GAME_TYPE as WHOS_THAT_PERSON_TYPE
 from games.whos_that_person.reports import REPORT_EXCLUSIONS as WHOS_THAT_PERSON_REPORT_EXCLUSIONS
 
@@ -34,4 +36,5 @@ REPORT_EXCLUSIONS: dict[tuple[str, str], frozenset[ReportReason]] = {
     **_flatten(WHOS_THAT_PERSON_TYPE, WHOS_THAT_PERSON_REPORT_EXCLUSIONS),
     **_flatten(MORE_OR_LESS_TYPE, MORE_OR_LESS_REPORT_EXCLUSIONS),
     **_flatten(TIMELINE_TYPE, TIMELINE_REPORT_EXCLUSIONS),
+    **_flatten(TRIVIUM_TYPE, TRIVIUM_REPORT_EXCLUSIONS),
 }

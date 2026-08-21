@@ -12,6 +12,8 @@ from sqlalchemy.orm import Session
 from games.base import BaseGame
 from games.immichdle import BaseImmichdleGame
 from games.registry import GAMES, GameSpec
+from games.trivium import TriviumGame
+from games.trivium.modes import MODES as TRIVIUM_MODES
 from games.whos_that_person import WhosThatPersonGame
 from persistence.daily import DailyChallengeModel
 from persistence.games import GameModel
@@ -70,6 +72,12 @@ class GameFactory:
             kwargs["ml_service"] = self._ml_service
         if spec.game_class is WhosThatPersonGame:
             kwargs["immich_service"] = content_source
+        if spec.game_class is TriviumGame:
+            # mode picks which question types are in play (games/trivium/modes.py) - the same
+            # role `provider`/`mode` play for MoreOrLess above, just not expressed as a
+            # provider_factory since a mode's question types aren't bound to a ContentQueries.
+            kwargs["mode"] = mode
+            kwargs["question_types"] = TRIVIUM_MODES.get(mode, [])
         return kwargs
 
     def daily_kwargs_for(

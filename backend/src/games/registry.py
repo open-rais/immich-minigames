@@ -43,6 +43,8 @@ from games.more_or_less import (
 from games.timeline import GAME_TYPE as TIMELINE_TYPE
 from games.timeline import MODE_ARCADE, TimelineGame, TimelineRound
 from games.timeline import LiveContent as TimelineLiveContent
+from games.trivium import GAME_TYPE as TRIVIUM_TYPE
+from games.trivium import MODE_BIRTHDAY, TriviumGame, TriviumRound
 from games.whos_that_person import GAME_TYPE as WHOS_THAT_PERSON_TYPE
 from games.whos_that_person import MODE_NAMED_FACES, WhosThatPersonGame, WhosThatPersonRound
 from games.whos_that_person import LiveContent as WhosThatPersonLiveContent
@@ -101,4 +103,8 @@ GAMES: dict[tuple[str, str], GameSpec] = {
     (TIMELINE_TYPE, MODE_ARCADE): GameSpec(
         TimelineGame, TimelineRound, content_factory=TimelineLiveContent, daily=timeline_daily
     ),
+    # No provider_factory/content_factory: TriviumGame takes immich_service directly (the "else"
+    # branch of GameFactory.kwargs_for) plus a per-class question_types kwarg - see that method's
+    # TriviumGame special case. No daily yet (TRIVIUM.md's F7, a later phase).
+    (TRIVIUM_TYPE, MODE_BIRTHDAY): GameSpec(TriviumGame, TriviumRound),
 }

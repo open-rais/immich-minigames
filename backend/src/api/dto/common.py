@@ -31,6 +31,7 @@ from api.dto.geoguessr import GeoguessrPlayRoundIn, GeoguessrRoundOut
 from api.dto.immichdle import AlbumdlePlayRoundIn, AlbumdleRoundOut, ImmichdlePlayRoundIn, ImmichdleRoundOut
 from api.dto.more_or_less import MoreOrLessPlayRoundIn, MoreOrLessRoundOut
 from api.dto.timeline import TimelinePlayRoundIn, TimelineRoundOut
+from api.dto.trivium import TriviumPlayRoundIn, TriviumRoundOut
 from api.dto.whos_that_person import WhosThatPersonPlayRoundIn, WhosThatPersonRoundOut
 from games.base import BaseGame, BaseRound
 from games.dateguessr import DateguessrRound
@@ -38,6 +39,7 @@ from games.geoguessr import GeoguessrRound
 from games.immichdle import AlbumdleGame, AlbumdleRound, PersondleGame, PersondleRound
 from games.more_or_less import MoreOrLessRound
 from games.timeline import TimelineRound
+from games.trivium import TriviumRound
 from games.whos_that_person import WhosThatPersonRound
 from services.errors import UnsupportedGameError
 from services.scores_service import RecentGame
@@ -66,7 +68,8 @@ RoundOut = Annotated[
     | Annotated[ImmichdleRoundOut, Tag("immichdle:person")]
     | Annotated[AlbumdleRoundOut, Tag("immichdle:album")]
     | Annotated[WhosThatPersonRoundOut, Tag("whos-that-person")]
-    | Annotated[TimelineRoundOut, Tag("timeline")],
+    | Annotated[TimelineRoundOut, Tag("timeline")]
+    | Annotated[TriviumRoundOut, Tag("trivium")],
     Discriminator(_round_out_tag),
 ]
 
@@ -94,6 +97,7 @@ _ROUND_SPECS: dict[type[BaseRound], _RoundSpec] = {
     AlbumdleRound: _RoundSpec(AlbumdlePlayRoundIn, AlbumdleRoundOut, has_binary_correctness=True),
     WhosThatPersonRound: _RoundSpec(WhosThatPersonPlayRoundIn, WhosThatPersonRoundOut, has_binary_correctness=True),
     TimelineRound: _RoundSpec(TimelinePlayRoundIn, TimelineRoundOut, has_binary_correctness=True),
+    TriviumRound: _RoundSpec(TriviumPlayRoundIn, TriviumRoundOut, has_binary_correctness=True),
 }
 
 
@@ -114,6 +118,7 @@ def round_out_from_round(
     | AlbumdleRoundOut
     | WhosThatPersonRoundOut
     | TimelineRoundOut
+    | TriviumRoundOut
 ):
     return _round_spec(round_).out_class.from_round(round_)
 
