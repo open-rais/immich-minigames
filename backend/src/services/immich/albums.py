@@ -147,6 +147,29 @@ def get_album_last_asset_date(engine: Engine, album_id: UUID) -> date | None:
         return conn.execute(stmt).scalar()
 
 
+def get_albums_starting_on(engine: Engine, month: int, day: int) -> list[tuple[UUID, str, date]]:
+    """Every album whose earliest eligible asset's local calendar day falls on this month/day, any
+    year - one grouped query instead of a get_album_first_asset_date call per album. Web Push's
+    daily "on this day" album-anniversary notification (services/notifications/content.py). Years-
+    ago math (current_year - first_asset_date.year) is the caller's job, not this query's."""
+    local_date = cast(func.timezone("UTC", asset.c.localDateTime), Date)
+    first_date = func.min(local_date).label("first_asset_date")
+    stmt = (
+        select(album.c.id, album.c.albumName, first_date)
+        .select_from(
+            album.join(album_asset, album_asset.c.albumId == album.c.id).join(
+                asset, asset.c.id == album_asset.c.assetId
+            )
+        )
+        .where(album.c.deletedAt.is_(None), _ASSET_ELIGIBLE)
+        .group_by(album.c.id, album.c.albumName)
+        .having(func.extract("month", first_date) == month, func.extract("day", first_date) == day)
+    )
+    with engine.connect() as conn:
+        rows = conn.execute(stmt).all()
+    return [(row.id, row.albumName, row.first_asset_date) for row in rows]
+
+
 def get_album_named_face_counts(engine: Engine, album_id: UUID) -> list[tuple[UUID, str, int]]:
     """(person_id, name, distinct_asset_count) for every named person appearing (via an eligible,
     visible, non-deleted face tag) in this album's eligible assets, ordered by count desc - the

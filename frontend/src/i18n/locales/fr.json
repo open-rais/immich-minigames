@@ -15,6 +15,19 @@
       "light": "Clair",
       "dark": "Sombre",
       "system": "Système"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "unsupported": "Nécessite que l'application soit servie en HTTPS",
+      "noPushManager": "Ajoutez l'application à votre écran d'accueil pour activer les notifications",
+      "denied": "Vous avez bloqué les notifications pour cette application - réactivez-les depuis les paramètres de votre navigateur",
+      "enablePush": "Notifications push",
+      "activationError": "Impossible d'activer les notifications - réessayez",
+      "dailyReminders": "Rappels du jeu quotidien",
+      "birthdays": "Anniversaires",
+      "albumAnniversary": "Anniversaires d'albums",
+      "sendTest": "Envoyer une notification de test",
+      "testError": "Impossible d'envoyer la notification de test"
     }
   },
   "mainMenu": {

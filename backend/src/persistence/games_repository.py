@@ -177,6 +177,50 @@ class GameRepository:
             streaks[user_id] = streak
         return streaks
 
+    def daily_streaks_by_mode(
+        self, user_ids: Sequence[UUID], as_of: date
+    ) -> dict[tuple[UUID, str, str], int]:
+        """Same walk as daily_streaks, generalized over every (game_type, mode) at once instead of
+        one - the push-notification scheduler (services/notifications/schedule.py) needs every
+        daily mode's streak for a small batch of users per tick, not one leaderboard's worth of
+        users for a single mode.
+
+        `as_of` is the caller's to choose deliberately, unlike daily_streaks's callers, which
+        always pass "today" (the leaderboard badge's question). The scheduler passes "yesterday" -
+        see schedule.py's own docstring for why counting through today here would be wrong for a
+        21:00 "you're about to lose your streak" notification."""
+        if not user_ids:
+            return {}
+        rows = self._session.execute(
+            select(
+                GameModel.user_id,
+                DailyChallengeModel.game_type,
+                DailyChallengeModel.mode,
+                DailyChallengeModel.challenge_date,
+            )
+            .select_from(GameModel)
+            .join(DailyChallengeModel, DailyChallengeModel.id == GameModel.daily_challenge_id)
+            .where(
+                GameModel.finished.is_(True),
+                GameModel.user_id.in_(user_ids),
+                DailyChallengeModel.challenge_date <= as_of,
+            )
+        ).all()
+
+        played_days: dict[tuple[UUID, str, str], set[date]] = {}
+        for user_id, game_type, mode, day in rows:
+            played_days.setdefault((user_id, game_type, mode), set()).add(day)
+
+        streaks: dict[tuple[UUID, str, str], int] = {}
+        for key, days in played_days.items():
+            streak = 0
+            cursor = as_of
+            while cursor in days:
+                streak += 1
+                cursor -= timedelta(days=1)
+            streaks[key] = streak
+        return streaks
+
     def has_played_challenge(self, challenge_id: UUID, user_id: UUID) -> bool:
         return (
             self._session.execute(

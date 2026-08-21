@@ -91,6 +91,19 @@ INITIAL_INVITE_TOKEN=your-random-bootstrap-token
 # table, not Immich's) - register normally first, then set this and restart. Leave unset to not
 # manage an admin.
 ADMIN_EMAIL=you@example.com
+
+# Optional: Web Push notifications (new daily challenge, streak reminders, birthdays, album
+# anniversaries). Leave all three blank to skip this entirely - the app works fine without it, and
+# the settings page simply won't show a notifications section. See "Push Notifications" below for
+# how to generate these and what else (HTTPS, TZ) it needs.
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_CONTACT_EMAIL=
+
+# What local time the four notifications above are timed against (list:
+# https://en.wikipedia.org/wiki/List_of_tz_database_time_zones). Leave unset to use the
+# container's own default, almost always UTC - not your local time.
+TZ=America/Santiago
 ```
 
 **Tip:** Generate secure `JWT_SECRET`/`INITIAL_INVITE_TOKEN` values with:
@@ -467,6 +480,35 @@ uv run alembic upgrade head
   docker build -t immich-minigames-backend:local backend/
   ```
 
+### Issue: Notifications section doesn't appear in Settings
+
+**Problem:** `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_CONTACT_EMAIL` aren't all three set, or
+the backend hasn't restarted since you set them - `GET /api/v1/config`'s `push_public_key` is
+`null` in either case, and the frontend hides the whole section rather than showing something
+broken.
+
+**Solution:** See § Push Notifications above. Confirm with
+`curl -i http://localhost:8000/api/v1/config` (once logged in) that `push_public_key` isn't `null`.
+
+### Issue: "Activate notifications" doesn't work, or push never arrives
+
+**Problem:** Usually one of:
+- **Not on HTTPS** (or `localhost`) - a service worker refuses to register outside a secure
+  context at all. Check DevTools → Application → Service Workers for a registered worker at all.
+- **On iOS, opened in Safari instead of installed to the home screen** - `PushManager` doesn't
+  exist there until the PWA is added to the home screen (16.4+).
+- **A stale service worker from before you enabled push** is still controlling the tab and has no
+  `push` event handler. Unregister it (DevTools → Application → Service Workers → Unregister),
+  reload, and reactivate.
+- **The scheduler tick genuinely hasn't run at that time yet.** Use
+  `POST /api/v1/admin/notifications/run-tick?now=...` (see § Push Notifications above) to force
+  one immediately instead of waiting - it also surfaces the real error (a non-204 response) if the
+  push service itself rejected the send, instead of you waiting for something that was never going
+  to arrive.
+- **A time read off a backend log line was used directly** - logs always print UTC; the scheduler
+  compares against local (`TZ`) time. Use `run-tick?now=` with a local time instead of trying to
+  time a real slot by watching logs.
+
 ## Advanced Configuration
 
 ### Using a Remote Immich Instance
@@ -511,6 +553,41 @@ For production deployments:
 5. If you run more than one backend container/process behind that proxy, point
    `RATE_LIMIT_STORAGE_URI` at a shared Redis instance (`redis://host:port`) instead of the
    default `memory://` - otherwise each process enforces its own separate rate limit budget
+
+### Push Notifications
+
+Optional - opt-in new-daily/streak-reminder/birthday/album-anniversary alerts, even with the app
+closed. No account or SDK to sign up for: the browser itself picks which push service a
+subscription goes through (Google/Mozilla/Apple), and the VAPID keys below are just this backend
+proving it's the legitimate sender to whichever one that is.
+
+1. **Requires real HTTPS** (or `http://localhost` for local dev) - not just `COOKIE_SECURE=true`.
+   Service workers, and therefore Web Push, refuse to register outside a secure context at all.
+   The Docker Compose stacks in this repo serve plain HTTP by default; put a TLS-terminating
+   reverse proxy in front (see § SSL/TLS above), or use something like Tailscale Funnel/Serve if
+   you're testing from your own devices without exposing the app publicly.
+2. Generate a key pair:
+   ```bash
+   cd backend
+   uv run python -m scripts.generate_vapid_keys
+   ```
+   Paste the two printed lines into `.env` as `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`, and set
+   `VAPID_CONTACT_EMAIL` to your own address - it's the `mailto:` the spec requires, sent to the
+   push service (Google/Mozilla/Apple) with every push, so use one you're fine with those seeing.
+   Rotating the private key invalidates every existing subscription, same as `JWT_SECRET` with
+   sessions.
+3. Set `TZ` (see the `.env` example above) - the four notifications are timed against the
+   container's local time, not UTC. **Every backend log line's own timestamp is printed in UTC
+   regardless of `TZ`** - don't read a time off a log line and reuse it directly when testing a
+   notification, it'll be off by whatever your UTC offset is.
+4. Restart the backend. `GET /api/v1/config`'s `push_public_key` should now be non-`null`, and
+   Settings → Notifications should appear in the app instead of staying hidden.
+5. To verify without waiting for a real 10:00/12:00/14:00/21:00: log in as an admin and
+   `POST /api/v1/admin/notifications/run-tick?now=2026-01-01T21:05:00` (any local datetime,
+   matching one of those four hours) forces one scheduler tick immediately, against whatever
+   content is real in your library right now.
+6. iOS/iPadOS needs 16.4+, and Safari only exposes push to a PWA **added to the home screen** -
+   never to a page open in a regular Safari tab.
 
 ## Verification Checklist
 

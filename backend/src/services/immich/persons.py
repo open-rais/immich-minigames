@@ -95,6 +95,41 @@ def get_persons(
     return [row_to_person(row) for row in rows]
 
 
+def get_persons_with_birthday_on(engine: Engine, month: int, day: int) -> list[Person]:
+    """Every eligible named person (same isHidden/thumbnailPath/name/birthDate filters as
+    get_persons' named_only+with_birthdate) whose birthDate falls on this month/day, any year -
+    Web Push's daily birthday notification (services/notifications/content.py).
+
+    29 February deliberately never matches outside a leap year - not worked around with a nearby
+    date, since inventing "the 28th" would be wrong more years than it's right. Age itself
+    (current_year - birth_year) is the caller's job, not this query's - it doesn't know "today"."""
+    asset_count_agg = func.count(func.distinct(asset_face.c.assetId))
+    stmt = (
+        select(person.c.id, person.c.name, person.c.birthDate, asset_count_agg.label("asset_count"))
+        .select_from(
+            person.outerjoin(
+                asset_face,
+                (asset_face.c.personId == person.c.id)
+                & asset_face.c.deletedAt.is_(None)
+                & asset_face.c.isVisible.is_(True),
+            )
+        )
+        .where(
+            person.c.isHidden.is_(False),
+            person.c.thumbnailPath != "",
+            person.c.name != "",
+            person.c.birthDate.is_not(None),
+            func.extract("month", person.c.birthDate) == month,
+            func.extract("day", person.c.birthDate) == day,
+        )
+        .group_by(person.c.id, person.c.name, person.c.birthDate)
+        .order_by(person.c.name)
+    )
+    with engine.connect() as conn:
+        rows = conn.execute(stmt).all()
+    return [row_to_person(row) for row in rows]
+
+
 def search_persons(engine: Engine, query: str, *, offset: int = 0, limit: int = 3) -> list[Person]:
     """Named people matching every whitespace-separated token in `query` (case- and
     accent-insensitive), each token matched independently against a *word* in the name - e.g.

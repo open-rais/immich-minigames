@@ -17,7 +17,7 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from api.api import router
 from api.auth_middleware import AuthMiddleware
-from api.deps import get_embedding_job_runner
+from api.deps import get_embedding_job_runner, get_notification_runner
 from api.error_handlers import register_error_handlers
 from api.rate_limit import limiter, session_or_ip_key
 from api.request_log_middleware import RequestLogMiddleware
@@ -38,11 +38,17 @@ async def _lifespan(_: FastAPI) -> AsyncIterator[None]:
         ensure_admin(session, get_settings())
     finally:
         session.close()
+    # Unlike the embedding job runner below (only ever started on-demand, from an admin route),
+    # this one is a real schedule, not tied to any request - it has to start itself. A no-op if
+    # push isn't configured (NotificationRunner.start()'s own check) rather than a scheduler
+    # ticking forever with nothing it could ever send.
+    get_notification_runner().start()
     yield
     # A running embedding job's thread is daemon (it wouldn't block process exit on its own), but
     # cancelling and joining here first gives an in-flight entity a chance to finish its write
     # instead of being cut off mid-upsert by the process disappearing under it.
     get_embedding_job_runner().shutdown()
+    get_notification_runner().shutdown()
 
 
 configure_logging(get_settings())

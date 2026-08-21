@@ -27,6 +27,9 @@ from services.errors import (
 )
 from services.game_settings_service import InvalidGameSettingValueError, UnknownGameSettingError
 from services.invite_service import InvalidInviteError, InviteNotFoundError
+from services.notifications import NoPushSubscriptionsError, PushSendFailedError
+from services.notifications.endpoint_safety import PushEndpointRejectedError
+from services.notifications.sender import PushNotConfiguredError
 from services.reports_service import InvalidReportReasonError, ReportNotFoundError
 
 EXCEPTION_STATUS: dict[type[Exception], int] = {
@@ -51,6 +54,10 @@ EXCEPTION_STATUS: dict[type[Exception], int] = {
     JobAlreadyRunningError: 409,
     ReportNotFoundError: 404,
     InvalidReportReasonError: 400,
+    PushEndpointRejectedError: 400,
+    PushNotConfiguredError: 503,
+    NoPushSubscriptionsError: 404,
+    PushSendFailedError: 502,
 }
 
 
