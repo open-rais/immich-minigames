@@ -29,6 +29,7 @@ class TestCreateGame:
         assert round_["guess"] is None
         assert round_["elapsed_ms"] is None
         assert round_["correct"] is None
+        assert round_["score_delta"] is None
 
     def test_creates_a_photos_mode_game(self, logged_client):
         game = _create_game(logged_client, mode="photos")
@@ -75,6 +76,9 @@ class TestPlayRound:
         # An instant (elapsed_ms=0) answer scores the full default max_points.
         assert result["score"] == (100 if result["correct"] else 0)
         assert result["finished"] == (not result["correct"])
+        # The round itself carries its own score_delta too (not just PlayRoundOut's top-level
+        # one) - lets the frontend show a "+N points" card straight from the round.
+        assert answered["score_delta"] == result["score_delta"]
 
     def test_answering_a_photos_mode_round_is_internally_consistent(self, logged_client):
         game = _create_game(logged_client, mode="photos")

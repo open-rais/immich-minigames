@@ -1,6 +1,6 @@
-"""photos_together question type - "who has the most photos with {person}", the correct answer
-being whichever of 4 other named people co-occurs with the subject in the most assets. Like
-photos_total_assets, the alternatives are real candidates (via
+"""photos_together question type - "which of these people has the most photos with {person}",
+the correct answer being whichever of 4 other named people co-occurs with the subject in the most
+assets. Like photos_total_assets, the alternatives are real candidates (via
 services/immich/persons.py's get_top_co_occurring_persons), not noise-generated values."""
 
 import random
@@ -14,27 +14,37 @@ KIND = "photos_together"
 
 Candidate = tuple[UUID, str, int]  # (person_id, person_name, co-occurrence count)
 
+# How many of the subject's co-occurring people to sample candidate groups of 4 from - a pool to
+# pick a *random* 4 out of, not a fixed top-4 (confirmed by the owner: the correct answer
+# shouldn't always be whoever has the single highest count with the subject). How many distinct
+# groups to try before giving up on this subject.
+_CANDIDATE_POOL_LIMIT = 20
+_MAX_ATTEMPTS = 20
+
 
 def _pick_candidates(immich_service: ContentQueries, subject_id: UUID) -> list[Candidate] | None:
-    """The subject's top 4 co-occurring people, padded with random other named people (a real,
-    if unqueried, 0 - they're excluded from the top-4 ranking entirely, so their true count can
-    only be <= the last ranked one) when fewer than 4 people co-occur with the subject at all.
-    None if there still aren't 4 distinct candidates, or the max isn't unique and > 0 - a 4-way
-    tie, or everyone at 0, has no correct answer."""
-    top = immich_service.get_top_co_occurring_persons(subject_id, limit=4)
-    if len(top) < 4:
-        exclude_ids = frozenset({person_id for person_id, _, _ in top} | {subject_id})
-        needed = 4 - len(top)
+    """4 candidates who co-occur with the subject, drawn at random from up to
+    _CANDIDATE_POOL_LIMIT of them (ranked only to cap the query, not to always surface the top 4),
+    padded with random other named people (a real, if unqueried, 0 - they're outside the ranked
+    pool entirely, so their true count can only be <= its lowest) when fewer than 4 co-occur at
+    all. None if no group of 4 has a unique, positive max after _MAX_ATTEMPTS tries - a 4-way tie,
+    or everyone at 0, has no correct answer."""
+    pool = immich_service.get_top_co_occurring_persons(subject_id, limit=_CANDIDATE_POOL_LIMIT)
+    if len(pool) < 4:
+        exclude_ids = frozenset({person_id for person_id, _, _ in pool} | {subject_id})
+        needed = 4 - len(pool)
         filler = immich_service.get_persons(named_only=True, randomize=True, limit=needed, exclude_ids=exclude_ids)
         if len(filler) < needed:
             return None
-        top = [*top, *[(p.id, p.name, 0) for p in filler]]
+        pool = [*pool, *[(p.id, p.name, 0) for p in filler]]
 
-    counts = [count for _, _, count in top]
-    max_count = max(counts)
-    if max_count <= 0 or counts.count(max_count) != 1:
-        return None
-    return top
+    for _ in range(_MAX_ATTEMPTS):
+        candidates = random.sample(pool, 4)
+        counts = [count for _, _, count in candidates]
+        max_count = max(counts)
+        if max_count > 0 and counts.count(max_count) == 1:
+            return candidates
+    return None
 
 
 def _find_subject_and_candidates(

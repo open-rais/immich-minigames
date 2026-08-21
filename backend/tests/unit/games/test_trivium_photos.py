@@ -157,6 +157,25 @@ class TestPhotosTogetherQuestionEdgeCases:
         question = PhotosTogetherQuestion().generate(immich, frozenset())
         assert question.alternatives[question.correct_index]["person_id"] == str(a.id)
 
+    def test_candidates_are_a_random_four_not_always_the_top_four(self):
+        # Confirmed by the owner: the correct answer shouldn't always be whoever has the single
+        # highest co-occurrence with the subject - 8 people with strictly distinct counts (so
+        # every possible group of 4 still has a valid unique max) makes it easy to tell whether
+        # the same literal top-4 set is being reused every time.
+        subject = _person("Subject")
+        people = [_person(f"P{i}") for i in range(8)]
+        co_occurrence = [(p.id, p.name, 8 - i) for i, p in enumerate(people)]
+        immich = _FakeImmich(persons=[subject, *people], co_occurrence={subject.id: co_occurrence})
+        top_four_ids = frozenset(p.id for p in people[:4])
+
+        seen_candidate_sets = set()
+        for _ in range(50):
+            question = PhotosTogetherQuestion().generate(immich, frozenset())
+            seen_candidate_sets.add(frozenset(UUID(alt["person_id"]) for alt in question.alternatives))
+
+        assert len(seen_candidate_sets) > 1
+        assert seen_candidate_sets != {top_four_ids}
+
 
 class TestPhotosFirstAssetYearQuestionAgainstRealData:
     def test_can_generate_is_true_with_the_dev_library(self, immich_service):

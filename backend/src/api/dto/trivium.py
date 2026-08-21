@@ -34,6 +34,10 @@ class TriviumRoundOut(BaseModel):
     guess: int | None
     elapsed_ms: int | None
     correct: bool | None
+    # Redacted (implicitly - BaseRound.score_delta is None until calculate_score() has run) the
+    # same as everything else above. Lets the frontend show a "+N points" card straight from the
+    # round itself once revealed, same as Timeline's own score_delta field.
+    score_delta: int | None
 
     @classmethod
     def from_round(cls, round_: TriviumRound) -> "TriviumRoundOut":
@@ -54,6 +58,7 @@ class TriviumRoundOut(BaseModel):
             guess=guess.alternative if guess is not None else None,
             elapsed_ms=guess.elapsed_ms if guess is not None else None,
             correct=round_.correct,
+            score_delta=round_.score_delta,
         )
 
 
