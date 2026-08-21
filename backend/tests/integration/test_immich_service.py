@@ -98,6 +98,32 @@ class TestGetAssets:
         pytest.fail("never ran out of eligible assets after excluding 2000 distinct ones")
 
 
+class TestGetDistinctLocations:
+    def test_country_returns_distinct_non_empty_real_values(self, immich_service):
+        countries = immich_service.get_distinct_locations("country")
+
+        assert countries
+        assert len(countries) == len(set(countries))
+        assert all(c for c in countries)  # never an empty string, never None
+
+    def test_city_returns_distinct_non_empty_real_values(self, immich_service):
+        cities = immich_service.get_distinct_locations("city")
+
+        assert cities
+        assert len(cities) == len(set(cities))
+        assert all(c for c in cities)
+
+    def test_includes_every_country_a_thumbnailed_asset_reports(self, immich_service):
+        # get_distinct_locations isn't restricted to assets with a thumbnail (see its own
+        # docstring for why), so this only checks the superset direction - it may legitimately
+        # also report a country from a thumbnail-less asset that get_assets would never surface.
+        countries = immich_service.get_distinct_locations("country")
+        located = immich_service.get_assets(with_location=True, limit=10_000)
+        real_countries = {a.country for a in located if a.country}
+
+        assert real_countries <= set(countries)
+
+
 class TestGetPersons:
     def test_named_only_excludes_blank_names(self, immich_service):
         persons = immich_service.get_persons(named_only=True, limit=100)

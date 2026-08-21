@@ -2,6 +2,7 @@ from uuid import uuid4
 
 _BIRTHDAY_KINDS = {"birthday_year", "birthday_day_month", "birthday_full_date"}
 _PHOTOS_KINDS = {"photos_total_assets", "photos_together", "photos_first_asset_year"}
+_LOCATION_KINDS = {"location_country", "location_city"}
 
 
 def _create_game(client, mode: str = "birthday") -> dict:
@@ -39,6 +40,17 @@ class TestCreateGame:
         assert round_["question_kind"] in _PHOTOS_KINDS
         assert len(round_["alternatives"]) == 4
         assert round_["correct_index"] is None
+
+    def test_creates_a_location_mode_game(self, logged_client):
+        game = _create_game(logged_client, mode="location")
+
+        assert game["finished"] is False
+        round_ = game["rounds"][0]
+        assert round_["question_kind"] in _LOCATION_KINDS
+        assert len(round_["alternatives"]) == 4
+        assert round_["correct_index"] is None
+        assert round_["media"]["kind"] == "asset"
+        assert round_["media"]["asset_id"] is not None
 
     def test_without_a_cookie_returns_401(self, client):
         client.cookies.clear()
@@ -82,6 +94,22 @@ class TestPlayRound:
 
     def test_answering_a_photos_mode_round_is_internally_consistent(self, logged_client):
         game = _create_game(logged_client, mode="photos")
+        pending = game["rounds"][0]
+
+        response = logged_client.post(
+            f"/api/v1/games/{game['id']}/rounds/{pending['id']}",
+            json={"alternative": 0, "elapsed_ms": 0},
+        )
+
+        assert response.status_code == 200
+        result = response.json()
+        answered = result["answered_round"]
+        assert answered["correct_index"] is not None
+        assert result["correct"] == (answered["guess"] == answered["correct_index"])
+        assert result["score"] == (100 if result["correct"] else 0)
+
+    def test_answering_a_location_mode_round_is_internally_consistent(self, logged_client):
+        game = _create_game(logged_client, mode="location")
         pending = game["rounds"][0]
 
         response = logged_client.post(

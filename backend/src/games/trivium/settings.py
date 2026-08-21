@@ -4,7 +4,7 @@ services/game_settings_service.py for how they're read/written."""
 
 from games.settings_spec import SettingSpec
 from games.trivium.game import MAX_ROUNDS
-from games.trivium.modes import MODE_BIRTHDAY, MODE_PHOTOS
+from games.trivium.modes import MODE_BIRTHDAY, MODE_LOCATION, MODE_PHOTOS
 from games.trivium.round import ANSWER_TIME_SECONDS, MAX_POINTS
 
 # Same three knobs for every mode (they all share TriviumGame/TriviumRound - see games/trivium/
@@ -20,4 +20,5 @@ _MODE_SETTING_SPECS: list[SettingSpec] = [
 SETTING_SPECS: dict[str, list[SettingSpec]] = {
     MODE_BIRTHDAY: _MODE_SETTING_SPECS,
     MODE_PHOTOS: _MODE_SETTING_SPECS,
+    MODE_LOCATION: _MODE_SETTING_SPECS,
 }
