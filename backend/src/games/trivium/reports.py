@@ -4,10 +4,11 @@ services/reports_service.py for the wrapper that actually applies it.
 
 `birthday` shows a named person and their real birth date, same underlying data as MoreOrLess'
 personBirthDate mode - see games/more_or_less/reports.py for why those three reasons are the
-right set for that shape of content."""
+right set for that shape of content. `photos` shows named people and how many/which photos they're
+in, but never a birth date - same set as MoreOrLess' personAssets mode."""
 
 from games.report_spec import ReportReason
-from games.trivium.modes import MODE_BIRTHDAY
+from games.trivium.modes import MODE_BIRTHDAY, MODE_PHOTOS
 
 REPORT_EXCLUSIONS: dict[str, frozenset[ReportReason]] = {
     MODE_BIRTHDAY: frozenset(
@@ -17,4 +18,5 @@ REPORT_EXCLUSIONS: dict[str, frozenset[ReportReason]] = {
             ReportReason.PERSON_BIRTH_DATE,
         }
     ),
+    MODE_PHOTOS: frozenset({ReportReason.PERSON_NAME_FACE_MISMATCH, ReportReason.PERSON_NAME_SPELLING}),
 }

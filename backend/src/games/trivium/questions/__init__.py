@@ -4,12 +4,22 @@ public surface so `from games.trivium.questions import BirthYearQuestion` (the m
 tests) keeps working unchanged."""
 
 from games.trivium.questions.base import GeneratedQuestion, MediaKind, MediaSpec, QuestionType
+from games.trivium.questions.birthday_day_month import BirthdayDayMonthQuestion
+from games.trivium.questions.birthday_full_date import BirthdayFullDateQuestion
 from games.trivium.questions.birthday_year import BirthYearQuestion
+from games.trivium.questions.photos_first_asset_year import PhotosFirstAssetYearQuestion
+from games.trivium.questions.photos_together import PhotosTogetherQuestion
+from games.trivium.questions.photos_total_assets import PhotosTotalAssetsQuestion
 
 __all__ = [
     "BirthYearQuestion",
+    "BirthdayDayMonthQuestion",
+    "BirthdayFullDateQuestion",
     "GeneratedQuestion",
     "MediaKind",
     "MediaSpec",
+    "PhotosFirstAssetYearQuestion",
+    "PhotosTogetherQuestion",
+    "PhotosTotalAssetsQuestion",
     "QuestionType",
 ]

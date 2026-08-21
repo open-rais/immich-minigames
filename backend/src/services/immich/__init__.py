@@ -102,6 +102,11 @@ class ImmichService:
     def get_assets_together_count(self, person_a_id: UUID, person_b_id: UUID) -> int:
         return persons.get_assets_together_count(self._engine, person_a_id, person_b_id)
 
+    def get_top_co_occurring_persons(
+        self, person_id: UUID, *, limit: int = 3, exclude_ids: frozenset[UUID] = frozenset()
+    ) -> list[tuple[UUID, str, int]]:
+        return persons.get_top_co_occurring_persons(self._engine, person_id, limit=limit, exclude_ids=exclude_ids)
+
     def get_random_asset_with_named_faces(
         self,
         *,
@@ -225,6 +230,10 @@ class ContentQueries(Protocol):
     def get_person_first_asset_date(self, person_id: UUID) -> date | None: ...
 
     def get_assets_together_count(self, person_a_id: UUID, person_b_id: UUID) -> int: ...
+
+    def get_top_co_occurring_persons(
+        self, person_id: UUID, *, limit: int = 3, exclude_ids: frozenset[UUID] = frozenset()
+    ) -> list[tuple[UUID, str, int]]: ...
 
     def get_album_first_asset_date(self, album_id: UUID) -> date | None: ...
 

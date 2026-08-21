@@ -4,32 +4,7 @@ distractor noise against, which a fake ContentQueries double would just be reimp
 query logic to fake."""
 
 from games.trivium.questions.base import GeneratedQuestion
-from games.trivium.questions.birthday_year import KIND, BirthYearQuestion, _pick_distractor_years
-
-
-class TestPickDistractorYears:
-    """Pure - no DB needed."""
-
-    def test_always_returns_three_distinct_years_other_than_correct(self):
-        for _ in range(500):
-            distractors = _pick_distractor_years(correct_year=2000, min_year=1990, max_year=2010)
-            assert len(distractors) == 3
-            assert len(set(distractors)) == 3
-            assert 2000 not in distractors
-            assert all(1990 <= year <= 2010 for year in distractors)
-
-    def test_works_at_the_minimum_generatable_span(self):
-        # can_generate() only allows this type through when max_year - min_year >= 3, i.e. exactly
-        # 4 distinct integer years total - the tightest case that must still terminate.
-        for _ in range(200):
-            distractors = _pick_distractor_years(correct_year=2000, min_year=2000, max_year=2003)
-            assert sorted({*distractors, 2000}) == [2000, 2001, 2002, 2003]
-
-    def test_works_when_correct_year_sits_at_the_edge_of_the_range(self):
-        for _ in range(200):
-            distractors = _pick_distractor_years(correct_year=1990, min_year=1990, max_year=2010)
-            assert len(set(distractors)) == 3
-            assert 1990 not in distractors
+from games.trivium.questions.birthday_year import KIND, BirthYearQuestion
 
 
 class TestBirthYearQuestionAgainstRealData:

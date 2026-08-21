@@ -225,3 +225,38 @@ def get_assets_together_count(engine: Engine, person_a_id: UUID, person_b_id: UU
     )
     with engine.connect() as conn:
         return conn.execute(stmt).scalar() or 0
+
+
+def get_top_co_occurring_persons(
+    engine: Engine, person_id: UUID, *, limit: int = 3, exclude_ids: frozenset[UUID] = frozenset()
+) -> list[tuple[UUID, str, int]]:
+    """Named people ranked by how many assets they share a face tag with `person_id` in, most
+    co-occurrences first - (person_id, name, count) tuples. Powers Trivium's photos_together
+    question type, which needs to *rank* candidates in one query rather than call
+    get_assets_together_count once per candidate (N pairwise queries)."""
+    face_a = asset_face.alias("face_a")
+    face_b = asset_face.alias("face_b")
+    count = func.count(func.distinct(face_a.c.assetId)).label("together_count")
+    stmt = (
+        select(face_b.c.personId, person.c.name, count)
+        .select_from(
+            face_a.join(face_b, face_a.c.assetId == face_b.c.assetId).join(person, person.c.id == face_b.c.personId)
+        )
+        .where(
+            face_a.c.personId == person_id,
+            face_a.c.deletedAt.is_(None),
+            face_a.c.isVisible.is_(True),
+            face_b.c.deletedAt.is_(None),
+            face_b.c.isVisible.is_(True),
+            face_b.c.personId != person_id,
+            person.c.isHidden.is_(False),
+            person.c.name != "",
+        )
+    )
+    if exclude_ids:
+        stmt = stmt.where(face_b.c.personId.notin_(exclude_ids))
+    stmt = stmt.group_by(face_b.c.personId, person.c.name).order_by(count.desc()).limit(limit)
+
+    with engine.connect() as conn:
+        rows = conn.execute(stmt).all()
+    return [(row.personId, row.name, row.together_count) for row in rows]

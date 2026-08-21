@@ -6,46 +6,17 @@ distractors correspond to an actual person, so a familiar face can't be used to 
 import random
 from uuid import UUID
 
+from games.trivium.questions._shared import LIBRARY_SAMPLE_LIMIT, pick_distractor_years
 from games.trivium.questions.base import GeneratedQuestion, MediaSpec
 from services.immich import ContentQueries
 
 KIND = "birthday_year"
 
-# Base noise window in years either side of the real one (magnitude still to be tuned by playing,
-# not decided a priori) - widened by one whenever a sampled year collides with one already picked,
-# capped at the library's own birth-year span (never suggest a year the library couldn't
-# plausibly contain).
-_BASE_NOISE_YEARS = 2
-# "All" named+birthdated people, for the library's min/max birth year - a family-sized library
-# (this app's whole reason to exist, see CLAUDE.md) never comes close to this, so one unbounded-in-
-# practice query is simpler than a dedicated MIN/MAX query for the same data get_persons already
-# returns.
-_LIBRARY_SAMPLE_LIMIT = 10_000
-
 
 def _birth_years(immich_service: ContentQueries) -> list[int]:
     # with_birthdate=True already filters out anyone with no birth_date, so it's never None here.
-    persons = immich_service.get_persons(named_only=True, with_birthdate=True, limit=_LIBRARY_SAMPLE_LIMIT)
+    persons = immich_service.get_persons(named_only=True, with_birthdate=True, limit=LIBRARY_SAMPLE_LIMIT)
     return [p.birth_date.year for p in persons]
-
-
-def _pick_distractor_years(correct_year: int, min_year: int, max_year: int) -> list[int]:
-    """3 distinct years, none equal to `correct_year`, clamped to [min_year, max_year]. Date
-    arithmetic isn't needed at year granularity - a plain int offset can't produce an invalid
-    year the way day/month arithmetic could (e.g. "day 32")."""
-    taken = {correct_year}
-    distractors: list[int] = []
-    window = _BASE_NOISE_YEARS
-    span = max_year - min_year
-    while len(distractors) < 3:
-        offsets = [o for o in range(-window, window + 1) if o != 0]
-        year = max(min_year, min(max_year, correct_year + random.choice(offsets)))
-        if year not in taken:
-            taken.add(year)
-            distractors.append(year)
-        elif window < span:
-            window += 1
-    return distractors
 
 
 class BirthYearQuestion:
@@ -56,7 +27,7 @@ class BirthYearQuestion:
             return False
         years = _birth_years(immich_service)
         # A closed range of >= 4 distinct integer years always has >= 3 other than whichever one
-        # is correct - exactly what _pick_distractor_years needs to terminate.
+        # is correct - exactly what pick_distractor_years needs to terminate.
         return bool(years) and max(years) - min(years) >= 3
 
     def generate(self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]) -> GeneratedQuestion:
@@ -67,7 +38,7 @@ class BirthYearQuestion:
         correct_year = subject.birth_date.year
 
         years = _birth_years(immich_service)
-        distractor_years = _pick_distractor_years(correct_year, min(years), max(years))
+        distractor_years = pick_distractor_years(correct_year, min(years), max(years))
 
         alternatives: list[int] = [*distractor_years, correct_year]
         random.shuffle(alternatives)

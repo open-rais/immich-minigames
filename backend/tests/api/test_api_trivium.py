@@ -1,8 +1,11 @@
 from uuid import uuid4
 
+_BIRTHDAY_KINDS = {"birthday_year", "birthday_day_month", "birthday_full_date"}
+_PHOTOS_KINDS = {"photos_total_assets", "photos_together", "photos_first_asset_year"}
 
-def _create_game(client) -> dict:
-    response = client.post("/api/v1/games", json={"type": "trivium", "mode": "birthday"})
+
+def _create_game(client, mode: str = "birthday") -> dict:
+    response = client.post("/api/v1/games", json={"type": "trivium", "mode": mode})
     assert response.status_code == 201
     return response.json()
 
@@ -17,7 +20,8 @@ class TestCreateGame:
         assert len(game["rounds"]) == 1
         round_ = game["rounds"][0]
         assert round_["game_type"] == "trivium"
-        assert round_["question_kind"] == "birthday_year"
+        # birthday mode now picks randomly among 3 question types (F3) - any of them is valid.
+        assert round_["question_kind"] in _BIRTHDAY_KINDS
         assert len(round_["alternatives"]) == 4
         assert round_["params"]["person_name"]
         # The answer isn't revealed before the round is played.
@@ -25,6 +29,15 @@ class TestCreateGame:
         assert round_["guess"] is None
         assert round_["elapsed_ms"] is None
         assert round_["correct"] is None
+
+    def test_creates_a_photos_mode_game(self, logged_client):
+        game = _create_game(logged_client, mode="photos")
+
+        assert game["finished"] is False
+        round_ = game["rounds"][0]
+        assert round_["question_kind"] in _PHOTOS_KINDS
+        assert len(round_["alternatives"]) == 4
+        assert round_["correct_index"] is None
 
     def test_without_a_cookie_returns_401(self, client):
         client.cookies.clear()
@@ -34,7 +47,7 @@ class TestCreateGame:
         assert response.status_code == 401
 
     def test_unsupported_mode_returns_400(self, logged_client):
-        response = logged_client.post("/api/v1/games", json={"type": "trivium", "mode": "photos"})
+        response = logged_client.post("/api/v1/games", json={"type": "trivium", "mode": "nonexistent"})
 
         assert response.status_code == 400
 
@@ -62,6 +75,22 @@ class TestPlayRound:
         # An instant (elapsed_ms=0) answer scores the full default max_points.
         assert result["score"] == (100 if result["correct"] else 0)
         assert result["finished"] == (not result["correct"])
+
+    def test_answering_a_photos_mode_round_is_internally_consistent(self, logged_client):
+        game = _create_game(logged_client, mode="photos")
+        pending = game["rounds"][0]
+
+        response = logged_client.post(
+            f"/api/v1/games/{game['id']}/rounds/{pending['id']}",
+            json={"alternative": 0, "elapsed_ms": 0},
+        )
+
+        assert response.status_code == 200
+        result = response.json()
+        answered = result["answered_round"]
+        assert answered["correct_index"] is not None
+        assert result["correct"] == (answered["guess"] == answered["correct_index"])
+        assert result["score"] == (100 if result["correct"] else 0)
 
     def test_a_timed_out_answer_ends_the_game(self, logged_client):
         game = _create_game(logged_client)
