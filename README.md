@@ -55,6 +55,9 @@ Detailed gameplay for each game, including modes and scoring rules, can be found
 - ✅ Report incorrect metadata (flag a person/album/photo as wrong from its "⋯" menu; an admin
   reviews and resolves reports, and an open, relevant report excludes that entity from future
   round generation without blocking it from being searched or guessed)
+- ✅ Installable PWA (offline-capable app shell) with opt-in push notifications (new daily
+  challenge, streak reminders, birthdays, and album anniversaries) - see
+  [docs/INSTALL.md](./docs/INSTALL.md) for the one-time VAPID key setup
 
 Full implementation roadmap is in [`docs/TODO/ROADMAP.md`](./docs/TODO/ROADMAP.md).
 

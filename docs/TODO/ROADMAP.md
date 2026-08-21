@@ -45,13 +45,7 @@ Cuando se complete un item, marcar su checkbox.
 - [X] M. Hacer testing automático para el frontend
 - [x] 15. Admin Workers: Hacer que en el panel de admin haya un botón para procesar vectores de personas/albums faltanes/reprocesar todos
 - [x] N. Sistema de reporte
-- [ ] O. PWA básica:
-  - ícono de la app
-  - Notificaciones (Permitir activar/desactivar cada una en el panel de ajustes):
-    - 10:00: ya está disponible el nuevo daily
-    - 21:00: no has jugado el diario, puedes perder tu racha de {N}
-    - 12:00: {nombre} hoy cumple {N} años, envíale un salúdo!
-  - Service workers que cacheen datos
+- [X] O. PWA básica:
 - [ ] P. Juego Trivium.
 - [ ] Q. Herramientas
   - [ ] Q.1. Personas similares:
@@ -82,7 +76,7 @@ Cuando se complete un item, marcar su checkbox.
   - Si yo termino un juego daily, se abrirá un modal con los juegos daily que no he jugado
   - Si yo termino el último daily, se abrirá el modal de compartir todos los juegos por mensaje
 - [ ] 16. Agregar sistema de pistas a Immichdle (Reconsiderandolo, dado que ahora creo que está bien así como está)
-- [ ] 17. Geoguessr: nueva modalidad `Country`
+- [ ] 17. Geoguessr: nueva modalidad `Country` (Reconsiderandolo por el tema del reverse geo gratis)
 - [ ] 18. Geoguessr: nueva modalidad `City`
 - [ ] 19. Dateguessr: nueva modalidad `Year`
 - [ ] 20. Dateguessr: nueva modalidad `Month`

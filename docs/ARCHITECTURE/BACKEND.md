@@ -438,6 +438,74 @@ daily challenge already generated is unaffected either way - `ScriptedContent`/
 `ScriptedCandidateProvider` replay the frozen `spec` JSONB and never call Immich at all, so the
 wrapper has nothing to intercept there.
 
+## Push notifications (roadmap #O)
+
+Web Push (RFC 8291/8292, VAPID) - no third-party account or SDK involved. The browser itself picks
+which push service a subscription goes through (Chrome/Edge → Google's, Firefox → Mozilla's,
+Safari → Apple's); VAPID is just this backend proving to that service it's the legitimate sender,
+via a key pair it generates and owns (`scripts/generate_vapid_keys.py`). All three
+`VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_CONTACT_EMAIL` unset (the default) turns the whole
+feature off - `GET /config`'s `push_public_key` comes back `null` and the frontend hides its
+settings section entirely, gated on all three together (not just the public key) so a partial
+config can't leave the UI offering something that can subscribe but can never send.
+
+`services/notifications/` (mirrors `services/immich/`'s facade-over-a-package shape):
+
+| Module | Job |
+|---|---|
+| `__init__.py` | `NotificationService` facade - preference CRUD, subscribe/unsubscribe, and `send_to_user` (the per-device send-and-record loop both the manual test and the scheduler share). |
+| `sender.py` | Wraps `pywebpush`. A `requests.Session` subclass forces `allow_redirects=False` - pywebpush sends over `requests`, not `httpx`, so this is where the "don't follow a push-service redirect" mitigation actually lives, not in a client constructor arg. Maps 404/410 to "delete the subscription", everything else to "transient, just count it". |
+| `endpoint_safety.py` | The SSRF guard for `POST /notifications/subscriptions` - that endpoint takes a URL from the client that the backend will later POST to, so without this an authenticated user could register an internal address and turn the backend into a proxy into its own network. Order: scheme (`https` only) → host allowlist (`PUSH_ALLOWED_HOSTS`, wildcard-subdomain patterns) → DNS resolution, rejecting private/loopback/link-local/multicast results. |
+| `content.py` | What's notifiable *today* - `todays_birthdays`/`todays_album_anniversaries` against Immich, installation-wide facts computed once per tick, not per user. Excludes people with an open `person_birth_date` report; no equivalent exclusion exists for albums (no `ReportReason` currently captures "this album's date is wrong" - adding one is a reports-feature change of its own, left out on purpose). |
+| `messages.py` | ~10 strings × 4 languages, duplicated by hand from `frontend/src/i18n/locales/*.json` rather than shared - the payload is composed here because it travels to a *closed* app (the service worker has neither `localStorage` nor i18next), and it's cheap enough that the coupling a shared source of truth would add isn't worth it. |
+| `schedule.py` | Pure decision functions, no I/O - `active_kinds_for_tick(now)` (which of the four fixed times of day, if any, `now` falls within a 60-minute grace window of) and `decide_daily_notification(...)` (the streak rule table below). `now`/pre-fetched data always come in as parameters, same "as of a date" convention `DailyGamesService.get_daily_status` already uses - testable with literal values, no freezegun or thread involved. |
+| `runner.py` | The scheduler thread - ticks every 60s, mirrors `services/embedding_jobs.py`'s thread/event shape with one real difference: `embedding_jobs.py` only ever starts on-demand, from an admin route; this one starts unconditionally in `main.py`'s `lifespan` (a no-op if push isn't configured), because it's a real schedule, not tied to any request. |
+
+**The streak rule** (`schedule.decide_daily_notification`) decides between two mutually exclusive
+daily notifications per user per day - "new daily's up" at 10:00, or "you're about to lose a
+streak" at 21:00, never both. With `H` = enabled daily modes, `U ⊆ H` = not finished today,
+`racha(m)` = consecutive days played **through yesterday** (not today - see below): 10:00 fires
+only if the user has no active streak anywhere in `H`; 21:00 only if they do, `U ≠ ∅`, and either
+names the largest at-risk streak in `U` (ties broken by `games/registry.py`'s declaration order,
+not randomly) or, if every streaked mode was already played today, sends a generic "today's games
+are ending" instead.
+
+**Through yesterday, never through today.** `persistence/games_repository.py::daily_streaks`
+already counts a streak through **today** (right for the leaderboard badge it backs), and
+`daily_streaks_by_mode` (same walk, generalized over every mode/user in one query) takes `as_of` as
+an explicit parameter rather than hardcoding either - the scheduler always passes `today - 1`.
+Reusing "through today" here would make every mode not yet played today read as streak 0 and
+collapse the whole rule table, since a mode played every day including today and one whose streak
+just started today would look identical.
+
+**Idempotency and multi-process safety** - two different mechanisms for two different failure
+modes:
+- *Restart mid-window*: `notification_deliveries` (`user_id`, `kind`, `day`), unique-indexed -
+  `INSERT ... ON CONFLICT DO NOTHING ... RETURNING id` marks a delivery **before** sending, and a
+  restart re-processing an already-marked day sends nothing twice. Checked via `RETURNING`, not
+  `rowcount` - this driver reports `rowcount = -1` for `ON CONFLICT DO NOTHING` regardless of
+  whether the conflict actually happened, which silently makes every insert look skipped if you
+  trust it.
+- *More than one backend process*: `pg_try_advisory_lock` (non-blocking - a tick that loses the
+  race just skips this minute) around the whole tick, keyed by hashing a `"notif-tick"`-prefixed
+  string distinct from `daily_challenge_service.py`'s `"daily:..."` keys, so the two locks can
+  never collide. Unlike that service's `pg_advisory_xact_lock` (transaction-scoped, releases
+  itself on commit), `pg_try_advisory_lock` is **session**-scoped - `runner.py` releases it with
+  `pg_advisory_unlock` explicitly, in the same session that acquired it, before that session's
+  connection goes back to the pool. Skipping that would leave the lock held by whichever unrelated
+  session happens to reuse the same pooled connection next.
+
+**Time zone**: a single `TZ` per installation (`docker-compose.app.yml` passes it through; unset
+means the container's own default, usually UTC), read implicitly by Python's `datetime.now()` -
+there's no per-user time zone and no `Settings` field for it. This is a real footgun worth stating
+plainly: `logging_setup.py`'s formatters always print a log line's own timestamp in **UTC**,
+regardless of `TZ`, but the scheduler compares against **local** time - reading a time off a log
+line and pasting it into a hand-test is silently off by the UTC offset. `NotificationRunner.start()`
+logs the local time it's actually comparing against for exactly this reason.
+`POST /admin/notifications/run-tick` (admin-only, optional `now=` query param) sidesteps the whole
+question for testing - it simulates any local time directly, no clock-watching or `SLOT_TIMES`
+edits required.
+
 ## Logging (roadmap #I)
 
 Goal: answer "who did what, when, from
@@ -504,3 +572,6 @@ because constructing `Settings()` re-reads the file from disk.
 | `RATE_LIMIT_STORAGE_URI` | Roadmap #H, F5. Backing store for `api/rate_limit.py`'s counters. `memory://` (default) — fine for this app's single-backend-container deployment; `redis://host:port` only matters if more than one backend process shares the same traffic. |
 | `LOG_LEVEL` | Roadmap #I (see § Logging). Ordinary app logging only — `audit`/`access` always stay at INFO. |
 | `LOG_FORMAT` | Roadmap #I. `console` (default for bare `uv run uvicorn`) or `json` (what the Docker image defaults to via its own `Dockerfile`, regardless of this file). |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_CONTACT_EMAIL` | Roadmap #O (see § Push notifications). Generate a pair with `uv run python -m scripts.generate_vapid_keys`. All three unset (default) turns push off entirely. Rotating the private key invalidates every existing subscription, same as `JWT_SECRET` with sessions. |
+| `PUSH_ALLOWED_HOSTS` | Roadmap #O. SSRF allowlist for `POST /notifications/subscriptions` — comma-separated, `*.` prefix matches any subdomain. Defaults to every major browser's push service; only add to it, never remove the restriction. |
+| `TZ` | Roadmap #O. Not a `Settings` field — a bare OS/container env var Python's `datetime.now()` reads implicitly. What the four scheduled notification times are timed against; unset means the container's own default (usually UTC), not your local time. |
