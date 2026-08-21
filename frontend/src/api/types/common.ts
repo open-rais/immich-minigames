@@ -41,6 +41,7 @@ export const Mode = {
   NamedFaces: "namedFaces",
   Arcade: "arcade",
   Birthday: "birthday",
+  Photos: "photos",
 } as const
 export type Mode = (typeof Mode)[keyof typeof Mode]
 

@@ -246,7 +246,8 @@
   "trivium": {
     "title": "Trivium",
     "modes": {
-      "birthday": "Birthday"
+      "birthday": "Birthday",
+      "photos": "Photos"
     },
     "start": {
       "description": "Answer trivia about your photos and the people in them. One wrong answer - or running out of time - ends the run."
@@ -254,7 +255,10 @@
     "questions": {
       "birthdayYear": "What year was {{name}} born?",
       "birthdayDayMonth": "When is {{name}}'s birthday?",
-      "birthdayFullDate": "What day was {{name}} born?"
+      "birthdayFullDate": "What day was {{name}} born?",
+      "photosTotalAssets": "Which of these people has the most photos overall?",
+      "photosTogether": "Which of these people has the most photos with {{name}}?",
+      "photosFirstAssetYear": "What year is {{name}}'s first photo from?"
     },
     "result": {
       "correct": "Correct!",

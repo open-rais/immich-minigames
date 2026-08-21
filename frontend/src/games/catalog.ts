@@ -229,11 +229,18 @@ export const GAME_CATALOG: CatalogGame[] = [
     gameTitleKey: "trivium.title",
     modes: [
       {
-        // No coverUrl/roundsComponent yet - only the birthday_year question type and the vertical
-        // gameplay slice exist so far; cover art and the rounds-review screen are later work, same
-        // as any other mode before its art/review screen land (see coverUrl/roundsComponent above).
+        // No coverUrl/roundsComponent yet on either mode - cover art and the rounds-review screen
+        // are later work, same as any other mode before its art/review screen land (see
+        // coverUrl/roundsComponent above).
         mode: Mode.Birthday,
         modeTitleKey: "trivium.modes.birthday",
+        component: TriviumGame,
+      },
+      {
+        // Same component as Birthday - it reads its mode from the URL and swaps only which
+        // question types the backend picks from (see TriviumGame's own useParams read).
+        mode: Mode.Photos,
+        modeTitleKey: "trivium.modes.photos",
         component: TriviumGame,
       },
     ],

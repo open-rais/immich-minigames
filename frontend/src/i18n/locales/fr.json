@@ -246,7 +246,8 @@
   "trivium": {
     "title": "Trivium",
     "modes": {
-      "birthday": "Anniversaire"
+      "birthday": "Anniversaire",
+      "photos": "Photos"
     },
     "start": {
       "description": "Répondez à des questions sur vos photos et les personnes qu'elles montrent. Une mauvaise réponse - ou un temps écoulé - termine la partie."
@@ -254,7 +255,10 @@
     "questions": {
       "birthdayYear": "En quelle année {{name}} est-il/elle né(e) ?",
       "birthdayDayMonth": "Quand est l'anniversaire de {{name}} ?",
-      "birthdayFullDate": "Quel jour {{name}} est-il/elle né(e) ?"
+      "birthdayFullDate": "Quel jour {{name}} est-il/elle né(e) ?",
+      "photosTotalAssets": "Laquelle de ces personnes a le plus de photos au total ?",
+      "photosTogether": "Laquelle de ces personnes a le plus de photos avec {{name}} ?",
+      "photosFirstAssetYear": "De quelle année est la première photo de {{name}} ?"
     },
     "result": {
       "correct": "Correct !",

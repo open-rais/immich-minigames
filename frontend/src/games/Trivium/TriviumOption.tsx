@@ -1,5 +1,7 @@
 import type { ReactNode } from "react"
 
+import { PersonAvatar } from "../shared/PersonAvatar"
+
 // One of the 4 alternatives - deliberately its own component rather than a Button.tsx variant:
 // none of Button's three variants fit (primary is the CTA indigo this is explicitly meant to
 // avoid, secondary reads too flat/neutral for 4 options that need to be told apart at a glance,
@@ -26,10 +28,28 @@ interface TriviumOptionProps {
   state: TriviumOptionState
   disabled?: boolean
   onClick?: () => void
+  // Set (even to null, while still loading/unresolved) for a question whose alternatives are
+  // people (photos_total_assets/photos_together) - renders their photo above the name instead of
+  // the plain text button. Left unset for every other question_kind.
+  photoUrl?: string | null
   children: ReactNode
 }
 
-export function TriviumOption({ state, disabled, onClick, children }: TriviumOptionProps) {
+export function TriviumOption({ state, disabled, onClick, photoUrl, children }: TriviumOptionProps) {
+  if (photoUrl !== undefined) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        className={`flex w-full flex-col items-center gap-2 rounded-2xl border p-3 text-center transition-colors disabled:cursor-not-allowed md:gap-3 md:rounded-3xl md:p-4 ${STATE_CLASS[state]}`}
+      >
+        <PersonAvatar src={photoUrl} alt="" size="lg" />
+        <span className="text-base font-bold md:text-xl">{children}</span>
+      </button>
+    )
+  }
+
   return (
     <button
       type="button"

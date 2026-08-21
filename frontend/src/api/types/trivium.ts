@@ -29,12 +29,15 @@ export interface TriviumRoundOut {
   guess: number | null
   elapsed_ms: number | null
   correct: boolean | null
+  // Same redaction (implicitly null until answered) as everything else above - lets a "+N
+  // points" card be built straight from the round, same as Timeline's own score_delta field.
+  score_delta: number | null
 }
 
-// Render data shared by every birthday_* question_kind (birthday_year/birthday_day_month/
-// birthday_full_date) - narrow TriviumRoundOut.params against this once question_kind is
-// confirmed to be one of them.
-export interface BirthdayPersonParams {
+// A named person reference - used both as params (every question naming one specific person:
+// birthday_year/day_month/full_date, photos_together, photos_first_asset_year) and as the
+// alternative shape for every photos_* type, whose choices are people rather than raw values.
+export interface PersonRef {
   person_id: string
   person_name: string
 }
