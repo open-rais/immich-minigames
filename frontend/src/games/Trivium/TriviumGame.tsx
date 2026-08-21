@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate, useParams } from "react-router-dom"
 
-import { personThumbnailUrl, playRound } from "../../api/games"
+import { assetThumbnailUrl, personThumbnailUrl, playRound } from "../../api/games"
 import { GameType, Mode } from "../../api/types/common"
 import type { RoundOut } from "../../api/types/common"
 import type {
@@ -12,6 +12,7 @@ import type {
   TriviumRoundOut,
 } from "../../api/types/trivium"
 import type { GameComponentProps } from "../catalog"
+import { AssetPhoto } from "../shared/AssetPhoto"
 import { ErrorScreen, FinishedScreen, IdleScreen } from "../shared/GameScreens"
 import { GuardedBackButton } from "../shared/GuardedBackButton"
 import { PersonAvatar } from "../shared/PersonAvatar"
@@ -29,6 +30,7 @@ const GAME_TYPE = GameType.Trivium
 const MODE_TITLE_KEYS: Record<string, string> = {
   [Mode.Birthday]: "trivium.modes.birthday",
   [Mode.Photos]: "trivium.modes.photos",
+  [Mode.Location]: "trivium.modes.location",
 }
 
 // Fallback only - the real value always comes from the started game's own answer_time_seconds
@@ -60,6 +62,8 @@ const QUESTION_TEXT_KEYS: Record<string, string> = {
   photos_total_assets: "trivium.questions.photosTotalAssets",
   photos_together: "trivium.questions.photosTogether",
   photos_first_asset_year: "trivium.questions.photosFirstAssetYear",
+  location_country: "trivium.questions.locationCountry",
+  location_city: "trivium.questions.locationCity",
 }
 
 // question_kinds whose alternatives are people ({person_id, person_name}) rather than a raw
@@ -114,10 +118,20 @@ export function TriviumGame({ coverUrl, hasRoundsView, daily = false }: GameComp
 
   const [revealStage, setRevealStage] = useState<RevealStage>("revealing")
   const [revealedWordCount, setRevealedWordCount] = useState(0)
+  // Set once QUESTION_HOLD_MS has elapsed since the question finished revealing - the alternatives
+  // only actually slide up once this AND alternativesMediaLoaded (below) are both true.
+  const [holdElapsed, setHoldElapsed] = useState(false)
   // The wall-clock moment the alternatives became interactable - the zero point elapsed_ms is
   // measured from.
   const [alternativesShownAt, setAlternativesShownAt] = useState<number | null>(null)
   const [remainingMs, setRemainingMs] = useState(0)
+  // AssetPhoto manages its own <img> load/error state internally rather than going through the
+  // thumbnail queue, so its readiness is tracked here via its onReadyChange callback instead of a
+  // useQueuedThumbnail call - see the render below. Declared up here (not next to where it's
+  // otherwise used, further down) so onNewRound below can reset it synchronously alongside the
+  // other reveal-sequence state, rather than waiting on AssetPhoto's own src-changed effect to
+  // eventually report "not ready" a render or two later.
+  const [assetPhotoReady, setAssetPhotoReady] = useState(false)
 
   const {
     screen,
@@ -140,25 +154,52 @@ export function TriviumGame({ coverUrl, hasRoundsView, daily = false }: GameComp
     onNewRound: () => {
       setRevealStage("revealing")
       setRevealedWordCount(0)
+      setHoldElapsed(false)
       setAlternativesShownAt(null)
+      setAssetPhotoReady(false)
     },
     daily,
   })
 
   const answerTimeMs = (game?.answerTimeSeconds ?? DEFAULT_ANSWER_TIME_SECONDS) * 1000
 
-  // The round's media, if any (only "person_thumbnail" exists so far - birthday_year shows the
-  // subject's face alongside the question). Queried through the same dedup/concurrency queue every
-  // other thumbnail in the app goes through, not a plain <img src> - see thumbnailQueue.ts.
+  // The round's media, if any - "person_thumbnail" (birthday_year/photos_together's subject face)
+  // or "asset" (location_country/location_city's photo). Queried through the same dedup/
+  // concurrency queue every other thumbnail in the app goes through, not a plain <img src> - see
+  // thumbnailQueue.ts.
   const personThumbnailSrc =
     round?.media.kind === "person_thumbnail" && round.media.person_id
       ? personThumbnailUrl(round.media.person_id)
       : null
   const personThumbnail = useQueuedThumbnail(personThumbnailSrc)
-  // "Fully loaded" per round: no media to wait on, or the queue has either resolved or given up on
-  // it - a failed thumbnail still counts as loaded (PersonAvatar renders its own placeholder for
-  // it), it just shouldn't hold up the round forever.
-  const mediaLoaded = personThumbnailSrc === null || personThumbnail.url !== null || personThumbnail.failed
+  // assetPhotoReady itself is declared up with the other reveal-sequence state (see its own
+  // comment there) - only its src is computed here, alongside personThumbnailSrc.
+  const assetPhotoSrc =
+    round?.media.kind === "asset" && round.media.asset_id ? assetThumbnailUrl(round.media.asset_id) : null
+  // "Fully loaded" per round: no media to wait on, or whichever kind this round has has either
+  // resolved or given up (a failed load still counts as loaded - the placeholder it falls back to
+  // needs no further waiting), it just shouldn't hold up the round forever.
+  const mediaLoaded =
+    (personThumbnailSrc === null || personThumbnail.url !== null || personThumbnail.failed) &&
+    (assetPhotoSrc === null || assetPhotoReady)
+
+  // The 4 alternatives' own photos, for photos_total_assets/photos_together (every other kind has
+  // none, so this is 4 nulls - useQueuedThumbnail(null) is a no-op). Computed here (not down by
+  // the render, where it used to live) and subscribed via a fixed 4 calls - not a variable-length
+  // loop, which Hooks can't do - so these start loading in the background as early as the round
+  // itself is known, giving them the whole revealing+holding stretch to resolve instead of only
+  // starting once the alternatives are about to appear.
+  const hasPersonAlternatives = !!round && PERSON_ALTERNATIVE_KINDS.has(round.question_kind)
+  const alternativePhotoUrls: (string | null)[] = hasPersonAlternatives
+    ? (round?.alternatives ?? []).map((alt) => personThumbnailUrl((alt as PersonRef).person_id))
+    : [null, null, null, null]
+  const altThumb0 = useQueuedThumbnail(alternativePhotoUrls[0] ?? null)
+  const altThumb1 = useQueuedThumbnail(alternativePhotoUrls[1] ?? null)
+  const altThumb2 = useQueuedThumbnail(alternativePhotoUrls[2] ?? null)
+  const altThumb3 = useQueuedThumbnail(alternativePhotoUrls[3] ?? null)
+  const alternativesMediaLoaded =
+    !hasPersonAlternatives ||
+    [altThumb0, altThumb1, altThumb2, altThumb3].every((thumb) => thumb.url !== null || thumb.failed)
 
   const questionTextKey = round ? QUESTION_TEXT_KEYS[round.question_kind] : undefined
   const params = round?.params as PersonRef | undefined
@@ -173,6 +214,7 @@ export function TriviumGame({ coverUrl, hasRoundsView, daily = false }: GameComp
     if (!round || !mediaLoaded) return
     setRevealStage("revealing")
     setRevealedWordCount(0)
+    setHoldElapsed(false)
     setAlternativesShownAt(null)
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [round?.id, mediaLoaded])
@@ -188,16 +230,26 @@ export function TriviumGame({ coverUrl, hasRoundsView, daily = false }: GameComp
     return () => clearTimeout(timer)
   }, [revealStage, revealedWordCount, questionWords.length, mediaLoaded])
 
-  // QUESTION_HOLD_MS after the question finishes typing, slides the alternatives up (see the
-  // render below) and starts the answer timer.
+  // QUESTION_HOLD_MS after the question finishes typing, marks the hold as elapsed - doesn't
+  // slide the alternatives up itself, since they also need every alternative's photo (if any) to
+  // have loaded by then (see the effect below). In the common case the photos are already long
+  // done loading (they started as soon as the round was known, back at alternativePhotoUrls
+  // above) so this timer is what actually determines the pacing; it only holds things up on a
+  // slow connection.
   useEffect(() => {
     if (revealStage !== "holding") return
-    const timer = setTimeout(() => {
-      setAlternativesShownAt(performance.now())
-      setRevealStage("alternatives")
-    }, QUESTION_HOLD_MS)
+    const timer = setTimeout(() => setHoldElapsed(true), QUESTION_HOLD_MS)
     return () => clearTimeout(timer)
   }, [revealStage])
+
+  // Slides the alternatives up (see the render below) and starts the answer timer, once both the
+  // hold has elapsed and every alternative's own photo has loaded - confirmed by the owner:
+  // nothing about a round should still be loading once the countdown starts.
+  useEffect(() => {
+    if (revealStage !== "holding" || !holdElapsed || !alternativesMediaLoaded) return
+    setAlternativesShownAt(performance.now())
+    setRevealStage("alternatives")
+  }, [revealStage, holdElapsed, alternativesMediaLoaded])
 
   // Drives the timer bar once the alternatives are up, and auto-submits a null-alternative guess
   // when it runs out - not answering in time is a loss, not a free pass, so the frontend has to
@@ -291,13 +343,13 @@ export function TriviumGame({ coverUrl, hasRoundsView, daily = false }: GameComp
   }
 
   const alternativeLabels = round.alternatives.map((alt) => formatAlternative(round.question_kind, alt, i18n.language))
-  // Only photos_total_assets/photos_together's alternatives are people with their own photo -
-  // every other kind gets `undefined` here, which is exactly what tells TriviumOption to render
-  // the plain text button instead.
-  const hasPersonAlternatives = PERSON_ALTERNATIVE_KINDS.has(round.question_kind)
-  const alternativePhotoUrls = round.alternatives.map((alt) =>
-    hasPersonAlternatives ? personThumbnailUrl((alt as PersonRef).person_id) : undefined,
-  )
+  // hasPersonAlternatives/alternativePhotoUrls are computed further up (alongside the
+  // useQueuedThumbnail calls that need them called unconditionally) - only photos_total_assets/
+  // photos_together's alternatives have their own photo, so every other kind gets `undefined`
+  // here, which is what tells TriviumOption to render the plain text button instead.
+  const optionPhotoUrls: (string | undefined)[] = hasPersonAlternatives
+    ? alternativePhotoUrls.map((url) => url ?? undefined) // never actually null in this branch
+    : [undefined, undefined, undefined, undefined]
 
   const optionState = (index: number): TriviumOptionState => {
     if (!revealed) return "idle"
@@ -325,6 +377,11 @@ export function TriviumGame({ coverUrl, hasRoundsView, daily = false }: GameComp
         <div className="flex w-full flex-col items-center gap-4 rounded-[22px] border border-line bg-surface p-6 text-center shadow-card md:rounded-3xl md:p-10">
           {round.media.kind === "person_thumbnail" && (
             <PersonAvatar src={personThumbnailSrc} alt={params.person_name} size="lg" />
+          )}
+          {round.media.kind === "asset" && assetPhotoSrc && (
+            <div className="relative h-48 w-full overflow-hidden rounded-2xl md:h-64">
+              <AssetPhoto src={assetPhotoSrc} alt="" onReadyChange={setAssetPhotoReady} />
+            </div>
           )}
           {/* Every word is always rendered (reserving its final layout position) - only its
               opacity changes as revealedWordCount advances, so the text never shifts/reflows as
@@ -379,7 +436,7 @@ export function TriviumGame({ coverUrl, hasRoundsView, daily = false }: GameComp
                   state={optionState(index)}
                   disabled={phase !== "guessing"}
                   onClick={() => handlePick(index)}
-                  photoUrl={alternativePhotoUrls[index]}
+                  photoUrl={optionPhotoUrls[index]}
                 >
                   {label}
                 </TriviumOption>

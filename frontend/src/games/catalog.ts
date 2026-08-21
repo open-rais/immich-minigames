@@ -243,6 +243,12 @@ export const GAME_CATALOG: CatalogGame[] = [
         modeTitleKey: "trivium.modes.photos",
         component: TriviumGame,
       },
+      {
+        // Same component again - always shows an image (see TriviumGame's AssetPhoto branch).
+        mode: Mode.Location,
+        modeTitleKey: "trivium.modes.location",
+        component: TriviumGame,
+      },
     ],
   },
 ]
