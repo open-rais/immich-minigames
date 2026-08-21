@@ -21,6 +21,8 @@ from games.more_or_less import GAME_TYPE as MORE_OR_LESS_TYPE
 from games.more_or_less import MODE_ALBUM_ASSETS, MODE_PERSON_ASSETS, MODE_PERSON_BIRTH_DATE
 from games.timeline import GAME_TYPE as TIMELINE_TYPE
 from games.timeline import MODE_ARCADE as TIMELINE_MODE_ARCADE
+from games.trivium import GAME_TYPE as TRIVIUM_TYPE
+from games.trivium import MODE_BIRTHDAY as TRIVIUM_MODE_BIRTHDAY
 from games.whos_that_person import GAME_TYPE as WHOS_THAT_PERSON_TYPE
 from games.whos_that_person import MODE_NAMED_FACES
 from persistence.base import get_session_factory
@@ -38,6 +40,7 @@ _TOUCHED_GAME_TYPES = [
     IMMICHDLE_TYPE,
     WHOS_THAT_PERSON_TYPE,
     TIMELINE_TYPE,
+    TRIVIUM_TYPE,
 ]
 
 
@@ -154,6 +157,19 @@ class TestSpecShapePerGame:
         assert "id" in challenge.spec["cards"][0]
         assert "date" in challenge.spec["cards"][0]
 
+    def test_trivium_questions_chain_length(self, daily_challenge_service, daily_settings_service):
+        # No "+1" offset unlike MoreOrLess/Timeline's chain - every Trivium round is a
+        # self-contained question, so chain_length questions means exactly chain_length rounds.
+        daily_settings_service.update_settings(TRIVIUM_TYPE, TRIVIUM_MODE_BIRTHDAY, values={"chain_length": 10})
+
+        challenge = daily_challenge_service.get_or_create_challenge(_next_date(), TRIVIUM_TYPE, TRIVIUM_MODE_BIRTHDAY)
+
+        assert len(challenge.spec["questions"]) == 10
+        first = challenge.spec["questions"][0]
+        assert "question_kind" in first
+        assert "subject_id" in first
+        assert len(first["alternatives"]) == 4
+
 
 class TestGetOrCreateIsIdempotent:
     def test_second_call_returns_the_same_row(self, daily_challenge_service):
@@ -232,6 +248,24 @@ class TestExclusionWindow:
 
         first_ids = {card["id"] for card in first.spec["cards"]}
         second_ids = {card["id"] for card in second.spec["cards"]}
+        assert first_ids.isdisjoint(second_ids)
+
+    def test_trivium_excludes_the_previous_days_subjects_within_the_window(
+        self, daily_challenge_service, daily_settings_service
+    ):
+        # Same shape as Timeline just above - concrete people/assets as subjects, so it keeps the
+        # normal no_repeat_days exclusion on top of its own chain_length cap.
+        daily_settings_service.update_settings(
+            TRIVIUM_TYPE, TRIVIUM_MODE_BIRTHDAY, values={"chain_length": 10, "no_repeat_days": 3}
+        )
+        day1 = _next_date()
+        day2 = day1 + timedelta(days=1)
+
+        first = daily_challenge_service.get_or_create_challenge(day1, TRIVIUM_TYPE, TRIVIUM_MODE_BIRTHDAY)
+        second = daily_challenge_service.get_or_create_challenge(day2, TRIVIUM_TYPE, TRIVIUM_MODE_BIRTHDAY)
+
+        first_ids = {q["subject_id"] for q in first.spec["questions"]}
+        second_ids = {q["subject_id"] for q in second.spec["questions"]}
         assert first_ids.isdisjoint(second_ids)
 
 

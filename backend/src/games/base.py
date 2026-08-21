@@ -111,6 +111,13 @@ class BaseGame(ABC):
         rationale as total_rounds above."""
         return None
 
+    @property
+    def answer_time_seconds(self) -> int | None:
+        """Live per-round answer window for Trivium - None for every other game. Same rationale as
+        total_rounds above: the frontend needs this to run its own countdown/timeout in sync with
+        whatever an admin has it configured to right now, not a hardcoded mirror of the default."""
+        return None
+
     def play_round(self, guess: Any) -> PlayRoundResult:
         if self.finished:
             raise ValueError("game is already finished")

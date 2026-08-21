@@ -45,10 +45,17 @@ export function AssetPhoto({
   src,
   alt,
   overlay,
+  onReadyChange,
 }: {
   src: string
   alt: string
   overlay?: ReactNode
+  // Fired whenever "loaded or failed" changes - a caller that needs to know when this photo is
+  // done loading (e.g. Trivium's location questions, which hold their countdown until every
+  // photo on screen is ready) hooks into this instead of duplicating the load/error tracking
+  // below. A failed load still counts as "ready": the placeholder it falls back to needs no
+  // further waiting.
+  onReadyChange?: (ready: boolean) => void
 }) {
   const [failed, setFailed] = useState(false)
   const [loaded, setLoaded] = useState(false)
@@ -63,6 +70,11 @@ export function AssetPhoto({
     setFailed(false)
     setLoaded(false)
   }, [src])
+
+  useEffect(() => {
+    onReadyChange?.(loaded || failed)
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, failed])
 
   const [scale, setScale] = useState(1)
   const [translate, setTranslate] = useState<Point>({ x: 0, y: 0 })

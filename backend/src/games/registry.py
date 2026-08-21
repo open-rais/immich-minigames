@@ -17,6 +17,7 @@ import games.geoguessr.daily as geoguessr_daily
 import games.immichdle.daily as immichdle_daily
 import games.more_or_less.daily as more_or_less_daily
 import games.timeline.daily as timeline_daily
+import games.trivium.daily as trivium_daily
 import games.whos_that_person.daily as whos_that_person_daily
 from games.base import BaseGame, BaseRound
 from games.daily import DailySupport
@@ -43,6 +44,8 @@ from games.more_or_less import (
 from games.timeline import GAME_TYPE as TIMELINE_TYPE
 from games.timeline import MODE_ARCADE, TimelineGame, TimelineRound
 from games.timeline import LiveContent as TimelineLiveContent
+from games.trivium import GAME_TYPE as TRIVIUM_TYPE
+from games.trivium import MODE_BIRTHDAY, MODE_LOCATION, MODE_MIXED, MODE_PHOTOS, TriviumGame, TriviumRound
 from games.whos_that_person import GAME_TYPE as WHOS_THAT_PERSON_TYPE
 from games.whos_that_person import MODE_NAMED_FACES, WhosThatPersonGame, WhosThatPersonRound
 from games.whos_that_person import LiveContent as WhosThatPersonLiveContent
@@ -101,4 +104,12 @@ GAMES: dict[tuple[str, str], GameSpec] = {
     (TIMELINE_TYPE, MODE_ARCADE): GameSpec(
         TimelineGame, TimelineRound, content_factory=TimelineLiveContent, daily=timeline_daily
     ),
+    # No provider_factory/content_factory: TriviumGame takes immich_service directly (the "else"
+    # branch of GameFactory.kwargs_for) plus a per-class question_types kwarg - see that method's
+    # TriviumGame special case. Every mode shares the same TriviumGame/TriviumRound - only
+    # games/trivium/modes.py's MODES dict differs between them.
+    (TRIVIUM_TYPE, MODE_BIRTHDAY): GameSpec(TriviumGame, TriviumRound, daily=trivium_daily),
+    (TRIVIUM_TYPE, MODE_PHOTOS): GameSpec(TriviumGame, TriviumRound, daily=trivium_daily),
+    (TRIVIUM_TYPE, MODE_LOCATION): GameSpec(TriviumGame, TriviumRound, daily=trivium_daily),
+    (TRIVIUM_TYPE, MODE_MIXED): GameSpec(TriviumGame, TriviumRound, daily=trivium_daily),
 }

@@ -98,6 +98,32 @@ class TestGetAssets:
         pytest.fail("never ran out of eligible assets after excluding 2000 distinct ones")
 
 
+class TestGetDistinctLocations:
+    def test_country_returns_distinct_non_empty_real_values(self, immich_service):
+        countries = immich_service.get_distinct_locations("country")
+
+        assert countries
+        assert len(countries) == len(set(countries))
+        assert all(c for c in countries)  # never an empty string, never None
+
+    def test_city_returns_distinct_non_empty_real_values(self, immich_service):
+        cities = immich_service.get_distinct_locations("city")
+
+        assert cities
+        assert len(cities) == len(set(cities))
+        assert all(c for c in cities)
+
+    def test_includes_every_country_a_thumbnailed_asset_reports(self, immich_service):
+        # get_distinct_locations isn't restricted to assets with a thumbnail (see its own
+        # docstring for why), so this only checks the superset direction - it may legitimately
+        # also report a country from a thumbnail-less asset that get_assets would never surface.
+        countries = immich_service.get_distinct_locations("country")
+        located = immich_service.get_assets(with_location=True, limit=10_000)
+        real_countries = {a.country for a in located if a.country}
+
+        assert real_countries <= set(countries)
+
+
 class TestGetPersons:
     def test_named_only_excludes_blank_names(self, immich_service):
         persons = immich_service.get_persons(named_only=True, limit=100)
@@ -209,6 +235,45 @@ class TestGetAssetsTogetherCount:
         count = immich_service.get_assets_together_count(a.id, b.id)
 
         assert count >= 0
+
+
+class TestGetTopCoOccurringPersons:
+    def test_returns_empty_for_unknown_person(self, immich_service):
+        assert immich_service.get_top_co_occurring_persons(uuid4()) == []
+
+    def test_ranks_real_people_by_descending_co_occurrence_count(self, immich_service):
+        persons = immich_service.get_persons(named_only=True, limit=50)
+        # Find someone who actually co-occurs with at least 2 others, so the ranking has something
+        # real to sort - not guaranteed for an arbitrary person in a small library.
+        subject = next(
+            (p for p in persons if len(immich_service.get_top_co_occurring_persons(p.id, limit=2)) >= 2),
+            None,
+        )
+        if subject is None:
+            pytest.skip("no person in the dev library co-occurs with at least 2 others")
+
+        top = immich_service.get_top_co_occurring_persons(subject.id, limit=5)
+
+        assert all(row[0] != subject.id for row in top)  # never includes the subject themselves
+        counts = [row[2] for row in top]
+        assert counts == sorted(counts, reverse=True)
+        assert all(count > 0 for count in counts)
+
+    def test_exclude_ids_removes_a_candidate_from_the_ranking(self, immich_service):
+        persons = immich_service.get_persons(named_only=True, limit=50)
+        subject = next(
+            (p for p in persons if len(immich_service.get_top_co_occurring_persons(p.id, limit=1)) >= 1),
+            None,
+        )
+        if subject is None:
+            pytest.skip("no person in the dev library co-occurs with anyone")
+        [top_match] = immich_service.get_top_co_occurring_persons(subject.id, limit=1)
+
+        without_top = immich_service.get_top_co_occurring_persons(
+            subject.id, limit=1, exclude_ids=frozenset({top_match[0]})
+        )
+
+        assert all(row[0] != top_match[0] for row in without_top)
 
 
 class TestGetRandomAssetWithNamedFaces:

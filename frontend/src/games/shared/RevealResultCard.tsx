@@ -9,12 +9,17 @@ interface RevealResultCardProps {
   // Positioning is game-specific (it hugs whichever picker that game uses), so callers supply the
   // fixed-position utility classes rather than baking one game's layout in here.
   positionClassName: string
+  // A third, fainter line under subtitle - optional, so every existing caller (Geoguessr/
+  // Dateguessr/Timeline) is unaffected. Trivium's rounds review uses it for "answered in N.Ns",
+  // a detail the live-play card doesn't need (the timer bar right above it already shows that).
+  detail?: string
 }
 
 export function RevealResultCard({
   scoreDelta,
   subtitle,
   positionClassName,
+  detail,
 }: RevealResultCardProps) {
   const { t } = useTranslation()
   return (
@@ -24,6 +29,7 @@ export function RevealResultCard({
           {t("common.points", { score: scoreDelta })}
         </p>
         <p className="text-sm font-semibold text-muted">{subtitle}</p>
+        {detail && <p className="text-xs text-faint">{detail}</p>}
       </div>
     </div>
   )

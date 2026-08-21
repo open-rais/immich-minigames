@@ -124,6 +124,7 @@ const gamesByType: Record<GameType, GameOut> = {
     { total_people: 2 },
   ),
   [GameType.Timeline]: game(GameType.Timeline, [], { score: 7 }),
+  [GameType.Trivium]: game(GameType.Trivium, [], { score: 250 }),
 }
 
 describe("buildDailyShareBody", () => {
@@ -235,6 +236,14 @@ describe("buildDailyShareBody", () => {
     const { t, optsFor } = makeT()
     buildDailyShareBody(t, game(GameType.Timeline, [], { score: 7 }))
     expect(optsFor("daily.share.timeline")).toEqual({ count: 7 })
+  })
+
+  it("uses the round count (not the score) as Trivium's question count", () => {
+    // Unlike Timeline, Trivium's score is time-based points, not 1 per round - so its headline
+    // count has to come from rounds.length instead of doubling as the score.
+    const { t, optsFor } = makeT()
+    buildDailyShareBody(t, game(GameType.Trivium, [{} as RoundOut, {} as RoundOut], { score: 130 }))
+    expect(optsFor("daily.share.trivium")).toEqual({ count: 2 })
   })
 })
 

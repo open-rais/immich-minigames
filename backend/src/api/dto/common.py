@@ -31,6 +31,7 @@ from api.dto.geoguessr import GeoguessrPlayRoundIn, GeoguessrRoundOut
 from api.dto.immichdle import AlbumdlePlayRoundIn, AlbumdleRoundOut, ImmichdlePlayRoundIn, ImmichdleRoundOut
 from api.dto.more_or_less import MoreOrLessPlayRoundIn, MoreOrLessRoundOut
 from api.dto.timeline import TimelinePlayRoundIn, TimelineRoundOut
+from api.dto.trivium import TriviumPlayRoundIn, TriviumRoundOut
 from api.dto.whos_that_person import WhosThatPersonPlayRoundIn, WhosThatPersonRoundOut
 from games.base import BaseGame, BaseRound
 from games.dateguessr import DateguessrRound
@@ -38,6 +39,7 @@ from games.geoguessr import GeoguessrRound
 from games.immichdle import AlbumdleGame, AlbumdleRound, PersondleGame, PersondleRound
 from games.more_or_less import MoreOrLessRound
 from games.timeline import TimelineRound
+from games.trivium import TriviumRound
 from games.whos_that_person import WhosThatPersonRound
 from services.errors import UnsupportedGameError
 from services.scores_service import RecentGame
@@ -66,7 +68,8 @@ RoundOut = Annotated[
     | Annotated[ImmichdleRoundOut, Tag("immichdle:person")]
     | Annotated[AlbumdleRoundOut, Tag("immichdle:album")]
     | Annotated[WhosThatPersonRoundOut, Tag("whos-that-person")]
-    | Annotated[TimelineRoundOut, Tag("timeline")],
+    | Annotated[TimelineRoundOut, Tag("timeline")]
+    | Annotated[TriviumRoundOut, Tag("trivium")],
     Discriminator(_round_out_tag),
 ]
 
@@ -94,6 +97,7 @@ _ROUND_SPECS: dict[type[BaseRound], _RoundSpec] = {
     AlbumdleRound: _RoundSpec(AlbumdlePlayRoundIn, AlbumdleRoundOut, has_binary_correctness=True),
     WhosThatPersonRound: _RoundSpec(WhosThatPersonPlayRoundIn, WhosThatPersonRoundOut, has_binary_correctness=True),
     TimelineRound: _RoundSpec(TimelinePlayRoundIn, TimelineRoundOut, has_binary_correctness=True),
+    TriviumRound: _RoundSpec(TriviumPlayRoundIn, TriviumRoundOut, has_binary_correctness=True),
 }
 
 
@@ -114,6 +118,7 @@ def round_out_from_round(
     | AlbumdleRoundOut
     | WhosThatPersonRoundOut
     | TimelineRoundOut
+    | TriviumRoundOut
 ):
     return _round_spec(round_).out_class.from_round(round_)
 
@@ -165,6 +170,9 @@ class GameOut(BaseModel):
     # Same rationale as total_rounds/total_people above, but purely visual (WhosThatPerson's face-box
     # expansion factor) - the frontend has no other way to learn an admin override of it.
     face_box_growth: float | None = None
+    # Same rationale again - Trivium's per-round answer window, so the frontend's countdown timer
+    # (and its own timeout auto-submit) stays in sync with whatever an admin has it configured to.
+    answer_time_seconds: int | None = None
     # Set only for a daily-challenge game (see games/base.py's BaseGame.
     # daily_challenge_date), null for every normal game. Lets the frontend tell a resumed/loaded
     # game is a daily one on a fresh page load (no separate "Nuevo juego" affordance, no re-offer
@@ -227,6 +235,7 @@ class GameOut(BaseModel):
             total_rounds=game.total_rounds,
             total_people=game.total_people,
             face_box_growth=game.face_box_growth,
+            answer_time_seconds=game.answer_time_seconds,
             daily_challenge_date=game.daily_challenge_date,
         )
 

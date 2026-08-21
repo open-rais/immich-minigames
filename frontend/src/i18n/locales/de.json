@@ -58,7 +58,8 @@
       "whosThatPerson": "🧑‍🧑‍🧒‍🧒 {{correct}}/{{total}} Personen",
       "km": "{{value}}km",
       "days": "{{count}} Tage",
-      "timeline": "🃏 {{count}} Karten"
+      "timeline": "🃏 {{count}} Karten",
+      "trivium": "🧠 {{count}} Fragen"
     }
   },
   "leaderboard": {
@@ -240,6 +241,38 @@
       "bannerLoss": "Die Karte, die das Spiel beendet hat, wird rot angezeigt: Wo du sie platziert hast und wo sie tatsächlich sein sollte.",
       "startBadge": "Start",
       "orderBadge": "#{{count}}"
+    }
+  },
+  "trivium": {
+    "title": "Trivium",
+    "modes": {
+      "birthday": "Geburtstag",
+      "photos": "Fotos",
+      "location": "Ort",
+      "mixed": "Gemischt"
+    },
+    "start": {
+      "description": "Beantworte Trivia-Fragen zu deinen Fotos und den Personen darauf. Eine falsche Antwort - oder abgelaufene Zeit - beendet das Spiel."
+    },
+    "questions": {
+      "birthdayYear": "In welchem Jahr wurde {{name}} geboren?",
+      "birthdayDayMonth": "Wann hat {{name}} Geburtstag?",
+      "birthdayFullDate": "An welchem Tag wurde {{name}} geboren?",
+      "photosTotalAssets": "Wer von diesen Personen hat insgesamt die meisten Fotos?",
+      "photosTogether": "Wer von diesen Personen hat die meisten Fotos mit {{name}}?",
+      "photosFirstAssetYear": "Aus welchem Jahr stammt {{name}}s erstes Foto?",
+      "locationCountry": "In welchem Land wurde dieses Foto aufgenommen?",
+      "locationCity": "In welcher Stadt wurde dieses Foto aufgenommen?",
+      "mixedFaceToName": "Wie heißt diese Person?",
+      "mixedNameToFace": "Wer ist {{name}}?"
+    },
+    "result": {
+      "correct": "Richtig!",
+      "wrong": "Falsche Antwort",
+      "timeout": "Zeit abgelaufen!"
+    },
+    "rounds": {
+      "answeredIn": "Beantwortet in {{seconds}}s"
     }
   },
   "auth": {

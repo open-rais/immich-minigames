@@ -53,6 +53,12 @@ const WhosThatPersonRounds = lazy(() =>
     default: m.WhosThatPersonRounds,
   })),
 )
+const TriviumGame = lazy(() =>
+  import("./Trivium/TriviumGame").then((m) => ({ default: m.TriviumGame })),
+)
+const TriviumRounds = lazy(() =>
+  import("./Trivium/TriviumRounds").then((m) => ({ default: m.TriviumRounds })),
+)
 
 // Mirrors backend/src/services/game_registry.py's GAMES by hand - same
 // manual-sync convention already used for api/types.ts vs api/dto/. Add an entry here whenever a
@@ -217,6 +223,49 @@ export const GAME_CATALOG: CatalogGame[] = [
         component: TimelineGame,
         coverUrl: "/covers/timeline.webp",
         roundsComponent: TimelineRounds,
+        roundsLayout: "fullscreen",
+      },
+    ],
+  },
+  {
+    gameType: GameType.Trivium,
+    gameTitleKey: "trivium.title",
+    modes: [
+      {
+        // No coverUrl yet on any mode - cover art is later work, same as any other mode before its
+        // art lands (see coverUrl above). "fullscreen" family - TriviumRounds owns its own stepper
+        // state, same shape as Geoguessr/Dateguessr/Who'sThatPerson's rounds review.
+        mode: Mode.Birthday,
+        modeTitleKey: "trivium.modes.birthday",
+        component: TriviumGame,
+        roundsComponent: TriviumRounds,
+        roundsLayout: "fullscreen",
+      },
+      {
+        // Same components as Birthday - they read their mode from the URL and swap only which
+        // question types the backend picks from (see TriviumGame's own useParams read).
+        mode: Mode.Photos,
+        modeTitleKey: "trivium.modes.photos",
+        component: TriviumGame,
+        roundsComponent: TriviumRounds,
+        roundsLayout: "fullscreen",
+      },
+      {
+        // Same components again - always shows an image (see TriviumGame's AssetPhoto branch).
+        mode: Mode.Location,
+        modeTitleKey: "trivium.modes.location",
+        component: TriviumGame,
+        roundsComponent: TriviumRounds,
+        roundsLayout: "fullscreen",
+      },
+      {
+        // Same components again - the union of every other mode's question kinds plus its own two
+        // (face -> name, name -> face), both already covered by TriviumGame's/TriviumRounds'
+        // existing photo-alternatives grid (see PERSON_ALTERNATIVE_KINDS).
+        mode: Mode.Mixed,
+        modeTitleKey: "trivium.modes.mixed",
+        component: TriviumGame,
+        roundsComponent: TriviumRounds,
         roundsLayout: "fullscreen",
       },
     ],

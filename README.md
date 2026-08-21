@@ -28,19 +28,21 @@ to keep your photo metadata up to date.
 | **Immichdle** | Wordle-style games ([Wordle](https://www.nytimes.com/games/wordle/)) | Guess the mystery person with comparative clues |
 | **Timeline** | The board game [Timeline](https://www.zygomatic-games.com/en/game/timeline-classic/) | Place photos in chronological order |
 | **Who'sThatPerson** | ["Who's That Pokémon?"](https://pokemon.fandom.com/wiki/Who's_That_Pok%C3%A9mon%3F) | Guess who the person is when their face is hidden |
+| **Trivium** | Trivia/quiz shows like [Kahoot!](https://kahoot.com/) | Answer 4-option trivia questions about your own library against the clock |
 
 Detailed gameplay for each game, including modes and scoring rules, can be found in
 [`docs/GAMES/`](./docs/GAMES/OVERVIEW.md).
 
 ## Current Status
 
-**All six games are fully playable:**
+**All seven games are fully playable:**
 - **MoreOrLess** ✅ (PC and mobile layouts, both English and Spanish)
 - **Geoguessr** ✅ (MapLibre-powered, 5-round game mode)
 - **Dateguessr** ✅ (Timeline-based, 5-round game mode)
 - **Immichdle** ✅ (Wordle-style person guessing with comparative clues)
 - **Who'sThatPerson** ✅ (Guess person names from hidden faces in photos)
 - **Timeline** ✅ (Insert photos in the correct chronological spot; one mistake ends the run)
+- **Trivium** ✅ (4-option trivia questions with a countdown timer; birthday/photos/location/mixed modes)
 
 **Features:**
 - ✅ User login (email/username/password, profile page, logout)

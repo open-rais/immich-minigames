@@ -15,6 +15,7 @@ from ._random import sample_by_id_pivot
 from ._rows import row_to_asset
 
 MediaType = Literal["photo", "video", "any"]
+LocationField = Literal["city", "country"]
 
 
 def get_assets(
@@ -116,3 +117,25 @@ def get_assets(
             rows = conn.execute(stmt.order_by(asset.c.fileCreatedAt).limit(limit)).all()
 
     return [row_to_asset(row) for row in rows]
+
+
+def get_distinct_locations(engine: Engine, field: LocationField) -> list[str]:
+    """Every distinct non-null value of `field` among visible assets - powers Trivium's
+    location_country/location_city distractors, which have to be real places that actually appear
+    somewhere in the library, never invented strings. Not restricted to assets with a thumbnail
+    (unlike get_assets) - these values are only ever borrowed as distractor text, never shown as
+    the photo itself, so a thumbnail-less asset's location is still a perfectly good distractor."""
+    column = asset_exif.c.city if field == "city" else asset_exif.c.country
+    stmt = (
+        select(column)
+        .distinct()
+        .select_from(asset.join(asset_exif, asset_exif.c.assetId == asset.c.id))
+        .where(
+            asset.c.status == "active",
+            asset.c.visibility == "timeline",
+            asset.c.deletedAt.is_(None),
+            column.is_not(None),
+        )
+    )
+    with engine.connect() as conn:
+        return [row[0] for row in conn.execute(stmt).all()]
