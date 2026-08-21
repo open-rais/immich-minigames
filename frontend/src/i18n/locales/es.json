@@ -270,6 +270,9 @@
       "correct": "¡Correcto!",
       "wrong": "Respuesta equivocada",
       "timeout": "¡Se acabó el tiempo!"
+    },
+    "rounds": {
+      "answeredIn": "Respondido en {{seconds}}s"
     }
   },
   "auth": {
