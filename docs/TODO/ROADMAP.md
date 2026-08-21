@@ -46,7 +46,7 @@ Cuando se complete un item, marcar su checkbox.
 - [x] 15. Admin Workers: Hacer que en el panel de admin haya un botón para procesar vectores de personas/albums faltanes/reprocesar todos
 - [x] N. Sistema de reporte
 - [X] O. PWA básica:
-- [ ] P. Juego Trivium.
+- [X] P. Juego Trivium.
 - [ ] Q. Herramientas
   - [ ] Q.1. Personas similares:
     Selecciona una persona, se ordenará en una lista las personas más similares por promedio ML (Nombradas y no nombradas) con tal de poder "abrir en immich" y hacer merge

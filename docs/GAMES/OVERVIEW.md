@@ -49,6 +49,7 @@ orchestration) is shared.
 | Immichdle | Wordle-style games ([Wordle](https://www.nytimes.com/games/wordle/)) | Guess mystery person from comparative clues; fewer points per wrong guess | ✓ Playable | [IMMICHDLE.md](./IMMICHDLE.md) |
 | Who'sThatPerson | ["Who's That Pokémon?"](https://pokemon.fandom.com/wiki/Who's_That_Pok%C3%A9mon%3F) | Guess person's name when their face is hidden in a photo | ✓ Playable | [WHOS_THAT_PERSON.md](./WHOS_THAT_PERSON.md) |
 | Timeline | Board game [Timeline](https://www.zygomatic-games.com/en/game/timeline-classic/) | Insert photos in correct chronological order relative to already-placed ones; wrong guess ends the run | ✓ Playable | [TIMELINE.md](./TIMELINE.md) |
+| Trivium | Trivia/quiz shows like [Kahoot!](https://kahoot.com/) | 4-option multiple-choice trivia about your own library; score decays with answer time, wrong guess or timeout ends the run | ✓ Playable | [TRIVIUM.md](./TRIVIUM.md) |
 
 Each game also has additional "modes" (variants of which data is used as the question) that are lower
 priority and will come later. See [`docs/TODO/ROADMAP.md`](../TODO/ROADMAP.md) for the actual implementation
