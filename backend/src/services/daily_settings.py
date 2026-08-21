@@ -38,8 +38,8 @@ from services.game_settings_service import (
 # Each game's own settings.py declares its extra daily-only spec(s) (games/settings_spec.py's
 # NO_REPEAT_DAYS_SPEC/CHAIN_LENGTH_SPEC) - this module only assembles them onto GAME_SETTING_SPECS
 # below, it never decides per-mode which one a game needs (that decision lives with the game
-# itself). A game_type absent here (Trivium, until TRIVIUM.md's F7 gives it a daily.py) simply gets
-# no extra specs - not every registered game has daily support yet.
+# itself). A game_type absent here (Trivium, until it gets a daily.py of its own) simply gets no
+# extra specs - not every registered game has daily support yet.
 _EXTRA_DAILY_SPECS_BY_GAME_TYPE: dict[str, list[SettingSpec]] = {
     GEOGUESSR_TYPE: GEOGUESSR_DAILY_SPECS,
     DATEGUESSR_TYPE: DATEGUESSR_DAILY_SPECS,

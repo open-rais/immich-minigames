@@ -58,7 +58,7 @@ class TestPlayRound:
         assert answered["guess"] == 0
         assert answered["elapsed_ms"] == 0
         assert result["correct"] == (answered["guess"] == answered["correct_index"])
-        # An instant (elapsed_ms=0) answer scores the full default max_points (TRIVIUM.md §3).
+        # An instant (elapsed_ms=0) answer scores the full default max_points.
         assert result["score"] == (100 if result["correct"] else 0)
         assert result["finished"] == (not result["correct"])
 

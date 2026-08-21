@@ -1,8 +1,9 @@
 """TriviumRound - a single multiple-choice round: one question (subject + render params + 4
 alternatives + which is correct + what media to show, all built by a games/trivium/questions/
 QuestionType) plus the frontend-reported answer time. See games/trivium/game.py for the loop that
-drives rounds and TRIVIUM.md §3/§5 for the scoring formula and the client/server time-trust model
-(the backend trusts `elapsed_ms` as reported, only clamping it)."""
+drives rounds. Scoring is linear by elapsed time (calculate_score below); the backend trusts
+`elapsed_ms` as reported by the frontend, only clamping it - this is a self-hosted app for
+family/private use, not a competitive public ranking, so simplicity wins over anti-cheat."""
 
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -13,8 +14,7 @@ from games.base import BaseRound
 from games.trivium.questions.base import GeneratedQuestion, MediaSpec
 
 # Defaults for the two admin-configurable knobs the scoring formula reads (games/trivium/
-# settings.py) - see calculate_score below and TRIVIUM.md §3's worked example (100 pts / 10s ->
-# 50 pts at 5s).
+# settings.py) - see calculate_score below (e.g. 100 pts / 10s -> 50 pts at 5s elapsed).
 MAX_POINTS = 100
 ANSWER_TIME_SECONDS = 10
 
@@ -22,10 +22,10 @@ ANSWER_TIME_SECONDS = 10
 @dataclass(frozen=True)
 class Answer:
     """What the player submits for a round - see api/dto/trivium.py's TriviumPlayRoundIn.
-    `alternative` is null on a timeout (TRIVIUM.md §3: not answering within answer_time_seconds
-    counts as an incorrect answer that ends the game, not a 0-point round that lets the game
-    continue) - `elapsed_ms` is still reported on a wrong/timed-out guess too, purely for the
-    rounds-review screen (F6), since a wrong answer always scores 0 regardless of its value."""
+    `alternative` is null on a timeout: not answering within answer_time_seconds counts as an
+    incorrect answer that ends the game, not a 0-point round that lets the game continue -
+    `elapsed_ms` is still reported on a wrong/timed-out guess too, purely for a future
+    rounds-review screen, since a wrong answer always scores 0 regardless of its value."""
 
     alternative: int | None
     elapsed_ms: int
@@ -92,8 +92,8 @@ class TriviumRound(BaseRound):
         """Whether the chosen alternative was the right one - None until answered, False (not an
         error) for a timeout (`guess.alternative is None`). Single definition of "correct" for the
         DTOs, same role as MoreOrLessRound.correct - deliberately independent of score_delta, since
-        a correct answer given right at the time limit still scores 0 (TRIVIUM.md §3) but must
-        still count as a win for has_next_round()."""
+        a correct answer given right at the time limit still scores 0 (see calculate_score) but
+        must still count as a win for has_next_round()."""
         if not self.answered:
             return None
         assert self.guess is not None
@@ -106,10 +106,9 @@ class TriviumRound(BaseRound):
         settings = settings or {}
         max_points = settings.get("max_points", MAX_POINTS)
         answer_time_ms = settings.get("answer_time_seconds", ANSWER_TIME_SECONDS) * 1000
-        # The clamp (TRIVIUM.md §5.1): negative elapsed (a suspended device, a clock change) counts
-        # as instant (max score); anything past the limit counts as the limit (0 score). Not
-        # anti-cheat - see the module docstring - just a safety net against clocks/lag/throttled
-        # background timers.
+        # The clamp: negative elapsed (a suspended device, a clock change) counts as instant (max
+        # score); anything past the limit counts as the limit (0 score). Not anti-cheat - see the
+        # module docstring - just a safety net against clocks/lag/throttled background timers.
         elapsed_ms = max(0, min(self.guess.elapsed_ms, answer_time_ms))
         return round(max_points * (1 - elapsed_ms / answer_time_ms))
 

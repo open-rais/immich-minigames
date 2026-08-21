@@ -1,10 +1,9 @@
 """Registry mapping a Trivium mode to the question types it can ask - see
-games/trivium/questions/base.py's QuestionType and TRIVIUM.md §2.5: a mode is a *topic*, not a
-single mechanic, so ronda a ronda a random type from the mode's list is picked (no memory - the
-same type can repeat back to back, confirmed by the owner in §2.5). Only `birthday` is populated
-in this phase (TRIVIUM.md's F1) - location/photos (F3/F4) each add their own entry, and mixed (F5)
-becomes the union of every other mode's types plus its own two exclusive ones, not a fourth
-independent list built from scratch."""
+games/trivium/questions/base.py's QuestionType: a mode is a *topic*, not a single mechanic, so a
+random type from the mode's list is picked round after round (no memory - the same type can repeat
+back to back). Only `birthday` is populated so far - a future location/photos mode would each add
+their own entry, and a mixed mode would become the union of every other mode's types plus its own
+exclusive ones, not a fourth independent list built from scratch."""
 
 import random
 from uuid import UUID
@@ -24,8 +23,8 @@ def pick_question(
     question_types: list[QuestionType], immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]
 ) -> GeneratedQuestion | None:
     """A random type from `question_types` that can currently generate a round - tries every type,
-    in random order, before giving up (TRIVIUM.md §2.5's "no puedo generar ronda ahora" fallback).
-    None means no type in this mode has enough content right now."""
+    in random order, before giving up. None means no type in this mode has enough content right
+    now (a small library, an exhausted pool of subjects, ...)."""
     shuffled = list(question_types)
     random.shuffle(shuffled)
     for question_type in shuffled:

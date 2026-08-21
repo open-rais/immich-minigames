@@ -22,8 +22,8 @@ class TriviumRoundOut(BaseModel):
     round_index: int
     question_kind: str
     # Render data for the question - e.g. {"person_id": ..., "person_name": ...} for
-    # birthday_year. Never a pre-built phrase (TRIVIUM.md §2.5's i18n note) - the frontend builds
-    # the actual sentence from question_kind + these.
+    # birthday_year. Never a pre-built phrase - the app is translated ES/EN, so the frontend
+    # builds the actual sentence from question_kind + these.
     params: dict[str, Any]
     alternatives: list[Any]
     media: TriviumMediaOut
@@ -58,8 +58,8 @@ class TriviumRoundOut(BaseModel):
 
 
 class TriviumPlayRoundIn(BaseModel):
-    # Null on a timeout (TRIVIUM.md §3) - the frontend must still POST something when the timer
-    # runs out (a hung request would never record the loss), just with no chosen alternative.
+    # Null on a timeout - the frontend must still POST something when the timer runs out (a hung
+    # request would never record the loss), just with no chosen alternative.
     alternative: int | None
     elapsed_ms: int
 

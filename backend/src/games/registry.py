@@ -105,6 +105,6 @@ GAMES: dict[tuple[str, str], GameSpec] = {
     ),
     # No provider_factory/content_factory: TriviumGame takes immich_service directly (the "else"
     # branch of GameFactory.kwargs_for) plus a per-class question_types kwarg - see that method's
-    # TriviumGame special case. No daily yet (TRIVIUM.md's F7, a later phase).
+    # TriviumGame special case. No daily yet.
     (TRIVIUM_TYPE, MODE_BIRTHDAY): GameSpec(TriviumGame, TriviumRound),
 }

@@ -91,8 +91,8 @@ class TestTriviumRoundScoring:
         assert round_.calculate_score({}) == 100
 
     def test_correct_property_is_independent_of_score_delta(self):
-        # A correct answer given right at the time limit still scores 0 points - TRIVIUM.md §3 -
-        # but is still a *win* for has_next_round()'s purposes, not a loss.
+        # A correct answer given right at the time limit still scores 0 points, but is still a
+        # *win* for has_next_round()'s purposes, not a loss.
         round_ = _round(_question(correct_index=1))
         round_.guess = Answer(alternative=1, elapsed_ms=10_000)
         round_.score_delta = round_.calculate_score({"max_points": 100, "answer_time_seconds": 10})
@@ -208,7 +208,7 @@ class TestTriviumGame:
     def test_a_subject_never_repeats_within_the_same_game(self):
         subject = uuid4()
         # Both questions share the same subject - the pool is exhausted after round 1 since
-        # TriviumGame excludes every subject already shown, permanently (TRIVIUM.md §7).
+        # TriviumGame excludes every subject already shown, permanently.
         game = _start_game([_question(subject_id=subject, correct_index=1)] * 2)
 
         result = game.play_round(Answer(alternative=1, elapsed_ms=0))
