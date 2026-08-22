@@ -232,12 +232,12 @@ export const GAME_CATALOG: CatalogGame[] = [
     gameTitleKey: "trivium.title",
     modes: [
       {
-        // No coverUrl yet on any mode - cover art is later work, same as any other mode before its
-        // art lands (see coverUrl above). "fullscreen" family - TriviumRounds owns its own stepper
-        // state, same shape as Geoguessr/Dateguessr/Who'sThatPerson's rounds review.
+        // "fullscreen" family - TriviumRounds owns its own stepper state, same shape as
+        // Geoguessr/Dateguessr/Who'sThatPerson's rounds review.
         mode: Mode.Birthday,
         modeTitleKey: "trivium.modes.birthday",
         component: TriviumGame,
+        coverUrl: "/covers/trivium-birthday.webp",
         roundsComponent: TriviumRounds,
         roundsLayout: "fullscreen",
       },
@@ -247,6 +247,7 @@ export const GAME_CATALOG: CatalogGame[] = [
         mode: Mode.Photos,
         modeTitleKey: "trivium.modes.photos",
         component: TriviumGame,
+        coverUrl: "/covers/trivium-photos.webp",
         roundsComponent: TriviumRounds,
         roundsLayout: "fullscreen",
       },
@@ -255,6 +256,7 @@ export const GAME_CATALOG: CatalogGame[] = [
         mode: Mode.Location,
         modeTitleKey: "trivium.modes.location",
         component: TriviumGame,
+        coverUrl: "/covers/trivium-location.webp",
         roundsComponent: TriviumRounds,
         roundsLayout: "fullscreen",
       },
@@ -265,6 +267,7 @@ export const GAME_CATALOG: CatalogGame[] = [
         mode: Mode.Mixed,
         modeTitleKey: "trivium.modes.mixed",
         component: TriviumGame,
+        coverUrl: "/covers/trivium-mixed.webp",
         roundsComponent: TriviumRounds,
         roundsLayout: "fullscreen",
       },
