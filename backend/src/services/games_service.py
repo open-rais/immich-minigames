@@ -18,7 +18,13 @@ from games.base import BaseGame
 from games.registry import GAMES
 from persistence.games_repository import GameRepository
 from persistence.users import UserModel
-from services.errors import GameNotFoundError, GameOwnershipError, RoundNotPendingError, UnsupportedGameError
+from services.errors import (
+    GameNotFoundError,
+    GameOwnershipError,
+    NotEnoughContentError,
+    RoundNotPendingError,
+    UnsupportedGameError,
+)
 from services.game_factory import GameFactory
 
 
@@ -63,7 +69,15 @@ class GamesService:
             raise RoundNotPendingError(f"round {round_id} is not the current pending round of game {game.id}")
 
         answered_round = game.current_round
-        game.play_round(guess)
+        try:
+            game.play_round(guess)
+        except ValueError as e:
+            # create_next_round() raising here means has_next_round() lied - unreachable for every
+            # game except Trivium (see games/trivium/game.py), where can_generate()/generate() can
+            # disagree. Same mapping GameFactory.build already uses for the equivalent failure at
+            # game creation, so the frontend gets the 422 it already knows how to show instead of a
+            # 500.
+            raise NotEnoughContentError(str(e)) from e
         self._repository.save_played_round(game, answered_round)
         return game
 
