@@ -44,7 +44,14 @@ registerRoute(
   ({ url }) => isThumbnailPath(url.pathname),
   new CacheFirst({
     cacheName: API_CACHE_NAME,
-    plugins: [new ExpirationPlugin({ maxEntries: 300, purgeOnQuotaError: true })],
+    plugins: [
+      // maxAgeSeconds, not StaleWhileRevalidate: the *image* behind a thumbnail id can change
+      // (Immich picks a new featured face, an album cover changes, an asset gets rotated/edited),
+      // so CacheFirst alone would keep serving a stale one indefinitely until the 300-entry LRU
+      // happened to evict it. 14 days bounds that staleness without paying a network request per
+      // thumbnail on every load, which is the entire reason this cache exists.
+      new ExpirationPlugin({ maxEntries: 300, maxAgeSeconds: 14 * 24 * 60 * 60, purgeOnQuotaError: true }),
+    ],
   }),
 )
 

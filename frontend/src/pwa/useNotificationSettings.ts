@@ -90,11 +90,17 @@ export function useNotificationSettings(): NotificationSettingsState {
       // language field). Doesn't re-sync if the user changes language later in this same
       // session without touching a notification toggle again - a minor gap, not worth coupling
       // the general language selector to this feature for.
-      const saved = await updateNotificationPreferences({
-        ...(preferences ?? DEFAULT_PREFERENCES),
-        language: i18n.language,
-      })
-      setPreferences(saved)
+      //
+      // Only when `preferences` is already loaded - PUT is a full replace (no partial-update
+      // endpoint exists), so falling back to DEFAULT_PREFERENCES here (all three toggles off)
+      // would silently wipe out real saved ones whenever the GET above hasn't resolved yet or
+      // failed (offline, a 500). The account's language just stays whatever it already was until
+      // the next real preference change (setToggle below always has real preferences to build
+      // from) - a smaller gap than clobbering someone's settings.
+      if (preferences) {
+        const saved = await updateNotificationPreferences({ ...preferences, language: i18n.language })
+        setPreferences(saved)
+      }
       setSubscribed(true)
     } catch {
       setActivationError(true)
