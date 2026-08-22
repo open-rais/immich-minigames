@@ -5,17 +5,26 @@ const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000
 
 // vite-plugin-pwa's own dev server middleware only serves the dev-mode worker at this exact
 // path+query (vite.config.ts's devOptions.enabled: true) - the built prod sw.js lives at the
-// plain /sw.js this plugin's own filename option produces. `type: "module"` is required for the
-// dev one (served as real unbundled ES modules through Vite's module graph) and harmless for the
-// bundled prod one (no top-level import/export left after the build, so it's valid either way).
+// plain /sw.js this plugin's own filename option produces.
 const SW_URL = import.meta.env.DEV ? "/dev-sw.js?dev-sw" : "/sw.js"
+
+// `type: "module"` is required for the dev worker (served as real unbundled ES modules through
+// Vite's module graph) but must NOT be passed for the built prod one, even though dist/sw.js
+// itself has no top-level import/export left after the build and would run fine either way: the
+// browser rejects register() based on the `type` option itself, before it ever looks at the
+// file's content, and a browser without module-worker support (Firefox lagged here the longest)
+// would then get no service worker at all - no offline cache, no push - failing silently, since
+// the .catch() below only logs to the console.
+const SW_REGISTRATION_OPTIONS: RegistrationOptions | undefined = import.meta.env.DEV
+  ? { type: "module" }
+  : undefined
 
 export function registerServiceWorker(): void {
   if (!("serviceWorker" in navigator)) return
 
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register(SW_URL, { type: "module" })
+      .register(SW_URL, SW_REGISTRATION_OPTIONS)
       .then((registration) => {
         let lastUpdateCheck = Date.now()
         document.addEventListener("visibilitychange", () => {
