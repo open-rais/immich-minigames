@@ -53,11 +53,3 @@ export async function subscribePush(vapidPublicKey: string): Promise<PushSubscri
     applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
   })
 }
-
-// Best-effort - callers (logout, the settings "deactivate" flow) don't block on this failing.
-export async function unsubscribePush(): Promise<void> {
-  if (!("serviceWorker" in navigator)) return
-  const registration = await navigator.serviceWorker.getRegistration()
-  const subscription = await registration?.pushManager.getSubscription()
-  await subscription?.unsubscribe()
-}

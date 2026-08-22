@@ -17,8 +17,8 @@ export default defineConfig({
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.ts',
-      // We register from src/pwa/register.ts ourselves (gated on the §3.1 feature-detects), not
-      // the plugin's own virtual:pwa-register module.
+      // We register from src/pwa/register.ts ourselves (gated on the feature-detects in
+      // src/pwa/push.ts::getPushSupport), not the plugin's own virtual:pwa-register module.
       injectRegister: false,
       // public/manifest.webmanifest is hand-written (F0) with our own icon set; disabling this
       // stops the plugin from generating a second, competing manifest.
