@@ -29,6 +29,7 @@ from games.geoguessr import MODE_DISTANCE_BETWEEN_GUESS, GeoguessrGame, Geoguess
 from games.geoguessr import LiveContent as GeoguessrLiveContent
 from games.immichdle import GAME_TYPE as IMMICHDLE_TYPE
 from games.immichdle import MODE_ALBUM, MODE_PERSON, AlbumdleGame, AlbumdleRound, PersondleGame, PersondleRound
+from games.immichdle.game import extra_kwargs as immichdle_extra_kwargs
 from games.more_or_less import GAME_TYPE as MORE_OR_LESS_TYPE
 from games.more_or_less import (
     MODE_ALBUM_ASSETS,
@@ -46,10 +47,13 @@ from games.timeline import MODE_ARCADE, TimelineGame, TimelineRound
 from games.timeline import LiveContent as TimelineLiveContent
 from games.trivium import GAME_TYPE as TRIVIUM_TYPE
 from games.trivium import MODE_BIRTHDAY, MODE_LOCATION, MODE_MIXED, MODE_PHOTOS, TriviumGame, TriviumRound
+from games.trivium.modes import extra_kwargs as trivium_extra_kwargs
 from games.whos_that_person import GAME_TYPE as WHOS_THAT_PERSON_TYPE
 from games.whos_that_person import MODE_NAMED_FACES, WhosThatPersonGame, WhosThatPersonRound
 from games.whos_that_person import LiveContent as WhosThatPersonLiveContent
+from games.whos_that_person.game import extra_kwargs as whos_that_person_extra_kwargs
 from services.immich import ContentQueries
+from services.ml_service import MLService
 
 
 @dataclass(frozen=True)
@@ -68,12 +72,21 @@ class GameSpec:
 
     `daily` is the game's `games/<game>/daily.py` module (implementing `DailySupport`) for the
     (game_type, mode) combinations the daily rotation supports - None for a game/mode that doesn't
-    (or doesn't yet, e.g. Timeline once implemented)."""
+    (or doesn't yet, e.g. Timeline once implemented).
+
+    `extra_kwargs` covers whatever a game class needs beyond the provider/content/immich_service +
+    settings kwargs_for already assembles from the fields above - e.g. Immichdle's ml_service,
+    WhosThatPerson's own immich_service (on top of its content_factory), Trivium's mode +
+    question_types. Receives what GameFactory has on hand when building any game (the report-
+    filtered ContentQueries, ml_service, mode) and returns a dict merged on top of the rest -
+    keeps that per-class knowledge declared once, next to the rest of this game's registry entry,
+    instead of as a growing if-chain in GameFactory.kwargs_for keyed off concrete classes."""
 
     game_class: type[BaseGame]
     round_class: type[BaseRound]
     provider_factory: Callable[[ContentQueries], CandidateProvider] | None = None
     content_factory: Callable[[ContentQueries], Any] | None = None
+    extra_kwargs: Callable[[ContentQueries, MLService, str], dict[str, Any]] | None = None
     daily: DailySupport | None = None
 
 
@@ -93,23 +106,36 @@ GAMES: dict[tuple[str, str], GameSpec] = {
     (DATEGUESSR_TYPE, MODE_DAYS_TO_DATE): GameSpec(
         DateguessrGame, DateguessrRound, content_factory=DateguessrLiveContent, daily=dateguessr_daily
     ),
-    (IMMICHDLE_TYPE, MODE_PERSON): GameSpec(PersondleGame, PersondleRound, daily=immichdle_daily),
-    (IMMICHDLE_TYPE, MODE_ALBUM): GameSpec(AlbumdleGame, AlbumdleRound, daily=immichdle_daily),
+    (IMMICHDLE_TYPE, MODE_PERSON): GameSpec(
+        PersondleGame, PersondleRound, extra_kwargs=immichdle_extra_kwargs, daily=immichdle_daily
+    ),
+    (IMMICHDLE_TYPE, MODE_ALBUM): GameSpec(
+        AlbumdleGame, AlbumdleRound, extra_kwargs=immichdle_extra_kwargs, daily=immichdle_daily
+    ),
     (WHOS_THAT_PERSON_TYPE, MODE_NAMED_FACES): GameSpec(
         WhosThatPersonGame,
         WhosThatPersonRound,
         content_factory=WhosThatPersonLiveContent,
+        extra_kwargs=whos_that_person_extra_kwargs,
         daily=whos_that_person_daily,
     ),
     (TIMELINE_TYPE, MODE_ARCADE): GameSpec(
         TimelineGame, TimelineRound, content_factory=TimelineLiveContent, daily=timeline_daily
     ),
     # No provider_factory/content_factory: TriviumGame takes immich_service directly (the "else"
-    # branch of GameFactory.kwargs_for) plus a per-class question_types kwarg - see that method's
-    # TriviumGame special case. Every mode shares the same TriviumGame/TriviumRound - only
-    # games/trivium/modes.py's MODES dict differs between them.
-    (TRIVIUM_TYPE, MODE_BIRTHDAY): GameSpec(TriviumGame, TriviumRound, daily=trivium_daily),
-    (TRIVIUM_TYPE, MODE_PHOTOS): GameSpec(TriviumGame, TriviumRound, daily=trivium_daily),
-    (TRIVIUM_TYPE, MODE_LOCATION): GameSpec(TriviumGame, TriviumRound, daily=trivium_daily),
-    (TRIVIUM_TYPE, MODE_MIXED): GameSpec(TriviumGame, TriviumRound, daily=trivium_daily),
+    # branch of GameFactory.kwargs_for) plus extra_kwargs' mode + question_types. Every mode shares
+    # the same TriviumGame/TriviumRound - only games/trivium/modes.py's MODES dict differs between
+    # them, which is exactly what trivium_extra_kwargs reads from.
+    (TRIVIUM_TYPE, MODE_BIRTHDAY): GameSpec(
+        TriviumGame, TriviumRound, extra_kwargs=trivium_extra_kwargs, daily=trivium_daily
+    ),
+    (TRIVIUM_TYPE, MODE_PHOTOS): GameSpec(
+        TriviumGame, TriviumRound, extra_kwargs=trivium_extra_kwargs, daily=trivium_daily
+    ),
+    (TRIVIUM_TYPE, MODE_LOCATION): GameSpec(
+        TriviumGame, TriviumRound, extra_kwargs=trivium_extra_kwargs, daily=trivium_daily
+    ),
+    (TRIVIUM_TYPE, MODE_MIXED): GameSpec(
+        TriviumGame, TriviumRound, extra_kwargs=trivium_extra_kwargs, daily=trivium_daily
+    ),
 }

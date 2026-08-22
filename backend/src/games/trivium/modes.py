@@ -5,6 +5,7 @@ back to back). The mixed mode is the union of every other mode's types plus its 
 ones (face -> name and name -> face), not a fourth independent list built from scratch."""
 
 import random
+from typing import Any
 from uuid import UUID
 
 from games.trivium.questions.base import GeneratedQuestion, QuestionType
@@ -19,6 +20,7 @@ from games.trivium.questions.photos_first_asset_year import PhotosFirstAssetYear
 from games.trivium.questions.photos_together import PhotosTogetherQuestion
 from games.trivium.questions.photos_total_assets import PhotosTotalAssetsQuestion
 from services.immich import ContentQueries
+from services.ml_service import MLService
 
 MODE_BIRTHDAY = "birthday"
 MODE_PHOTOS = "photos"
@@ -52,3 +54,11 @@ def pick_question(
         if question is not None:
             return question
     return None
+
+
+def extra_kwargs(content_source: ContentQueries, ml_service: MLService, mode: str) -> dict[str, Any]:
+    """games/registry.py's GameSpec.extra_kwargs for TriviumGame - mode + this mode's question
+    type bank, the role provider_factory/mode play for other multi-mode games (see
+    games/registry.py's GameSpec docstring), just not expressed as a provider_factory since a
+    mode's question types aren't bound to a ContentQueries."""
+    return {"mode": mode, "question_types": MODES.get(mode, [])}

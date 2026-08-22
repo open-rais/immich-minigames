@@ -23,12 +23,20 @@ from typing import Any
 from uuid import UUID
 
 from games.base import BaseGame, BaseRound, PlayRoundResult
-from services.immich import ImmichService
+from services.immich import ContentQueries, ImmichService
 from services.ml_service import MLService
 
 GAME_TYPE = "immichdle"
 MODE_PERSON = "person"
 MODE_ALBUM = "album"
+
+
+def extra_kwargs(content_source: ContentQueries, ml_service: MLService, mode: str) -> dict[str, Any]:
+    """games/registry.py's GameSpec.extra_kwargs for both Immichdle modes - PersondleGame and
+    AlbumdleGame both need ml_service (face/album similarity clues) on top of the immich_service
+    GameFactory.kwargs_for already assembles for them (neither sets a provider_factory/
+    content_factory)."""
+    return {"ml_service": ml_service}
 
 # Admin feature - public (no leading underscore) since services/game_settings_service.py assembles
 # these as defaults for the admin-configurable starting_score/wrong_guess_penalty settings, same

@@ -16,7 +16,7 @@ from collections.abc import Mapping
 from uuid import UUID, uuid4
 
 from games.base import BaseGame
-from games.more_or_less.content import CandidateProvider, _pick_non_tied_candidate
+from games.more_or_less.content import CandidateProvider, pick_non_tied_candidate
 from games.more_or_less.round import MoreOrLessRound
 
 GAME_TYPE = "more-or-less"
@@ -65,7 +65,7 @@ class MoreOrLessGame(BaseGame):
         if not references:
             raise ValueError("not enough entities in Immich to start a MoreOrLess game")
         [reference] = references
-        candidate = _pick_non_tied_candidate(provider, reference.value, exclude_ids=frozenset({reference.id}))
+        candidate = pick_non_tied_candidate(provider, reference.value, exclude_ids=frozenset({reference.id}))
         if candidate is None:
             raise ValueError("not enough entities in Immich to start a MoreOrLess game")
 
@@ -100,14 +100,14 @@ class MoreOrLessGame(BaseGame):
 
     def create_next_round(self) -> MoreOrLessRound:
         previous = self.current_round
-        candidate = _pick_non_tied_candidate(
+        candidate = pick_non_tied_candidate(
             self._provider, previous.candidate.value, exclude_ids=self._recent_shown_ids()
         )
         if candidate is None:
             # The recent-exclude window covers the entire pool (a library smaller than the window) -
             # allow a repeat rather than ending, so the game stays infinite (see docs/GAMES/
             # MORE_OR_LESS.md and _RECENT_EXCLUDE_WINDOW).
-            candidate = _pick_non_tied_candidate(self._provider, previous.candidate.value, exclude_ids=frozenset())
+            candidate = pick_non_tied_candidate(self._provider, previous.candidate.value, exclude_ids=frozenset())
         if candidate is None:
             raise ValueError("no candidates left - has_next_round() should have returned False")
 

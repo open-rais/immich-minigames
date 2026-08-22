@@ -10,11 +10,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from games.base import BaseGame
-from games.immichdle import BaseImmichdleGame
 from games.registry import GAMES, GameSpec
-from games.trivium import TriviumGame
-from games.trivium.modes import MODES as TRIVIUM_MODES
-from games.whos_that_person import WhosThatPersonGame
 from persistence.daily import DailyChallengeModel
 from persistence.games import GameModel
 from services.errors import NotEnoughContentError, UnsupportedGameError
@@ -68,16 +64,12 @@ class GameFactory:
             kwargs["content"] = spec.content_factory(content_source)
         else:
             kwargs["immich_service"] = content_source
-        if issubclass(spec.game_class, BaseImmichdleGame):
-            kwargs["ml_service"] = self._ml_service
-        if spec.game_class is WhosThatPersonGame:
-            kwargs["immich_service"] = content_source
-        if spec.game_class is TriviumGame:
-            # mode picks which question types are in play (games/trivium/modes.py) - the same
-            # role `provider`/`mode` play for MoreOrLess above, just not expressed as a
-            # provider_factory since a mode's question types aren't bound to a ContentQueries.
-            kwargs["mode"] = mode
-            kwargs["question_types"] = TRIVIUM_MODES.get(mode, [])
+        if spec.extra_kwargs is not None:
+            # Per-class kwargs beyond the above (Immichdle's ml_service, WhosThatPerson's own
+            # immich_service, Trivium's mode + question_types, ...) - see games/registry.py's
+            # GameSpec.extra_kwargs for why this lives there, declared next to each game's own
+            # registry entry, instead of as a growing if-chain here keyed off concrete classes.
+            kwargs.update(spec.extra_kwargs(content_source, self._ml_service, mode))
         return kwargs
 
     def daily_kwargs_for(

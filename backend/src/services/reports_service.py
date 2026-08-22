@@ -10,7 +10,6 @@ vocabulary, only create() does, to reject a reason that doesn't belong to the gi
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any
 from uuid import UUID, uuid4
 
 import sqlalchemy as sa
@@ -21,6 +20,7 @@ from audit import audit
 from games.report_spec import REASON_ENTITY, ReportEntity, ReportReason
 from games.reports_registry import REPORT_EXCLUSIONS
 from persistence.reports import ReportModel
+from services.excluding_content_queries import ExcludingContentQueries
 from services.immich import ContentQueries
 
 
@@ -162,77 +162,31 @@ class ReportsService:
         return _ReportsExcludingImmichService(immich_service, exclusions)
 
 
-class _ReportsExcludingImmichService:
-    """Wraps a ContentQueries so a sampling call skips entities under an open, relevant report -
-    composition (not a subclass), same shape as daily_challenge_service.py's
-    _ExcludingImmichService. Two rules that one doesn't need:
-
-    - `ids=` means "resolve this concrete id" (a guess lookup), never "sample the pool" - passed
-      straight through unfiltered, so a reported entity stays guessable/searchable even while
-      excluded from being the thing to guess.
-    - If a sampling call comes back empty *because* of this exclusion, it retries once without it -
-      a report is a best-effort nudge, not a hard guarantee that could otherwise stall a game
-      mid-run just because its whole remaining pool happens to be reported.
-
-    Everything else (thumbnails, search_persons/search_albums, per-id clue queries like
-    get_assets_together_count) is forwarded straight through via __getattr__, unfiltered - see
-    ReportsService.filter_for's docstring and games/report_spec.py for why."""
+class _ReportsExcludingImmichService(ExcludingContentQueries):
+    """Widens exclude_ids/exclude_asset_ids per entity kind from a ReportExclusions breakdown -
+    open-report exclusion. See services/excluding_content_queries.py's ExcludingContentQueries for
+    the shared wrapper shape (composition over ContentQueries, __getattr__ passthrough for
+    everything else - thumbnails, search_persons/search_albums, per-id clue queries like
+    get_assets_together_count, see ReportsService.filter_for's docstring and games/report_spec.py
+    for why those stay unfiltered); this subclass only supplies the per-kind ids and this
+    wrapper's two policy choices - retry once unfiltered if a sample comes back empty (a report is
+    a best-effort nudge, not a hard guarantee that could otherwise stall a game mid-run just
+    because its whole remaining pool happens to be reported) and let `ids=` bypass exclusion
+    entirely (a reported entity must stay guessable/searchable even while excluded from being the
+    thing to guess)."""
 
     def __init__(self, inner: ContentQueries, exclusions: ReportExclusions) -> None:
-        self._inner = inner
+        super().__init__(inner, retry_without_exclusion=True, bypass_on_explicit_ids=True)
         self._exclusions = exclusions
 
-    def get_assets(
-        self, *, ids: frozenset[UUID] | None = None, exclude_ids: frozenset[UUID] = frozenset(), **kwargs: Any
-    ) -> Any:
-        if ids is not None:
-            return self._inner.get_assets(ids=ids, exclude_ids=exclude_ids, **kwargs)
-        result = self._inner.get_assets(exclude_ids=exclude_ids | self._exclusions.asset_ids, **kwargs)
-        if not result and self._exclusions.asset_ids:
-            result = self._inner.get_assets(exclude_ids=exclude_ids, **kwargs)
-        return result
+    def _asset_exclusion(self) -> frozenset[UUID]:
+        return self._exclusions.asset_ids
 
-    def get_persons(
-        self, *, ids: frozenset[UUID] | None = None, exclude_ids: frozenset[UUID] = frozenset(), **kwargs: Any
-    ) -> Any:
-        if ids is not None:
-            return self._inner.get_persons(ids=ids, exclude_ids=exclude_ids, **kwargs)
-        result = self._inner.get_persons(exclude_ids=exclude_ids | self._exclusions.person_ids, **kwargs)
-        if not result and self._exclusions.person_ids:
-            result = self._inner.get_persons(exclude_ids=exclude_ids, **kwargs)
-        return result
+    def _person_exclusion(self) -> frozenset[UUID]:
+        return self._exclusions.person_ids
 
-    def get_albums(
-        self, *, ids: frozenset[UUID] | None = None, exclude_ids: frozenset[UUID] = frozenset(), **kwargs: Any
-    ) -> Any:
-        if ids is not None:
-            return self._inner.get_albums(ids=ids, exclude_ids=exclude_ids, **kwargs)
-        result = self._inner.get_albums(exclude_ids=exclude_ids | self._exclusions.album_ids, **kwargs)
-        if not result and self._exclusions.album_ids:
-            result = self._inner.get_albums(exclude_ids=exclude_ids, **kwargs)
-        return result
+    def _album_exclusion(self) -> frozenset[UUID]:
+        return self._exclusions.album_ids
 
-    def get_random_asset_with_named_faces(
-        self, *, exclude_asset_ids: frozenset[UUID] = frozenset(), **kwargs: Any
-    ) -> Any:
-        result = self._inner.get_random_asset_with_named_faces(
-            exclude_asset_ids=exclude_asset_ids | self._exclusions.asset_ids,
-            exclude_person_ids=self._exclusions.person_ids,
-            **kwargs,
-        )
-        if not result and (self._exclusions.asset_ids or self._exclusions.person_ids):
-            result = self._inner.get_random_asset_with_named_faces(exclude_asset_ids=exclude_asset_ids, **kwargs)
-        return result
-
-    def has_named_faces_asset(self, *, exclude_asset_ids: frozenset[UUID] = frozenset(), **kwargs: Any) -> Any:
-        result = self._inner.has_named_faces_asset(
-            exclude_asset_ids=exclude_asset_ids | self._exclusions.asset_ids,
-            exclude_person_ids=self._exclusions.person_ids,
-            **kwargs,
-        )
-        if not result and (self._exclusions.asset_ids or self._exclusions.person_ids):
-            result = self._inner.has_named_faces_asset(exclude_asset_ids=exclude_asset_ids, **kwargs)
-        return result
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self._inner, name)
+    def _named_face_person_exclusion(self) -> frozenset[UUID]:
+        return self._exclusions.person_ids

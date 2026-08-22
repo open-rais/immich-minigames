@@ -20,15 +20,24 @@ daily spec for the daily flow (games/whos_that_person/daily.py's ScriptedContent
 """
 
 from collections.abc import Mapping
+from typing import Any
 from uuid import UUID, uuid4
 
 from games.base import BaseGame, PlayRoundResult
 from games.whos_that_person.content import WhosThatPersonContent
 from games.whos_that_person.round import WhosThatPersonRound
 from services.immich import ContentQueries
+from services.ml_service import MLService
 
 GAME_TYPE = "whos-that-person"
 MODE_NAMED_FACES = "namedFaces"
+
+
+def extra_kwargs(content_source: ContentQueries, ml_service: MLService, mode: str) -> dict[str, Any]:
+    """games/registry.py's GameSpec.extra_kwargs for WhosThatPersonGame - needs immich_service
+    directly (live guess-name resolution) on top of the `content` object GameFactory.kwargs_for
+    already builds from this mode's content_factory."""
+    return {"immich_service": content_source}
 
 # Admin feature - public (no leading underscore) since games/settings_registry.py assembles these
 # as defaults for the admin-configurable total_people/max_hidden_faces/face_box_growth settings, same

@@ -10,25 +10,7 @@ from domain.person import Person
 from persistence.immich_tables import asset, asset_face, person
 
 from ._rows import row_to_person
-
-
-def _escape_like(value: str) -> str:
-    """Escapes LIKE/ILIKE wildcard characters in free-typed user input before interpolating it
-    into a pattern - otherwise a literal % or _ in someone's search text would act as a wildcard
-    instead of a literal character."""
-    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-
-
-# Accent-insensitive search (e.g. "Rodriguez" should match stored "Rodríguez") without CREATE
-# EXTENSION unaccent - this role only has SELECT on Immich's `public` schema (see
-# docs/ARCHITECTURE/IMMICH.md) and translate() is a builtin Postgres function, not an extension.
-_ACCENTED_CHARS = "áéíóúÁÉÍÓÚñÑüÜ"
-_FOLDED_CHARS = "aeiouAEIOUnNuU"
-_ACCENT_FOLD_TABLE = str.maketrans(_ACCENTED_CHARS, _FOLDED_CHARS)
-
-
-def _fold_accents(value: str) -> str:
-    return value.translate(_ACCENT_FOLD_TABLE)
+from ._text import word_prefix_conditions
 
 
 def get_persons(
@@ -131,29 +113,14 @@ def get_persons_with_birthday_on(engine: Engine, month: int, day: int) -> list[P
 
 
 def search_persons(engine: Engine, query: str, *, offset: int = 0, limit: int = 3) -> list[Person]:
-    """Named people matching every whitespace-separated token in `query` (case- and
-    accent-insensitive), each token matched independently against a *word* in the name - e.g.
-    "rai rodriguez" matches "Raimundo Rodríguez" (each token prefixes a different word,
-    regardless of typed order) but not "Martin Perez" (no mid-word match). Per token, two
-    ILIKE conditions cover "prefixes a word anywhere in the name": the token prefixing the
-    first word, or prefixing any later word (the leading `%` in the second pattern absorbs
-    everything before that word, including other whole words); all tokens' conditions are
-    ANDed together, which is what makes multi-word queries need every token satisfied rather
-    than any one of them. Kept separate from get_persons - its existing name_query is a plain
-    substring filter, and nothing else needs this word-prefix mode. Paginated via
-    offset/limit (small pages, e.g. for infinite scroll UIs), ordered by name for a stable
-    scroll order."""
-    tokens = query.split()
-    if not tokens:
+    """Named people matching every whitespace-separated token in `query` against a *word* in the
+    name - see ._text.word_prefix_conditions for the actual matching rule. Kept separate from
+    get_persons - its existing name_query is a plain substring filter, and nothing else needs this
+    word-prefix mode. Paginated via offset/limit (small pages, e.g. for infinite scroll UIs),
+    ordered by name for a stable scroll order."""
+    token_conditions = word_prefix_conditions(person.c.name, query)
+    if not token_conditions:
         return []
-
-    folded_name = func.translate(person.c.name, _ACCENTED_CHARS, _FOLDED_CHARS)
-    token_conditions = []
-    for token in tokens:
-        escaped = _escape_like(_fold_accents(token))
-        starts_with = folded_name.ilike(f"{escaped}%", escape="\\")
-        contains_word_starting_with = folded_name.ilike(f"% {escaped}%", escape="\\")
-        token_conditions.append(starts_with | contains_word_starting_with)
 
     asset_count = func.count(func.distinct(asset_face.c.assetId)).label("asset_count")
 

@@ -32,7 +32,7 @@ class CandidateProvider(ABC):
         create_next_round's fallback), so this ignores any recent-window exclusion."""
 
 
-def _pick_non_tied_candidate(
+def pick_non_tied_candidate(
     provider: CandidateProvider, reference_value: int | str, exclude_ids: frozenset[UUID]
 ) -> EntitySnapshot | None:
     candidates = provider.sample(limit=_CANDIDATE_SAMPLE_SIZE, exclude_ids=exclude_ids)

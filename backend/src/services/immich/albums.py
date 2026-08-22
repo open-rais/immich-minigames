@@ -10,7 +10,7 @@ from domain.album import Album
 from persistence.immich_tables import album, album_asset, asset, asset_face, person
 
 from ._rows import row_to_album
-from .persons import _ACCENTED_CHARS, _FOLDED_CHARS, _escape_like, _fold_accents
+from ._text import word_prefix_conditions
 
 # The standard "this asset is real and showable" predicate (docs/ARCHITECTURE/IMMICH.md's
 # "standard eligibility filter") - every album-scoped query below joins through `asset` and
@@ -73,21 +73,12 @@ def get_albums(
 
 
 def search_albums(engine: Engine, query: str, *, offset: int = 0, limit: int = 3) -> list[Album]:
-    """Albums matching every whitespace-separated token in `query` (case- and accent-insensitive),
-    each token matched independently against a *word* in the album name - same word-prefix
-    convention as search_persons (see that function's docstring), applied to `album.albumName`
-    instead of `person.name`. Powers Albumdle's guess-input autocomplete."""
-    tokens = query.split()
-    if not tokens:
+    """Albums matching every whitespace-separated token in `query` against a *word* in the album
+    name - see ._text.word_prefix_conditions for the actual matching rule, applied here to
+    `album.albumName` instead of `person.name`. Powers Albumdle's guess-input autocomplete."""
+    token_conditions = word_prefix_conditions(album.c.albumName, query)
+    if not token_conditions:
         return []
-
-    folded_name = func.translate(album.c.albumName, _ACCENTED_CHARS, _FOLDED_CHARS)
-    token_conditions = []
-    for token in tokens:
-        escaped = _escape_like(_fold_accents(token))
-        starts_with = folded_name.ilike(f"{escaped}%", escape="\\")
-        contains_word_starting_with = folded_name.ilike(f"% {escaped}%", escape="\\")
-        token_conditions.append(starts_with | contains_word_starting_with)
 
     asset_count = func.count(album_asset.c.assetId).label("asset_count")
 
