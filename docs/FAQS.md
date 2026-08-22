@@ -139,14 +139,18 @@ Additional game modes may be added in the future (see ROADMAP.md).
 ✓ User login (register, sign in, logout, profile page)
 ✓ Dark theme (consistent with Immich colors)
 ✓ Full translations (English, Spanish, French, German)
+✓ Progressive Web App (PWA) with push notifications
 ✓ Docker images (GHCR registry)
+✓ Daily challenges (same seed per user, play once per day)
+✓ Leaderboards (global and per-account)
+✓ Report incorrect metadata
 
 ✗ **Planned features:**
-- Daily challenges (same seed per user, play once per day)
-- Leaderboards (global and user-specific)
-- Report incorrect metadata
-- Metadata repair tools
-- Additional game modes (for example: MoreOrLess comparing album counts)
+- Utility tools (search and identify bad metadata, open in Immich for fixing)
+
+**Not currently planned:**
+- Metadata repair (automatic fixing of metadata). This may be revisited in the very long term, but
+  is not on the roadmap. For now, use Immich's own tools to fix metadata.
 
 ### How do I contribute a new game?
 
@@ -181,7 +185,9 @@ You can also exclude people or assets from games in future versions (planned fea
 
 ### Can I report metadata errors?
 
-Not yet. This is a planned feature (roadmap item). For now, report errors in Immich itself.
+Yes. You can report incorrect metadata directly from any game via the report modal. These reports are
+logged and visible to admins. However, **the app does not automatically fix metadata** — you'll need to
+fix it in Immich itself. Future utility tools may help identify bad metadata more easily.
 
 ## Development
 
