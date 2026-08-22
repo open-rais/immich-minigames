@@ -1,6 +1,8 @@
-// Browser-API wrappers for Web Push - permission, subscribe/unsubscribe, and the base64url<->bytes
-// conversion PushManager.subscribe's applicationServerKey needs. Kept free of any app-specific
+// Browser-API wrappers for Web Push - permission and subscribe. Kept free of any app-specific
 // state (that's useNotificationSettings.ts) so these stay pure enough to unit test.
+
+export { urlBase64ToUint8Array } from "./base64"
+import { urlBase64ToUint8Array } from "./base64"
 
 export type PushSupport = "unsupported" | "no-push-manager" | "denied" | "ready"
 
@@ -13,25 +15,6 @@ export function getPushSupport(): PushSupport {
   if (!("PushManager" in window)) return "no-push-manager"
   if (Notification.permission === "denied") return "denied"
   return "ready"
-}
-
-// Standard base64url -> Uint8Array conversion (RFC 4648 §5, unpadded) - GET /config's
-// push_public_key travels as base64url text; PushManager.subscribe's applicationServerKey wants
-// raw bytes.
-export function urlBase64ToUint8Array(base64Url: string): Uint8Array<ArrayBuffer> {
-  const padding = "=".repeat((4 - (base64Url.length % 4)) % 4)
-  const base64 = (base64Url + padding).replace(/-/g, "+").replace(/_/g, "/")
-  // Global, not window.atob - works unchanged under vitest's default "node" environment (see
-  // this file's own push.test.ts) as well as the real browser main thread this runs in.
-  const raw = atob(base64)
-  const bytes = new Uint8Array(raw.length)
-  for (let i = 0; i < raw.length; i++) {
-    bytes[i] = raw.charCodeAt(i)
-  }
-  // `new Uint8Array(n)` infers Uint8Array<ArrayBufferLike>, which TS's DOM lib no longer accepts
-  // where a BufferSource (applicationServerKey below) is expected - it's always a real
-  // ArrayBuffer at runtime, never a SharedArrayBuffer, so this cast is exactly that gap.
-  return bytes as Uint8Array<ArrayBuffer>
 }
 
 // requestPermission() must be called from inside a user gesture (notably iOS Safari, which

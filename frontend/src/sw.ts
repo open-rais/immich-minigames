@@ -7,6 +7,7 @@ import { cleanupOutdatedCaches, precacheAndRoute } from "workbox-precaching"
 import { registerRoute } from "workbox-routing"
 import { CacheFirst, NetworkFirst, StaleWhileRevalidate } from "workbox-strategies"
 import { ExpirationPlugin } from "workbox-expiration"
+import { urlBase64ToUint8Array } from "./pwa/base64"
 import { API_CACHE_NAME } from "./pwa/cacheNames"
 import { isConfigPath, isStaticAssetPath, isThumbnailPath } from "./pwa/routeMatchers"
 
@@ -104,5 +105,38 @@ self.addEventListener("notificationclick", (event) => {
       }
       return self.clients.openWindow(url)
     }),
+  )
+})
+
+// Fires when the browser rotates a subscription on its own (expiry, or a browser-driven refresh)
+// - without this, the new endpoint is never registered anywhere and the device silently stops
+// receiving notifications until someone notices and re-activates by hand. The old endpoint needs
+// no explicit cleanup here: it's already dead at the push service by the time this fires, so the
+// next scheduled send against it 404/410s and sender.py's existing dead-subscription handling
+// removes the row, same as any other stale device. Worth the one exception to this file's
+// otherwise-dumb-SW convention because it's the one thing that can't be handled from the backend
+// or the open app - the browser only ever tells the SW.
+self.addEventListener("pushsubscriptionchange", (event) => {
+  event.waitUntil(
+    fetch("/api/v1/config")
+      .then((res) => res.json())
+      .then((config: { push_public_key: string | null }) =>
+        config.push_public_key
+          ? self.registration.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(config.push_public_key),
+            })
+          : null,
+      )
+      .then((subscription) => {
+        const json = subscription?.toJSON()
+        if (!json?.endpoint || !json.keys?.p256dh || !json.keys?.auth) return
+        return fetch("/api/v1/notifications/subscriptions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ endpoint: json.endpoint, keys: { p256dh: json.keys.p256dh, auth: json.keys.auth } }),
+        })
+      })
+      .catch(() => {}),
   )
 })
