@@ -13,6 +13,7 @@ ever needed.
 import secrets
 from calendar import timegm
 from collections.abc import Iterable
+from contextlib import suppress
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
@@ -31,6 +32,13 @@ from services.invite_service import InvalidInviteError, InviteService
 _JWT_ALGORITHM = "HS256"
 
 _hasher = PasswordHasher()
+
+# Verified once, at import time, against an unknown-email login attempt below - so that branch
+# pays the same argon2 cost a real-user wrong-password attempt does instead of returning in ~1ms.
+# Without this, the *response time* leaks whether an email is registered even though the error
+# message never does (the same thing the "same error either way" comment right below guards
+# against, just via a side channel instead of the payload).
+_DUMMY_HASH = _hasher.hash(secrets.token_hex(32))
 
 
 class EmailAlreadyExistsError(Exception):
@@ -185,8 +193,11 @@ class AuthService:
     def authenticate(self, email: str, password: str) -> UserModel:
         user = self._session.scalar(select(UserModel).where(UserModel.email == email))
         # Same error whether the email doesn't exist or the password is wrong - never reveal
-        # which one it was.
+        # which one it was. The dummy verify below pays the same argon2 cost a real user's wrong-
+        # password attempt does, so the two cases aren't distinguishable by response time either.
         if user is None:
+            with suppress(VerifyMismatchError):
+                _hasher.verify(_DUMMY_HASH, password)
             audit("login_failed", email=email)
             raise InvalidCredentialsError("invalid email or password")
         try:
