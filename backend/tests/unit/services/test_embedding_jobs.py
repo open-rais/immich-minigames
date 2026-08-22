@@ -33,6 +33,9 @@ class _FakeMLService:
     def stale_album_ids(self) -> StaleIds:
         return StaleIds(ids=self._ids, all_ids=self._ids, total=len(self._ids))
 
+    def invalidate_stale_cache(self) -> None:
+        pass
+
     def compute_person_embedding(self, entity_id: UUID, *, force: bool = False) -> None:
         self._compute(entity_id)
 
