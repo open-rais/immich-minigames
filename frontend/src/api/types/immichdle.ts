@@ -34,7 +34,7 @@ export interface ImmichdleRoundOut {
   id: string
   round_index: number
   // Redacted (null) until this round has been answered. The target itself is never in a round's
-  // output at all - see GameOut.target_person_id/name.
+  // output at all - see GameOut.reveal/PersondleRevealOut below.
   guess_person_id: string | null
   guess_person_name: string | null
   guess_asset_count: number | null
@@ -46,6 +46,17 @@ export interface ImmichdleRoundOut {
 
 export interface ImmichdlePlayRoundIn {
   person_id: string
+}
+
+// The mystery person, revealed once a Persondle game is finished - see common.ts's
+// GameOut.reveal. Absent for every other game/mode and for a Persondle game still in progress,
+// where revealing it would be a straight cheat.
+export interface PersondleRevealOut {
+  person_id: string
+  person_name: string
+  asset_count: number
+  birth_date: string | null
+  first_asset_date: string | null
 }
 
 export type DominantFaceComparison = "match" | "close" | "miss"
@@ -77,7 +88,7 @@ export interface AlbumdleRoundOut {
   id: string
   round_index: number
   // Redacted (null) until this round has been answered. The target itself is never in a round's
-  // output at all - see GameOut.target_album_id/name.
+  // output at all - see GameOut.reveal/AlbumdleRevealOut below.
   guess_album_id: string | null
   guess_album_name: string | null
   guess_asset_count: number | null
@@ -89,4 +100,17 @@ export interface AlbumdleRoundOut {
 
 export interface AlbumdlePlayRoundIn {
   album_id: string
+}
+
+// The mystery album, revealed once an Albumdle game is finished - same rationale/redaction
+// condition as PersondleRevealOut above, see common.ts's GameOut.reveal.
+export interface AlbumdleRevealOut {
+  album_id: string
+  album_name: string
+  asset_count: number
+  first_asset_date: string | null
+  dominant_person_id: string | null
+  dominant_person_name: string | null
+  dominant_extra_count: number
+  unique_named_person_count: number
 }

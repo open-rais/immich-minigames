@@ -6,9 +6,11 @@ import type { DateguessrPlayRoundIn, DateguessrRoundOut } from "./dateguessr"
 import type { GeoguessrPlayRoundIn, GeoguessrRoundOut } from "./geoguessr"
 import type {
   AlbumdlePlayRoundIn,
+  AlbumdleRevealOut,
   AlbumdleRoundOut,
   ImmichdlePlayRoundIn,
   ImmichdleRoundOut,
+  PersondleRevealOut,
 } from "./immichdle"
 import type { MoreOrLessPlayRoundIn, MoreOrLessRoundOut } from "./moreOrLess"
 import type { TimelinePlayRoundIn, TimelineRoundOut } from "./timeline"
@@ -69,23 +71,10 @@ export interface GameOut {
   score: number
   finished: boolean
   rounds: RoundOut[]
-  // Only ever populated for a finished Persondle game - the mystery person is revealed once the
-  // game is over, win or lose. null for every other game/mode and for an in-progress Persondle game.
-  target_person_id?: string | null
-  target_person_name?: string | null
-  // Same redaction condition as target_person_id/name above.
-  target_asset_count?: number | null
-  target_birth_date?: string | null
-  target_first_asset_date?: string | null
-  // Same role as target_person_* above, but for a finished Albumdle game (roadmap #14).
-  target_album_id?: string | null
-  target_album_name?: string | null
-  target_album_asset_count?: number | null
-  target_album_first_asset_date?: string | null
-  target_album_dominant_person_id?: string | null
-  target_album_dominant_person_name?: string | null
-  target_album_dominant_extra_count?: number | null
-  target_album_unique_named_person_count?: number | null
+  // Only ever populated once a finished Persondle/Albumdle game reveals its mystery target - null
+  // for every other game/mode and for one of these two still in progress, where revealing it
+  // would be a straight cheat.
+  reveal?: PersondleRevealOut | AlbumdleRevealOut | null
   // The live configured total for this game instance
   // (Geoguessr/Dateguessr: total_rounds, WhosThatPerson: total_people), null for every other game.
   // Read instead of hardcoding a display-only mirror of the backend default (see
