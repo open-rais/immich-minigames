@@ -67,6 +67,17 @@ class _FakeContentQueries:
             if f.asset_id not in exclude_asset_ids and f.person_id not in exclude_person_ids
         ]
 
+    def has_named_faces_asset(self, *, exclude_asset_ids=frozenset(), exclude_person_ids=frozenset()):
+        self.calls.append(
+            (
+                "has_named_faces_asset",
+                {"exclude_asset_ids": exclude_asset_ids, "exclude_person_ids": exclude_person_ids},
+            )
+        )
+        return any(
+            f.asset_id not in exclude_asset_ids and f.person_id not in exclude_person_ids for f in self.face_pool
+        )
+
     def search_persons(self, query):
         # Stands in for anything the wrapper doesn't override (thumbnails, search_*, per-id clue
         # queries) - proves __getattr__ forwards unfiltered.
@@ -372,6 +383,36 @@ class TestFilterFor:
         result = wrapped.get_random_asset_with_named_faces()
 
         assert {f.person_id for f in result} == {other_person_id}
+
+    def test_exclude_person_ids_is_threaded_into_has_named_faces_asset(self, db_session):
+        service = ReportsService(db_session)
+        user_id = _make_user(db_session)
+        reported_person_id, other_person_id = uuid.uuid4(), uuid.uuid4()
+        service.create(user_id, "person", reported_person_id, ["person_name_face_mismatch"], None)
+        fake = _FakeContentQueries(
+            face_pool=[_Face(uuid.uuid4(), reported_person_id), _Face(uuid.uuid4(), other_person_id)]
+        )
+
+        wrapped = service.filter_for(fake, "whos-that-person", "namedFaces")
+        result = wrapped.has_named_faces_asset()
+
+        # Still True (the other person's face is unaffected) and no retry needed - same
+        # "no retry when the first sample already returns something" shape as get_assets above.
+        assert result is True
+        assert [call for call, _ in fake.calls].count("has_named_faces_asset") == 1
+
+    def test_has_named_faces_asset_retries_without_exclusion_when_the_pool_is_fully_reported(self, db_session):
+        service = ReportsService(db_session)
+        user_id = _make_user(db_session)
+        reported_person_id = uuid.uuid4()
+        service.create(user_id, "person", reported_person_id, ["person_name_face_mismatch"], None)
+        fake = _FakeContentQueries(face_pool=[_Face(uuid.uuid4(), reported_person_id)])
+
+        wrapped = service.filter_for(fake, "whos-that-person", "namedFaces")
+        result = wrapped.has_named_faces_asset()
+
+        assert result is True
+        assert [call for call, _ in fake.calls].count("has_named_faces_asset") == 2
 
     def test_unfiltered_methods_pass_through_via_getattr(self, db_session):
         service = ReportsService(db_session)

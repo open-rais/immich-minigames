@@ -224,5 +224,15 @@ class _ReportsExcludingImmichService:
             result = self._inner.get_random_asset_with_named_faces(exclude_asset_ids=exclude_asset_ids, **kwargs)
         return result
 
+    def has_named_faces_asset(self, *, exclude_asset_ids: frozenset[UUID] = frozenset(), **kwargs: Any) -> Any:
+        result = self._inner.has_named_faces_asset(
+            exclude_asset_ids=exclude_asset_ids | self._exclusions.asset_ids,
+            exclude_person_ids=self._exclusions.person_ids,
+            **kwargs,
+        )
+        if not result and (self._exclusions.asset_ids or self._exclusions.person_ids):
+            result = self._inner.has_named_faces_asset(exclude_asset_ids=exclude_asset_ids, **kwargs)
+        return result
+
     def __getattr__(self, name: str) -> Any:
         return getattr(self._inner, name)

@@ -120,6 +120,16 @@ class ImmichService:
             self._engine, exclude_asset_ids=exclude_asset_ids, exclude_person_ids=exclude_person_ids
         )
 
+    def has_named_faces_asset(
+        self,
+        *,
+        exclude_asset_ids: frozenset[UUID] = frozenset(),
+        exclude_person_ids: frozenset[UUID] = frozenset(),
+    ) -> bool:
+        return faces.has_named_faces_asset(
+            self._engine, exclude_asset_ids=exclude_asset_ids, exclude_person_ids=exclude_person_ids
+        )
+
     def get_named_persons_in_asset(self, asset_id: UUID) -> list[str]:
         return faces.get_named_persons_in_asset(self._engine, asset_id)
 
@@ -231,6 +241,13 @@ class ContentQueries(Protocol):
         exclude_asset_ids: frozenset[UUID] = frozenset(),
         exclude_person_ids: frozenset[UUID] = frozenset(),
     ) -> list[Face]: ...
+
+    def has_named_faces_asset(
+        self,
+        *,
+        exclude_asset_ids: frozenset[UUID] = frozenset(),
+        exclude_person_ids: frozenset[UUID] = frozenset(),
+    ) -> bool: ...
 
     def get_person_first_asset_date(self, person_id: UUID) -> date | None: ...
 

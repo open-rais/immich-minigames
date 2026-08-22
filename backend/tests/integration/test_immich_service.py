@@ -352,6 +352,33 @@ class TestGetRandomAssetWithNamedFaces:
         pytest.fail("never ran out of eligible assets after excluding 1000 distinct ones")
 
 
+class TestHasNamedFacesAsset:
+    def test_true_when_at_least_one_eligible_asset_exists(self, immich_service):
+        assert immich_service.has_named_faces_asset() is True
+
+    def test_false_once_every_named_person_is_excluded(self, immich_service, immich_engine):
+        # A cheaper way to force the pool empty than excluding assets one at a time (see
+        # TestGetRandomAssetWithNamedFaces.test_returns_empty_when_no_eligible_asset_exists) -
+        # every asset's *only* path into the pool is through a named, non-hidden person, so
+        # excluding every one of those directly empties it in one query instead of needing to
+        # discover and exclude each asset in turn.
+        with immich_engine.connect() as conn:
+            named_ids = {
+                row.id for row in conn.execute(select(person.c.id).where(person.c.name != "", ~person.c.isHidden))
+            }
+        assert named_ids, "dev data must have at least one named, non-hidden person to exercise this"
+
+        assert immich_service.has_named_faces_asset(exclude_person_ids=frozenset(named_ids)) is False
+
+    def test_agrees_with_get_random_asset_with_named_faces_on_a_real_exclusion(self, immich_service):
+        [face, *_] = immich_service.get_random_asset_with_named_faces()
+
+        rest = immich_service.get_random_asset_with_named_faces(exclude_asset_ids=frozenset({face.asset_id}))
+        exists = immich_service.has_named_faces_asset(exclude_asset_ids=frozenset({face.asset_id}))
+
+        assert exists is bool(rest)
+
+
 class TestGetNamedPersonsInAsset:
     def test_returns_the_names_of_named_faces_for_a_known_asset(self, immich_service):
         [face, *_] = immich_service.get_random_asset_with_named_faces()

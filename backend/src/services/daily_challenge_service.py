@@ -57,6 +57,11 @@ class _ExcludingImmichService:
             exclude_asset_ids=exclude_asset_ids | self._extra_exclude_ids, **kwargs
         )
 
+    def has_named_faces_asset(self, *, exclude_asset_ids: frozenset[UUID] = frozenset(), **kwargs: Any) -> Any:
+        return self._inner.has_named_faces_asset(
+            exclude_asset_ids=exclude_asset_ids | self._extra_exclude_ids, **kwargs
+        )
+
     def __getattr__(self, name: str) -> Any:
         return getattr(self._inner, name)
 
