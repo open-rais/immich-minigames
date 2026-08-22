@@ -28,7 +28,6 @@ class TestScriptedQuestionType:
         questions = [_question(question_kind="birthday_year"), _question(question_kind="photos_total_assets")]
         scripted = ScriptedQuestionType(questions, next_index=0)
 
-        assert scripted.can_generate(immich_service=None, exclude_subject_ids=frozenset()) is True
         first = scripted.generate(immich_service=None, exclude_subject_ids=frozenset())
         second = scripted.generate(immich_service=None, exclude_subject_ids=frozenset())
 
@@ -45,10 +44,10 @@ class TestScriptedQuestionType:
 
         assert result is question
 
-    def test_can_generate_is_false_once_exhausted(self):
+    def test_generate_returns_none_once_exhausted(self):
         scripted = ScriptedQuestionType([_question()], next_index=1)
 
-        assert scripted.can_generate(immich_service=None, exclude_subject_ids=frozenset()) is False
+        assert scripted.generate(immich_service=None, exclude_subject_ids=frozenset()) is None
 
     def test_resuming_mid_chain_continues_from_the_right_index(self):
         # Mirrors games/trivium/daily.py's game_kwargs after 2 rounds already exist:

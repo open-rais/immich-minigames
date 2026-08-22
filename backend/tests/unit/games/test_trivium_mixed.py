@@ -36,8 +36,8 @@ class _FakeImmich:
 
 
 class TestMixedFaceToNameQuestionAgainstRealData:
-    def test_can_generate_is_true_with_the_dev_library(self, immich_service):
-        assert MixedFaceToNameQuestion().can_generate(immich_service, frozenset())
+    def test_generate_succeeds_with_the_dev_library(self, immich_service):
+        assert MixedFaceToNameQuestion().generate(immich_service, frozenset()) is not None
 
     def test_generate_returns_a_well_formed_question(self, immich_service):
         question = MixedFaceToNameQuestion().generate(immich_service, frozenset())
@@ -52,14 +52,14 @@ class TestMixedFaceToNameQuestionAgainstRealData:
 
 
 class TestMixedFaceToNameQuestionEdgeCases:
-    def test_can_generate_is_false_with_fewer_than_four_people(self):
+    def test_generate_returns_none_with_fewer_than_four_people(self):
         immich = _FakeImmich(persons=[_person("A"), _person("B"), _person("C")])
-        assert MixedFaceToNameQuestion().can_generate(immich, frozenset()) is False
+        assert MixedFaceToNameQuestion().generate(immich, frozenset()) is None
 
-    def test_can_generate_is_false_when_every_eligible_subject_is_excluded(self):
+    def test_generate_returns_none_when_every_eligible_subject_is_excluded(self):
         people = [_person(f"P{i}") for i in range(4)]
         immich = _FakeImmich(persons=people)
-        assert MixedFaceToNameQuestion().can_generate(immich, frozenset(p.id for p in people)) is False
+        assert MixedFaceToNameQuestion().generate(immich, frozenset(p.id for p in people)) is None
 
     def test_same_name_people_never_produce_ambiguous_alternatives(self):
         # Two people sharing a name - any group including both would make that name ambiguous as a
@@ -74,8 +74,8 @@ class TestMixedFaceToNameQuestionEdgeCases:
 
 
 class TestMixedNameToFaceQuestionAgainstRealData:
-    def test_can_generate_is_true_with_the_dev_library(self, immich_service):
-        assert MixedNameToFaceQuestion().can_generate(immich_service, frozenset())
+    def test_generate_succeeds_with_the_dev_library(self, immich_service):
+        assert MixedNameToFaceQuestion().generate(immich_service, frozenset()) is not None
 
     def test_generate_returns_a_well_formed_question(self, immich_service):
         question = MixedNameToFaceQuestion().generate(immich_service, frozenset())
@@ -90,11 +90,11 @@ class TestMixedNameToFaceQuestionAgainstRealData:
 
 
 class TestMixedNameToFaceQuestionEdgeCases:
-    def test_can_generate_is_false_with_fewer_than_four_people(self):
+    def test_generate_returns_none_with_fewer_than_four_people(self):
         immich = _FakeImmich(persons=[_person("A"), _person("B"), _person("C")])
-        assert MixedNameToFaceQuestion().can_generate(immich, frozenset()) is False
+        assert MixedNameToFaceQuestion().generate(immich, frozenset()) is None
 
-    def test_can_generate_is_false_when_no_subject_is_eligible(self):
+    def test_generate_returns_none_when_no_subject_is_eligible(self):
         people = [_person(f"P{i}") for i in range(4)]
         immich = _FakeImmich(persons=people)
-        assert MixedNameToFaceQuestion().can_generate(immich, frozenset(p.id for p in people)) is False
+        assert MixedNameToFaceQuestion().generate(immich, frozenset(p.id for p in people)) is None

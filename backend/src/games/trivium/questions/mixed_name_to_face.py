@@ -14,21 +14,20 @@ _CANDIDATE_POOL_LIMIT = 50
 
 
 class MixedNameToFaceQuestion:
-    def can_generate(self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]) -> bool:
-        if not immich_service.get_persons(named_only=True, limit=1, exclude_ids=exclude_subject_ids):
-            return False
-        # Needs 3 distractors too, regardless of which person ends up as the subject.
-        return len(immich_service.get_persons(named_only=True, limit=4)) >= 4
-
-    def generate(self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]) -> GeneratedQuestion:
-        [subject] = immich_service.get_persons(
+    def generate(
+        self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]
+    ) -> GeneratedQuestion | None:
+        candidates = immich_service.get_persons(
             named_only=True, randomize=True, limit=1, exclude_ids=exclude_subject_ids
         )
+        if not candidates:
+            return None
+        subject = candidates[0]
         others = immich_service.get_persons(
             named_only=True, randomize=True, limit=_CANDIDATE_POOL_LIMIT, exclude_ids=frozenset({subject.id})
         )
         if len(others) < 3:
-            raise ValueError("not enough other people for 3 distractors - can_generate() should have returned False")
+            return None
         distractors = random.sample(others, 3)
 
         candidates = [subject, *distractors]

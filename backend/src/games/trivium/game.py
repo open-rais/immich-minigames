@@ -19,7 +19,7 @@ from collections.abc import Mapping
 from uuid import UUID, uuid4
 
 from games.base import BaseGame
-from games.trivium.modes import any_question_available, pick_question
+from games.trivium.modes import pick_question
 from games.trivium.questions.base import QuestionType
 from games.trivium.round import ANSWER_TIME_SECONDS, TriviumRound
 from services.immich import ContentQueries
@@ -52,6 +52,14 @@ class TriviumGame(BaseGame):
         )
         self._immich_service = immich_service
         self._question_types = question_types
+        # Round already built by has_next_round() and pending for create_next_round() to consume -
+        # a buffer of one, not a cache (no TTL/invalidation). Exists only because games/base.py's
+        # play_round() asks "is there a next round" and "build it" as two separate calls, and for
+        # Trivium (unlike every other game) answering the first is exactly as expensive as doing
+        # the second: both mean picking a question type and asking it to generate. GameFactory.
+        # from_row rebuilds the game fresh on every request, so this always starts out None here;
+        # never serialized (to_payload() is per-round, this lives on the game).
+        self._next_round: TriviumRound | None = None
 
     @property
     def _max_rounds(self) -> int:
@@ -105,14 +113,6 @@ class TriviumGame(BaseGame):
             return None
         return TriviumRound.of(id=uuid4(), game_id=self.id, round_index=round_index, question=question)
 
-    def _any_question_available(self, exclude_subject_ids: frozenset[UUID]) -> bool:
-        if any_question_available(self._question_types, self._immich_service, exclude_subject_ids):
-            return True
-        # Same exhausted-pool fallback as _build_round.
-        return bool(exclude_subject_ids) and any_question_available(
-            self._question_types, self._immich_service, frozenset()
-        )
-
     def has_next_round(self) -> bool:
         current = self.current_round
         if not current.correct:
@@ -120,9 +120,17 @@ class TriviumGame(BaseGame):
         max_rounds = self._max_rounds
         if max_rounds and current.round_index >= max_rounds:
             return False
-        return self._any_question_available(self._used_subject_ids)
+        self._next_round = self._build_round(current.round_index + 1, self._used_subject_ids)
+        return self._next_round is not None
 
     def create_next_round(self) -> TriviumRound:
+        if self._next_round is not None:
+            next_round, self._next_round = self._next_round, None
+            return next_round
+        # Not preceded by a successful has_next_round() in this request - the only caller that does
+        # this is games/trivium/daily.py's build_spec, which drives this directly in a loop to
+        # build a fixed-length chain regardless of "was the previous guess correct"
+        # (has_next_round()'s other gate, meaningless before any guess exists yet).
         next_round = self._build_round(self.current_round.round_index + 1, self._used_subject_ids)
         if next_round is None:
             raise ValueError("no more eligible content - has_next_round() should have returned False")

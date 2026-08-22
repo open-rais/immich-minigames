@@ -62,8 +62,8 @@ class _FakeImmich:
 
 
 class TestLocationCountryQuestionAgainstRealData:
-    def test_can_generate_is_true_with_the_dev_library(self, immich_service):
-        assert LocationCountryQuestion().can_generate(immich_service, frozenset())
+    def test_generate_succeeds_with_the_dev_library(self, immich_service):
+        assert LocationCountryQuestion().generate(immich_service, frozenset()) is not None
 
     def test_generate_returns_a_well_formed_question(self, immich_service):
         question = LocationCountryQuestion().generate(immich_service, frozenset())
@@ -90,12 +90,12 @@ class TestLocationCountryQuestionAgainstRealData:
     def test_excluding_every_located_asset_makes_it_ungeneratable(self, immich_service):
         located = immich_service.get_assets(with_location=True, limit=10_000)
         all_ids = frozenset(a.id for a in located)
-        assert LocationCountryQuestion().can_generate(immich_service, all_ids) is False
+        assert LocationCountryQuestion().generate(immich_service, all_ids) is None
 
 
 class TestLocationCityQuestionAgainstRealData:
-    def test_can_generate_is_true_with_the_dev_library(self, immich_service):
-        assert LocationCityQuestion().can_generate(immich_service, frozenset())
+    def test_generate_succeeds_with_the_dev_library(self, immich_service):
+        assert LocationCityQuestion().generate(immich_service, frozenset()) is not None
 
     def test_generate_returns_a_well_formed_question(self, immich_service):
         question = LocationCityQuestion().generate(immich_service, frozenset())
@@ -108,15 +108,15 @@ class TestLocationCityQuestionAgainstRealData:
 
 
 class TestLocationEdgeCases:
-    def test_can_generate_is_false_with_fewer_than_four_distinct_countries(self):
+    def test_generate_returns_none_with_fewer_than_four_distinct_countries(self):
         assets = [_asset(country="Chile"), _asset(country="Chile"), _asset(country="Argentina")]
         immich = _FakeImmich(assets=assets)
 
-        assert LocationCountryQuestion().can_generate(immich, frozenset()) is False
+        assert LocationCountryQuestion().generate(immich, frozenset()) is None
 
-    def test_can_generate_is_false_with_no_located_assets_at_all(self):
+    def test_generate_returns_none_with_no_located_assets_at_all(self):
         immich = _FakeImmich(assets=[])
-        assert LocationCountryQuestion().can_generate(immich, frozenset()) is False
+        assert LocationCountryQuestion().generate(immich, frozenset()) is None
 
     def test_avoids_repeating_the_previous_rounds_country_while_an_alternative_exists(self):
         chile_assets = [_asset(country="Chile") for _ in range(3)]

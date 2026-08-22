@@ -8,11 +8,11 @@ from games.trivium.questions.birthday_year import KIND, BirthYearQuestion
 
 
 class TestBirthYearQuestionAgainstRealData:
-    def test_can_generate_is_true_with_the_dev_library(self, immich_service):
+    def test_generate_succeeds_with_the_dev_library(self, immich_service):
         # The dev stack has several named people with a birthDate spanning decades (see
-        # docs/ARCHITECTURE/IMMICH.md) - if this ever goes False, the fixture data changed enough
+        # docs/ARCHITECTURE/IMMICH.md) - if this ever goes None, the fixture data changed enough
         # to also break every other test below.
-        assert BirthYearQuestion().can_generate(immich_service, frozenset())
+        assert BirthYearQuestion().generate(immich_service, frozenset()) is not None
 
     def test_generate_returns_a_well_formed_question(self, immich_service):
         question_type = BirthYearQuestion()
@@ -48,14 +48,14 @@ class TestBirthYearQuestionAgainstRealData:
         everyone = immich_service.get_persons(named_only=True, with_birthdate=True, limit=10_000)
         all_ids = frozenset(p.id for p in everyone)
 
-        assert question_type.can_generate(immich_service, all_ids) is False
+        assert question_type.generate(immich_service, all_ids) is None
 
     def test_a_given_subject_is_never_reoffered_once_excluded(self, immich_service):
         question_type = BirthYearQuestion()
         question = question_type.generate(immich_service, frozenset())
         excluded = frozenset({question.subject_id})
 
-        assert question_type.can_generate(immich_service, excluded)
+        assert question_type.generate(immich_service, excluded) is not None
         for _ in range(20):
             next_question = question_type.generate(immich_service, excluded)
             assert next_question.subject_id != question.subject_id

@@ -20,8 +20,9 @@ class TestPickDistractorYears:
             assert all(1990 <= year <= 2010 for year in distractors)
 
     def test_works_at_the_minimum_generatable_span(self):
-        # can_generate() only allows a caller through when max_year - min_year >= 3, i.e. exactly
-        # 4 distinct integer years total - the tightest case that must still terminate.
+        # BirthYearQuestion.generate() only proceeds past its own range check when
+        # max_year - min_year >= 3, i.e. exactly 4 distinct integer years total - the tightest
+        # case that must still terminate.
         for _ in range(200):
             distractors = pick_distractor_years(correct_year=2000, min_year=2000, max_year=2003)
             assert sorted({*distractors, 2000}) == [2000, 2001, 2002, 2003]

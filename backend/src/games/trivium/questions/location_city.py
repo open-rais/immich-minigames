@@ -12,8 +12,7 @@ KIND = "location_city"
 
 
 class LocationCityQuestion:
-    def can_generate(self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]) -> bool:
-        return shared.can_generate(immich_service, exclude_subject_ids, "city")
-
-    def generate(self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]) -> GeneratedQuestion:
+    def generate(
+        self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]
+    ) -> GeneratedQuestion | None:
         return shared.generate(immich_service, exclude_subject_ids, "city", KIND)

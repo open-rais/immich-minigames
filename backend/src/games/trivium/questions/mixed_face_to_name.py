@@ -38,13 +38,12 @@ def _pick_group(
 
 
 class MixedFaceToNameQuestion:
-    def can_generate(self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]) -> bool:
-        return _pick_group(immich_service, exclude_subject_ids) is not None
-
-    def generate(self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]) -> GeneratedQuestion:
+    def generate(
+        self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]
+    ) -> GeneratedQuestion | None:
         found = _pick_group(immich_service, exclude_subject_ids)
         if found is None:
-            raise ValueError("no valid subject/distractor group found - can_generate() should have returned False")
+            return None
         subject, distractors = found
 
         alternatives: list[str] = [subject.name, *(d.name for d in distractors)]

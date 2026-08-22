@@ -63,8 +63,8 @@ class _FakeImmich:
 
 
 class TestPhotosTotalAssetsQuestionAgainstRealData:
-    def test_can_generate_is_true_with_the_dev_library(self, immich_service):
-        assert PhotosTotalAssetsQuestion().can_generate(immich_service, frozenset())
+    def test_generate_succeeds_with_the_dev_library(self, immich_service):
+        assert PhotosTotalAssetsQuestion().generate(immich_service, frozenset()) is not None
 
     def test_generate_returns_a_well_formed_question(self, immich_service):
         question = PhotosTotalAssetsQuestion().generate(immich_service, frozenset())
@@ -90,26 +90,26 @@ class TestPhotosTotalAssetsQuestionAgainstRealData:
 
 
 class TestPhotosTotalAssetsQuestionEdgeCases:
-    def test_can_generate_is_false_with_fewer_than_four_people(self):
+    def test_generate_returns_none_with_fewer_than_four_people(self):
         immich = _FakeImmich(persons=[_person("A", 5), _person("B", 3), _person("C", 1)])
-        assert PhotosTotalAssetsQuestion().can_generate(immich, frozenset()) is False
+        assert PhotosTotalAssetsQuestion().generate(immich, frozenset()) is None
 
-    def test_can_generate_is_false_when_no_group_of_four_has_a_unique_max(self):
+    def test_generate_returns_none_when_no_group_of_four_has_a_unique_max(self):
         # Every person has the exact same asset_count - any group of 4 ties at the top.
         immich = _FakeImmich(persons=[_person(f"P{i}", asset_count=10) for i in range(6)])
-        assert PhotosTotalAssetsQuestion().can_generate(immich, frozenset()) is False
+        assert PhotosTotalAssetsQuestion().generate(immich, frozenset()) is None
 
     def test_a_previously_used_winner_is_not_reoffered_as_the_correct_answer(self):
         # One person (the max) plus 5 tied-for-second - the only possible unique-max winner is
         # excluded, so no valid group of 4 can be formed.
         winner = _person("Winner", asset_count=100)
         immich = _FakeImmich(persons=[winner, *[_person(f"P{i}", asset_count=5) for i in range(5)]])
-        assert PhotosTotalAssetsQuestion().can_generate(immich, frozenset({winner.id})) is False
+        assert PhotosTotalAssetsQuestion().generate(immich, frozenset({winner.id})) is None
 
 
 class TestPhotosTogetherQuestionAgainstRealData:
-    def test_can_generate_is_true_with_the_dev_library(self, immich_service):
-        assert PhotosTogetherQuestion().can_generate(immich_service, frozenset())
+    def test_generate_succeeds_with_the_dev_library(self, immich_service):
+        assert PhotosTogetherQuestion().generate(immich_service, frozenset()) is not None
 
     def test_generate_returns_a_well_formed_question(self, immich_service):
         question = PhotosTogetherQuestion().generate(immich_service, frozenset())
@@ -126,16 +126,16 @@ class TestPhotosTogetherQuestionAgainstRealData:
 
 
 class TestPhotosTogetherQuestionEdgeCases:
-    def test_can_generate_is_false_when_co_occurrence_is_all_zero(self):
+    def test_generate_returns_none_when_co_occurrence_is_all_zero(self):
         subject = _person("Subject")
         others = [_person(f"P{i}") for i in range(6)]
         # No co_occurrence entries at all for `subject` - _pick_candidates pads entirely with
         # filler people, every one of them a real (if unqueried) 0.
         immich = _FakeImmich(persons=[subject, *others], co_occurrence={})
 
-        assert PhotosTogetherQuestion().can_generate(immich, frozenset()) is False
+        assert PhotosTogetherQuestion().generate(immich, frozenset()) is None
 
-    def test_can_generate_is_false_when_the_top_co_occurrence_is_tied(self):
+    def test_generate_returns_none_when_the_top_co_occurrence_is_tied(self):
         subject = _person("Subject")
         a, b, c, d = (_person(f"P{i}") for i in range(4))
         immich = _FakeImmich(
@@ -143,9 +143,9 @@ class TestPhotosTogetherQuestionEdgeCases:
             co_occurrence={subject.id: [(a.id, a.name, 5), (b.id, b.name, 5), (c.id, c.name, 2), (d.id, d.name, 1)]},
         )
 
-        assert PhotosTogetherQuestion().can_generate(immich, frozenset()) is False
+        assert PhotosTogetherQuestion().generate(immich, frozenset()) is None
 
-    def test_can_generate_is_true_once_a_unique_positive_max_exists(self):
+    def test_generate_succeeds_once_a_unique_positive_max_exists(self):
         subject = _person("Subject")
         a, b, c, d = (_person(f"P{i}") for i in range(4))
         immich = _FakeImmich(
@@ -153,8 +153,8 @@ class TestPhotosTogetherQuestionEdgeCases:
             co_occurrence={subject.id: [(a.id, a.name, 9), (b.id, b.name, 5), (c.id, c.name, 2), (d.id, d.name, 1)]},
         )
 
-        assert PhotosTogetherQuestion().can_generate(immich, frozenset()) is True
         question = PhotosTogetherQuestion().generate(immich, frozenset())
+        assert question is not None
         assert question.alternatives[question.correct_index]["person_id"] == str(a.id)
 
     def test_candidates_are_a_random_four_not_always_the_top_four(self):
@@ -178,8 +178,8 @@ class TestPhotosTogetherQuestionEdgeCases:
 
 
 class TestPhotosFirstAssetYearQuestionAgainstRealData:
-    def test_can_generate_is_true_with_the_dev_library(self, immich_service):
-        assert PhotosFirstAssetYearQuestion().can_generate(immich_service, frozenset())
+    def test_generate_succeeds_with_the_dev_library(self, immich_service):
+        assert PhotosFirstAssetYearQuestion().generate(immich_service, frozenset()) is not None
 
     def test_generate_returns_a_well_formed_question(self, immich_service):
         question = PhotosFirstAssetYearQuestion().generate(immich_service, frozenset())
@@ -198,16 +198,16 @@ class TestPhotosFirstAssetYearQuestionAgainstRealData:
 
 
 class TestPhotosFirstAssetYearQuestionEdgeCases:
-    def test_can_generate_is_false_when_the_year_range_is_too_narrow(self):
+    def test_generate_returns_none_when_the_year_range_is_too_narrow(self):
         people = [_person(f"P{i}") for i in range(4)]
         # Every person's first photo is from the same year - no room for 3 distinct distractors.
         immich = _FakeImmich(persons=people, first_asset_dates={p.id: date(2020, 1, 1) for p in people})
 
-        assert PhotosFirstAssetYearQuestion().can_generate(immich, frozenset()) is False
+        assert PhotosFirstAssetYearQuestion().generate(immich, frozenset()) is None
 
-    def test_can_generate_is_true_once_the_range_is_wide_enough(self):
+    def test_generate_succeeds_once_the_range_is_wide_enough(self):
         people = [_person(f"P{i}") for i in range(4)]
         dates = [date(2018, 1, 1), date(2019, 1, 1), date(2020, 1, 1), date(2021, 1, 1)]
         immich = _FakeImmich(persons=people, first_asset_dates=dict(zip((p.id for p in people), dates, strict=True)))
 
-        assert PhotosFirstAssetYearQuestion().can_generate(immich, frozenset()) is True
+        assert PhotosFirstAssetYearQuestion().generate(immich, frozenset()) is not None

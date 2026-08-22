@@ -64,13 +64,12 @@ def _find_subject_and_candidates(
 
 
 class PhotosTogetherQuestion:
-    def can_generate(self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]) -> bool:
-        return _find_subject_and_candidates(immich_service, exclude_subject_ids) is not None
-
-    def generate(self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]) -> GeneratedQuestion:
+    def generate(
+        self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]
+    ) -> GeneratedQuestion | None:
         found = _find_subject_and_candidates(immich_service, exclude_subject_ids)
         if found is None:
-            raise ValueError("no valid subject/candidates found - can_generate() should have returned False")
+            return None
         subject_id, subject_name, candidates = found
 
         max_count = max(count for _, _, count in candidates)

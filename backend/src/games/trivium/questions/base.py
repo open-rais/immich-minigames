@@ -51,11 +51,11 @@ class QuestionType(Protocol):
     earlier in the same game (TriviumGame._used_subject_ids) - a subject never repeats within one
     game."""
 
-    def can_generate(self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]) -> bool:
-        """Whether this type has enough content to generate a round right now - False lets the
-        mode fall back to a different type instead of a broken round."""
-        ...
-
-    def generate(self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]) -> GeneratedQuestion:
-        """Only ever called after can_generate() returned True for the same arguments."""
+    def generate(
+        self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]
+    ) -> GeneratedQuestion | None:
+        """A round from this type, or None if it doesn't have enough content right now - lets the
+        mode fall back to a different type instead of a broken round. A single call: picking the
+        subject and checking there's enough content for it are the same query for almost every
+        type, so there's no separate "can I?" step to answer and then discard."""
         ...

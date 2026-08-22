@@ -36,13 +36,12 @@ def _sample_group(immich_service: ContentQueries, exclude_subject_ids: frozenset
 
 
 class PhotosTotalAssetsQuestion:
-    def can_generate(self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]) -> bool:
-        return _sample_group(immich_service, exclude_subject_ids) is not None
-
-    def generate(self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]) -> GeneratedQuestion:
+    def generate(
+        self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]
+    ) -> GeneratedQuestion | None:
         group = _sample_group(immich_service, exclude_subject_ids)
         if group is None:
-            raise ValueError("no valid candidate group found - can_generate() should have returned False")
+            return None
         max_count = max(p.asset_count for p in group)
         winner = next(p for p in group if p.asset_count == max_count)
 

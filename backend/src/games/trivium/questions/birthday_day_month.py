@@ -13,17 +13,17 @@ KIND = "birthday_day_month"
 
 
 class BirthdayDayMonthQuestion:
-    def can_generate(self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]) -> bool:
+    def generate(
+        self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]
+    ) -> GeneratedQuestion | None:
         # Unlike birthday_year, there's no library-range check needed: every day-of-year is an
         # equally plausible birthday, so the only real requirement is having a subject at all.
-        return bool(
-            immich_service.get_persons(named_only=True, with_birthdate=True, limit=1, exclude_ids=exclude_subject_ids)
-        )
-
-    def generate(self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]) -> GeneratedQuestion:
-        [subject] = immich_service.get_persons(
+        candidates = immich_service.get_persons(
             named_only=True, with_birthdate=True, randomize=True, limit=1, exclude_ids=exclude_subject_ids
         )
+        if not candidates:
+            return None
+        subject = candidates[0]
         # with_birthdate=True already filters out anyone with no birth_date, so it's never None here.
         correct_date = subject.birth_date
 

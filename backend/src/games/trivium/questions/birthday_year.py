@@ -20,24 +20,23 @@ def _birth_years(immich_service: ContentQueries) -> list[int]:
 
 
 class BirthYearQuestion:
-    def can_generate(self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]) -> bool:
-        if not immich_service.get_persons(
-            named_only=True, with_birthdate=True, limit=1, exclude_ids=exclude_subject_ids
-        ):
-            return False
-        years = _birth_years(immich_service)
-        # A closed range of >= 4 distinct integer years always has >= 3 other than whichever one
-        # is correct - exactly what pick_distractor_years needs to terminate.
-        return bool(years) and max(years) - min(years) >= 3
-
-    def generate(self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]) -> GeneratedQuestion:
-        [subject] = immich_service.get_persons(
+    def generate(
+        self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]
+    ) -> GeneratedQuestion | None:
+        candidates = immich_service.get_persons(
             named_only=True, with_birthdate=True, randomize=True, limit=1, exclude_ids=exclude_subject_ids
         )
+        if not candidates:
+            return None
+        subject = candidates[0]
         # with_birthdate=True already filters out anyone with no birth_date, so it's never None here.
         correct_year = subject.birth_date.year
 
         years = _birth_years(immich_service)
+        # A closed range of >= 4 distinct integer years always has >= 3 other than whichever one
+        # is correct - exactly what pick_distractor_years needs to terminate.
+        if not years or max(years) - min(years) < 3:
+            return None
         distractor_years = pick_distractor_years(correct_year, min(years), max(years))
 
         alternatives: list[int] = [*distractor_years, correct_year]

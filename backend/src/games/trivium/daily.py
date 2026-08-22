@@ -33,10 +33,11 @@ class ScriptedQuestionType:
         self._questions = questions
         self._next_index = next_index
 
-    def can_generate(self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]) -> bool:
-        return self._next_index < len(self._questions)
-
-    def generate(self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]) -> GeneratedQuestion:
+    def generate(
+        self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]
+    ) -> GeneratedQuestion | None:
+        if self._next_index >= len(self._questions):
+            return None
         question = self._questions[self._next_index]
         self._next_index += 1
         return question

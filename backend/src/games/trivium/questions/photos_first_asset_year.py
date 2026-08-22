@@ -26,24 +26,26 @@ def _first_asset_years(immich_service: ContentQueries) -> list[int]:
 
 
 class PhotosFirstAssetYearQuestion:
-    def can_generate(self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]) -> bool:
-        if not immich_service.get_persons(named_only=True, limit=1, exclude_ids=exclude_subject_ids):
-            return False
-        years = _first_asset_years(immich_service)
-        # Same rationale as BirthYearQuestion's own check - a closed range of >= 4 distinct years
-        # always leaves >= 3 valid distractor years besides the correct one.
-        return bool(years) and max(years) - min(years) >= 3
-
-    def generate(self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]) -> GeneratedQuestion:
-        [subject] = immich_service.get_persons(
+    def generate(
+        self, immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]
+    ) -> GeneratedQuestion | None:
+        candidates = immich_service.get_persons(
             named_only=True, randomize=True, limit=1, exclude_ids=exclude_subject_ids
         )
+        if not candidates:
+            return None
+        subject = candidates[0]
         correct_date = immich_service.get_person_first_asset_date(subject.id)
-        if correct_date is None:
-            raise ValueError("subject has no first asset date - can_generate() should have returned False")
+        # named_only already implies at least one tagged, visible asset (get_persons requires a
+        # thumbnailPath), so this is never None here.
+        assert correct_date is not None
         correct_year = correct_date.year
 
         years = _first_asset_years(immich_service)
+        # Same rationale as BirthYearQuestion's own check - a closed range of >= 4 distinct years
+        # always leaves >= 3 valid distractor years besides the correct one.
+        if not years or max(years) - min(years) < 3:
+            return None
         distractor_years = pick_distractor_years(correct_year, min(years), max(years))
 
         alternatives: list[int] = [*distractor_years, correct_year]

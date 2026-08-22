@@ -48,12 +48,7 @@ def pick_question(
     shuffled = list(question_types)
     random.shuffle(shuffled)
     for question_type in shuffled:
-        if question_type.can_generate(immich_service, exclude_subject_ids):
-            return question_type.generate(immich_service, exclude_subject_ids)
+        question = question_type.generate(immich_service, exclude_subject_ids)
+        if question is not None:
+            return question
     return None
-
-
-def any_question_available(
-    question_types: list[QuestionType], immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID]
-) -> bool:
-    return any(q.can_generate(immich_service, exclude_subject_ids) for q in question_types)

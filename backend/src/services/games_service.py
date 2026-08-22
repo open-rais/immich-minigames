@@ -72,11 +72,12 @@ class GamesService:
         try:
             game.play_round(guess)
         except ValueError as e:
-            # create_next_round() raising here means has_next_round() lied - unreachable for every
-            # game except Trivium (see games/trivium/game.py), where can_generate()/generate() can
-            # disagree. Same mapping GameFactory.build already uses for the equivalent failure at
-            # game creation, so the frontend gets the 422 it already knows how to show instead of a
-            # 500.
+            # create_next_round() raising here means has_next_round() lied - a pure safety net
+            # today (every game's own has_next_round()/create_next_round() pair agrees by
+            # construction), kept as a backstop for whatever a future game gets wrong rather than
+            # a live path any game currently takes. Same mapping GameFactory.build already uses
+            # for the equivalent failure at game creation, so the frontend gets the 422 it already
+            # knows how to show instead of a 500.
             raise NotEnoughContentError(str(e)) from e
         self._repository.save_played_round(game, answered_round)
         return game

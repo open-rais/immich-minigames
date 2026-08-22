@@ -8,8 +8,8 @@ from games.trivium.questions.birthday_full_date import KIND, BirthdayFullDateQue
 
 
 class TestBirthdayFullDateQuestionAgainstRealData:
-    def test_can_generate_is_true_with_the_dev_library(self, immich_service):
-        assert BirthdayFullDateQuestion().can_generate(immich_service, frozenset())
+    def test_generate_succeeds_with_the_dev_library(self, immich_service):
+        assert BirthdayFullDateQuestion().generate(immich_service, frozenset()) is not None
 
     def test_generate_returns_a_well_formed_question(self, immich_service):
         question_type = BirthdayFullDateQuestion()
@@ -49,4 +49,4 @@ class TestBirthdayFullDateQuestionAgainstRealData:
         everyone = immich_service.get_persons(named_only=True, with_birthdate=True, limit=10_000)
         all_ids = frozenset(p.id for p in everyone)
 
-        assert question_type.can_generate(immich_service, all_ids) is False
+        assert question_type.generate(immich_service, all_ids) is None

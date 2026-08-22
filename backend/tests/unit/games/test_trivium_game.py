@@ -30,12 +30,11 @@ class _FiniteQuestionType:
         self._questions = list(questions)
         self._next = 0
 
-    def can_generate(self, immich_service, exclude_subject_ids) -> bool:
-        return any(q.subject_id not in exclude_subject_ids for q in self._questions[self._next :])
-
-    def generate(self, immich_service, exclude_subject_ids) -> GeneratedQuestion:
-        while self._questions[self._next].subject_id in exclude_subject_ids:
+    def generate(self, immich_service, exclude_subject_ids) -> GeneratedQuestion | None:
+        while self._next < len(self._questions) and self._questions[self._next].subject_id in exclude_subject_ids:
             self._next += 1
+        if self._next >= len(self._questions):
+            return None
         question = self._questions[self._next]
         self._next += 1
         return question
@@ -56,8 +55,7 @@ class _PoolQuestionType:
     (unlike _FiniteQuestionType's straight-through, non-repeatable queue) - re-evaluated fresh on
     every call against whatever exclude_subject_ids it's given, so a game can legitimately exhaust
     it under one exclusion set and still find something under a smaller one. Drives
-    TriviumGame._build_round/_any_question_available's "the subject-exclusion pool ran out, allow
-    a repeat" fallback."""
+    TriviumGame._build_round's "the subject-exclusion pool ran out, allow a repeat" fallback."""
 
     def __init__(self, questions: list[GeneratedQuestion]) -> None:
         self._questions = list(questions)
@@ -65,11 +63,9 @@ class _PoolQuestionType:
     def _eligible(self, exclude_subject_ids: frozenset) -> list[GeneratedQuestion]:
         return [q for q in self._questions if q.subject_id not in exclude_subject_ids]
 
-    def can_generate(self, immich_service, exclude_subject_ids) -> bool:
-        return bool(self._eligible(exclude_subject_ids))
-
-    def generate(self, immich_service, exclude_subject_ids) -> GeneratedQuestion:
-        return self._eligible(exclude_subject_ids)[0]
+    def generate(self, immich_service, exclude_subject_ids) -> GeneratedQuestion | None:
+        eligible = self._eligible(exclude_subject_ids)
+        return eligible[0] if eligible else None
 
 
 def _start_pool_game(questions: list[GeneratedQuestion]) -> TriviumGame:

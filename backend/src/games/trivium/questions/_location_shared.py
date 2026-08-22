@@ -58,25 +58,23 @@ def _pick_subject(immich_service: ContentQueries, exclude_subject_ids: frozenset
     return pick_spread_asset(candidates, previous_values, separation, min_separation=1.0)
 
 
-def can_generate(immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID], field: Field) -> bool:
-    # A closed set of >= 4 distinct real values always leaves >= 3 to use as distractors besides
-    # whichever one turns out to be correct - a realistic risk for country in a family library
-    # confined to a handful of countries, unlikely but not impossible for city too.
-    if len(immich_service.get_distinct_locations(field)) < 4:
-        return False
-    return _pick_subject(immich_service, exclude_subject_ids, field) is not None
-
-
 def generate(
     immich_service: ContentQueries, exclude_subject_ids: frozenset[UUID], field: Field, question_kind: str
-) -> GeneratedQuestion:
+) -> GeneratedQuestion | None:
+    # A closed set of >= 4 distinct real values always leaves >= 3 to use as distractors besides
+    # whichever one turns out to be correct - a realistic risk for country in a family library
+    # confined to a handful of countries, unlikely but not impossible for city too. Fetched once,
+    # up front: also the pool the distractors are drawn from below, so there's no reason to ask
+    # Immich for it twice.
+    distinct = immich_service.get_distinct_locations(field)
+    if len(distinct) < 4:
+        return None
     subject = _pick_subject(immich_service, exclude_subject_ids, field)
     if subject is None:
-        raise ValueError("no eligible subject found - can_generate() should have returned False")
+        return None
     correct = _field_value(subject, field)
     assert correct is not None  # _pick_subject only ever returns assets with a real value
 
-    distinct = immich_service.get_distinct_locations(field)
     distractors = random.sample([v for v in distinct if v != correct], 3)
 
     alternatives: list[str] = [*distractors, correct]
