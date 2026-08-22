@@ -53,9 +53,11 @@ class NotificationPreferencesModel(Base):
 
 
 class NotificationDeliveryModel(Base):
-    """Idempotency log for the scheduler - not read or written anywhere yet. Created now because
-    it shares migration 0015 with the two tables above rather than needing a second migration just
-    for itself later."""
+    """Idempotency log for the scheduler - services/notifications/runner.py is its only
+    reader/writer: `_mark_delivered` inserts one row per (user_id, kind, day) via `ON CONFLICT DO
+    NOTHING ... RETURNING` right before a send, so a tick that races another (or reruns after a
+    crash) never double-sends; `_prune_old_deliveries` deletes rows past the retention window on
+    every run."""
 
     __tablename__ = "notification_deliveries"
     __table_args__ = (Index("uq_notification_deliveries", "user_id", "kind", "day", unique=True),)
