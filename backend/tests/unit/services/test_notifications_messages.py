@@ -2,8 +2,10 @@ from uuid import uuid4
 
 import pytest
 
+from games.registry import GAMES
 from services.notifications.content import AlbumAnniversaryEntry, BirthdayEntry
 from services.notifications.messages import (
+    GAME_DISPLAY_NAMES,
     album_anniversary,
     birthdays,
     daily_available,
@@ -74,3 +76,20 @@ class TestFallback:
 
     def test_an_unknown_game_type_falls_back_to_its_own_identifier(self):
         assert game_display_name("some-future-game", "es") == "some-future-game"
+
+
+class TestEveryDailyEnabledGameHasADisplayName:
+    """Structural coverage - walks games/registry.py's GAMES and requires every game_type with a
+    daily rotation (games/registry.py's GameSpec.daily) to have a GAME_DISPLAY_NAMES entry, so a
+    future daily-enabled game that forgets to add one shows up as a failing test instead of a raw
+    slug in daily_reminder_streak_at_risk's push copy (the only message that names a game) - same
+    "walk the real structure, assert coverage by construction" shape as
+    tests/api/test_auth_middleware.py's route-coverage test."""
+
+    def test_no_daily_enabled_game_type_falls_back_to_its_own_slug(self):
+        daily_enabled_game_types = {game_type for (game_type, _mode), spec in GAMES.items() if spec.daily}
+        # Sanity net: fails loudly if GAMES ever came back empty instead of silently passing a
+        # no-op test.
+        assert daily_enabled_game_types
+        missing = daily_enabled_game_types - GAME_DISPLAY_NAMES.keys()
+        assert not missing, f"daily-enabled game_type(s) missing from GAME_DISPLAY_NAMES: {missing}"

@@ -24,6 +24,7 @@ GAME_DISPLAY_NAMES: dict[str, dict[str, str]] = {
         "de": "Wer ist diese Person",
     },
     "timeline": {"en": "Timeline", "es": "Timeline", "fr": "Timeline", "de": "Timeline"},
+    "trivium": {"en": "Trivium", "es": "Trivium", "fr": "Trivium", "de": "Trivium"},
 }
 
 _MESSAGES: dict[str, dict[str, str]] = {
