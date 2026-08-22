@@ -25,16 +25,18 @@ export function ImmichdleRounds({ game }: RoundsComponentProps) {
 
   // Only ever set for a finished Immichdle game (backend redacts it otherwise - see
   // api/dto/common.py's GameOut.from_game) - RoundsPage never reaches an unfinished game anyway.
-  const target: TargetSnapshot | undefined =
-    game.target_person_id && game.target_person_name
-      ? {
-          personId: game.target_person_id,
-          name: game.target_person_name,
-          assetCount: game.target_asset_count ?? 0,
-          birthDate: game.target_birth_date ?? null,
-          firstAssetDate: game.target_first_asset_date ?? null,
-        }
-      : undefined
+  // "person_id" in game.reveal narrows the plain PersondleRevealOut | AlbumdleRevealOut union
+  // structurally, since (unlike RoundOut) the two reveal shapes share no discriminator field.
+  const reveal = game.reveal && "person_id" in game.reveal ? game.reveal : undefined
+  const target: TargetSnapshot | undefined = reveal
+    ? {
+        personId: reveal.person_id,
+        name: reveal.person_name,
+        assetCount: reveal.asset_count,
+        birthDate: reveal.birth_date,
+        firstAssetDate: reveal.first_asset_date,
+      }
+    : undefined
 
   return (
     // max-w-5xl, not -4xl - this table's own natural desktop width (with the target row's actions

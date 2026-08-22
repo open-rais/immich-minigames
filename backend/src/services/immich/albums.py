@@ -10,7 +10,7 @@ from domain.album import Album
 from persistence.immich_tables import album, album_asset, asset, asset_face, person
 
 from ._rows import row_to_album
-from .persons import _ACCENTED_CHARS, _FOLDED_CHARS, _escape_like, _fold_accents
+from ._text import word_prefix_conditions
 
 # The standard "this asset is real and showable" predicate (docs/ARCHITECTURE/IMMICH.md's
 # "standard eligibility filter") - every album-scoped query below joins through `asset` and
@@ -73,21 +73,12 @@ def get_albums(
 
 
 def search_albums(engine: Engine, query: str, *, offset: int = 0, limit: int = 3) -> list[Album]:
-    """Albums matching every whitespace-separated token in `query` (case- and accent-insensitive),
-    each token matched independently against a *word* in the album name - same word-prefix
-    convention as search_persons (see that function's docstring), applied to `album.albumName`
-    instead of `person.name`. Powers Albumdle's guess-input autocomplete."""
-    tokens = query.split()
-    if not tokens:
+    """Albums matching every whitespace-separated token in `query` against a *word* in the album
+    name - see ._text.word_prefix_conditions for the actual matching rule, applied here to
+    `album.albumName` instead of `person.name`. Powers Albumdle's guess-input autocomplete."""
+    token_conditions = word_prefix_conditions(album.c.albumName, query)
+    if not token_conditions:
         return []
-
-    folded_name = func.translate(album.c.albumName, _ACCENTED_CHARS, _FOLDED_CHARS)
-    token_conditions = []
-    for token in tokens:
-        escaped = _escape_like(_fold_accents(token))
-        starts_with = folded_name.ilike(f"{escaped}%", escape="\\")
-        contains_word_starting_with = folded_name.ilike(f"% {escaped}%", escape="\\")
-        token_conditions.append(starts_with | contains_word_starting_with)
 
     asset_count = func.count(album_asset.c.assetId).label("asset_count")
 
@@ -131,6 +122,43 @@ def get_album_first_asset_date(engine: Engine, album_id: UUID) -> date | None:
     )
     with engine.connect() as conn:
         return conn.execute(stmt).scalar()
+
+
+def get_album_last_asset_date(engine: Engine, album_id: UUID) -> date | None:
+    """Local calendar day of this album's most recent eligible asset - twin of
+    get_album_first_asset_date (func.max instead of func.min). Powers the report modal's album
+    date-range context; nothing else needed a "last" date before this."""
+    local_date = cast(func.timezone("UTC", asset.c.localDateTime), Date)
+    stmt = (
+        select(func.max(local_date))
+        .select_from(album_asset.join(asset, asset.c.id == album_asset.c.assetId))
+        .where(album_asset.c.albumId == album_id, _ASSET_ELIGIBLE)
+    )
+    with engine.connect() as conn:
+        return conn.execute(stmt).scalar()
+
+
+def get_albums_starting_on(engine: Engine, month: int, day: int) -> list[tuple[UUID, str, date]]:
+    """Every album whose earliest eligible asset's local calendar day falls on this month/day, any
+    year - one grouped query instead of a get_album_first_asset_date call per album. Web Push's
+    daily "on this day" album-anniversary notification (services/notifications/content.py). Years-
+    ago math (current_year - first_asset_date.year) is the caller's job, not this query's."""
+    local_date = cast(func.timezone("UTC", asset.c.localDateTime), Date)
+    first_date = func.min(local_date).label("first_asset_date")
+    stmt = (
+        select(album.c.id, album.c.albumName, first_date)
+        .select_from(
+            album.join(album_asset, album_asset.c.albumId == album.c.id).join(
+                asset, asset.c.id == album_asset.c.assetId
+            )
+        )
+        .where(album.c.deletedAt.is_(None), _ASSET_ELIGIBLE)
+        .group_by(album.c.id, album.c.albumName)
+        .having(func.extract("month", first_date) == month, func.extract("day", first_date) == day)
+    )
+    with engine.connect() as conn:
+        rows = conn.execute(stmt).all()
+    return [(row.id, row.albumName, row.first_asset_date) for row in rows]
 
 
 def get_album_named_face_counts(engine: Engine, album_id: UUID) -> list[tuple[UUID, str, int]]:

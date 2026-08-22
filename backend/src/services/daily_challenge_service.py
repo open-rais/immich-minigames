@@ -23,48 +23,44 @@ from games.registry import GAMES
 from persistence.daily import DailyChallengeModel
 from services.daily_settings import DailySettingsService
 from services.errors import NotEnoughContentError, UnsupportedGameError
+from services.excluding_content_queries import ExcludingContentQueries
 from services.immich import ContentQueries, ImmichService
+from services.reports_service import ReportsService
 
 
-class _ExcludingImmichService:
-    """Wraps ImmichService to always widen exclude_ids/exclude_asset_ids with a fixed extra set -
-    the cross-day no-repeat window. Only the query methods any game's build_spec() actually calls
-    are overridden; everything else (thumbnail fetches, person search, ...) is delegated straight
-    through via __getattr__ - this is
-    composition, not a subclass, so nothing here depends on ImmichService's own __init__. Satisfies
-    ContentQueries structurally (never declared as its subclass - a Protocol doesn't need that),
-    which is what lets _build_spec pass this in place of a real ImmichService without widening the
-    type to Any."""
+class _ExcludingImmichService(ExcludingContentQueries):
+    """Widens exclude_ids/exclude_asset_ids with a fixed extra set - the cross-day no-repeat
+    window. See services/excluding_content_queries.py's ExcludingContentQueries for the shared
+    wrapper shape (composition over ImmichService, __getattr__ passthrough for everything else);
+    this subclass only supplies *which* ids that is (the same set regardless of entity kind) and
+    this wrapper's two policy choices - no retry-on-empty (an empty pool here is real content
+    exhaustion, handled by DailyChallengeService's own outer retry instead) and no `ids=` bypass
+    (nothing calls this wrapper with `ids=` set)."""
 
     def __init__(self, inner: ImmichService, extra_exclude_ids: frozenset[UUID]) -> None:
-        self._inner = inner
+        super().__init__(inner, retry_without_exclusion=False, bypass_on_explicit_ids=False)
         self._extra_exclude_ids = extra_exclude_ids
 
-    def get_assets(self, *, exclude_ids: frozenset[UUID] = frozenset(), **kwargs: Any) -> Any:
-        return self._inner.get_assets(exclude_ids=exclude_ids | self._extra_exclude_ids, **kwargs)
+    def _asset_exclusion(self) -> frozenset[UUID]:
+        return self._extra_exclude_ids
 
-    def get_persons(self, *, exclude_ids: frozenset[UUID] = frozenset(), **kwargs: Any) -> Any:
-        return self._inner.get_persons(exclude_ids=exclude_ids | self._extra_exclude_ids, **kwargs)
+    def _person_exclusion(self) -> frozenset[UUID]:
+        return self._extra_exclude_ids
 
-    def get_albums(self, *, exclude_ids: frozenset[UUID] = frozenset(), **kwargs: Any) -> Any:
-        return self._inner.get_albums(exclude_ids=exclude_ids | self._extra_exclude_ids, **kwargs)
-
-    def get_random_asset_with_named_faces(
-        self, *, exclude_asset_ids: frozenset[UUID] = frozenset(), **kwargs: Any
-    ) -> Any:
-        return self._inner.get_random_asset_with_named_faces(
-            exclude_asset_ids=exclude_asset_ids | self._extra_exclude_ids, **kwargs
-        )
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self._inner, name)
+    def _album_exclusion(self) -> frozenset[UUID]:
+        return self._extra_exclude_ids
 
 
 class DailyChallengeService:
-    def __init__(self, session: Session, immich_service: ImmichService) -> None:
+    def __init__(
+        self, session: Session, immich_service: ImmichService, reports_service: ReportsService | None = None
+    ) -> None:
         self._session = session
         self._immich_service = immich_service
         self._daily_settings_service = DailySettingsService(session)
+        # Defaults to self-constructing when omitted, same convention as GameFactory's own
+        # reports_service - existing callers that predate reports-exclusion keep working.
+        self._reports_service = reports_service or ReportsService(session)
 
     def get_or_create_challenge(self, challenge_date: date, game_type: str, mode: str) -> DailyChallengeModel:
         existing = self._get_challenge(challenge_date, game_type, mode)
@@ -165,4 +161,9 @@ class DailyChallengeService:
         excluding_service: ContentQueries = (
             _ExcludingImmichService(self._immich_service, exclude_ids) if exclude_ids else self._immich_service
         )
-        return spec_entry.daily.build_spec(mode, excluding_service, settings)
+        # Reports wrap *outside* the no-repeat window: if the reports wrapper's empty-result
+        # fallback retries without report exclusion, it still goes through excluding_service and
+        # so still respects the window. The reverse nesting (window outside reports) would let a
+        # report-emptied pool silently drop the window too when that fallback fires.
+        content_source = self._reports_service.filter_for(excluding_service, game_type, mode)
+        return spec_entry.daily.build_spec(mode, content_source, settings)

@@ -15,6 +15,19 @@
       "light": "Claro",
       "dark": "Oscuro",
       "system": "Sistema"
+    },
+    "notifications": {
+      "title": "Notificaciones",
+      "unsupported": "Requiere que la app se sirva por HTTPS",
+      "noPushManager": "Agrega la app a tu pantalla de inicio para activar las notificaciones",
+      "denied": "Bloqueaste las notificaciones de esta app - reactívalas desde los ajustes de tu navegador",
+      "enablePush": "Notificaciones push",
+      "activationError": "No se pudieron activar las notificaciones - intenta de nuevo",
+      "dailyReminders": "Recordatorios del juego diario",
+      "birthdays": "Cumpleaños",
+      "albumAnniversary": "Aniversarios de álbumes",
+      "sendTest": "Enviar notificación de prueba",
+      "testError": "No se pudo enviar la notificación de prueba"
     }
   },
   "mainMenu": {
@@ -45,7 +58,8 @@
       "whosThatPerson": "🧑‍🧑‍🧒‍🧒 {{correct}}/{{total}} personas",
       "km": "{{value}}km",
       "days": "{{count}} días",
-      "timeline": "🃏 {{count}} cartas"
+      "timeline": "🃏 {{count}} cartas",
+      "trivium": "🧠 {{count}} preguntas"
     }
   },
   "leaderboard": {
@@ -229,6 +243,38 @@
       "orderBadge": "#{{count}}"
     }
   },
+  "trivium": {
+    "title": "Trivium",
+    "modes": {
+      "birthday": "Cumpleaños",
+      "photos": "Fotos",
+      "location": "Ubicación",
+      "mixed": "Mixto"
+    },
+    "start": {
+      "description": "Responde preguntas de trivia sobre tus fotos y las personas en ellas. Una respuesta equivocada - o quedarte sin tiempo - termina la partida."
+    },
+    "questions": {
+      "birthdayYear": "¿En qué año nació {{name}}?",
+      "birthdayDayMonth": "¿Cuándo cumple años {{name}}?",
+      "birthdayFullDate": "¿Qué día nació {{name}}?",
+      "photosTotalAssets": "¿Quién de estas personas tiene más fotos en total?",
+      "photosTogether": "¿Quién de estas personas tiene más fotos con {{name}}?",
+      "photosFirstAssetYear": "¿De qué año es la primera foto de {{name}}?",
+      "locationCountry": "¿En qué país fue tomada esta foto?",
+      "locationCity": "¿En qué ciudad fue tomada esta foto?",
+      "mixedFaceToName": "¿Cómo se llama esta persona?",
+      "mixedNameToFace": "¿Quién es {{name}}?"
+    },
+    "result": {
+      "correct": "¡Correcto!",
+      "wrong": "Respuesta equivocada",
+      "timeout": "¡Se acabó el tiempo!"
+    },
+    "rounds": {
+      "answeredIn": "Respondido en {{seconds}}s"
+    }
+  },
   "auth": {
     "fields": {
       "email": "Correo electrónico",
@@ -294,6 +340,22 @@
       "title": "Usuarios",
       "description": "Administra las cuentas de la app",
       "loading": "Cargando usuarios..."
+    },
+    "reports": {
+      "title": "Reportes",
+      "description": "Revisa problemas de metadata que reportaron los jugadores",
+      "sections": {
+        "asset": "Fotos",
+        "person": "Personas",
+        "album": "Álbumes"
+      },
+      "showSolved": "Mostrar resueltos",
+      "loading": "Cargando reportes...",
+      "empty": "No hay reportes aquí.",
+      "deletedEntity": "(eliminado)",
+      "reportedBy": "Reportado por {{username}} el {{date}}",
+      "markSolved": "Marcar como resuelto",
+      "markUnsolved": "Reabrir"
     },
     "games": {
       "description": "Edita la configuración de cada juego",
@@ -368,6 +430,31 @@
         "all": "reprocesando todo"
       },
       "failed": "El job falló: {{error}}"
+    }
+  },
+  "reports": {
+    "menuItem": "Reportar",
+    "modal": {
+      "title": "Reportar un problema",
+      "notePlaceholder": "Detalles adicionales (opcional)",
+      "submit": "Enviar reporte",
+      "cancel": "Cancelar",
+      "success": "Gracias, tu reporte fue enviado.",
+      "done": "Listo",
+      "showMore": "Ver {{count}} más"
+    },
+    "error": {
+      "generic": "No se pudo enviar el reporte - intenta de nuevo"
+    },
+    "reasons": {
+      "person_birth_date": "Fecha de nacimiento mala o faltante",
+      "person_name_face_mismatch": "El nombre y la cara no hacen match",
+      "person_name_spelling": "El nombre está mal escrito",
+      "album_cover_mismatch": "La portada y el nombre del álbum no hacen match",
+      "album_name_spelling": "El nombre está mal escrito",
+      "asset_location": "Ubicación mala o faltante",
+      "asset_date": "Fecha mal ingresada",
+      "asset_face_mismatch": "La cara no corresponde a esta persona"
     }
   }
 }

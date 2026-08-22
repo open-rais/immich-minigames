@@ -8,6 +8,7 @@ import { AssetCarousel } from "../shared/AssetCarousel"
 import { BackButton } from "../shared/BackButton"
 import { EntryOptionsMenu } from "../shared/EntryOptionsMenu"
 import { ImmichLink } from "../shared/ImmichLink"
+import { ReportMenuItem } from "../shared/ReportMenuItem"
 import { RevealResultCard } from "../shared/RevealResultCard"
 import { RoundStepper } from "../rounds/RoundStepper"
 import { useRoundStepper } from "../shared/useRoundStepper"
@@ -47,6 +48,7 @@ export function DateguessrRounds({ game, onBack }: RoundsComponentProps) {
       <div className="fixed top-[18px] right-[18px] z-30 md:top-7 md:right-10">
         <EntryOptionsMenu>
           <ImmichLink kind="asset" id={round.asset_ids[0]} />
+          <ReportMenuItem kind="asset" id={round.asset_ids[0]} />
         </EntryOptionsMenu>
       </div>
 

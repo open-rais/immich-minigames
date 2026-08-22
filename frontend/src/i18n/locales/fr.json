@@ -15,6 +15,19 @@
       "light": "Clair",
       "dark": "Sombre",
       "system": "Système"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "unsupported": "Nécessite que l'application soit servie en HTTPS",
+      "noPushManager": "Ajoutez l'application à votre écran d'accueil pour activer les notifications",
+      "denied": "Vous avez bloqué les notifications pour cette application - réactivez-les depuis les paramètres de votre navigateur",
+      "enablePush": "Notifications push",
+      "activationError": "Impossible d'activer les notifications - réessayez",
+      "dailyReminders": "Rappels du jeu quotidien",
+      "birthdays": "Anniversaires",
+      "albumAnniversary": "Anniversaires d'albums",
+      "sendTest": "Envoyer une notification de test",
+      "testError": "Impossible d'envoyer la notification de test"
     }
   },
   "mainMenu": {
@@ -45,7 +58,8 @@
       "whosThatPerson": "🧑‍🧑‍🧒‍🧒 {{correct}}/{{total}} personnes",
       "km": "{{value}}km",
       "days": "{{count}} jours",
-      "timeline": "🃏 {{count}} cartes"
+      "timeline": "🃏 {{count}} cartes",
+      "trivium": "🧠 {{count}} questions"
     }
   },
   "leaderboard": {
@@ -229,6 +243,38 @@
       "orderBadge": "#{{count}}"
     }
   },
+  "trivium": {
+    "title": "Trivium",
+    "modes": {
+      "birthday": "Anniversaire",
+      "photos": "Photos",
+      "location": "Lieu",
+      "mixed": "Mixte"
+    },
+    "start": {
+      "description": "Répondez à des questions sur vos photos et les personnes qu'elles montrent. Une mauvaise réponse - ou un temps écoulé - termine la partie."
+    },
+    "questions": {
+      "birthdayYear": "En quelle année {{name}} est-il/elle né(e) ?",
+      "birthdayDayMonth": "Quand est l'anniversaire de {{name}} ?",
+      "birthdayFullDate": "Quel jour {{name}} est-il/elle né(e) ?",
+      "photosTotalAssets": "Laquelle de ces personnes a le plus de photos au total ?",
+      "photosTogether": "Laquelle de ces personnes a le plus de photos avec {{name}} ?",
+      "photosFirstAssetYear": "De quelle année est la première photo de {{name}} ?",
+      "locationCountry": "Dans quel pays cette photo a-t-elle été prise ?",
+      "locationCity": "Dans quelle ville cette photo a-t-elle été prise ?",
+      "mixedFaceToName": "Comment s'appelle cette personne ?",
+      "mixedNameToFace": "Qui est {{name}} ?"
+    },
+    "result": {
+      "correct": "Correct !",
+      "wrong": "Mauvaise réponse",
+      "timeout": "Temps écoulé !"
+    },
+    "rounds": {
+      "answeredIn": "Répondu en {{seconds}}s"
+    }
+  },
   "auth": {
     "fields": {
       "email": "Email",
@@ -294,6 +340,22 @@
       "title": "Utilisateurs",
       "description": "Gérer les comptes de l'application",
       "loading": "Chargement des utilisateurs..."
+    },
+    "reports": {
+      "title": "Signalements",
+      "description": "Examiner les problèmes de métadonnées signalés par les joueurs",
+      "sections": {
+        "asset": "Photos",
+        "person": "Personnes",
+        "album": "Albums"
+      },
+      "showSolved": "Afficher les résolus",
+      "loading": "Chargement des signalements...",
+      "empty": "Aucun signalement ici.",
+      "deletedEntity": "(supprimé)",
+      "reportedBy": "Signalé par {{username}} le {{date}}",
+      "markSolved": "Marquer comme résolu",
+      "markUnsolved": "Rouvrir"
     },
     "games": {
       "description": "Éditer la configuration de chaque jeu",
@@ -368,6 +430,31 @@
         "all": "retraitement complet"
       },
       "failed": "Échec du job : {{error}}"
+    }
+  },
+  "reports": {
+    "menuItem": "Signaler",
+    "modal": {
+      "title": "Signaler un problème",
+      "notePlaceholder": "Détails supplémentaires (facultatif)",
+      "submit": "Envoyer le signalement",
+      "cancel": "Annuler",
+      "success": "Merci, votre signalement a été envoyé.",
+      "done": "Terminé",
+      "showMore": "Voir {{count}} de plus"
+    },
+    "error": {
+      "generic": "Impossible d'envoyer le signalement - réessayez"
+    },
+    "reasons": {
+      "person_birth_date": "Date de naissance manquante ou incorrecte",
+      "person_name_face_mismatch": "Le nom et le visage ne correspondent pas",
+      "person_name_spelling": "Le nom est mal orthographié",
+      "album_cover_mismatch": "La couverture et le nom de l'album ne correspondent pas",
+      "album_name_spelling": "Le nom est mal orthographié",
+      "asset_location": "Localisation manquante ou incorrecte",
+      "asset_date": "Date incorrecte",
+      "asset_face_mismatch": "Le visage ne correspond pas à cette personne"
     }
   }
 }

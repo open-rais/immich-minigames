@@ -6,6 +6,9 @@ calling Immich-ML live - see docs/ARCHITECTURE/IMMICH.md's "face_search" section
 """
 
 import logging
+import threading
+import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
@@ -17,11 +20,10 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.engine import Engine, Row
 
 from perf import timed
-from persistence.album_ml_cache import AlbumEmbeddingCacheModel
 from persistence.base import get_app_engine
 from persistence.immich_db import get_immich_engine
 from persistence.immich_tables import album, album_asset, asset_face, person
-from persistence.ml_cache import PersonFaceEmbeddingCacheModel
+from persistence.ml_cache import AlbumEmbeddingCacheModel, PersonFaceEmbeddingCacheModel
 
 _CACHE_TABLE = PersonFaceEmbeddingCacheModel.__table__
 _ALBUM_CACHE_TABLE = AlbumEmbeddingCacheModel.__table__
@@ -116,6 +118,21 @@ class StaleIds:
     total: int
 
 
+# How long stale_person_ids/stale_album_ids' results are reused before recomputing - the admin
+# panel polls GET /admin/workers/embeddings roughly every second while a job is running (see
+# api/admin_workers_api.py), and each of those two queries is a full GROUP BY over the largest
+# tables in Immich's database. Coverage doesn't need to track a running job that closely: the
+# job's own in-memory processed/total counters (EmbeddingJobState) already give a live progress
+# bar, so this only has to be fresh enough that the coverage counter itself doesn't look frozen.
+_STALE_IDS_CACHE_TTL_SECONDS = 20.0
+
+
+@dataclass(frozen=True)
+class _CachedStaleIds:
+    result: StaleIds
+    computed_at: float  # time.monotonic(), so a wall-clock adjustment can't extend/shrink the TTL
+
+
 # Raw album_asset row count - a cheap staleness fingerprint for the album embedding cache, same
 # "cheap not exact" spirit as _FACE_COUNT_QUERY (not the eligibility-filtered count get_albums'
 # asset_count column computes - this only needs to notice "something changed", not be exact).
@@ -165,6 +182,13 @@ class MLService:
         # This app's own database (not Immich's, which is read-only for this app's DB role) - see
         # persistence/ml_cache.py for why the embedding cache has to live here.
         self._app_engine = app_engine or get_app_engine()
+        # See _STALE_IDS_CACHE_TTL_SECONDS. Keyed by ("person", eligible_only) / ("album", False) -
+        # a plain dict behind a lock, not functools.lru_cache, since it needs a TTL and an explicit
+        # invalidate() a job can call, neither of which lru_cache supports. This service is a
+        # process-wide singleton (api/deps.py's get_ml_service, @lru_cache(maxsize=1)) reached from
+        # every request's threadpool thread at once, so the lock is real, not defensive.
+        self._stale_cache: dict[tuple[str, bool], _CachedStaleIds] = {}
+        self._stale_cache_lock = threading.Lock()
 
     def _watermark(self) -> datetime:
         with self._engine.connect() as conn:
@@ -338,11 +362,32 @@ class MLService:
         return _cosine_similarity(embedding_a, embedding_b)
 
     def stale_person_ids(self, *, eligible_only: bool = True) -> StaleIds:
-        """Which people need their embedding (re)computed, without an N+1 Immich round-trip: one
-        query for every person's current face count, one query for every cached row, diffed in
-        Python. `eligible_only` restricts the universe to the people a game can actually
-        target/guess (named, not hidden, with a thumbnail - the same filter
-        get_persons(named_only=True) applies) - the admin panel's default; the "include
+        """Which people need their embedding (re)computed - see _STALE_IDS_CACHE_TTL_SECONDS for
+        why this is a cached read, not a live query on every call."""
+        return self._cached_stale(("person", eligible_only), lambda: self._compute_stale_person_ids(eligible_only))
+
+    def invalidate_stale_cache(self) -> None:
+        """Called by EmbeddingJobRunner when a job finishes, so the admin panel's very next poll
+        reflects the just-updated coverage instead of waiting out the TTL above."""
+        with self._stale_cache_lock:
+            self._stale_cache.clear()
+
+    def _cached_stale(self, key: tuple[str, bool], compute: Callable[[], StaleIds]) -> StaleIds:
+        now = time.monotonic()
+        with self._stale_cache_lock:
+            cached = self._stale_cache.get(key)
+            if cached is not None and now - cached.computed_at < _STALE_IDS_CACHE_TTL_SECONDS:
+                return cached.result
+        result = compute()
+        with self._stale_cache_lock:
+            self._stale_cache[key] = _CachedStaleIds(result=result, computed_at=now)
+        return result
+
+    def _compute_stale_person_ids(self, eligible_only: bool) -> StaleIds:
+        """One query for every person's current face count, one query for every cached row,
+        diffed in Python (no N+1 Immich round-trip). `eligible_only` restricts the universe to the
+        people a game can actually target/guess (named, not hidden, with a thumbnail - the same
+        filter get_persons(named_only=True) applies) - the admin panel's default; the "include
         unnamed/hidden" checkbox passes False for the full person universe."""
         stmt = (
             sa.select(person.c.id, sa.func.count(sa.func.distinct(asset_face.c.id)).label("face_count"))
@@ -412,8 +457,8 @@ class MLService:
         """Album counterpart of _try_incremental_person_update - see that method's docstring for
         the guard logic, identical here. Doesn't do anything about an asset that became ineligible
         (archived/deleted) without touching album_asset - neither this nor the plain fingerprint
-        detects that, same accepted imprecision either way (see the module docstring on
-        persistence/album_ml_cache.py); "reprocess all" is still the only fix for it."""
+        detects that, same accepted imprecision either way (see `AlbumEmbeddingCacheModel`'s
+        docstring in persistence/ml_cache.py); "reprocess all" is still the only fix for it."""
         if cached.embedding_count is None:
             return None
         intact_count = self._album_intact_count(album_id, cached.computed_at)
@@ -525,9 +570,13 @@ class MLService:
         return _cosine_similarity(embedding_a, embedding_b)
 
     def stale_album_ids(self) -> StaleIds:
-        """Which albums need their embedding (re)computed - same two-query diff as
-        stale_person_ids, no eligible_only: unlike persons, every non-deleted album is in scope,
-        there's no "unnamed/hidden" carve-out for albums.
+        """Which albums need their embedding (re)computed - see _STALE_IDS_CACHE_TTL_SECONDS for
+        why this is a cached read, not a live query on every call."""
+        return self._cached_stale(("album", False), self._compute_stale_album_ids)
+
+    def _compute_stale_album_ids(self) -> StaleIds:
+        """Same two-query diff as _compute_stale_person_ids, no eligible_only: unlike persons,
+        every non-deleted album is in scope, there's no "unnamed/hidden" carve-out for albums.
         Non-deleted albums with zero `album_asset` rows are included in `total` (as 0) - they're
         legitimately part of the universe, just never stale since there's nothing to compute."""
         stmt = (

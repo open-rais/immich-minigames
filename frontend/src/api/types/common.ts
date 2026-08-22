@@ -6,12 +6,15 @@ import type { DateguessrPlayRoundIn, DateguessrRoundOut } from "./dateguessr"
 import type { GeoguessrPlayRoundIn, GeoguessrRoundOut } from "./geoguessr"
 import type {
   AlbumdlePlayRoundIn,
+  AlbumdleRevealOut,
   AlbumdleRoundOut,
   ImmichdlePlayRoundIn,
   ImmichdleRoundOut,
+  PersondleRevealOut,
 } from "./immichdle"
 import type { MoreOrLessPlayRoundIn, MoreOrLessRoundOut } from "./moreOrLess"
 import type { TimelinePlayRoundIn, TimelineRoundOut } from "./timeline"
+import type { TriviumPlayRoundIn, TriviumRoundOut } from "./trivium"
 import type { WhosThatPersonPlayRoundIn, WhosThatPersonRoundOut } from "./whosThatPerson"
 
 // Canonical game_type / mode identifiers, mirroring the keys of
@@ -25,6 +28,7 @@ export const GameType = {
   Immichdle: "immichdle",
   WhosThatPerson: "whos-that-person",
   Timeline: "timeline",
+  Trivium: "trivium",
 } as const
 export type GameType = (typeof GameType)[keyof typeof GameType]
 
@@ -38,6 +42,10 @@ export const Mode = {
   Album: "album",
   NamedFaces: "namedFaces",
   Arcade: "arcade",
+  Birthday: "birthday",
+  Photos: "photos",
+  Location: "location",
+  Mixed: "mixed",
 } as const
 export type Mode = (typeof Mode)[keyof typeof Mode]
 
@@ -54,6 +62,7 @@ export type RoundOut =
   | AlbumdleRoundOut
   | WhosThatPersonRoundOut
   | TimelineRoundOut
+  | TriviumRoundOut
 
 export interface GameOut {
   id: string
@@ -62,23 +71,10 @@ export interface GameOut {
   score: number
   finished: boolean
   rounds: RoundOut[]
-  // Only ever populated for a finished Persondle game - the mystery person is revealed once the
-  // game is over, win or lose. null for every other game/mode and for an in-progress Persondle game.
-  target_person_id?: string | null
-  target_person_name?: string | null
-  // Same redaction condition as target_person_id/name above.
-  target_asset_count?: number | null
-  target_birth_date?: string | null
-  target_first_asset_date?: string | null
-  // Same role as target_person_* above, but for a finished Albumdle game (roadmap #14).
-  target_album_id?: string | null
-  target_album_name?: string | null
-  target_album_asset_count?: number | null
-  target_album_first_asset_date?: string | null
-  target_album_dominant_person_id?: string | null
-  target_album_dominant_person_name?: string | null
-  target_album_dominant_extra_count?: number | null
-  target_album_unique_named_person_count?: number | null
+  // Only ever populated once a finished Persondle/Albumdle game reveals its mystery target - null
+  // for every other game/mode and for one of these two still in progress, where revealing it
+  // would be a straight cheat.
+  reveal?: PersondleRevealOut | AlbumdleRevealOut | null
   // The live configured total for this game instance
   // (Geoguessr/Dateguessr: total_rounds, WhosThatPerson: total_people), null for every other game.
   // Read instead of hardcoding a display-only mirror of the backend default (see
@@ -88,6 +84,10 @@ export interface GameOut {
   // Same rationale as total_rounds/total_people above, but purely visual (WhosThatPerson's face-box
   // expansion factor, 1.0-1.5) - null for every other game.
   face_box_growth?: number | null
+  // Same rationale again - Trivium's per-round answer window in seconds, so its countdown timer
+  // (and its own timeout auto-submit) stays in sync with the live admin-configured value instead
+  // of a hardcoded guess. Null for every other game.
+  answer_time_seconds?: number | null
   // Set only for a daily-challenge game, null for every normal game. Lets the
   // frontend recognize a resumed/loaded game as a daily one after a page reload (see
   // games/shared/useRoundGame.ts).
@@ -110,6 +110,7 @@ export type PlayRoundIn =
   | AlbumdlePlayRoundIn
   | WhosThatPersonPlayRoundIn
   | TimelinePlayRoundIn
+  | TriviumPlayRoundIn
 
 export interface PlayRoundOut {
   // Binary-guess concept (MoreOrLess) - null for games with a continuous score (Geoguessr).

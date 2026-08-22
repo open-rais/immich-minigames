@@ -123,29 +123,34 @@ See `.env.example` in the repository root for the fully commented version.
 
 ### Which games are playable right now?
 
-✓ **Fully playable:**
+✓ **All seven games are fully playable:**
 - **MoreOrLess:** Guess if person B has more/fewer photos than person A
 - **Geoguessr:** Guess where on a map a photo was taken
 - **Dateguessr:** Guess when on a timeline a photo was taken
-
-✗ **Design stubs (not yet implemented):**
 - **Immichdle:** Guess a mystery person with comparative clues
 - **Timeline:** Place photos in correct chronological order
 - **Who'sThatPerson:** Guess who the person is when their face is hidden
+- **Trivium:** Answer 4-option trivia questions based on your photo metadata
+
+Additional game modes may be added in the future (see ROADMAP.md).
 
 ### What features are available?
 
 ✓ User login (register, sign in, logout, profile page)
 ✓ Dark theme (consistent with Immich colors)
-✓ Full Spanish translation (i18n-ready, English + Spanish)
+✓ Full translations (English, Spanish, French, German)
+✓ Progressive Web App (PWA) with push notifications
 ✓ Docker images (GHCR registry)
+✓ Daily challenges (same seed per user, play once per day)
+✓ Leaderboards (global and per-account)
+✓ Report incorrect metadata
 
 ✗ **Planned features:**
-- Daily challenges (same seed per user, play once per day)
-- Leaderboards (global and user-specific)
-- Report incorrect metadata
-- Metadata repair tools
-- Additional game modes (for example: MoreOrLess comparing album counts)
+- Utility tools (search and identify bad metadata, open in Immich for fixing)
+
+**Not currently planned:**
+- Metadata repair (automatic fixing of metadata). This may be revisited in the very long term, but
+  is not on the roadmap. For now, use Immich's own tools to fix metadata.
 
 ### How do I contribute a new game?
 
@@ -180,7 +185,9 @@ You can also exclude people or assets from games in future versions (planned fea
 
 ### Can I report metadata errors?
 
-Not yet. This is a planned feature (roadmap item). For now, report errors in Immich itself.
+Yes. You can report incorrect metadata directly from any game via the report modal. These reports are
+logged and visible to admins. However, **the app does not automatically fix metadata** — you'll need to
+fix it in Immich itself. Future utility tools may help identify bad metadata more easily.
 
 ## Development
 
@@ -300,6 +307,20 @@ Immich-ML computations can be expensive. If Immichdle feels slow:
 - This is expected the first time each query runs
 - Immich caches face embeddings, so subsequent queries are faster
 - Consider running Immich-ML on a separate machine for performance
+
+### Why doesn't Progressive Web App (PWA) functionality work?
+
+PWA features (install to home screen, offline caching, service workers) require **HTTPS/TLS**. The app can run
+over plain HTTP for development, but:
+- Service workers only load over HTTPS (or `localhost` for development)
+- The browser will not let you install the app to your home screen without HTTPS
+- Browser notifications and other PWA features require a secure context
+
+**To enable PWA features in production:** Set up TLS certificates for your minigames domain. You can use
+Let's Encrypt with a reverse proxy (nginx, Caddy, Traefik) to provide HTTPS termination in front of your
+Docker containers.
+
+For local development on `localhost`, PWA features will work as expected over HTTP.
 
 ## Support & Community
 

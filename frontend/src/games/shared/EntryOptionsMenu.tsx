@@ -14,16 +14,20 @@ function DotsIcon() {
 
 interface EntryOptionsMenuProps {
   children: ReactNode
+  // Extra classes for the "..." trigger button only - e.g. Timeline/TimelineRounds.tsx forces it
+  // white since TimelineCard.tsx renders it over a photo, inside a dark circular backdrop. Never
+  // apply this kind of override at the wrapper/ancestor level with a descendant selector - it
+  // would just as easily catch the popover's own row buttons (ImmichLink/ReportMenuItem) once
+  // open, which live in the same DOM subtree despite `fixed` positioning.
+  triggerClassName?: string
 }
 
 const POPOVER_WIDTH_PX = 192 // w-48
 const POPOVER_GAP_PX = 8
 
-// "..." trigger + popover for a compact row's per-entity actions -
-// today just the "Ver en Immich" link, later joined by "Reportar" once that feature exists (no
-// placeholder reserved for it yet). Same open/outside-click/Escape
-// mechanics as menu/UserMenu.tsx's account popover, generalized to arbitrary row content instead
-// of that component's fixed account/language/theme rows.
+// "..." trigger + popover for a compact row's per-entity actions - "Ver en Immich" and "Reportar".
+// Same open/outside-click/Escape mechanics as menu/UserMenu.tsx's account popover, generalized to
+// arbitrary row content instead of that component's fixed account/language/theme rows.
 //
 // The popover itself is positioned as `fixed`, computed from the trigger's own screen position,
 // rather than `absolute` relative to this wrapper - this can open from inside a horizontally-
@@ -33,7 +37,7 @@ const POPOVER_GAP_PX = 8
 // `fixed` ignores that entirely - nothing in this tree sets transform/filter/contain, the only
 // things that would re-trap it - and the outside-click/Escape handlers below need no change for
 // it (same DOM node, same ref; `.contains()` doesn't care about the node's visual position).
-export function EntryOptionsMenu({ children }: EntryOptionsMenuProps) {
+export function EntryOptionsMenu({ children, triggerClassName = "" }: EntryOptionsMenuProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [popoverPosition, setPopoverPosition] = useState<{ top: number; left: number } | null>(null)
@@ -52,10 +56,23 @@ export function EntryOptionsMenu({ children }: EntryOptionsMenuProps) {
 
   useEffect(() => {
     if (!open) return
+    // ReportMenuItem's ReportModal renders via a portal to document.body (see its own docstring
+    // for why - Timeline's per-card popover sits inside a z-indexed ancestor a plain `fixed`
+    // element can't escape) - so once open, its DOM node is a sibling of this popover, not a
+    // descendant, and every click inside it would otherwise read as "outside" below, closing this
+    // popover and - since that stops rendering `children`, unmounting the still-open modal along
+    // with it. `[data-report-modal]` is that portal's own marker; skip all three auto-close paths
+    // while it's present, so the modal's own onClose (not this popover's unrelated bookkeeping)
+    // decides when it closes.
+    function reportModalIsOpen(): boolean {
+      return document.querySelector("[data-report-modal]") !== null
+    }
     function handlePointerDown(e: PointerEvent) {
+      if (reportModalIsOpen()) return
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false)
     }
     function handleKeyDown(e: KeyboardEvent) {
+      if (reportModalIsOpen()) return
       if (e.key === "Escape") setOpen(false)
     }
     // A `fixed` popover doesn't move with the page, so it'd visually detach from its trigger on
@@ -63,6 +80,7 @@ export function EntryOptionsMenu({ children }: EntryOptionsMenuProps) {
     // also catches scrolling a nested container (e.g. GuessTable's own horizontal scroll), which
     // doesn't bubble a "scroll" event up to document otherwise.
     function handleScroll() {
+      if (reportModalIsOpen()) return
       setOpen(false)
     }
     document.addEventListener("pointerdown", handlePointerDown)
@@ -83,7 +101,7 @@ export function EntryOptionsMenu({ children }: EntryOptionsMenuProps) {
         onClick={() => setOpen((o) => !o)}
         aria-label={t("common.rounds.optionsMenu")}
         aria-expanded={open}
-        className="flex h-8 w-8 items-center justify-center rounded-full text-muted transition-colors hover:bg-hover-tint hover:text-body"
+        className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-hover-tint ${triggerClassName || "text-muted hover:text-body"}`}
       >
         <DotsIcon />
       </button>

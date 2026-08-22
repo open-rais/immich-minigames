@@ -68,10 +68,7 @@ class TestCreateGame:
 
         assert game["score"] == 100
         assert game["finished"] is False
-        assert game["target_album_id"] is None
-        assert game["target_album_name"] is None
-        assert game["target_album_asset_count"] is None
-        assert game["target_album_first_asset_date"] is None
+        assert game["reveal"] is None
         assert len(game["rounds"]) == 1
         round_ = game["rounds"][0]
         assert round_["guess_album_id"] is None
@@ -147,6 +144,6 @@ class TestPlayRound:
         state = logged_client.get(f"/api/v1/games/{game_id}").json()
 
         assert state["finished"] is True
-        assert state["target_album_id"] is not None
-        assert state["target_album_name"] is not None
-        assert state["target_album_asset_count"] is not None
+        assert state["reveal"]["album_id"] is not None
+        assert state["reveal"]["album_name"] is not None
+        assert state["reveal"]["asset_count"] is not None

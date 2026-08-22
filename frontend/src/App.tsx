@@ -15,6 +15,9 @@ import { ThemeProvider } from "./theme/ThemeProvider"
 // hits right after login (that's "/" and the gameplay routes below), so they don't need to be in
 // the initial bundle. The Suspense boundary around <Routes> below covers all of them.
 const AdminPage = lazy(() => import("./admin/AdminPage").then((m) => ({ default: m.AdminPage })))
+const AdminReportsPage = lazy(() =>
+  import("./admin/AdminReportsPage").then((m) => ({ default: m.AdminReportsPage })),
+)
 const ChangePasswordPage = lazy(() =>
   import("./auth/ChangePasswordPage").then((m) => ({ default: m.ChangePasswordPage })),
 )
@@ -57,6 +60,7 @@ function App() {
                 <Route path="/profile/password" element={<ChangePasswordPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/admin" element={<AdminPage />} />
+                <Route path="/admin/reports" element={<AdminReportsPage />} />
                 <Route path="/:gameType/:mode/leaderboard" element={<LeaderboardPage />} />
                 <Route path="/:gameType/:mode/game/:gameId/rounds" element={<RoundsPage />} />
                 <Route

@@ -24,9 +24,9 @@ from domain.person import Person
 from persistence.immich_db import get_immich_engine
 
 from . import albums, assets, faces, images, persons
-from .assets import MediaType
+from .assets import LocationField, MediaType
 
-__all__ = ["ContentQueries", "ImmichService", "MediaType"]
+__all__ = ["ContentQueries", "ImmichService", "LocationField", "MediaType"]
 
 
 class ImmichService:
@@ -46,6 +46,7 @@ class ImmichService:
         near_km: tuple[float, float, float] | None = None,
         randomize: bool = False,
         limit: int = 1,
+        ids: frozenset[UUID] | None = None,
         exclude_ids: frozenset[UUID] = frozenset(),
     ) -> list[Asset]:
         return assets.get_assets(
@@ -59,8 +60,12 @@ class ImmichService:
             near_km=near_km,
             randomize=randomize,
             limit=limit,
+            ids=ids,
             exclude_ids=exclude_ids,
         )
+
+    def get_distinct_locations(self, field: LocationField) -> list[str]:
+        return assets.get_distinct_locations(self._engine, field)
 
     def get_persons(
         self,
@@ -88,6 +93,9 @@ class ImmichService:
             exclude_ids=exclude_ids,
         )
 
+    def get_persons_with_birthday_on(self, month: int, day: int) -> list[Person]:
+        return persons.get_persons_with_birthday_on(self._engine, month, day)
+
     def search_persons(self, query: str, *, offset: int = 0, limit: int = 3) -> list[Person]:
         return persons.search_persons(self._engine, query, offset=offset, limit=limit)
 
@@ -97,12 +105,33 @@ class ImmichService:
     def get_assets_together_count(self, person_a_id: UUID, person_b_id: UUID) -> int:
         return persons.get_assets_together_count(self._engine, person_a_id, person_b_id)
 
+    def get_top_co_occurring_persons(
+        self, person_id: UUID, *, limit: int = 3, exclude_ids: frozenset[UUID] = frozenset()
+    ) -> list[tuple[UUID, str, int]]:
+        return persons.get_top_co_occurring_persons(self._engine, person_id, limit=limit, exclude_ids=exclude_ids)
+
     def get_random_asset_with_named_faces(
-        self, *, max_faces: int, exclude_asset_ids: frozenset[UUID] = frozenset()
+        self,
+        *,
+        exclude_asset_ids: frozenset[UUID] = frozenset(),
+        exclude_person_ids: frozenset[UUID] = frozenset(),
     ) -> list[Face]:
         return faces.get_random_asset_with_named_faces(
-            self._engine, max_faces=max_faces, exclude_asset_ids=exclude_asset_ids
+            self._engine, exclude_asset_ids=exclude_asset_ids, exclude_person_ids=exclude_person_ids
         )
+
+    def has_named_faces_asset(
+        self,
+        *,
+        exclude_asset_ids: frozenset[UUID] = frozenset(),
+        exclude_person_ids: frozenset[UUID] = frozenset(),
+    ) -> bool:
+        return faces.has_named_faces_asset(
+            self._engine, exclude_asset_ids=exclude_asset_ids, exclude_person_ids=exclude_person_ids
+        )
+
+    def get_named_persons_in_asset(self, asset_id: UUID) -> list[str]:
+        return faces.get_named_persons_in_asset(self._engine, asset_id)
 
     def get_albums(
         self,
@@ -134,6 +163,12 @@ class ImmichService:
 
     def get_album_first_asset_date(self, album_id: UUID) -> date | None:
         return albums.get_album_first_asset_date(self._engine, album_id)
+
+    def get_album_last_asset_date(self, album_id: UUID) -> date | None:
+        return albums.get_album_last_asset_date(self._engine, album_id)
+
+    def get_albums_starting_on(self, month: int, day: int) -> list[tuple[UUID, str, date]]:
+        return albums.get_albums_starting_on(self._engine, month, day)
 
     def get_album_named_face_counts(self, album_id: UUID) -> list[tuple[UUID, str, int]]:
         return albums.get_album_named_face_counts(self._engine, album_id)
@@ -168,8 +203,11 @@ class ContentQueries(Protocol):
         near_km: tuple[float, float, float] | None = None,
         randomize: bool = False,
         limit: int = 1,
+        ids: frozenset[UUID] | None = None,
         exclude_ids: frozenset[UUID] = frozenset(),
     ) -> list[Asset]: ...
+
+    def get_distinct_locations(self, field: LocationField) -> list[str]: ...
 
     def get_persons(
         self,
@@ -198,11 +236,29 @@ class ContentQueries(Protocol):
     ) -> list[Album]: ...
 
     def get_random_asset_with_named_faces(
-        self, *, max_faces: int, exclude_asset_ids: frozenset[UUID] = frozenset()
+        self,
+        *,
+        exclude_asset_ids: frozenset[UUID] = frozenset(),
+        exclude_person_ids: frozenset[UUID] = frozenset(),
     ) -> list[Face]: ...
 
+    def has_named_faces_asset(
+        self,
+        *,
+        exclude_asset_ids: frozenset[UUID] = frozenset(),
+        exclude_person_ids: frozenset[UUID] = frozenset(),
+    ) -> bool: ...
+
     def get_person_first_asset_date(self, person_id: UUID) -> date | None: ...
+
+    def get_assets_together_count(self, person_a_id: UUID, person_b_id: UUID) -> int: ...
+
+    def get_top_co_occurring_persons(
+        self, person_id: UUID, *, limit: int = 3, exclude_ids: frozenset[UUID] = frozenset()
+    ) -> list[tuple[UUID, str, int]]: ...
 
     def get_album_first_asset_date(self, album_id: UUID) -> date | None: ...
 
     def get_album_named_face_counts(self, album_id: UUID) -> list[tuple[UUID, str, int]]: ...
+
+    def get_persons_present_in_album(self, album_id: UUID, person_ids: frozenset[UUID]) -> frozenset[UUID]: ...

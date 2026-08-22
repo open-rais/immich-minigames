@@ -10,7 +10,7 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from games.immichdle import GAME_TYPE as IMMICHDLE_TYPE
-from games.immichdle import MODE_ALBUM, MODE_PERSON, AlbumdleRound, PersondleRound
+from games.immichdle import MODE_ALBUM, MODE_PERSON, AlbumdleRound, AlbumSnapshot, PersondleRound, PersonSnapshot
 
 
 class ImmichdleCluesOut(BaseModel):
@@ -34,7 +34,7 @@ class ImmichdleRoundOut(BaseModel):
     round_index: int
     # Redacted (null) until this round has been answered - same rationale as
     # MoreOrLessRoundOut.candidate_value. The target itself is never in a round's output at
-    # all - see GameOut.target_person_id/name.
+    # all - see GameOut.reveal/PersondleRevealOut below.
     guess_person_id: UUID | None
     guess_person_name: str | None
     guess_asset_count: int | None
@@ -67,6 +67,28 @@ class ImmichdlePlayRoundIn(BaseModel):
         return self.person_id
 
 
+class PersondleRevealOut(BaseModel):
+    """The mystery person, revealed once a Persondle game is finished - see api/dto/common.py's
+    GameOut.reveal/_REVEAL_BUILDERS. Redacted (absent) for every other game/mode and for a
+    Persondle game still in progress, where revealing it would be a straight cheat."""
+
+    person_id: UUID
+    person_name: str
+    asset_count: int
+    birth_date: date | None
+    first_asset_date: date | None
+
+    @classmethod
+    def from_target(cls, target: PersonSnapshot) -> "PersondleRevealOut":
+        return cls(
+            person_id=target.id,
+            person_name=target.name,
+            asset_count=target.asset_count,
+            birth_date=target.birth_date,
+            first_asset_date=target.first_asset_date,
+        )
+
+
 class AlbumdleCluesOut(BaseModel):
     first_asset_date: Literal["before", "after", "same", "unknown"]
     first_asset_date_close: bool | None
@@ -90,7 +112,7 @@ class AlbumdleRoundOut(BaseModel):
     round_index: int
     # Redacted (null) until this round has been answered - same rationale as
     # ImmichdleRoundOut's guess_* fields above. The target itself is never in a round's output at
-    # all - see GameOut.target_album_id/name.
+    # all - see GameOut.reveal/AlbumdleRevealOut below.
     guess_album_id: UUID | None
     guess_album_name: str | None
     guess_asset_count: int | None
@@ -123,3 +145,31 @@ class AlbumdlePlayRoundIn(BaseModel):
 
     def to_domain(self) -> UUID:
         return self.album_id
+
+
+class AlbumdleRevealOut(BaseModel):
+    """The mystery album, revealed once an Albumdle game is finished - same rationale/redaction
+    condition as PersondleRevealOut above, see api/dto/common.py's GameOut.reveal/
+    _REVEAL_BUILDERS."""
+
+    album_id: UUID
+    album_name: str
+    asset_count: int
+    first_asset_date: date | None
+    dominant_person_id: UUID | None
+    dominant_person_name: str | None
+    dominant_extra_count: int
+    unique_named_person_count: int
+
+    @classmethod
+    def from_target(cls, target: AlbumSnapshot) -> "AlbumdleRevealOut":
+        return cls(
+            album_id=target.id,
+            album_name=target.name,
+            asset_count=target.asset_count,
+            first_asset_date=target.first_asset_date,
+            dominant_person_id=target.dominant_person_ids[0] if target.dominant_person_ids else None,
+            dominant_person_name=target.dominant_person_name,
+            dominant_extra_count=max(0, len(target.dominant_person_ids) - 1),
+            unique_named_person_count=target.unique_named_person_count,
+        )

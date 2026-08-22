@@ -12,19 +12,21 @@ export function AlbumdleRounds({ game }: RoundsComponentProps) {
     .filter((r) => r.guess_album_id !== null && !r.correct)
     .reverse()
 
-  const target: AlbumTargetSnapshot | undefined =
-    game.target_album_id && game.target_album_name
-      ? {
-          albumId: game.target_album_id,
-          name: game.target_album_name,
-          assetCount: game.target_album_asset_count ?? 0,
-          firstAssetDate: game.target_album_first_asset_date ?? null,
-          dominantPersonId: game.target_album_dominant_person_id ?? null,
-          dominantPersonName: game.target_album_dominant_person_name ?? null,
-          dominantExtraCount: game.target_album_dominant_extra_count ?? 0,
-          uniqueNamedPersonCount: game.target_album_unique_named_person_count ?? 0,
-        }
-      : undefined
+  // "album_id" in game.reveal narrows the plain PersondleRevealOut | AlbumdleRevealOut union
+  // structurally, since (unlike RoundOut) the two reveal shapes share no discriminator field.
+  const reveal = game.reveal && "album_id" in game.reveal ? game.reveal : undefined
+  const target: AlbumTargetSnapshot | undefined = reveal
+    ? {
+        albumId: reveal.album_id,
+        name: reveal.album_name,
+        assetCount: reveal.asset_count,
+        firstAssetDate: reveal.first_asset_date,
+        dominantPersonId: reveal.dominant_person_id,
+        dominantPersonName: reveal.dominant_person_name,
+        dominantExtraCount: reveal.dominant_extra_count,
+        uniqueNamedPersonCount: reveal.unique_named_person_count,
+      }
+    : undefined
 
   return (
     <div className="mx-auto w-full max-w-5xl">

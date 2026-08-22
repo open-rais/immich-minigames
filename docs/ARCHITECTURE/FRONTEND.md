@@ -1,7 +1,7 @@
 # Frontend
 
 React 19 + Vite + TypeScript + Tailwind 4 + Axios + react-i18next + MapLibre GL, in `frontend/src/`.
-Dev: `npm run dev`. Typecheck: `npx tsc -b`. Lint: `npx oxlint`. Both clean as of 2026-07-20.
+Dev: `npm run dev`. Typecheck: `npx tsc -b`. Lint: `npx oxlint`. Both clean as of 2026-08-20.
 
 ## Routing
 
@@ -12,6 +12,7 @@ Dev: `npm run dev`. Typecheck: `npx tsc -b`. Lint: `npx oxlint`. Both clean as o
 | `/` | `MainMenu` |
 | `/login`, `/signup`, `/profile`, `/profile/edit` | auth pages |
 | `/admin` | `AdminPage` (redirects non-admins) |
+| `/admin/reports` | `AdminReportsPage` (redirects non-admins) - the metadata-report review panel (roadmap #N) |
 | `/:gameType/:mode` | `GameRoute` → looks up `GAME_CATALOG`, renders that mode's component |
 | `/:gameType/:mode/leaderboard` | `LeaderboardPage` |
 | `/:gameType/:mode/game/:gameId/rounds` | `RoundsPage` — post-game "Ver rondas"/"Ver juego" review (roadmap #10, see below) |
@@ -74,13 +75,24 @@ component, chosen from `catalog.ts`'s `roundsComponent` (mirroring how `GameRout
   `TimelineTrack.tsx` read-only rather than `RoundStepper` — same "fullscreen, no `RoundsShell`"
   family, different internal shape.
 
-`games/shared/EntryOptionsMenu.tsx` (a "⋯" trigger + popover, today holding just
-`games/shared/ImmichLink.tsx`) is the shared "Ver en Immich" entry point everywhere it appears. Its
-popover is positioned `fixed` from the trigger's own `getBoundingClientRect()` rather than `absolute`
-relative to the trigger — Immichdle's `GuessTable` needs it inside an `overflow-x-auto` container,
-and a mismatched-axis `overflow` (one axis non-`visible`, e.g. `overflow-x-auto`) computes the other
-axis to `auto` too, silently clipping an `absolute` popover that spills past the table's box. `fixed`
+`games/shared/EntryOptionsMenu.tsx` (a "⋯" trigger + popover) is the shared per-entity actions menu
+everywhere it appears — `games/shared/ImmichLink.tsx` ("Ver en Immich") and, since roadmap #N,
+`games/shared/ReportMenuItem.tsx` ("Reportar", opening `ReportModal.tsx`). Its popover is
+positioned `fixed` from the trigger's own `getBoundingClientRect()` rather than `absolute` relative
+to the trigger — Immichdle's `GuessTable` needs it inside an `overflow-x-auto` container, and a
+mismatched-axis `overflow` (one axis non-`visible`, e.g. `overflow-x-auto`) computes the other axis
+to `auto` too, silently clipping an `absolute` popover that spills past the table's box. `fixed`
 ignores ancestor overflow clipping entirely.
+
+`ReportModal.tsx` itself goes one step further and portals to `document.body` (unlike every other
+modal in the app, e.g. `ShareModal.tsx`/`ConfirmExitModal.tsx`, which are plain in-tree `fixed`
+overlays) - it's the one modal that can open from inside `Timeline/TimelineCard.tsx`'s per-card
+badge overlay, itself `absolute` + `z-index`ed, which creates its own stacking context that traps
+a plain `fixed` descendant no matter how high its own `z-index` goes. Portalling to `document.body`
+escapes that; the tradeoff is that `EntryOptionsMenu`'s own outside-click/scroll auto-close (see
+above) would then read every click inside the portalled modal as "outside" and cascade-unmount it
+along with the popover, since the modal's DOM node is no longer a descendant of the popover's own
+root - guarded by a `[data-report-modal]` marker those handlers explicitly skip while present.
 
 `ImmichLink` itself renders `null` whenever `useImmichLinks()` (`api/config.ts`) has no
 `IMMICH_EXTERNAL_URL`/`IMMICH_SERVER_URL` to build a link from (a single, module-scope-cached
@@ -182,9 +194,60 @@ work) the moment a poll reports otherwise. Pure formatting/decision logic (`jobP
 testable without jsdom (same split `games/shared/dailyShareText.ts` uses for its own share-text
 formatting).
 
+## PWA & push notifications (roadmap #O)
+
+Installable app shell, an offline-capable cache, and opt-in Web Push - three features sharing one
+piece of machinery (the service worker), built in that order since each is usable on its own and
+the last one needs the first two already in place.
+
+**Installability**: `public/manifest.webmanifest` (hand-written, not `vite-plugin-pwa`-generated -
+its icon set is deliberate, see below) plus `index.html`'s `<link rel="manifest">`/
+`<link rel="apple-touch-icon">`/theme-color `<meta>` pair (light/dark, media-queried). Icons are
+baked onto a **solid** background (`--color-surface` light), not the logo's own transparent one -
+iOS/Android compose a transparent icon inconsistently, and there's no standard mechanism at all for
+a native-style light/dark/tinted icon trio on installed web apps (checked as of writing; only
+`purpose: "monochrome"` exists, declared for whenever Android PWA theming catches up to it).
+
+**Caching**: `vite-plugin-pwa` in `injectManifest` mode (not `generateSW` - the per-route caching
+strategies below and the push handlers need real code, that mode only takes a glob list) builds
+`src/sw.ts` into the served service worker; `src/pwa/register.ts` registers it itself
+(`injectRegister: false`) behind the three-way feature-detect a self-hosted install actually needs
+(`serviceWorker` in `navigator` implies a secure context; `PushManager` in `window`, absent on iOS
+Safari until added to the home screen; `Notification.permission`). Routes, by strategy:
+
+| Route | Strategy | Why |
+|---|---|---|
+| Hashed `assets/**` | Precached (`self.__WB_MANIFEST`) | Content-addressed, safe to cache forever. |
+| Navigations | Network-first, single cache key | Every client-routed path serves the same `index.html`, so one entry (not one per visited path) covers all of them offline; network-first so a new deploy is seen immediately when online. |
+| `logo.svg`/icons/`covers/*` | Stale-while-revalidate | Fixed names, no hash - a cache-first policy would never see an update. |
+| Thumbnail proxies | Cache-first, `ExpirationPlugin(maxEntries: 300)` | `games/shared/thumbnailQueue.ts`'s own in-memory cache already dedupes/limits concurrency within a session; this is what survives a reload. |
+| `/api/v1/config` | Stale-while-revalidate | Static, rarely changes. |
+| Everything else under `/api/` | Not cached | Live, per-user data - `api/queryCache.ts`'s in-memory SWR is where "serve stale while refetching" belongs for anything that must not survive a logout on disk. |
+
+Auto-update is deliberate and un-prompted: `skipWaiting()`/`clientsClaim()` in `sw.ts`, plus a
+reload on `controllerchange` in `register.ts`. Skipping the reload would be the actual bug here -
+every game chunk is its own dynamic `import()`, so a tab left open across a deploy would otherwise
+resolve a chunk hash the new service worker's precache no longer has
+(`Failed to fetch dynamically imported module`). Logout clears the one cache holding anything
+account-scoped (`caches.delete("minigames-api-v1")`, see `src/pwa/clearApiCache.ts`) - Cache
+Storage is per-origin, not per-session, so without this a shared browser would keep serving
+account A's thumbnails to account B after they log in.
+
+**Push notifications**: `src/pwa/push.ts` (permission, subscribe/unsubscribe,
+`urlBase64ToUint8Array` for the VAPID key) and `useNotificationSettings.ts` (the hook backing
+`settings/NotificationsCard.tsx` - a `Switch` per toggle, matching `admin/AdminGameRow.tsx`'s
+`StreakScoringToggle`, both now built on the shared `games/shared/Switch.tsx`). The card renders
+nothing at all when `GET /config`'s `push_public_key` is `null` (push not configured
+server-side - see `docs/ARCHITECTURE/BACKEND.md` § Push notifications); when it's configured but
+the browser can't (no secure context, no `PushManager`, permission denied), it renders disabled
+with an explanatory note instead. `sw.ts`'s `push`/`notificationclick` handlers stay deliberately
+dumb - they just render whatever `{title, body, url, tag}` the backend composed and focus/open
+`url` on click - so a future fifth notification is backend-only work, never a service worker
+version every installed device has to pick up on its own.
+
 ## i18n
 
-react-i18next, English + Spanish, 116 keys each, complete in both (verified 2026-07-20). Language
+react-i18next, English, Spanish, French and German, 279 keys each, complete in all four. Language
 names in the picker are deliberately **not** translated — a language's own name shouldn't change
 based on the active language, matching how browsers and OSes do it.
 

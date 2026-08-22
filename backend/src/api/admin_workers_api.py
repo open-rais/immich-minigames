@@ -22,10 +22,12 @@ def _coverage(stale: StaleIds) -> EmbeddingCoverageOut:
 
 
 # No @limiter.limit here, unlike most of api/api.py's routes: the admin panel polls this every
-# ~1s while a job is running to drive its progress bar, and a per-minute cap would break that. It
-# only reads memory (the job registry) plus two cheap count queries, no Immich REST calls and no
-# writes to the embedding cache - the same "admin-only, no limiter" posture every other router in
-# this module already has (see api/admin_daily_api.py, api/admin_games_api.py).
+# ~1s while a job is running to drive its progress bar, and a per-minute cap would break that.
+# Safe to poll that tightly because it only reads memory (the job registry) plus MLService's own
+# short-TTL cache of the two coverage queries (see MLService._STALE_IDS_CACHE_TTL_SECONDS) - no
+# Immich REST calls and no writes to the embedding cache - the same "admin-only, no limiter"
+# posture every other router in this module already has (see api/admin_daily_api.py,
+# api/admin_games_api.py).
 @router.get("/embeddings", response_model=EmbeddingWorkersStatusOut)
 def get_embedding_workers_status(
     _admin: Annotated[UserModel, Depends(get_current_admin_user)],

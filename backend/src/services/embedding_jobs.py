@@ -177,6 +177,10 @@ class EmbeddingJobRunner:
             state.error = str(exc)
         finally:
             state.finished_at = datetime.now(UTC)
+            # Coverage actually changed (or, for "cancelled", partially did) - invalidate rather
+            # than waiting out MLService's own TTL, so the panel's very next poll after the job
+            # ends reflects it instead of still showing pre-job numbers for up to that long.
+            self._ml_service.invalidate_stale_cache()
             audit(
                 "embedding_job_finished",
                 job_id=str(state.id),

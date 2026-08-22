@@ -9,3 +9,6 @@ class ConfigOut(BaseModel):
     # IMMICH_EXTERNAL_URL is explicitly set empty ("no public link", not a
     # fallback) or, in principle, if immich_server_url itself were ever blanked out.
     immich_external_url: str | None
+    # None when Web Push isn't configured (any of the three VAPID_* env vars missing) - the
+    # frontend hides the whole notifications section in that case.
+    push_public_key: str | None

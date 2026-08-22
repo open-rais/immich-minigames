@@ -18,6 +18,10 @@ interface GameState {
   totalRounds?: number | null
   totalPeople?: number | null
   faceBoxGrowth?: number | null
+  // Trivium's per-round answer window in seconds (see api/types/common.ts's GameOut) - the same
+  // "captured once at game start" rationale as the fields above: an admin changing this setting
+  // mid-game shouldn't retroactively change the countdown a round already in progress runs on.
+  answerTimeSeconds?: number | null
 }
 
 // Round-flow layer for the "fixed number of rounds, one picker per round, auto-advance after a
@@ -90,6 +94,7 @@ export function useRoundGame<TRound extends RoundOut, TGuess>({
       totalRounds: g.total_rounds,
       totalPeople: g.total_people,
       faceBoxGrowth: g.face_box_growth,
+      answerTimeSeconds: g.answer_time_seconds,
     })
     setRound(currentRound)
     setPendingNextRound(null)
@@ -107,6 +112,7 @@ export function useRoundGame<TRound extends RoundOut, TGuess>({
       totalRounds: g.total_rounds,
       totalPeople: g.total_people,
       faceBoxGrowth: g.face_box_growth,
+      answerTimeSeconds: g.answer_time_seconds,
     })
     return true
   }

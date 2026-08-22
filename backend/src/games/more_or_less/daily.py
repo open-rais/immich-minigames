@@ -89,7 +89,7 @@ def build_spec(mode: str, immich_service: ContentQueries, settings: dict[str, fl
     }[mode]
     chain_length = int(settings.get("chain_length", 100))
     # Batch size generous enough that the whole chain usually comes from one fetch, even accounting
-    # for _pick_non_tied_candidate's 10-per-round sample and its small-pool retry - see
+    # for pick_non_tied_candidate's 10-per-round sample and its small-pool retry - see
     # _BufferedProvider.
     provider = _BufferedProvider(provider_cls(immich_service), batch_size=max(200, (chain_length + 1) * 20))
 

@@ -15,6 +15,19 @@
       "light": "Light",
       "dark": "Dark",
       "system": "System"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "unsupported": "Requires the app to be served over HTTPS",
+      "noPushManager": "Add the app to your home screen to enable notifications",
+      "denied": "You've blocked notifications for this app - re-enable them from your browser settings",
+      "enablePush": "Push notifications",
+      "activationError": "Couldn't activate notifications - try again",
+      "dailyReminders": "Daily game reminders",
+      "birthdays": "Birthdays",
+      "albumAnniversary": "Album anniversaries",
+      "sendTest": "Send test notification",
+      "testError": "Couldn't send the test notification"
     }
   },
   "mainMenu": {
@@ -45,7 +58,8 @@
       "whosThatPerson": "🧑‍🧑‍🧒‍🧒 {{correct}}/{{total}} people",
       "km": "{{value}}km",
       "days": "{{count}} days",
-      "timeline": "🃏 {{count}} cards"
+      "timeline": "🃏 {{count}} cards",
+      "trivium": "🧠 {{count}} questions"
     }
   },
   "leaderboard": {
@@ -229,6 +243,38 @@
       "orderBadge": "#{{count}}"
     }
   },
+  "trivium": {
+    "title": "Trivium",
+    "modes": {
+      "birthday": "Birthday",
+      "photos": "Photos",
+      "location": "Location",
+      "mixed": "Mixed"
+    },
+    "start": {
+      "description": "Answer trivia about your photos and the people in them. One wrong answer - or running out of time - ends the run."
+    },
+    "questions": {
+      "birthdayYear": "What year was {{name}} born?",
+      "birthdayDayMonth": "When is {{name}}'s birthday?",
+      "birthdayFullDate": "What day was {{name}} born?",
+      "photosTotalAssets": "Which of these people has the most photos overall?",
+      "photosTogether": "Which of these people has the most photos with {{name}}?",
+      "photosFirstAssetYear": "What year is {{name}}'s first photo from?",
+      "locationCountry": "In what country was this photo taken?",
+      "locationCity": "In what city was this photo taken?",
+      "mixedFaceToName": "What's this person's name?",
+      "mixedNameToFace": "Who is {{name}}?"
+    },
+    "result": {
+      "correct": "Correct!",
+      "wrong": "Wrong answer",
+      "timeout": "Time's up!"
+    },
+    "rounds": {
+      "answeredIn": "Answered in {{seconds}}s"
+    }
+  },
   "auth": {
     "fields": {
       "email": "Email",
@@ -294,6 +340,22 @@
       "title": "Users",
       "description": "Manage app accounts",
       "loading": "Loading users..."
+    },
+    "reports": {
+      "title": "Reports",
+      "description": "Review metadata issues players flagged",
+      "sections": {
+        "asset": "Photos",
+        "person": "People",
+        "album": "Albums"
+      },
+      "showSolved": "Show resolved",
+      "loading": "Loading reports...",
+      "empty": "No reports here.",
+      "deletedEntity": "(deleted)",
+      "reportedBy": "Reported by {{username}} on {{date}}",
+      "markSolved": "Mark resolved",
+      "markUnsolved": "Reopen"
     },
     "games": {
       "description": "Edit configuration for each game",
@@ -368,6 +430,31 @@
         "all": "reprocessing all"
       },
       "failed": "Job failed: {{error}}"
+    }
+  },
+  "reports": {
+    "menuItem": "Report",
+    "modal": {
+      "title": "Report an issue",
+      "notePlaceholder": "Additional details (optional)",
+      "submit": "Send report",
+      "cancel": "Cancel",
+      "success": "Thanks, your report was sent.",
+      "done": "Done",
+      "showMore": "Show {{count}} more"
+    },
+    "error": {
+      "generic": "Couldn't send the report - try again"
+    },
+    "reasons": {
+      "person_birth_date": "Missing or wrong birth date",
+      "person_name_face_mismatch": "Name and face don't match",
+      "person_name_spelling": "Name is misspelled",
+      "album_cover_mismatch": "Cover and album name don't match",
+      "album_name_spelling": "Name is misspelled",
+      "asset_location": "Missing or wrong location",
+      "asset_date": "Wrong date",
+      "asset_face_mismatch": "Face doesn't match this person"
     }
   }
 }

@@ -10,15 +10,14 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from games.base import BaseGame
-from games.immichdle import BaseImmichdleGame
 from games.registry import GAMES, GameSpec
-from games.whos_that_person import WhosThatPersonGame
 from persistence.daily import DailyChallengeModel
 from persistence.games import GameModel
 from services.errors import NotEnoughContentError, UnsupportedGameError
 from services.game_settings_service import GameSettingsService
 from services.immich import ImmichService
 from services.ml_service import MLService
+from services.reports_service import ReportsService
 
 
 class GameFactory:
@@ -28,11 +27,16 @@ class GameFactory:
         immich_service: ImmichService,
         ml_service: MLService,
         game_settings_service: GameSettingsService,
+        reports_service: ReportsService | None = None,
     ) -> None:
         self._session = session
         self._immich_service = immich_service
         self._ml_service = ml_service
         self._game_settings_service = game_settings_service
+        # Defaults to self-constructing when omitted, same convention as BaseImmichdleGame's own
+        # ml_service - existing callers that predate reports-exclusion (tests, one-off scripts)
+        # keep working without threading a new required argument through.
+        self._reports_service = reports_service or ReportsService(session)
 
     def kwargs_for(self, spec: GameSpec, game_type: str, mode: str) -> dict[str, Any]:
         """Constructor/`start()` kwargs every game needs, plus whichever extra ones a specific game
@@ -41,25 +45,31 @@ class GameFactory:
         not a change spread across every call site that builds a game. `game_type`/`mode` are plain
         strs (not derived from `game_class`) since not every concrete game class exposes them -
         callers already have the (game_type, mode) key that picked this spec in scope."""
+        # Wrapped once, up front - filter_for() returns self._immich_service unchanged when no open
+        # report applies to this (game_type, mode), so the common case costs one query and nothing
+        # else. See services/reports_service.py.
+        content_source = self._reports_service.filter_for(self._immich_service, game_type, mode)
         kwargs: dict[str, Any] = {
             "settings": self._game_settings_service.get_settings(game_type, mode),
         }
         if spec.provider_factory is not None:
             # The provider fully replaces this game's data source, so it gets provider + mode
             # instead of immich_service/content (see games/registry.py's GameSpec).
-            kwargs["provider"] = spec.provider_factory(self._immich_service)
+            kwargs["provider"] = spec.provider_factory(content_source)
             kwargs["mode"] = mode
         elif spec.content_factory is not None:
             # The content object fully replaces this game's data source too (Geoguessr/Dateguessr)
             # - except WhosThatPerson, which still needs immich_service directly below for live
             # guess-name resolution, unrelated to content.
-            kwargs["content"] = spec.content_factory(self._immich_service)
+            kwargs["content"] = spec.content_factory(content_source)
         else:
-            kwargs["immich_service"] = self._immich_service
-        if issubclass(spec.game_class, BaseImmichdleGame):
-            kwargs["ml_service"] = self._ml_service
-        if spec.game_class is WhosThatPersonGame:
-            kwargs["immich_service"] = self._immich_service
+            kwargs["immich_service"] = content_source
+        if spec.extra_kwargs is not None:
+            # Per-class kwargs beyond the above (Immichdle's ml_service, WhosThatPerson's own
+            # immich_service, Trivium's mode + question_types, ...) - see games/registry.py's
+            # GameSpec.extra_kwargs for why this lives there, declared next to each game's own
+            # registry entry, instead of as a growing if-chain here keyed off concrete classes.
+            kwargs.update(spec.extra_kwargs(content_source, self._ml_service, mode))
         return kwargs
 
     def daily_kwargs_for(

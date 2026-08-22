@@ -58,6 +58,19 @@ class TestGetAssets:
 
         assert len(assets) == 5
 
+    def test_ids_filters_to_only_the_given_assets(self, immich_service):
+        everyone = immich_service.get_assets(limit=100)
+        wanted = {everyone[0].id, everyone[1].id}
+
+        matches = immich_service.get_assets(ids=frozenset(wanted), limit=100)
+
+        assert {a.id for a in matches} == wanted
+
+    def test_ids_with_unknown_id_returns_empty(self, immich_service):
+        matches = immich_service.get_assets(ids=frozenset({uuid4()}), limit=100)
+
+        assert matches == []
+
     def test_random_true_returns_no_duplicates(self, immich_service):
         # sample_by_id_pivot (services/immich/_random.py, B-1) answers with two disjoint queries
         # (id >= pivot, then id < pivot to wrap around) - this is the sanity check that they never
@@ -83,6 +96,32 @@ class TestGetAssets:
                 return
             excluded.add(assets[0].id)
         pytest.fail("never ran out of eligible assets after excluding 2000 distinct ones")
+
+
+class TestGetDistinctLocations:
+    def test_country_returns_distinct_non_empty_real_values(self, immich_service):
+        countries = immich_service.get_distinct_locations("country")
+
+        assert countries
+        assert len(countries) == len(set(countries))
+        assert all(c for c in countries)  # never an empty string, never None
+
+    def test_city_returns_distinct_non_empty_real_values(self, immich_service):
+        cities = immich_service.get_distinct_locations("city")
+
+        assert cities
+        assert len(cities) == len(set(cities))
+        assert all(c for c in cities)
+
+    def test_includes_every_country_a_thumbnailed_asset_reports(self, immich_service):
+        # get_distinct_locations isn't restricted to assets with a thumbnail (see its own
+        # docstring for why), so this only checks the superset direction - it may legitimately
+        # also report a country from a thumbnail-less asset that get_assets would never surface.
+        countries = immich_service.get_distinct_locations("country")
+        located = immich_service.get_assets(with_location=True, limit=10_000)
+        real_countries = {a.country for a in located if a.country}
+
+        assert real_countries <= set(countries)
 
 
 class TestGetPersons:
@@ -198,21 +237,55 @@ class TestGetAssetsTogetherCount:
         assert count >= 0
 
 
+class TestGetTopCoOccurringPersons:
+    def test_returns_empty_for_unknown_person(self, immich_service):
+        assert immich_service.get_top_co_occurring_persons(uuid4()) == []
+
+    def test_ranks_real_people_by_descending_co_occurrence_count(self, immich_service):
+        persons = immich_service.get_persons(named_only=True, limit=50)
+        # Find someone who actually co-occurs with at least 2 others, so the ranking has something
+        # real to sort - not guaranteed for an arbitrary person in a small library.
+        subject = next(
+            (p for p in persons if len(immich_service.get_top_co_occurring_persons(p.id, limit=2)) >= 2),
+            None,
+        )
+        if subject is None:
+            pytest.skip("no person in the dev library co-occurs with at least 2 others")
+
+        top = immich_service.get_top_co_occurring_persons(subject.id, limit=5)
+
+        assert all(row[0] != subject.id for row in top)  # never includes the subject themselves
+        counts = [row[2] for row in top]
+        assert counts == sorted(counts, reverse=True)
+        assert all(count > 0 for count in counts)
+
+    def test_exclude_ids_removes_a_candidate_from_the_ranking(self, immich_service):
+        persons = immich_service.get_persons(named_only=True, limit=50)
+        subject = next(
+            (p for p in persons if len(immich_service.get_top_co_occurring_persons(p.id, limit=1)) >= 1),
+            None,
+        )
+        if subject is None:
+            pytest.skip("no person in the dev library co-occurs with anyone")
+        [top_match] = immich_service.get_top_co_occurring_persons(subject.id, limit=1)
+
+        without_top = immich_service.get_top_co_occurring_persons(
+            subject.id, limit=1, exclude_ids=frozenset({top_match[0]})
+        )
+
+        assert all(row[0] != top_match[0] for row in without_top)
+
+
 class TestGetRandomAssetWithNamedFaces:
     def test_returns_faces_for_a_named_person(self, immich_service):
-        faces = immich_service.get_random_asset_with_named_faces(max_faces=5)
+        faces = immich_service.get_random_asset_with_named_faces()
 
         assert faces
         assert all(face.person_name != "" for face in faces)
         assert len({face.asset_id for face in faces}) == 1, "every returned face must belong to the same asset"
 
-    def test_respects_max_faces(self, immich_service):
-        faces = immich_service.get_random_asset_with_named_faces(max_faces=1)
-
-        assert len(faces) == 1
-
     def test_bounding_box_and_image_size_are_populated(self, immich_service):
-        [face] = immich_service.get_random_asset_with_named_faces(max_faces=1)
+        [face, *_] = immich_service.get_random_asset_with_named_faces()
 
         assert face.image_width > 0
         assert face.image_height > 0
@@ -220,20 +293,39 @@ class TestGetRandomAssetWithNamedFaces:
         assert face.bounding_box_y2 > face.bounding_box_y1
 
     def test_excludes_given_asset_ids(self, immich_service):
-        [face] = immich_service.get_random_asset_with_named_faces(max_faces=1)
+        [face, *_] = immich_service.get_random_asset_with_named_faces()
 
-        rest = immich_service.get_random_asset_with_named_faces(
-            max_faces=1, exclude_asset_ids=frozenset({face.asset_id})
-        )
+        rest = immich_service.get_random_asset_with_named_faces(exclude_asset_ids=frozenset({face.asset_id}))
 
         assert rest == [] or rest[0].asset_id != face.asset_id
+
+    def test_exclude_person_ids_never_returns_that_persons_faces(self, immich_service):
+        # Bounded draws (not "loop until the pool is exhausted" like the two tests above) - the dev
+        # pool is large enough that exhausting it isn't reliable, and isn't the point here: this
+        # just needs to see several distinct assets and confirm none of them exposes the excluded
+        # person's face.
+        [face, *_] = immich_service.get_random_asset_with_named_faces()
+        excluded_person_id = face.person_id
+
+        excluded_assets: set = set()
+        saw_any = False
+        for _ in range(50):
+            faces = immich_service.get_random_asset_with_named_faces(
+                exclude_asset_ids=frozenset(excluded_assets), exclude_person_ids=frozenset({excluded_person_id})
+            )
+            if not faces:
+                break
+            saw_any = True
+            assert all(f.person_id != excluded_person_id for f in faces)
+            excluded_assets.add(faces[0].asset_id)
+        assert saw_any, "dev data must have other named-face assets to exercise exclude_person_ids against"
 
     def test_returns_empty_when_no_eligible_asset_exists(self, immich_service):
         # Excluding a huge batch of already-eligible assets should eventually exhaust the pool -
         # the dev data has far fewer than 100000 assets with a named face.
         excluded = set()
         for _ in range(1000):
-            faces = immich_service.get_random_asset_with_named_faces(max_faces=1, exclude_asset_ids=frozenset(excluded))
+            faces = immich_service.get_random_asset_with_named_faces(exclude_asset_ids=frozenset(excluded))
             if not faces:
                 return
             excluded.add(faces[0].asset_id)
@@ -252,12 +344,66 @@ class TestGetRandomAssetWithNamedFaces:
 
         excluded = set()
         for _ in range(1000):
-            faces = immich_service.get_random_asset_with_named_faces(max_faces=5, exclude_asset_ids=frozenset(excluded))
+            faces = immich_service.get_random_asset_with_named_faces(exclude_asset_ids=frozenset(excluded))
             if not faces:
                 return
             assert all(face.person_id not in hidden_ids for face in faces)
             excluded.add(faces[0].asset_id)
         pytest.fail("never ran out of eligible assets after excluding 1000 distinct ones")
+
+
+class TestHasNamedFacesAsset:
+    def test_true_when_at_least_one_eligible_asset_exists(self, immich_service):
+        assert immich_service.has_named_faces_asset() is True
+
+    def test_false_once_every_named_person_is_excluded(self, immich_service, immich_engine):
+        # A cheaper way to force the pool empty than excluding assets one at a time (see
+        # TestGetRandomAssetWithNamedFaces.test_returns_empty_when_no_eligible_asset_exists) -
+        # every asset's *only* path into the pool is through a named, non-hidden person, so
+        # excluding every one of those directly empties it in one query instead of needing to
+        # discover and exclude each asset in turn.
+        with immich_engine.connect() as conn:
+            named_ids = {
+                row.id for row in conn.execute(select(person.c.id).where(person.c.name != "", ~person.c.isHidden))
+            }
+        assert named_ids, "dev data must have at least one named, non-hidden person to exercise this"
+
+        assert immich_service.has_named_faces_asset(exclude_person_ids=frozenset(named_ids)) is False
+
+    def test_agrees_with_get_random_asset_with_named_faces_on_a_real_exclusion(self, immich_service):
+        [face, *_] = immich_service.get_random_asset_with_named_faces()
+
+        rest = immich_service.get_random_asset_with_named_faces(exclude_asset_ids=frozenset({face.asset_id}))
+        exists = immich_service.has_named_faces_asset(exclude_asset_ids=frozenset({face.asset_id}))
+
+        assert exists is bool(rest)
+
+
+class TestGetNamedPersonsInAsset:
+    def test_returns_the_names_of_named_faces_for_a_known_asset(self, immich_service):
+        [face, *_] = immich_service.get_random_asset_with_named_faces()
+
+        names = immich_service.get_named_persons_in_asset(face.asset_id)
+
+        assert face.person_name in names
+
+    def test_unrelated_asset_id_returns_empty(self, immich_service):
+        assert immich_service.get_named_persons_in_asset(uuid4()) == []
+
+
+class TestGetAlbumLastAssetDate:
+    def test_is_never_before_the_first_asset_date(self, immich_service):
+        [album] = immich_service.get_albums(limit=1)
+
+        first = immich_service.get_album_first_asset_date(album.id)
+        last = immich_service.get_album_last_asset_date(album.id)
+
+        assert first is not None
+        assert last is not None
+        assert last >= first
+
+    def test_unknown_album_returns_none(self, immich_service):
+        assert immich_service.get_album_last_asset_date(uuid4()) is None
 
 
 class TestSearchPersons:

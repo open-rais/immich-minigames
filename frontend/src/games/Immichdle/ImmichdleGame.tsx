@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom"
 import { getGame, personThumbnailUrl, playRound } from "../../api/games"
 import { GameType, Mode } from "../../api/types/common"
 import type { GameOut, RoundOut } from "../../api/types/common"
-import type { ImmichdleRoundOut } from "../../api/types/immichdle"
+import type { ImmichdleRoundOut, PersondleRevealOut } from "../../api/types/immichdle"
 import type { GameComponentProps } from "../catalog"
 import { ErrorScreen, FinishedScreen, IdleScreen } from "../shared/GameScreens"
 import { GuardedBackButton } from "../shared/GuardedBackButton"
@@ -26,6 +26,12 @@ const MODE = Mode.Person
 // game_type with a differently-shaped round - see api/types/immichdle.ts's mode field.
 function isImmichdleRound(round: RoundOut): round is ImmichdleRoundOut {
   return round.game_type === GameType.Immichdle && round.mode === Mode.Person
+}
+
+// GameOut.reveal is a plain union (Persondle/Albumdle share no discriminator field, unlike
+// RoundOut's game_type/mode) - narrowed structurally on a field only Persondle's shape has.
+function isPersondleReveal(reveal: GameOut["reveal"]): reveal is PersondleRevealOut {
+  return reveal != null && "person_id" in reveal
 }
 
 interface GameState {
@@ -94,8 +100,8 @@ export function ImmichdleGame({ coverUrl, hasRoundsView, daily = false }: GameCo
       score: g.score,
       finished: true,
       won: lastRound.correct === true,
-      targetName: g.target_person_name ?? null,
-      targetPersonId: g.target_person_id ?? null,
+      targetName: isPersondleReveal(g.reveal) ? g.reveal.person_name : null,
+      targetPersonId: isPersondleReveal(g.reveal) ? g.reveal.person_id : null,
     })
     return true
   }
@@ -162,8 +168,8 @@ export function ImmichdleGame({ coverUrl, hasRoundsView, daily = false }: GameCo
                 g
                   ? {
                       ...g,
-                      targetName: finalState.target_person_name ?? null,
-                      targetPersonId: finalState.target_person_id ?? null,
+                      targetName: isPersondleReveal(finalState.reveal) ? finalState.reveal.person_name : null,
+                      targetPersonId: isPersondleReveal(finalState.reveal) ? finalState.reveal.person_id : null,
                     }
                   : g,
               )

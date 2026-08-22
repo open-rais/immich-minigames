@@ -35,6 +35,7 @@
   --color-clue-miss: oklch(0.58 0.21 25);
 
   --color-badge-bg: oklch(0.93 0.045 265);
+  --color-badge-bg-hover: oklch(0.89 0.05 265);
   --color-badge-label: oklch(0.4 0.13 265);
   --color-badge-value: oklch(0.35 0.15 265);
 
@@ -138,6 +139,7 @@ body {
   --color-clue-miss: oklch(0.5 0.19 25);
 
   --color-badge-bg: oklch(0.28 0.05 265);
+  --color-badge-bg-hover: oklch(0.33 0.055 265);
   --color-badge-label: oklch(0.82 0.05 265);
   --color-badge-value: oklch(0.88 0.06 265);
 

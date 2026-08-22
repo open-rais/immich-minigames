@@ -1,9 +1,8 @@
 """Postgres queries over Immich's `asset_face` table, joined with `person` for named faces."""
 
-import random
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import Select, distinct, exists, select
 from sqlalchemy.engine import Engine
 
 from domain.face import Face
@@ -12,38 +11,69 @@ from persistence.immich_tables import asset, asset_face, person
 from ._random import sample_by_id_pivot
 from ._rows import row_to_face
 
+_visible_face = asset_face.c.isVisible.is_(True) & asset_face.c.deletedAt.is_(None)
+_named_face = asset_face.join(person, person.c.id == asset_face.c.personId)
 
-def get_random_asset_with_named_faces(
-    engine: Engine, *, max_faces: int, exclude_asset_ids: frozenset[UUID] = frozenset()
-) -> list[Face]:
-    """Picks one random asset that has at least one visible, non-deleted face already assigned
-    to a named, non-hidden person, then returns the faces Who'sThatPerson blacks out for a
-    round: every one of that asset's named, non-hidden faces if it has `max_faces` or fewer,
-    otherwise a *random* number of them between 1 and `max_faces` (not always exactly `max_faces`,
-    so a photo with plenty of named people doesn't deterministically always hide the maximum).
-    Faces without a name are never returned -
-    there'd be nothing to grade against, so they're left unblacked in the photo, purely
-    decorative. Hidden people (Immich's own `isHidden` flag) are excluded the same way
-    get_persons/search_persons already exclude them from the guess search box - otherwise a
-    round could black out a face the player has no way to search for and guess. Empty list if
-    no eligible asset exists (e.g. exclude_asset_ids/the game's data pool is exhausted)."""
-    visible_face = asset_face.c.isVisible.is_(True) & asset_face.c.deletedAt.is_(None)
-    named_face = asset_face.join(person, person.c.id == asset_face.c.personId)
 
-    asset_id_stmt = (
+def _eligible_asset_id_stmt(
+    exclude_asset_ids: frozenset[UUID], exclude_person_ids: frozenset[UUID]
+) -> Select[tuple[UUID]]:
+    """Every asset with at least one visible, non-deleted face already assigned to a named,
+    non-hidden person - shared by get_random_asset_with_named_faces (which samples one) and
+    has_named_faces_asset (which only checks whether the set is non-empty). Hidden people
+    (Immich's own `isHidden` flag) are excluded the same way get_persons/search_persons already
+    exclude them from the guess search box - otherwise a round could black out a face the player
+    has no way to search for and guess. `exclude_person_ids` follows the same reasoning but
+    caller-driven (services/reports_service.py's open-report exclusion)."""
+    stmt = (
         select(asset.c.id)
-        .select_from(asset.join(named_face, asset_face.c.assetId == asset.c.id))
+        .select_from(asset.join(_named_face, asset_face.c.assetId == asset.c.id))
         .where(
             asset.c.status == "active",
             asset.c.visibility == "timeline",
             asset.c.deletedAt.is_(None),
-            visible_face,
+            _visible_face,
             person.c.name != "",
             person.c.isHidden.is_(False),
         )
     )
     if exclude_asset_ids:
-        asset_id_stmt = asset_id_stmt.where(asset.c.id.notin_(exclude_asset_ids))
+        stmt = stmt.where(asset.c.id.notin_(exclude_asset_ids))
+    if exclude_person_ids:
+        stmt = stmt.where(person.c.id.notin_(exclude_person_ids))
+    return stmt
+
+
+def has_named_faces_asset(
+    engine: Engine,
+    *,
+    exclude_asset_ids: frozenset[UUID] = frozenset(),
+    exclude_person_ids: frozenset[UUID] = frozenset(),
+) -> bool:
+    """Cheap existence check for get_random_asset_with_named_faces' pool - a plain `SELECT 1 ...
+    LIMIT 1` over the same eligibility join, no id-pivot sampling and no second (per-asset faces)
+    query. Powers games/whos_that_person/content.py::LiveContent.has_more, which only needs to
+    know *whether* another round is possible, not which asset it would be."""
+    stmt = select(exists(_eligible_asset_id_stmt(exclude_asset_ids, exclude_person_ids)))
+    with engine.connect() as conn:
+        return bool(conn.execute(stmt).scalar())
+
+
+def get_random_asset_with_named_faces(
+    engine: Engine,
+    *,
+    exclude_asset_ids: frozenset[UUID] = frozenset(),
+    exclude_person_ids: frozenset[UUID] = frozenset(),
+) -> list[Face]:
+    """Picks one random asset that has at least one visible, non-deleted face already assigned
+    to a named, non-hidden person, then returns every one of that asset's named, non-hidden
+    faces - which of them to actually black out for a Who'sThatPerson round is that game's own
+    decision (games/whos_that_person/content.py::LiveContent.pick_round), not this query's.
+    Faces without a name are never returned -
+    there'd be nothing to grade against, so they're left unblacked in the photo, purely
+    decorative. Empty list if no eligible asset exists (e.g. exclude_asset_ids/exclude_person_ids/
+    the game's data pool is exhausted)."""
+    asset_id_stmt = _eligible_asset_id_stmt(exclude_asset_ids, exclude_person_ids)
     # GROUP BY (not DISTINCT) - the join produces one row per matching face, so this collapses
     # back to one row per asset before picking.
     asset_id_stmt = asset_id_stmt.group_by(asset.c.id)
@@ -72,19 +102,37 @@ def get_random_asset_with_named_faces(
                 asset_face.c.boundingBoxX2,
                 asset_face.c.boundingBoxY2,
             )
-            .select_from(named_face)
+            .select_from(_named_face)
             .where(
                 asset_face.c.assetId == asset_row.id,
-                visible_face,
+                _visible_face,
                 person.c.name != "",
                 person.c.isHidden.is_(False),
             )
         )
+        if exclude_person_ids:
+            faces_stmt = faces_stmt.where(person.c.id.notin_(exclude_person_ids))
         face_rows = conn.execute(faces_stmt).all()
 
-    faces = [row_to_face(row) for row in face_rows]
-    if len(faces) <= max_faces:
-        return faces
-    # More named faces than the cap - hide a random number of them between 1 and max_faces,
-    # not always exactly max_faces (see docstring).
-    return random.sample(faces, random.randint(1, max_faces))
+    return [row_to_face(row) for row in face_rows]
+
+
+def get_named_persons_in_asset(engine: Engine, asset_id: UUID) -> list[str]:
+    """Names of every named, non-hidden, visible person tagged in this specific asset, ordered by
+    name - same eligibility filters as get_random_asset_with_named_faces (isVisible/not deleted,
+    named, not hidden), just scoped to a given asset instead of picking one at random. Powers the
+    report modal's "who's in this photo" context - not part of round generation."""
+    visible_face = asset_face.c.isVisible.is_(True) & asset_face.c.deletedAt.is_(None)
+    stmt = (
+        select(distinct(person.c.name))
+        .select_from(asset_face.join(person, person.c.id == asset_face.c.personId))
+        .where(
+            asset_face.c.assetId == asset_id,
+            visible_face,
+            person.c.name != "",
+            person.c.isHidden.is_(False),
+        )
+        .order_by(person.c.name)
+    )
+    with engine.connect() as conn:
+        return list(conn.scalars(stmt))

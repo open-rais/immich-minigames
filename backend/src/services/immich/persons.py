@@ -10,25 +10,7 @@ from domain.person import Person
 from persistence.immich_tables import asset, asset_face, person
 
 from ._rows import row_to_person
-
-
-def _escape_like(value: str) -> str:
-    """Escapes LIKE/ILIKE wildcard characters in free-typed user input before interpolating it
-    into a pattern - otherwise a literal % or _ in someone's search text would act as a wildcard
-    instead of a literal character."""
-    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-
-
-# Accent-insensitive search (e.g. "Rodriguez" should match stored "Rodríguez") without CREATE
-# EXTENSION unaccent - this role only has SELECT on Immich's `public` schema (see
-# docs/ARCHITECTURE/IMMICH.md) and translate() is a builtin Postgres function, not an extension.
-_ACCENTED_CHARS = "áéíóúÁÉÍÓÚñÑüÜ"
-_FOLDED_CHARS = "aeiouAEIOUnNuU"
-_ACCENT_FOLD_TABLE = str.maketrans(_ACCENTED_CHARS, _FOLDED_CHARS)
-
-
-def _fold_accents(value: str) -> str:
-    return value.translate(_ACCENT_FOLD_TABLE)
+from ._text import word_prefix_conditions
 
 
 def get_persons(
@@ -95,30 +77,50 @@ def get_persons(
     return [row_to_person(row) for row in rows]
 
 
-def search_persons(engine: Engine, query: str, *, offset: int = 0, limit: int = 3) -> list[Person]:
-    """Named people matching every whitespace-separated token in `query` (case- and
-    accent-insensitive), each token matched independently against a *word* in the name - e.g.
-    "rai rodriguez" matches "Raimundo Rodríguez" (each token prefixes a different word,
-    regardless of typed order) but not "Martin Perez" (no mid-word match). Per token, two
-    ILIKE conditions cover "prefixes a word anywhere in the name": the token prefixing the
-    first word, or prefixing any later word (the leading `%` in the second pattern absorbs
-    everything before that word, including other whole words); all tokens' conditions are
-    ANDed together, which is what makes multi-word queries need every token satisfied rather
-    than any one of them. Kept separate from get_persons - its existing name_query is a plain
-    substring filter, and nothing else needs this word-prefix mode. Paginated via
-    offset/limit (small pages, e.g. for infinite scroll UIs), ordered by name for a stable
-    scroll order."""
-    tokens = query.split()
-    if not tokens:
-        return []
+def get_persons_with_birthday_on(engine: Engine, month: int, day: int) -> list[Person]:
+    """Every eligible named person (same isHidden/thumbnailPath/name/birthDate filters as
+    get_persons' named_only+with_birthdate) whose birthDate falls on this month/day, any year -
+    Web Push's daily birthday notification (services/notifications/content.py).
 
-    folded_name = func.translate(person.c.name, _ACCENTED_CHARS, _FOLDED_CHARS)
-    token_conditions = []
-    for token in tokens:
-        escaped = _escape_like(_fold_accents(token))
-        starts_with = folded_name.ilike(f"{escaped}%", escape="\\")
-        contains_word_starting_with = folded_name.ilike(f"% {escaped}%", escape="\\")
-        token_conditions.append(starts_with | contains_word_starting_with)
+    29 February deliberately never matches outside a leap year - not worked around with a nearby
+    date, since inventing "the 28th" would be wrong more years than it's right. Age itself
+    (current_year - birth_year) is the caller's job, not this query's - it doesn't know "today"."""
+    asset_count_agg = func.count(func.distinct(asset_face.c.assetId))
+    stmt = (
+        select(person.c.id, person.c.name, person.c.birthDate, asset_count_agg.label("asset_count"))
+        .select_from(
+            person.outerjoin(
+                asset_face,
+                (asset_face.c.personId == person.c.id)
+                & asset_face.c.deletedAt.is_(None)
+                & asset_face.c.isVisible.is_(True),
+            )
+        )
+        .where(
+            person.c.isHidden.is_(False),
+            person.c.thumbnailPath != "",
+            person.c.name != "",
+            person.c.birthDate.is_not(None),
+            func.extract("month", person.c.birthDate) == month,
+            func.extract("day", person.c.birthDate) == day,
+        )
+        .group_by(person.c.id, person.c.name, person.c.birthDate)
+        .order_by(person.c.name)
+    )
+    with engine.connect() as conn:
+        rows = conn.execute(stmt).all()
+    return [row_to_person(row) for row in rows]
+
+
+def search_persons(engine: Engine, query: str, *, offset: int = 0, limit: int = 3) -> list[Person]:
+    """Named people matching every whitespace-separated token in `query` against a *word* in the
+    name - see ._text.word_prefix_conditions for the actual matching rule. Kept separate from
+    get_persons - its existing name_query is a plain substring filter, and nothing else needs this
+    word-prefix mode. Paginated via offset/limit (small pages, e.g. for infinite scroll UIs),
+    ordered by name for a stable scroll order."""
+    token_conditions = word_prefix_conditions(person.c.name, query)
+    if not token_conditions:
+        return []
 
     asset_count = func.count(func.distinct(asset_face.c.assetId)).label("asset_count")
 
@@ -190,3 +192,38 @@ def get_assets_together_count(engine: Engine, person_a_id: UUID, person_b_id: UU
     )
     with engine.connect() as conn:
         return conn.execute(stmt).scalar() or 0
+
+
+def get_top_co_occurring_persons(
+    engine: Engine, person_id: UUID, *, limit: int = 3, exclude_ids: frozenset[UUID] = frozenset()
+) -> list[tuple[UUID, str, int]]:
+    """Named people ranked by how many assets they share a face tag with `person_id` in, most
+    co-occurrences first - (person_id, name, count) tuples. Powers Trivium's photos_together
+    question type, which needs to *rank* candidates in one query rather than call
+    get_assets_together_count once per candidate (N pairwise queries)."""
+    face_a = asset_face.alias("face_a")
+    face_b = asset_face.alias("face_b")
+    count = func.count(func.distinct(face_a.c.assetId)).label("together_count")
+    stmt = (
+        select(face_b.c.personId, person.c.name, count)
+        .select_from(
+            face_a.join(face_b, face_a.c.assetId == face_b.c.assetId).join(person, person.c.id == face_b.c.personId)
+        )
+        .where(
+            face_a.c.personId == person_id,
+            face_a.c.deletedAt.is_(None),
+            face_a.c.isVisible.is_(True),
+            face_b.c.deletedAt.is_(None),
+            face_b.c.isVisible.is_(True),
+            face_b.c.personId != person_id,
+            person.c.isHidden.is_(False),
+            person.c.name != "",
+        )
+    )
+    if exclude_ids:
+        stmt = stmt.where(face_b.c.personId.notin_(exclude_ids))
+    stmt = stmt.group_by(face_b.c.personId, person.c.name).order_by(count.desc()).limit(limit)
+
+    with engine.connect() as conn:
+        rows = conn.execute(stmt).all()
+    return [(row.personId, row.name, row.together_count) for row in rows]

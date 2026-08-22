@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom"
 import { albumThumbnailUrl, getGame, playRound } from "../../api/games"
 import { GameType, Mode } from "../../api/types/common"
 import type { GameOut, RoundOut } from "../../api/types/common"
-import type { AlbumdleRoundOut } from "../../api/types/immichdle"
+import type { AlbumdleRevealOut, AlbumdleRoundOut } from "../../api/types/immichdle"
 import type { GameComponentProps } from "../catalog"
 import { ErrorScreen, FinishedScreen, IdleScreen } from "../shared/GameScreens"
 import { GuardedBackButton } from "../shared/GuardedBackButton"
@@ -22,6 +22,12 @@ const MODE = Mode.Album
 // required since Albumdle shares its game_type with Persondle (see api/types/immichdle.ts).
 function isAlbumdleRound(round: RoundOut): round is AlbumdleRoundOut {
   return round.game_type === GameType.Immichdle && round.mode === Mode.Album
+}
+
+// GameOut.reveal is a plain union (Persondle/Albumdle share no discriminator field, unlike
+// RoundOut's game_type/mode) - narrowed structurally on a field only Albumdle's shape has.
+function isAlbumdleReveal(reveal: GameOut["reveal"]): reveal is AlbumdleRevealOut {
+  return reveal != null && "album_id" in reveal
 }
 
 interface GameState {
@@ -79,8 +85,8 @@ export function AlbumdleGame({ coverUrl, hasRoundsView, daily = false }: GameCom
       score: g.score,
       finished: true,
       won: lastRound.correct === true,
-      targetName: g.target_album_name ?? null,
-      targetAlbumId: g.target_album_id ?? null,
+      targetName: isAlbumdleReveal(g.reveal) ? g.reveal.album_name : null,
+      targetAlbumId: isAlbumdleReveal(g.reveal) ? g.reveal.album_id : null,
     })
     return true
   }
@@ -141,8 +147,8 @@ export function AlbumdleGame({ coverUrl, hasRoundsView, daily = false }: GameCom
                 g
                   ? {
                       ...g,
-                      targetName: finalState.target_album_name ?? null,
-                      targetAlbumId: finalState.target_album_id ?? null,
+                      targetName: isAlbumdleReveal(finalState.reveal) ? finalState.reveal.album_name : null,
+                      targetAlbumId: isAlbumdleReveal(finalState.reveal) ? finalState.reveal.album_id : null,
                     }
                   : g,
               )

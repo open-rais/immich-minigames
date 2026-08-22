@@ -37,6 +37,7 @@ from services.games_service import GamesService
 from services.immich import ImmichService
 from services.invite_service import InviteService
 from services.ml_service import MLService
+from services.reports_service import ReportsService
 from services.scores_service import ScoresService
 
 
@@ -196,6 +197,11 @@ def daily_games_service(game_repository, game_factory, daily_settings_service, d
 @pytest.fixture
 def scores_service(game_repository):
     return ScoresService(game_repository)
+
+
+@pytest.fixture
+def reports_service(db_session):
+    return ReportsService(db_session)
 
 
 @pytest.fixture(autouse=True)

@@ -1,8 +1,8 @@
 # Backend
 
 FastAPI app in `backend/src/`. Run: `cd backend && uv run uvicorn main:app --app-dir src --port 8000`
-(needs `alembic upgrade head` once first). Tests: `cd backend && uv run pytest` (610 passing, 13
-skipped, as of 2026-08-15).
+(needs `alembic upgrade head` once first). Tests: `cd backend && uv run pytest` (691 passing, 13
+skipped, as of 2026-08-20).
 
 ## Layering
 
@@ -32,12 +32,12 @@ Routes **do not** try/except their own domain exceptions. Each service raises a 
 
 | Exception | Status |
 |---|---|
-| `UnsupportedGameError`, `DuplicateGuessError`, `InvalidGuessError`, `UnknownGameSettingError`, `InvalidGameSettingValueError` | 400 |
+| `UnsupportedGameError`, `DuplicateGuessError`, `InvalidGuessError`, `UnknownGameSettingError`, `InvalidGameSettingValueError`, `InvalidInviteError`, `InvalidReportReasonError` | 400 |
 | `InvalidCredentialsError`, `UnauthorizedError` | 401 |
 | `GameOwnershipError` | 403 |
-| `GameNotFoundError`, `DailyNotEnabledError` | 404 |
-| `RoundNotPendingError`, `DailyAlreadyPlayedError`, `JobAlreadyRunningError` | 409 |
-| `IncompleteGuessError` | 422 |
+| `GameNotFoundError`, `DailyNotEnabledError`, `InviteNotFoundError`, `ReportNotFoundError` | 404 |
+| `RoundNotPendingError`, `DailyAlreadyPlayedError`, `JobAlreadyRunningError`, `EmailAlreadyExistsError`, `UsernameAlreadyExistsError` | 409 |
+| `IncompleteGuessError`, `NotEnoughContentError` | 422 |
 | `RateLimitExceeded` (slowapi) | 429 |
 
 Adding a game exception means adding one line in `main.py`, not a try/except in a route.
@@ -121,7 +121,7 @@ base de datos separada" below. Inside it they sit in a `minigames` schema rather
 with the app owning the whole database that's cosmetic, but it keeps every already-applied
 migration (which hardcodes `schema=`) valid and untouched.
 
-Alembic owns the schema (`backend/alembic/versions/`, currently 0001–0013); `docker-entrypoint.sh`
+Alembic owns the schema (`backend/alembic/versions/`, currently 0001–0014); `docker-entrypoint.sh`
 runs `alembic upgrade head` on every container start, and `db-init` runs it too — as the app role,
 so the tables end up owned by the role that later has to `ALTER` them. `init_db`/`reset_db` in
 `persistence/base.py` exist only for tests.
@@ -138,6 +138,7 @@ so the tables end up owned by the role that later has to `ALTER` them. `init_db`
 | `album_embedding_cache` | Roadmap #14. `album_id` PK, `embedding vector(512)`, `asset_count`, `embedding_count`, `computed_at`. Caches Albumdle's `Similarity` clue's per-album representative CLIP embedding (average across that album's assets, from Immich's `smart_search` table - not face-based) - see `docs/ARCHITECTURE/IMMICH.md`'s "Album similarity" section. Reuses `persistence/ml_cache.py`'s `Vector` type rather than a second hand-rolled one. `embedding_count` is nullable here (unlike the person table) - it genuinely differs from `asset_count` (the average only counts eligible assets with a `smart_search` row), and existing rows from before migration `0013` have no way to know their true value; `NULL` means exactly that, and forces a full recompute the next time the row is touched. |
 | `daily_configs` | Roadmap #G. `(game_type, mode)` PK, `enabled` bool, `values` JSONB - whether a mode is in the daily rotation plus its daily-only setting overrides. |
 | `daily_challenges` | Roadmap #G. `id` PK, unique `(challenge_date, game_type, mode)`, `spec` JSONB (the pre-generated shared content), `settings` JSONB (frozen effective settings for that day). `games.daily_challenge_id` (nullable FK, one partial unique index on `(daily_challenge_id, user_id)` for "one attempt per player") points into this. |
+| `reports` | Roadmap #N (see § Metadata reporting below). `entity_type` (`'asset'`\|`'person'`\|`'album'`), `entity_id` (**not** a FK — points into Immich's database), `reason`, `note` (nullable, ≤200 chars), `user_id` FK, `solved`, `solved_at`. A resolved report is never deleted (`solved` just flips), so it doubles as history. Partial unique index on `(user_id, entity_type, entity_id, reason) WHERE NOT solved` makes a duplicate open report a no-op while still letting the same thing be reported again after a prior report was resolved. |
 
 **Generic rounds table + JSONB payload** is the core persistence decision: adding a game never
 requires a migration, only a `to_payload`/`from_payload` pair.
@@ -386,6 +387,125 @@ generates a challenge), `POST /daily/{type}/{mode}/games` (create/consume today'
 `DAILY_SETTING_SPECS` - the normal `GAME_SETTING_SPECS` plus `no_repeat_days`, or `chain_length` for
 MoreOrLess). `reset` clears only the value overrides; `enabled` is untouched.
 
+## Metadata reporting (roadmap #N)
+
+A player flags a person/album/asset as having bad metadata from the "⋯" menu already on every
+round-review row; an admin reviews and resolves. Three endpoints, all in `api/reports_api.py`
+(player) / `api/admin_reports_api.py` (admin):
+
+| Endpoint | Auth | What |
+|---|---|---|
+| `POST /reports` | any logged-in account | Create - one row per selected reason, `ON CONFLICT DO NOTHING` against the partial unique index above, so reporting the same thing twice while still open is silent. |
+| `GET /reports/context?entity_type=&entity_id=` | any logged-in account | What the report modal shows above the checkboxes (name/birth date for a person; lat/long/city/country/date/named-people-in-photo for an asset; name/date range for an album) - `null`, not 404, when the entity no longer exists in Immich, since reporting itself never depends on that. |
+| `GET /admin/reports?entity_type=&solved=&offset=&limit=`, `GET /admin/reports/counts`, `PATCH /admin/reports/{id}` | `is_admin` | The review panel's three paginated lists (one per `entity_type`), an open-report count per type, and marking resolved/unresolved. Batch-resolves entity names (`ImmichService.get_persons/get_albums/get_assets(ids=...)`) and usernames (`AuthService.usernames_for`) per page, not per row. |
+
+`ReportsService` (`services/reports_service.py`) owns persistence and stays decoupled from Immich -
+`reason`/`entity_type` are plain strings on its own methods, never the `games/report_spec.py`
+enums. `games/report_spec.py` is contract-only (`ReportEntity`, `ReportReason`,
+`REASON_ENTITY: dict[ReportReason, ReportEntity]`) - `POST /reports` validates a submitted reason
+against it (`InvalidReportReasonError`, 400, not the 422 a pydantic validator would give, since
+this is a business rule, not a malformed request) before any row is written.
+
+**Round generation excludes what's reported; searching/guessing never does.** Each game declares
+its own `games/<name>/reports.py::REPORT_EXCLUSIONS: dict[mode, frozenset[ReportReason]]` -
+`games/reports_registry.py` assembles all of them into one `(game_type, mode)`-keyed dict, mirrored
+by a unit test that fails if a `games/registry.py::GAMES` entry has no matching declaration.
+`ReportsService.filter_for(immich_service, game_type, mode)` looks that up, and — only if there's
+at least one open report for a relevant reason — wraps `immich_service` in
+`_ReportsExcludingImmichService` (composition, not a subclass, same shape as
+`_ExcludingImmichService` above): `GameFactory.kwargs_for` and
+`DailyChallengeService._build_spec` both wrap once, up front, so the common case (no open reports)
+costs one query and nothing else. Two rules make "reported but still guessable" true:
+
+- **`ids=` bypasses filtering entirely.** `get_persons`/`get_albums`/`get_assets`'s `ids=` always
+  means "resolve these concrete ids" (a guess lookup - Immichdle, Who'sThatPerson's guessed-name
+  freeze; a display lookup - the admin panel's batch name resolution, `GET /reports/context`),
+  never "sample the pool". The wrapper only widens `exclude_ids` when `ids is None`; search
+  endpoints (`/persons/search`, `/albums/search`) aren't touched by the wrapper at all, so they're
+  unaffected either way.
+- **A sampling call that comes back empty because of the exclusion retries once without it.** A
+  report is a best-effort nudge, not a hard guarantee that could otherwise stall a game mid-run
+  because its whole remaining pool happens to be reported. Who'sThatPerson is the one case that
+  needs a person, not just an asset, excluded mid-pool: `get_random_asset_with_named_faces` gained
+  `exclude_person_ids` for this (see `docs/ARCHITECTURE/IMMICH.md`) - applied to both of that
+  query's statements, same as its existing `isHidden` filter.
+
+For the daily flow, the reports wrapper nests **outside** `_ExcludingImmichService`'s no-repeat
+window in `DailyChallengeService._build_spec` - if the reports wrapper's own empty-result fallback
+retries without report-exclusion, it still goes through the window wrapper underneath and so still
+respects it; the reverse nesting would let a report-emptied pool silently drop the window too. A
+daily challenge already generated is unaffected either way - `ScriptedContent`/
+`ScriptedCandidateProvider` replay the frozen `spec` JSONB and never call Immich at all, so the
+wrapper has nothing to intercept there.
+
+## Push notifications (roadmap #O)
+
+Web Push (RFC 8291/8292, VAPID) - no third-party account or SDK involved. The browser itself picks
+which push service a subscription goes through (Chrome/Edge → Google's, Firefox → Mozilla's,
+Safari → Apple's); VAPID is just this backend proving to that service it's the legitimate sender,
+via a key pair it generates and owns (`scripts/generate_vapid_keys.py`). All three
+`VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_CONTACT_EMAIL` unset (the default) turns the whole
+feature off - `GET /config`'s `push_public_key` comes back `null` and the frontend hides its
+settings section entirely, gated on all three together (not just the public key) so a partial
+config can't leave the UI offering something that can subscribe but can never send.
+
+`services/notifications/` (mirrors `services/immich/`'s facade-over-a-package shape):
+
+| Module | Job |
+|---|---|
+| `__init__.py` | `NotificationService` facade - preference CRUD, subscribe/unsubscribe, and `send_to_user` (the per-device send-and-record loop both the manual test and the scheduler share). |
+| `sender.py` | Wraps `pywebpush`. A `requests.Session` subclass forces `allow_redirects=False` - pywebpush sends over `requests`, not `httpx`, so this is where the "don't follow a push-service redirect" mitigation actually lives, not in a client constructor arg. Maps 404/410 to "delete the subscription", everything else to "transient, just count it". |
+| `endpoint_safety.py` | The SSRF guard for `POST /notifications/subscriptions` - that endpoint takes a URL from the client that the backend will later POST to, so without this an authenticated user could register an internal address and turn the backend into a proxy into its own network. Order: scheme (`https` only) → host allowlist (`PUSH_ALLOWED_HOSTS`, wildcard-subdomain patterns) → DNS resolution, rejecting private/loopback/link-local/multicast results. |
+| `content.py` | What's notifiable *today* - `todays_birthdays`/`todays_album_anniversaries` against Immich, installation-wide facts computed once per tick, not per user. Excludes people with an open `person_birth_date` report; no equivalent exclusion exists for albums (no `ReportReason` currently captures "this album's date is wrong" - adding one is a reports-feature change of its own, left out on purpose). |
+| `messages.py` | ~10 strings × 4 languages, duplicated by hand from `frontend/src/i18n/locales/*.json` rather than shared - the payload is composed here because it travels to a *closed* app (the service worker has neither `localStorage` nor i18next), and it's cheap enough that the coupling a shared source of truth would add isn't worth it. |
+| `schedule.py` | Pure decision functions, no I/O - `active_kinds_for_tick(now)` (which of the four fixed times of day, if any, `now` falls within a 60-minute grace window of) and `decide_daily_notification(...)` (the streak rule table below). `now`/pre-fetched data always come in as parameters, same "as of a date" convention `DailyGamesService.get_daily_status` already uses - testable with literal values, no freezegun or thread involved. |
+| `runner.py` | The scheduler thread - ticks every 60s, mirrors `services/embedding_jobs.py`'s thread/event shape with one real difference: `embedding_jobs.py` only ever starts on-demand, from an admin route; this one starts unconditionally in `main.py`'s `lifespan` (a no-op if push isn't configured), because it's a real schedule, not tied to any request. |
+
+**The streak rule** (`schedule.decide_daily_notification`) decides between two mutually exclusive
+daily notifications per user per day - "new daily's up" at 10:00, or "you're about to lose a
+streak" at 21:00, never both. With `H` = enabled daily modes, `U ⊆ H` = not finished today,
+`racha(m)` = consecutive days played **through yesterday** (not today - see below): 10:00 fires
+only if the user has no active streak anywhere in `H`; 21:00 only if they do, `U ≠ ∅`, and either
+names the largest at-risk streak in `U` (ties broken by `games/registry.py`'s declaration order,
+not randomly) or, if every streaked mode was already played today, sends a generic "today's games
+are ending" instead.
+
+**Through yesterday, never through today.** `persistence/games_repository.py::daily_streaks`
+already counts a streak through **today** (right for the leaderboard badge it backs), and
+`daily_streaks_by_mode` (same walk, generalized over every mode/user in one query) takes `as_of` as
+an explicit parameter rather than hardcoding either - the scheduler always passes `today - 1`.
+Reusing "through today" here would make every mode not yet played today read as streak 0 and
+collapse the whole rule table, since a mode played every day including today and one whose streak
+just started today would look identical.
+
+**Idempotency and multi-process safety** - two different mechanisms for two different failure
+modes:
+- *Restart mid-window*: `notification_deliveries` (`user_id`, `kind`, `day`), unique-indexed -
+  `INSERT ... ON CONFLICT DO NOTHING ... RETURNING id` marks a delivery **before** sending, and a
+  restart re-processing an already-marked day sends nothing twice. Checked via `RETURNING`, not
+  `rowcount` - this driver reports `rowcount = -1` for `ON CONFLICT DO NOTHING` regardless of
+  whether the conflict actually happened, which silently makes every insert look skipped if you
+  trust it.
+- *More than one backend process*: `pg_try_advisory_lock` (non-blocking - a tick that loses the
+  race just skips this minute) around the whole tick, keyed by hashing a `"notif-tick"`-prefixed
+  string distinct from `daily_challenge_service.py`'s `"daily:..."` keys, so the two locks can
+  never collide. Unlike that service's `pg_advisory_xact_lock` (transaction-scoped, releases
+  itself on commit), `pg_try_advisory_lock` is **session**-scoped - `runner.py` releases it with
+  `pg_advisory_unlock` explicitly, in the same session that acquired it, before that session's
+  connection goes back to the pool. Skipping that would leave the lock held by whichever unrelated
+  session happens to reuse the same pooled connection next.
+
+**Time zone**: a single `TZ` per installation (`docker-compose.app.yml` passes it through; unset
+means the container's own default, usually UTC), read implicitly by Python's `datetime.now()` -
+there's no per-user time zone and no `Settings` field for it. This is a real footgun worth stating
+plainly: `logging_setup.py`'s formatters always print a log line's own timestamp in **UTC**,
+regardless of `TZ`, but the scheduler compares against **local** time - reading a time off a log
+line and pasting it into a hand-test is silently off by the UTC offset. `NotificationRunner.start()`
+logs the local time it's actually comparing against for exactly this reason.
+`POST /admin/notifications/run-tick` (admin-only, optional `now=` query param) sidesteps the whole
+question for testing - it simulates any local time directly, no clock-watching or `SLOT_TIMES`
+edits required.
+
 ## Logging (roadmap #I)
 
 Goal: answer "who did what, when, from
@@ -452,3 +572,6 @@ because constructing `Settings()` re-reads the file from disk.
 | `RATE_LIMIT_STORAGE_URI` | Roadmap #H, F5. Backing store for `api/rate_limit.py`'s counters. `memory://` (default) — fine for this app's single-backend-container deployment; `redis://host:port` only matters if more than one backend process shares the same traffic. |
 | `LOG_LEVEL` | Roadmap #I (see § Logging). Ordinary app logging only — `audit`/`access` always stay at INFO. |
 | `LOG_FORMAT` | Roadmap #I. `console` (default for bare `uv run uvicorn`) or `json` (what the Docker image defaults to via its own `Dockerfile`, regardless of this file). |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_CONTACT_EMAIL` | Roadmap #O (see § Push notifications). Generate a pair with `uv run python -m scripts.generate_vapid_keys`. All three unset (default) turns push off entirely. Rotating the private key invalidates every existing subscription, same as `JWT_SECRET` with sessions. |
+| `PUSH_ALLOWED_HOSTS` | Roadmap #O. SSRF allowlist for `POST /notifications/subscriptions` — comma-separated, `*.` prefix matches any subdomain. Defaults to every major browser's push service; only add to it, never remove the restriction. |
+| `TZ` | Roadmap #O. Not a `Settings` field — a bare OS/container env var Python's `datetime.now()` reads implicitly. What the four scheduled notification times are timed against; unset means the container's own default (usually UTC), not your local time. |

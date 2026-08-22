@@ -29,81 +29,58 @@ Cuando se complete un item, marcar su checkbox.
 - [x] e. Cambiar manera de guardar juegos antes de pasar a #G, para evitar que al actualizar la página se pierda el juego:
 - [x] f. Cambios a admin antes de pasar a daily:
 - [x] G. Daily games (misma seed para cada usuario, solo se juega 1 vez al día, se puede ver la partida si ya se jugó, se puede compartir un link para invitar a jugar (Tipo wordle, etc)):
-- [x] H. Cambio de sistema de usuarios (login obligatorio, invitaciones, reset de contraseña,
-      rate limiting sesión-o-IP - ver `docs/TODO/NEW-AUTH.md`).
+- [x] H. Cambio de sistema de usuarios (login obligatorio, invitaciones, reset de contraseña, rate limiting sesión-o-IP).
 - [X] I. Agregar Logging (para auditoría).
 - [x] 11. API y frontend para Timeline
 - [x] 12. MoreOrLess: nueva modalidad `album-asset-count`
 - [X] J. Code-Review completo
 - [X] g. Config page
 - [X] 13. MoreOrLess: nueva modalidad `person-birth-date` (probablemente jugarlo sea muy fácil, pero hacerlo igual)
-  - El juego no mostrará more/less en los botónes, ya que será esta persona nació antes/después. Eso serán los botónes (before/after, antes/después)
 - [x] 14. Immichdle: nueva modalidad `albumdle`
 - [X] h. Arreglos de UI/UX
 - [X] K. En leaderboard de daily, al lado del nombre de cada persona, debería salir un badge indicando la racha de días seguidos que lleva el usuario completando el juego (da igual si pierde o no, solo de haber jugado el daily)
-- [ ] i. Traducir al francés y alemán
+- [X] i. Traducir al francés y alemán
 <!-- 🎉 v1.0.0 🎉 -->
-- [ ] j. Añadir script de desinstalación limpia (una manera segura de eliminar rastros de esta app, sin tocar nada de immich)
-  - Si es posible y simple, que el script cree un snapshot de la db en caso de que después se quiera restaurar la app
-    - En este caso, evaluar alguna de estas opciones
-      - Crear un sistema de backup para toda la app (backups periodicos, manera de restaurar), de esta forma se aprovecha este sistema para volver a tener la app
-      - Usar un script al inicio que restaure una instalación anterior
-      - Otra opción
-- [ ] 15. Admin Workers: Hacer que en el panel de admin haya un botón para procesar vectores de personas/albums faltanes/reprocesar todos
-  - Hacer que sea con workers asincronos
-- [ ] L. Sistema de reporte
-  - En ver juego, en botón de ..., agregar un botón para reportar que abre un modal para enviar reporte
-    - Si se reporta una persona, las opciones para seleccionar:
-      - Fecha de nacimiento mala
-      - Nombre y cara no hacen match
-      - Nombre mal escrito
-    - Si se reporta un album, las opciones para seleccionar
-      - Portada y album no hacen match
-      - Nombre mal escrito
-    - Si se reporta un asset:
-      - Ubicación mal ingresada
-      - Fecha mal ingresada
-      - Cara en asset no hace match
-  - desde el panel de admin, agregar una opción para ir a la página de reportes:
-    - 3 listas, 1 para cada tipo (asset, person, album)
-    - cada lista con Infinite scroll
-    - tendrá botón de ver en immich, además de botón para marcar como resuelto
-  - En juegos que dependan de la fecha, excluir las reportadas con fecha mala
-  - En juegos que dependan de fecha de nacimiento, excluir esas
-  - ... así para cada reporte
-  - Ojo que es para la generación de rondas solamente, pero igual si se debería poder intentar adivinar una persona mala (ej: en immichdle o who's that person si puedo buscar en el buscador aunque haya algo malo, solo que no debe poder ser una persona mala la que esté por adivinar)
-  - Si alguien juega un daily y reporta, ese daily quedará con ese asset igualmente, aunque esté mal marcado
-- [ ] M. PWA básica:
-  - ícono de la app
-  - Notificaciones:
-    - 10:00 am: ya está disponible el nuevo daily
-    - 9:00 pm: no has jugado el diario, puedes perder tu racha de {N}
-  - Sin caché ni offline features aún
+- [X] L. Optimizar/Mejorar cargas con caché en frontend
+- [X] M. Hacer testing automático para el frontend
+- [x] 15. Admin Workers: Hacer que en el panel de admin haya un botón para procesar vectores de personas/albums faltanes/reprocesar todos
+- [x] N. Sistema de reporte
+- [X] O. PWA básica:
+- [X] P. Juego Trivium.
+- [ ] Q. Herramientas
+  - [ ] Q.1. Personas similares:
+    Selecciona una persona, se ordenará en una lista las personas más similares por promedio ML (Nombradas y no nombradas) con tal de poder "abrir en immich" y hacer merge
+  - [ ] Q.2. Ubicaciones favoritas:
+    - Marca en el mapa algunas ubicaciones que son comúnes o conocidas
+    - O toca una foto que tenga ubicación y nombrala
+  - [ ] Q.3. Sin ubicacion:
+    - Ordena fotos que no tengan ubicación y permite seleccionar la ubicación guardada
+    - \*Aún no está planeado cambiar la metadata, por ahora permitir copiar lat/log y "abrir en immich" para editar
+  - [ ] Q.4. Parecido entre personas:
+    Una vista que permite buscar personas y seleccionarlas, lo que crea una matriz de similitud entre las personas seleccionadas.
+  - [ ] Q.5. (Experimental) Fecha incorrecta por cara:
+    - Selecciona una persona que tenga muchas fotos (en distintos años)
+    - Analiza el eje principal en que se mueve el vector entre las fotos antiguas y las nuevas, luego busca outliers (fotos que parezca tener otra edad) y ordena las fotos según qué tan alejado está del promedio que debería tener su cara a esa edad (deberían aparecer imagenes de fotos de cuando era niño, o fotos con fecha mal asignada)
+- [ ] j. QoL Tips: Agregar un pequeño badge que aparezca de forma aleatoria al terminar algun juego
+  - Aparece/No aparece de forma aleatoria, es decir, no aparecerá después de cada juego, aparecerá solo algunas veces. El mensaje que tendrá también será aleatorio
+  - Mensajes que puede decir:
+    - ¿Algún error en el juego? En "Ver Juego" puedes reportar un error.
+    - ¿Quieres ver cómo te fue? Entra a "Clasificación".
+    - Puedes revivir la partida en "Ver Juego".
+    - Si quieres volver a ver este juego después, puedes ir a tu perfil y ver tus juegos pasados.
+    - En "Ver juegos" puedes ver cada ronda y abrir cada uno en Immich.
+    - \*Si es daily: Comparte los resultados por mensaje desde el botón de "Compartir". Si juegas todos los juegos diarios aparecerá un botón en el menú con un resumen de los resultados totales.
+- [ ] k. QoL Nav: mejor navegación entre leaderboards:
+  - Desde leaderboard de daily, en el título habrá "< Titulo >", y si toco las flechas me moveré entre los distintos juegos daily.
+- [ ] l. QoL Nav: Mejor navegación entre dailies.
+  - Si yo termino un juego daily, se abrirá un modal con los juegos daily que no he jugado
+  - Si yo termino el último daily, se abrirá el modal de compartir todos los juegos por mensaje
 - [ ] 16. Agregar sistema de pistas a Immichdle (Reconsiderandolo, dado que ahora creo que está bien así como está)
-- [ ] 17. Geoguessr: nueva modalidad `Country`
+- [ ] 17. Geoguessr: nueva modalidad `Country` (Reconsiderandolo por el tema del reverse geo gratis)
 - [ ] 18. Geoguessr: nueva modalidad `City`
 - [ ] 19. Dateguessr: nueva modalidad `Year`
 - [ ] 20. Dateguessr: nueva modalidad `Month`
 - [ ] 21. Timeline: nueva modalidad `Level`
-
-## Features condicionales (sin posición fija todavía)
-
-Estas no tienen un número fijo en la lista de arriba porque su momento exacto depende de cómo vaya
-avanzando el proyecto. Sí tienen restricciones de orden ya decididas:
-
-| Feature | Debe ir después de | Debe ir antes de | Notas |
-|---|---|---|---|
-| **Redis** | 10 | - | Crucial para el proyecto, pero aún no entiendo cómo se usa ni cuales son sus casos de uso (soy principiante). Se prefiere ver el proyecto funcionando correctamente primero (al menos hasta el item 9) antes de meterlo. Nota: el caché simple en proceso de `get_immich_service()`/`Settings` (`functools.lru_cache`, sin estado compartido entre procesos) ya se resolvió en el punto 4 sin Redis - esta fila es sobre un caché real (compartido/distribuido), no sobre eso. | <!-- potencial v1.0.0 según lo demás que haya implementado -->
-| **Testing E2E de frontend (Playwright)** | e | - | Surgió al verificar el punto e: no había manera de comprobar visualmente el flujo Continuar/Nuevo juego sin instalar Playwright (headless Chromium) en el sandbox, y se decidió no instalarlo puntualmente para eso. Queda como tarea propia: agregar Playwright (`@playwright/test` o `pytest-playwright`) como dependencia de test E2E real, con specs versionados, corriendo en CI (github workflows, ver punto A). Momento exacto sin definir. |
-
-## Limitaciones conocidas (menores, no bloquean nada)
-
-- **MoreOrLess, animación de transición entre rondas**: el eje/distancia del deslizamiento
-  (`frontend/src/games/MoreOrLess/MoreOrLessGame.tsx`) se calcula una sola vez al empezar la
-  animación (~1.4-1.9s de punta a punta). Si en ese lapso cambia el breakpoint desktop/móvil -
-  rotar el celular, redimensionar la ventana - la animación puede quedar con el eje viejo por esa
-  única transición. Caso muy borde (ventana de tiempo corta, acción poco común mientras se está
-  jugando); no se considera prioritario arreglarlo.
 
 ## Explícitamente fuera de este roadmap
 

@@ -15,6 +15,19 @@
       "light": "Hell",
       "dark": "Dunkel",
       "system": "System"
+    },
+    "notifications": {
+      "title": "Benachrichtigungen",
+      "unsupported": "Erfordert, dass die App über HTTPS bereitgestellt wird",
+      "noPushManager": "Füge die App deinem Startbildschirm hinzu, um Benachrichtigungen zu aktivieren",
+      "denied": "Du hast Benachrichtigungen für diese App blockiert - aktiviere sie erneut in deinen Browsereinstellungen",
+      "enablePush": "Push-Benachrichtigungen",
+      "activationError": "Benachrichtigungen konnten nicht aktiviert werden - versuche es erneut",
+      "dailyReminders": "Erinnerungen an das tägliche Spiel",
+      "birthdays": "Geburtstage",
+      "albumAnniversary": "Album-Jahrestage",
+      "sendTest": "Testbenachrichtigung senden",
+      "testError": "Die Testbenachrichtigung konnte nicht gesendet werden"
     }
   },
   "mainMenu": {
@@ -45,7 +58,8 @@
       "whosThatPerson": "🧑‍🧑‍🧒‍🧒 {{correct}}/{{total}} Personen",
       "km": "{{value}}km",
       "days": "{{count}} Tage",
-      "timeline": "🃏 {{count}} Karten"
+      "timeline": "🃏 {{count}} Karten",
+      "trivium": "🧠 {{count}} Fragen"
     }
   },
   "leaderboard": {
@@ -229,6 +243,38 @@
       "orderBadge": "#{{count}}"
     }
   },
+  "trivium": {
+    "title": "Trivium",
+    "modes": {
+      "birthday": "Geburtstag",
+      "photos": "Fotos",
+      "location": "Ort",
+      "mixed": "Gemischt"
+    },
+    "start": {
+      "description": "Beantworte Trivia-Fragen zu deinen Fotos und den Personen darauf. Eine falsche Antwort - oder abgelaufene Zeit - beendet das Spiel."
+    },
+    "questions": {
+      "birthdayYear": "In welchem Jahr wurde {{name}} geboren?",
+      "birthdayDayMonth": "Wann hat {{name}} Geburtstag?",
+      "birthdayFullDate": "An welchem Tag wurde {{name}} geboren?",
+      "photosTotalAssets": "Wer von diesen Personen hat insgesamt die meisten Fotos?",
+      "photosTogether": "Wer von diesen Personen hat die meisten Fotos mit {{name}}?",
+      "photosFirstAssetYear": "Aus welchem Jahr stammt {{name}}s erstes Foto?",
+      "locationCountry": "In welchem Land wurde dieses Foto aufgenommen?",
+      "locationCity": "In welcher Stadt wurde dieses Foto aufgenommen?",
+      "mixedFaceToName": "Wie heißt diese Person?",
+      "mixedNameToFace": "Wer ist {{name}}?"
+    },
+    "result": {
+      "correct": "Richtig!",
+      "wrong": "Falsche Antwort",
+      "timeout": "Zeit abgelaufen!"
+    },
+    "rounds": {
+      "answeredIn": "Beantwortet in {{seconds}}s"
+    }
+  },
   "auth": {
     "fields": {
       "email": "E-Mail",
@@ -294,6 +340,22 @@
       "title": "Benutzer",
       "description": "App-Konten verwalten",
       "loading": "Benutzer werden geladen..."
+    },
+    "reports": {
+      "title": "Meldungen",
+      "description": "Von Spielern gemeldete Metadatenprobleme prüfen",
+      "sections": {
+        "asset": "Fotos",
+        "person": "Personen",
+        "album": "Alben"
+      },
+      "showSolved": "Gelöste anzeigen",
+      "loading": "Meldungen werden geladen...",
+      "empty": "Keine Meldungen hier.",
+      "deletedEntity": "(gelöscht)",
+      "reportedBy": "Gemeldet von {{username}} am {{date}}",
+      "markSolved": "Als gelöst markieren",
+      "markUnsolved": "Wieder öffnen"
     },
     "games": {
       "description": "Konfiguration für jedes Spiel bearbeiten",
@@ -368,6 +430,31 @@
         "all": "alle werden neu verarbeitet"
       },
       "failed": "Job fehlgeschlagen: {{error}}"
+    }
+  },
+  "reports": {
+    "menuItem": "Melden",
+    "modal": {
+      "title": "Problem melden",
+      "notePlaceholder": "Zusätzliche Details (optional)",
+      "submit": "Meldung senden",
+      "cancel": "Abbrechen",
+      "success": "Danke, deine Meldung wurde gesendet.",
+      "done": "Fertig",
+      "showMore": "{{count}} weitere anzeigen"
+    },
+    "error": {
+      "generic": "Meldung konnte nicht gesendet werden - versuche es erneut"
+    },
+    "reasons": {
+      "person_birth_date": "Geburtsdatum fehlt oder ist falsch",
+      "person_name_face_mismatch": "Name und Gesicht passen nicht zusammen",
+      "person_name_spelling": "Name ist falsch geschrieben",
+      "album_cover_mismatch": "Cover und Albumname passen nicht zusammen",
+      "album_name_spelling": "Name ist falsch geschrieben",
+      "asset_location": "Standort fehlt oder ist falsch",
+      "asset_date": "Falsches Datum",
+      "asset_face_mismatch": "Gesicht passt nicht zu dieser Person"
     }
   }
 }

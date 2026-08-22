@@ -98,9 +98,14 @@ export function TimelineCard({
         </div>
       )}
       {actions && (
+        // Just the dark circular backdrop for legibility over the photo - the trigger's own icon
+        // color is forced white via EntryOptionsMenu's triggerClassName prop (TimelineRounds.tsx),
+        // not a blanket `[&_button]` descendant selector here: that used to also catch the
+        // popover's own row buttons (ImmichLink/ReportMenuItem) once opened, since they're still
+        // DOM descendants of this div despite the popover itself being `position: fixed`.
         <div
           onClick={(e) => e.stopPropagation()}
-          className="absolute top-1.5 right-1.5 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/40 [&_button]:text-white/90"
+          className="absolute top-1.5 right-1.5 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/40"
         >
           {actions}
         </div>

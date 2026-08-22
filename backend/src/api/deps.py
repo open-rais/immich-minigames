@@ -8,6 +8,7 @@ from typing import Annotated
 from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
+from config import Settings, get_settings
 from persistence.base import get_session_factory
 from persistence.games_repository import GameRepository
 from services.daily_challenge_service import DailyChallengeService
@@ -20,6 +21,9 @@ from services.games_service import GamesService
 from services.immich import ImmichService
 from services.invite_service import InviteService
 from services.ml_service import MLService
+from services.notifications import NotificationService
+from services.notifications.runner import NotificationRunner
+from services.reports_service import ReportsService
 from services.scores_service import ScoresService
 
 _session_factory = get_session_factory()
@@ -79,12 +83,34 @@ def get_game_repository(session: Annotated[Session, Depends(get_db_session)]) ->
     return GameRepository(session)
 
 
+def get_reports_service(session: Annotated[Session, Depends(get_db_session)]) -> ReportsService:
+    return ReportsService(session)
+
+
+def get_notifications_service(
+    session: Annotated[Session, Depends(get_db_session)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> NotificationService:
+    return NotificationService(session, settings)
+
+
+# Here (not private to api/admin_notifications_api.py) so main.py's lifespan can also depend on it
+# (to start it at boot and shut it down on exit) without importing an api/*_api.py router module
+# for it - same reasoning as get_embedding_job_runner above. Reuses get_immich_service()/
+# get_ml_service()'s memoized instances rather than constructing a second pair of connection
+# pools that would otherwise sit idle next to the ones every request already uses.
+@lru_cache(maxsize=1)
+def get_notification_runner() -> NotificationRunner:
+    return NotificationRunner(_session_factory, get_settings(), get_immich_service(), get_ml_service())
+
+
 def get_game_factory(
     session: Annotated[Session, Depends(get_db_session)],
     immich_service: Annotated[ImmichService, Depends(get_immich_service)],
     ml_service: Annotated[MLService, Depends(get_ml_service)],
+    reports_service: Annotated[ReportsService, Depends(get_reports_service)],
 ) -> GameFactory:
-    return GameFactory(session, immich_service, ml_service, GameSettingsService(session))
+    return GameFactory(session, immich_service, ml_service, GameSettingsService(session), reports_service)
 
 
 # Here (not private to api/api.py) so api/daily_api.py can also depend on it without api.py <->
@@ -102,9 +128,13 @@ def get_daily_games_service(
     repository: Annotated[GameRepository, Depends(get_game_repository)],
     factory: Annotated[GameFactory, Depends(get_game_factory)],
     immich_service: Annotated[ImmichService, Depends(get_immich_service)],
+    reports_service: Annotated[ReportsService, Depends(get_reports_service)],
 ) -> DailyGamesService:
     return DailyGamesService(
-        repository, factory, DailySettingsService(session), DailyChallengeService(session, immich_service)
+        repository,
+        factory,
+        DailySettingsService(session),
+        DailyChallengeService(session, immich_service, reports_service),
     )
 
 
