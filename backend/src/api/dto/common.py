@@ -19,6 +19,7 @@ Everything that doesn't spread across every game/mode lives in a sibling module 
 keeping this file scoped to what's genuinely cross-game.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Annotated, Any
@@ -28,7 +29,14 @@ from pydantic import BaseModel, Discriminator, Tag
 
 from api.dto.dateguessr import DateguessrPlayRoundIn, DateguessrRoundOut
 from api.dto.geoguessr import GeoguessrPlayRoundIn, GeoguessrRoundOut
-from api.dto.immichdle import AlbumdlePlayRoundIn, AlbumdleRoundOut, ImmichdlePlayRoundIn, ImmichdleRoundOut
+from api.dto.immichdle import (
+    AlbumdlePlayRoundIn,
+    AlbumdleRevealOut,
+    AlbumdleRoundOut,
+    ImmichdlePlayRoundIn,
+    ImmichdleRoundOut,
+    PersondleRevealOut,
+)
 from api.dto.more_or_less import MoreOrLessPlayRoundIn, MoreOrLessRoundOut
 from api.dto.timeline import TimelinePlayRoundIn, TimelineRoundOut
 from api.dto.trivium import TriviumPlayRoundIn, TriviumRoundOut
@@ -108,6 +116,17 @@ def _round_spec(round_: BaseRound) -> _RoundSpec:
     return spec
 
 
+# One registry entry per concrete Game class that reveals something extra once finished (today:
+# Persondle/Albumdle's mystery target) - twin of _ROUND_SPECS above, same motivation: avoids an
+# isinstance ladder in GameOut.from_game (see that method) that every future "reveal something on
+# finish" game/mode would otherwise have to extend. Absent from this dict is exactly "no reveal for
+# this game", not an oversight to fix - most games have nothing to reveal.
+_REVEAL_BUILDERS: dict[type[BaseGame], Callable[[BaseGame], BaseModel]] = {
+    PersondleGame: lambda game: PersondleRevealOut.from_target(game.target),
+    AlbumdleGame: lambda game: AlbumdleRevealOut.from_target(game.target),
+}
+
+
 def round_out_from_round(
     round_: BaseRound,
 ) -> (
@@ -140,26 +159,10 @@ class GameOut(BaseModel):
     score: int
     finished: bool
     rounds: list[RoundOut]
-    # Only ever populated for a finished Persondle game (see PersondleGame.target) - the mystery
-    # person is revealed once the game is over, win or lose. Null for every other game/mode and for
-    # a Persondle game still in progress, where revealing it would be a straight cheat.
-    target_person_id: UUID | None = None
-    target_person_name: str | None = None
-    # The target row in the post-game GuessTable. Same redaction condition as target_person_id/name
-    # above - PersonSnapshot already carries these; surfaced here too for that table.
-    target_asset_count: int | None = None
-    target_birth_date: date | None = None
-    target_first_asset_date: date | None = None
-    # Same role as target_person_* above, but for a finished Albumdle game (roadmap #14) -
-    # AlbumSnapshot's own fields, surfaced for that mode's post-game GuessTable target row.
-    target_album_id: UUID | None = None
-    target_album_name: str | None = None
-    target_album_asset_count: int | None = None
-    target_album_first_asset_date: date | None = None
-    target_album_dominant_person_id: UUID | None = None
-    target_album_dominant_person_name: str | None = None
-    target_album_dominant_extra_count: int | None = None
-    target_album_unique_named_person_count: int | None = None
+    # Only ever populated once a game whose class is in _REVEAL_BUILDERS above is finished (today:
+    # Persondle/Albumdle's mystery target) - null for every other game/mode and for one of these
+    # two still in progress, where revealing it would be a straight cheat.
+    reveal: PersondleRevealOut | AlbumdleRevealOut | None = None
     # The *live* configured total for this game
     # instance (BaseGame.total_rounds/total_people, overridden by Geoguessr/Dateguessr and
     # WhosThatPerson respectively), so the frontend's round counter (e.g. "Round 2 of 5") reflects
@@ -181,36 +184,8 @@ class GameOut(BaseModel):
 
     @classmethod
     def from_game(cls, game: BaseGame) -> "GameOut":
-        target_id = None
-        target_name = None
-        target_asset_count = None
-        target_birth_date = None
-        target_first_asset_date = None
-        if isinstance(game, PersondleGame) and game.finished:
-            target_id = game.target.id
-            target_name = game.target.name
-            target_asset_count = game.target.asset_count
-            target_birth_date = game.target.birth_date
-            target_first_asset_date = game.target.first_asset_date
-
-        target_album_id = None
-        target_album_name = None
-        target_album_asset_count = None
-        target_album_first_asset_date = None
-        target_album_dominant_person_id = None
-        target_album_dominant_person_name = None
-        target_album_dominant_extra_count = None
-        target_album_unique_named_person_count = None
-        if isinstance(game, AlbumdleGame) and game.finished:
-            target = game.target
-            target_album_id = target.id
-            target_album_name = target.name
-            target_album_asset_count = target.asset_count
-            target_album_first_asset_date = target.first_asset_date
-            target_album_dominant_person_id = target.dominant_person_ids[0] if target.dominant_person_ids else None
-            target_album_dominant_person_name = target.dominant_person_name
-            target_album_dominant_extra_count = max(0, len(target.dominant_person_ids) - 1)
-            target_album_unique_named_person_count = target.unique_named_person_count
+        build_reveal = _REVEAL_BUILDERS.get(type(game))
+        reveal = build_reveal(game) if build_reveal is not None and game.finished else None
 
         return cls(
             id=game.id,
@@ -219,19 +194,7 @@ class GameOut(BaseModel):
             score=game.score,
             finished=game.finished,
             rounds=[round_out_from_round(r) for r in game.rounds],
-            target_person_id=target_id,
-            target_person_name=target_name,
-            target_asset_count=target_asset_count,
-            target_birth_date=target_birth_date,
-            target_first_asset_date=target_first_asset_date,
-            target_album_id=target_album_id,
-            target_album_name=target_album_name,
-            target_album_asset_count=target_album_asset_count,
-            target_album_first_asset_date=target_album_first_asset_date,
-            target_album_dominant_person_id=target_album_dominant_person_id,
-            target_album_dominant_person_name=target_album_dominant_person_name,
-            target_album_dominant_extra_count=target_album_dominant_extra_count,
-            target_album_unique_named_person_count=target_album_unique_named_person_count,
+            reveal=reveal,
             total_rounds=game.total_rounds,
             total_people=game.total_people,
             face_box_growth=game.face_box_growth,
