@@ -14,7 +14,13 @@ import { ReportMenuItem } from "../shared/ReportMenuItem"
 import { RevealResultCard } from "../shared/RevealResultCard"
 import { RoundStepper } from "../rounds/RoundStepper"
 import { useRoundStepper } from "../shared/useRoundStepper"
-import { FACE_ONLY_ALTERNATIVE_KINDS, PERSON_ALTERNATIVE_KINDS, QUESTION_TEXT_KEYS, formatAlternative } from "./questionText"
+import {
+  FACE_ONLY_ALTERNATIVE_KINDS,
+  PERSON_ALTERNATIVE_KINDS,
+  QUESTION_TEXT_KEYS,
+  formatAlternative,
+  questionSegments,
+} from "./questionText"
 import type { TriviumOptionState } from "./TriviumOption"
 import { TriviumOption } from "./TriviumOption"
 
@@ -124,7 +130,14 @@ export function TriviumRounds({ game, onBack }: RoundsComponentProps) {
               <AssetPhoto src={assetPhotoSrc} alt="" />
             </div>
           )}
-          <p className="text-xl font-bold text-ink md:text-2xl">{questionText}</p>
+          <p className="text-xl font-bold text-ink md:text-2xl">
+            {questionSegments(questionText).map((segment, index, segments) => (
+              <span key={index} className={segment.bold ? "font-extrabold text-primary" : undefined}>
+                {segment.word}
+                {index < segments.length - 1 ? " " : ""}
+              </span>
+            ))}
+          </p>
         </div>
       </div>
 

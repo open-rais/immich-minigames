@@ -15,7 +15,13 @@ import { RevealResultCard } from "../shared/RevealResultCard"
 import { ScoreBadge } from "../shared/ScoreBadge"
 import { useQueuedThumbnail } from "../shared/thumbnailQueue"
 import { useRoundGame } from "../shared/useRoundGame"
-import { FACE_ONLY_ALTERNATIVE_KINDS, PERSON_ALTERNATIVE_KINDS, QUESTION_TEXT_KEYS, formatAlternative } from "./questionText"
+import {
+  FACE_ONLY_ALTERNATIVE_KINDS,
+  PERSON_ALTERNATIVE_KINDS,
+  QUESTION_TEXT_KEYS,
+  formatAlternative,
+  questionSegments,
+} from "./questionText"
 import type { TriviumOptionState } from "./TriviumOption"
 import { TriviumOption } from "./TriviumOption"
 import { TriviumTimerBar } from "./TriviumTimerBar"
@@ -163,7 +169,7 @@ export function TriviumGame({ coverUrl, hasRoundsView, daily = false }: GameComp
   const questionTextKey = round ? QUESTION_TEXT_KEYS[round.question_kind] : undefined
   const params = round?.params as PersonRef | undefined
   const questionText = questionTextKey && params ? t(questionTextKey, { name: params.person_name }) : ""
-  const questionWords = questionText ? questionText.split(" ") : []
+  const questionWords = questionText ? questionSegments(questionText) : []
 
   // Starts the word-by-word reveal once a fresh round has fully loaded - keyed on round?.id (not
   // phase) so this never re-fires between "guessing" and "revealed" of the same round, only for a
@@ -348,12 +354,12 @@ export function TriviumGame({ coverUrl, hasRoundsView, daily = false }: GameComp
               opacity changes as revealedWordCount advances, so the text never shifts/reflows as
               it appears, unlike a literal typewriter that grows the string itself. */}
           <p className="text-xl font-bold text-ink md:text-2xl">
-            {questionWords.map((word, index) => (
+            {questionWords.map((segment, index) => (
               <span
                 key={index}
-                className={`transition-opacity duration-200 ${index < revealedWordCount ? "opacity-100" : "opacity-0"}`}
+                className={`transition-opacity duration-200 ${segment.bold ? "font-extrabold text-primary" : ""} ${index < revealedWordCount ? "opacity-100" : "opacity-0"}`}
               >
-                {word}
+                {segment.word}
                 {index < questionWords.length - 1 ? " " : ""}
               </span>
             ))}
