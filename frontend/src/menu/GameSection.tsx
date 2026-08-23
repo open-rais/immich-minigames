@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 
 import type { CatalogGame } from "../games/catalog"
+import { isCollapsed, setCollapsed } from "./collapsedSections"
 import { ModeCard } from "./ModeCard"
 
 // One collapsible group per game, mirroring Immich's Albums-by-year sections: a chevron + title +
@@ -17,15 +18,20 @@ export function GameSection({
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [expanded, setExpanded] = useState(true)
+  // Lazy initializer - reads localStorage once, not on every render.
+  const [expanded, setExpanded] = useState(() => !isCollapsed(game.gameType))
+
+  function toggle() {
+    setExpanded((e) => {
+      const next = !e
+      setCollapsed(game.gameType, !next)
+      return next
+    })
+  }
 
   return (
     <section>
-      <button
-        type="button"
-        onClick={() => setExpanded((e) => !e)}
-        className="mb-1 flex items-center gap-2 text-left"
-      >
+      <button type="button" onClick={toggle} className="mb-1 flex items-center gap-2 text-left">
         <svg
           width="20"
           height="20"

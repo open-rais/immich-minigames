@@ -12,8 +12,13 @@ import { findCatalogMode, GAME_CATALOG } from "../games/catalog"
 import { buildDailyShareAllMessage } from "../games/shared/dailyShareText"
 import { ShareModal } from "../games/shared/ShareModal"
 import { DAILY_STATUS_KEY } from "../games/shared/useGameSession"
+import { isCollapsed, setCollapsed } from "./collapsedSections"
 import { DailyCountdown } from "./DailyCountdown"
 import { ModeCard } from "./ModeCard"
+
+// Not a game's own gameType (no game is literally named "daily") - the fixed id this section
+// persists its collapsed state under, same idea as GameSection.tsx using game.gameType.
+const SECTION_ID = "daily"
 
 function ShareIcon() {
   return (
@@ -48,7 +53,8 @@ export function DailySection() {
   // "loading" has no value at all; "error" may or may not carry a stale one - see QueryState's
   // own doc comment (queryCache.ts) for why the caller, not the hook, decides what to do with that.
   const status = state.status === "loading" ? undefined : state.value
-  const [expanded, setExpanded] = useState(true)
+  // Lazy initializer - reads localStorage once, not on every render.
+  const [expanded, setExpanded] = useState(() => !isCollapsed(SECTION_ID))
   const [shareBusy, setShareBusy] = useState(false)
   const [shareText, setShareText] = useState<string | null>(null)
 
@@ -115,6 +121,14 @@ export function DailySection() {
   // on demand rather than keeping them all loaded just in case.
   const allFinished = status.modes.every((m) => m.status === "finished")
 
+  function toggle() {
+    setExpanded((e) => {
+      const next = !e
+      setCollapsed(SECTION_ID, !next)
+      return next
+    })
+  }
+
   async function handleShareAll() {
     if (!status) return
     setShareBusy(true)
@@ -151,11 +165,7 @@ export function DailySection() {
   return (
     <section>
       <div className="mb-1 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={() => setExpanded((e) => !e)}
-          className="flex items-center gap-2 text-left"
-        >
+        <button type="button" onClick={toggle} className="flex items-center gap-2 text-left">
           <svg
             width="20"
             height="20"

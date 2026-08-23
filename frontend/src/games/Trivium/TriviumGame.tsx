@@ -83,6 +83,13 @@ export function TriviumGame({ coverUrl, hasRoundsView, daily = false }: GameComp
   // other reveal-sequence state, rather than waiting on AssetPhoto's own src-changed effect to
   // eventually report "not ready" a render or two later.
   const [assetPhotoReady, setAssetPhotoReady] = useState(false)
+  // Which alternative the player clicked, while the guess is in flight (phase === "submitting") -
+  // TriviumOptionState has no concept of "which one was picked" on its own, so this is what lets
+  // optionState below single that one out as "pending" instead of every option staying "idle"
+  // (looking unresponsive) until the backend replies. Reset in onNewRound below, same as the rest
+  // of the reveal-sequence state - a leftover value would otherwise mark the wrong option pending
+  // for a beat at the start of the next round.
+  const [pendingIndex, setPendingIndex] = useState<number | null>(null)
 
   const {
     screen,
@@ -108,6 +115,7 @@ export function TriviumGame({ coverUrl, hasRoundsView, daily = false }: GameComp
       setHoldElapsed(false)
       setAlternativesShownAt(null)
       setAssetPhotoReady(false)
+      setPendingIndex(null)
     },
     daily,
   })
@@ -228,6 +236,7 @@ export function TriviumGame({ coverUrl, hasRoundsView, daily = false }: GameComp
   function handlePick(index: number) {
     if (revealStage !== "alternatives" || phase !== "guessing" || alternativesShownAt === null) return
     const elapsed = Math.min(answerTimeMs, Math.round(performance.now() - alternativesShownAt))
+    setPendingIndex(index)
     submitGuess({ alternative: index, elapsed_ms: elapsed })
   }
 
@@ -303,6 +312,7 @@ export function TriviumGame({ coverUrl, hasRoundsView, daily = false }: GameComp
     : [undefined, undefined, undefined, undefined]
 
   const optionState = (index: number): TriviumOptionState => {
+    if (phase === "submitting") return index === pendingIndex ? "pending" : "muted"
     if (!revealed) return "idle"
     if (index === round.correct_index) return "correct"
     if (round.guess !== null && index === round.guess) return "wrong"
@@ -330,7 +340,7 @@ export function TriviumGame({ coverUrl, hasRoundsView, daily = false }: GameComp
             <PersonAvatar src={personThumbnailSrc} alt={params.person_name} size="lg" />
           )}
           {round.media.kind === "asset" && assetPhotoSrc && (
-            <div className="relative h-48 w-full overflow-hidden rounded-2xl md:h-64">
+            <div className="relative mx-auto aspect-square w-full max-w-[min(70vw,18rem)] overflow-hidden rounded-2xl md:max-w-sm">
               <AssetPhoto src={assetPhotoSrc} alt="" onReadyChange={setAssetPhotoReady} />
             </div>
           )}

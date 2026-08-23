@@ -120,7 +120,7 @@ export function TriviumRounds({ game, onBack }: RoundsComponentProps) {
         <div className="flex w-full flex-col items-center gap-4 rounded-[22px] border border-line bg-surface p-6 text-center shadow-card md:rounded-3xl md:p-10">
           {round.media.kind === "person_thumbnail" && <PersonAvatar src={personThumbnailSrc} alt="" size="lg" />}
           {round.media.kind === "asset" && assetPhotoSrc && (
-            <div className="relative h-48 w-full overflow-hidden rounded-2xl md:h-64">
+            <div className="relative mx-auto aspect-square w-full max-w-[min(70vw,18rem)] overflow-hidden rounded-2xl md:max-w-sm">
               <AssetPhoto src={assetPhotoSrc} alt="" />
             </div>
           )}

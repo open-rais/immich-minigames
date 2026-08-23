@@ -60,24 +60,28 @@ export function AssetPhoto({
   const [failed, setFailed] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(1)
+  const [translate, setTranslate] = useState<Point>({ x: 0, y: 0 })
 
   // A caller that doesn't key this component by src (AssetCarousel.tsx does; WhosThatPersonGame's
   // IncognitoPhoto doesn't) would otherwise keep this same <img> node across a round change - reset
   // here too so the loading spinner/fade-in and the failed placeholder both react to a real photo
   // change instead of the previous round's resolved state (mirrors Timeline/TimelineCard.tsx's own
-  // per-assetId reset).
+  // per-assetId reset). Also resets any pan/zoom left over from the previous photo (confirmed by
+  // the owner: Trivium's location photo kept a pinch-zoom applied across rounds) - a caller that
+  // *does* key by src never sees this fire on a photo change at all (the whole component remounts
+  // instead, which already starts scale/translate fresh), so this is only ever a no-op there.
   useEffect(() => {
     setFailed(false)
     setLoaded(false)
+    setScale(1)
+    setTranslate({ x: 0, y: 0 })
   }, [src])
 
   useEffect(() => {
     onReadyChange?.(loaded || failed)
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded, failed])
-
-  const [scale, setScale] = useState(1)
-  const [translate, setTranslate] = useState<Point>({ x: 0, y: 0 })
 
   // Natural (source) image size and the container's own rendered size - both needed to compute
   // fitBox below. Only relevant when `overlay` is used; harmless to always track otherwise.
