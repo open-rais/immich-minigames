@@ -97,6 +97,16 @@
       "title": "Game over",
       "finalScore": "Final score: {{score}}"
     },
+    "tips": {
+      "dismiss": "Hide tip",
+      "report": "Spotted something wrong? You can report it from “View game”.",
+      "leaderboard": "Curious how everyone else did? Check the “Leaderboards”.",
+      "relive": "You can relive this game from “View game”.",
+      "profileHistory": "Want to come back to this game later? Your past games are in your profile.",
+      "roundsImmich": "From “View game” you can go through every round and open each photo in Immich.",
+      "install": "You can add this app to your home screen and use it like a native app!",
+      "dailyShare": "Share your result from the “Share” button. Play every daily game and a button with your combined results shows up in the menu."
+    },
     "error": {
       "message": "Something went wrong talking to the server.",
       "retry": "Retry"

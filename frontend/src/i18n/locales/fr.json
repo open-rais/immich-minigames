@@ -97,6 +97,16 @@
       "title": "Jeu terminé",
       "finalScore": "Score final: {{score}}"
     },
+    "tips": {
+      "dismiss": "Masquer le conseil",
+      "report": "Vous avez repéré une erreur ? Vous pouvez la signaler depuis « Voir le jeu ».",
+      "leaderboard": "Envie de voir comment les autres s’en sont sortis ? Allez dans « Classements ».",
+      "relive": "Vous pouvez revivre cette partie depuis « Voir le jeu ».",
+      "profileHistory": "Envie de revoir cette partie plus tard ? Vos parties passées sont dans votre profil.",
+      "roundsImmich": "Depuis « Voir le jeu », vous pouvez parcourir chaque manche et ouvrir chaque photo dans Immich.",
+      "install": "Vous pouvez ajouter cette app à votre écran d’accueil et l’utiliser comme une application native !",
+      "dailyShare": "Partagez votre résultat avec le bouton « Partager ». Jouez à tous les jeux du jour et un bouton avec le résumé de vos résultats apparaîtra dans le menu."
+    },
     "error": {
       "message": "Quelque chose s'est mal passé lors de la communication avec le serveur.",
       "retry": "Réessayer"
