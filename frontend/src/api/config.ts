@@ -8,17 +8,35 @@ export async function getConfig(): Promise<ConfigOut> {
   return data
 }
 
+export type ImmichEntityKind = "asset" | "person" | "album"
+
+const WEB_PATHS: Record<ImmichEntityKind, string> = {
+  asset: "photos",
+  person: "people",
+  album: "albums",
+}
+
+// The mobile app's deep-link handler reads the intent from the URI's *host* and the id from a query
+// param, so these aren't the web paths with a different scheme - "asset" and "album" are singular
+// there, and only "people" happens to match.
+const APP_HOSTS: Record<ImmichEntityKind, string> = {
+  asset: "asset",
+  person: "people",
+  album: "album",
+}
+
 export interface ImmichLinks {
-  assetUrl: (assetId: string) => string
-  personUrl: (personId: string) => string
-  albumUrl: (albumId: string) => string
+  /** Immich's web UI - desktop, or mobile without the app installed. */
+  webUrl: (kind: ImmichEntityKind, id: string) => string
+  /** `immich://` deep link into the mobile app, which opens whichever server that app is logged
+   * into - so, unlike webUrl, it carries no base URL of its own. */
+  appUrl: (kind: ImmichEntityKind, id: string) => string
 }
 
 function linksFromBaseUrl(baseUrl: string): ImmichLinks {
   return {
-    assetUrl: (assetId) => `${baseUrl}/photos/${assetId}`,
-    personUrl: (personId) => `${baseUrl}/people/${personId}`,
-    albumUrl: (albumId) => `${baseUrl}/albums/${albumId}`,
+    webUrl: (kind, id) => `${baseUrl}/${WEB_PATHS[kind]}/${id}`,
+    appUrl: (kind, id) => `immich://${APP_HOSTS[kind]}?id=${encodeURIComponent(id)}`,
   }
 }
 
