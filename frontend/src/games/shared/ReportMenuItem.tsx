@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next"
 import { ReportModal } from "./ReportModal"
 
 interface ReportMenuItemProps {
-  kind: "asset" | "person" | "album" // same type as ImmichLink.tsx's ImmichLinkProps.kind
+  kind: "asset" | "person" | "album" // same kinds as api/config.ts's ImmichEntityKind
   id: string
 }
 
