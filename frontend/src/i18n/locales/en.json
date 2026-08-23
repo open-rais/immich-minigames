@@ -64,6 +64,12 @@
   },
   "leaderboard": {
     "title": "Leaderboard",
+    "nav": {
+      "previousGame": "Previous game",
+      "nextGame": "Next game",
+      "previousMode": "Previous mode",
+      "nextMode": "Next mode"
+    },
     "empty": "No one has played this mode in this window yet.",
     "window": {
       "all": "Historic",

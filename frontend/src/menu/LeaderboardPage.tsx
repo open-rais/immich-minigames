@@ -7,12 +7,14 @@ import type { LeaderboardEntryOut, LeaderboardWindow } from "../api/types/leader
 import { useAuth } from "../auth/useAuth"
 import { GAME_CATALOG } from "../games/catalog"
 import { BackButton } from "../games/shared/BackButton"
-import { GameModeSubtitle } from "../games/shared/GameModeSubtitle"
 import { PersonAvatar } from "../games/shared/PersonAvatar"
 import { SegmentedControl } from "../games/shared/SegmentedControl"
+import { LeaderboardTitleNav } from "./LeaderboardTitleNav"
+import { useLeaderboardNav } from "./leaderboardNav"
 
 // Roadmap point F - top 15 per (gameType, mode), reached from that mode's idle/finished screens
-// (see games/shared/GameScreens.tsx).
+// (see games/shared/GameScreens.tsx). The [‹] game [›] / [‹] mode [›] header (roadmap point k)
+// walks every board in the app from here, daily ones included - see menu/leaderboardNav.ts.
 export function LeaderboardPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -23,6 +25,8 @@ export function LeaderboardPage() {
 
   const game = GAME_CATALOG.find((g) => g.gameType === gameType)
   const catalogMode = game?.modes.find((m) => m.mode === mode)
+  // The category here is the game itself, so its own gameType is the category id.
+  const nav = useLeaderboardNav(gameType ?? "", gameType ?? "", mode ?? "")
 
   useEffect(() => {
     if (!gameType || !mode) return
@@ -52,9 +56,10 @@ export function LeaderboardPage() {
     <div className="flex min-h-screen flex-col items-center gap-6 bg-app-bg px-6 py-10">
       <BackButton label={t("common.back")} onClick={() => navigate(`/${gameType}/${mode}`)} />
 
-      <div className="mt-14 text-center md:mt-0">
-        <h1 className="text-3xl font-bold text-ink">{t("leaderboard.title")}</h1>
-        <GameModeSubtitle
+      <div className="mt-14 w-full max-w-xs md:mt-0">
+        <h1 className="text-center text-3xl font-bold text-ink">{t("leaderboard.title")}</h1>
+        <LeaderboardTitleNav
+          nav={nav}
           gameTitle={t(game.gameTitleKey)}
           modeTitle={t(catalogMode.modeTitleKey)}
         />

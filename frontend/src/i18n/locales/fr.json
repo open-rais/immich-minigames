@@ -64,6 +64,12 @@
   },
   "leaderboard": {
     "title": "Classement",
+    "nav": {
+      "previousGame": "Jeu précédent",
+      "nextGame": "Jeu suivant",
+      "previousMode": "Mode précédent",
+      "nextMode": "Mode suivant"
+    },
     "empty": "Personne n'a joué à ce mode dans cette fenêtre encore.",
     "window": {
       "all": "Historique",

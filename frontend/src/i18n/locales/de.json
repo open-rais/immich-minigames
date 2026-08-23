@@ -64,6 +64,12 @@
   },
   "leaderboard": {
     "title": "Rangliste",
+    "nav": {
+      "previousGame": "Vorheriges Spiel",
+      "nextGame": "Nächstes Spiel",
+      "previousMode": "Vorheriger Modus",
+      "nextMode": "Nächster Modus"
+    },
     "empty": "Noch niemand hat diesen Modus in diesem Fenster gespielt.",
     "window": {
       "all": "Gesamtverlauf",
