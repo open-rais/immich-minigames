@@ -40,6 +40,10 @@ export function GeoguessrGame({ coverUrl, hasRoundsView, daily = false }: GameCo
   const backToMenu = () => navigate("/")
 
   const [pin, setPin] = useState<Pin | null>(null)
+  // Which of round.asset_ids the carousel currently shows - AssetCarousel is a controlled
+  // component now (see its own docstring), so this lives here instead. Reset alongside pin below,
+  // same "one synchronous batch with the new round" reasoning as pin itself.
+  const [assetIndex, setAssetIndex] = useState(0)
   const {
     screen,
     busy,
@@ -59,7 +63,10 @@ export function GeoguessrGame({ coverUrl, hasRoundsView, daily = false }: GameCo
     isRound: isGeoguessrRound,
     playRound: (gameId, roundId, guess) =>
       playRound(gameId, roundId, { latitude: guess.lat, longitude: guess.lng }),
-    onNewRound: () => setPin(null),
+    onNewRound: () => {
+      setPin(null)
+      setAssetIndex(0)
+    },
     daily,
   })
 
@@ -124,7 +131,13 @@ export function GeoguessrGame({ coverUrl, hasRoundsView, daily = false }: GameCo
   return (
     <div className="h-dvh w-full overflow-hidden bg-app-bg">
       <div className="fixed inset-0">
-        <AssetCarousel key={round.id} assetIds={round.asset_ids} alt={t("geoguessr.title")} />
+        <AssetCarousel
+          key={round.id}
+          assetIds={round.asset_ids}
+          alt={t("geoguessr.title")}
+          index={assetIndex}
+          onIndexChange={setAssetIndex}
+        />
       </div>
 
       <GuardedBackButton onExit={backToIdle} />

@@ -4,6 +4,7 @@ import { getConfig } from "../api/config"
 import {
   getNotificationPreferences,
   sendTestNotification,
+  setNotificationLanguage,
   subscribeToPush,
   updateNotificationPreferences,
 } from "../api/notifications"
@@ -87,27 +88,21 @@ export function useNotificationSettings(): NotificationSettingsState {
 
       // Stamps the account's current language so a future push can be composed in it (the
       // service worker has no access to localStorage/i18next - see api/dto/notifications.py's
-      // language field). Doesn't re-sync if the user changes language later in this same
-      // session without touching a notification toggle again - a minor gap, not worth coupling
-      // the general language selector to this feature for.
-      //
-      // Only when `preferences` is already loaded - PUT is a full replace (no partial-update
-      // endpoint exists), so falling back to DEFAULT_PREFERENCES here (all three toggles off)
-      // would silently wipe out real saved ones whenever the GET above hasn't resolved yet or
-      // failed (offline, a 500). The account's language just stays whatever it already was until
-      // the next real preference change (setToggle below always has real preferences to build
-      // from) - a smaller gap than clobbering someone's settings.
-      if (preferences) {
-        const saved = await updateNotificationPreferences({ ...preferences, language: i18n.language })
-        setPreferences(saved)
-      }
+      // SetLanguageIn). A partial update (only `language`), unlike setToggle below - so unlike
+      // that one, this doesn't need `preferences` to already be loaded first: there are no other
+      // fields it could clobber if the GET above hasn't resolved yet or failed. The general
+      // language selector (settings/SettingsPage.tsx) calls the same endpoint on every language
+      // change, so this is really only load-bearing for an account that activates push before
+      // ever touching a toggle there.
+      const saved = await setNotificationLanguage(i18n.language)
+      setPreferences(saved)
       setSubscribed(true)
     } catch {
       setActivationError(true)
     } finally {
       setBusy(false)
     }
-  }, [pushPublicKey, preferences])
+  }, [pushPublicKey])
 
   const deactivate = useCallback(async () => {
     setBusy(true)

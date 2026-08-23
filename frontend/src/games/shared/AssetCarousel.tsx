@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { useTranslation } from "react-i18next"
 
 import { assetThumbnailUrl } from "../../api/games"
@@ -7,18 +7,31 @@ import { prefetchThumbnail } from "./thumbnailQueue"
 
 // Round-scoped photo browser: however many extra photos the round carries (each game caps this
 // itself, e.g. games/geoguessr/game.py's/games/dateguessr/game.py's MAX_EXTRA_ASSETS), main
-// "answer" asset first. Purely for the player to look around - it never
-// affects the guess or the score. Mount with `key={round.id}` so `index` resets to 0 on every new
-// round without extra plumbing (same pattern AssetPhoto itself uses `key={assetId}` for).
-export function AssetCarousel({ assetIds, alt }: { assetIds: string[]; alt: string }) {
+// "answer" asset first. Purely for the player to look around - it never affects the guess or the
+// score. Controlled (index/onIndexChange), not internal state - a caller whose "Ver en Immich"/
+// "Reportar" menu needs to know which photo is currently shown (GeoguessrRounds.tsx/
+// DateguessrRounds.tsx) would otherwise have no way to find out; a callback bolted on top of an
+// internal useState would just be two sources of truth for the same index. Every caller owns a
+// `useState(0)` and resets it itself on a new round (this component used to get that reset for
+// free via `key={round.id}` on itself - see each caller's own reset for how that moved).
+export function AssetCarousel({
+  assetIds,
+  alt,
+  index,
+  onIndexChange,
+}: {
+  assetIds: string[]
+  alt: string
+  index: number
+  onIndexChange: (index: number) => void
+}) {
   const { t } = useTranslation()
-  const [index, setIndex] = useState(0)
 
   const showArrows = assetIds.length > 1
   const isFirst = index === 0
   const isLast = index === assetIds.length - 1
-  const goPrev = () => setIndex((i) => Math.max(i - 1, 0))
-  const goNext = () => setIndex((i) => Math.min(i + 1, assetIds.length - 1))
+  const goPrev = () => onIndexChange(Math.max(index - 1, 0))
+  const goNext = () => onIndexChange(Math.min(index + 1, assetIds.length - 1))
 
   // Warms the browser's HTTP cache for every other photo in the round while the player looks at
   // index 0 (this component always mounts with a fresh `key={round.id}`, so index really is 0 at

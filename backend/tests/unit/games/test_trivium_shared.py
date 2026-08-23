@@ -1,6 +1,7 @@
 """Pure tests - no DB needed - for games/trivium/questions/_shared.py's distractor pickers, reused
 across birthday_year/birthday_day_month/birthday_full_date/photos_first_asset_year."""
 
+from collections import Counter
 from datetime import date
 
 from games.trivium.questions._shared import (
@@ -112,3 +113,18 @@ class TestPickFullDateDistractors:
                 years_seen.add(d.year)
         assert years_seen != {correct.year}
         assert years_seen.issubset({correct.year - 1, correct.year, correct.year + 1})
+
+    def test_year_noise_pattern_is_evenly_spread_across_the_four_shapes(self):
+        # How many of the 3 distractors land on a year other than the real one - the 4 equally-
+        # weighted patterns _pick_year_offsets draws from map exactly to counts 0/1/2/3. Loose
+        # bounds so this doesn't flake, just confirming every shape actually shows up a real
+        # fraction of the time - including count 3 (every distractor off-year), which is what
+        # makes the *real* answer's year the outlier instead of a distractor's, and never
+        # happened under the old year-clamped search this replaces.
+        correct = date(2001, 6, 15)
+        n = 2000
+        off_counts = Counter(
+            sum(1 for d in pick_full_date_distractors(correct) if d.year != correct.year) for _ in range(n)
+        )
+        for count in (0, 1, 2, 3):
+            assert n * 0.15 <= off_counts[count] <= n * 0.35, (count, off_counts)

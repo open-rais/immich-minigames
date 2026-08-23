@@ -15,7 +15,13 @@ import { RevealResultCard } from "../shared/RevealResultCard"
 import { ScoreBadge } from "../shared/ScoreBadge"
 import { useQueuedThumbnail } from "../shared/thumbnailQueue"
 import { useRoundGame } from "../shared/useRoundGame"
-import { FACE_ONLY_ALTERNATIVE_KINDS, PERSON_ALTERNATIVE_KINDS, QUESTION_TEXT_KEYS, formatAlternative } from "./questionText"
+import {
+  FACE_ONLY_ALTERNATIVE_KINDS,
+  PERSON_ALTERNATIVE_KINDS,
+  QUESTION_TEXT_KEYS,
+  formatAlternative,
+  questionSegments,
+} from "./questionText"
 import type { TriviumOptionState } from "./TriviumOption"
 import { TriviumOption } from "./TriviumOption"
 import { TriviumTimerBar } from "./TriviumTimerBar"
@@ -83,6 +89,13 @@ export function TriviumGame({ coverUrl, hasRoundsView, daily = false }: GameComp
   // other reveal-sequence state, rather than waiting on AssetPhoto's own src-changed effect to
   // eventually report "not ready" a render or two later.
   const [assetPhotoReady, setAssetPhotoReady] = useState(false)
+  // Which alternative the player clicked, while the guess is in flight (phase === "submitting") -
+  // TriviumOptionState has no concept of "which one was picked" on its own, so this is what lets
+  // optionState below single that one out as "pending" instead of every option staying "idle"
+  // (looking unresponsive) until the backend replies. Reset in onNewRound below, same as the rest
+  // of the reveal-sequence state - a leftover value would otherwise mark the wrong option pending
+  // for a beat at the start of the next round.
+  const [pendingIndex, setPendingIndex] = useState<number | null>(null)
 
   const {
     screen,
@@ -108,6 +121,7 @@ export function TriviumGame({ coverUrl, hasRoundsView, daily = false }: GameComp
       setHoldElapsed(false)
       setAlternativesShownAt(null)
       setAssetPhotoReady(false)
+      setPendingIndex(null)
     },
     daily,
   })
@@ -155,7 +169,7 @@ export function TriviumGame({ coverUrl, hasRoundsView, daily = false }: GameComp
   const questionTextKey = round ? QUESTION_TEXT_KEYS[round.question_kind] : undefined
   const params = round?.params as PersonRef | undefined
   const questionText = questionTextKey && params ? t(questionTextKey, { name: params.person_name }) : ""
-  const questionWords = questionText ? questionText.split(" ") : []
+  const questionWords = questionText ? questionSegments(questionText) : []
 
   // Starts the word-by-word reveal once a fresh round has fully loaded - keyed on round?.id (not
   // phase) so this never re-fires between "guessing" and "revealed" of the same round, only for a
@@ -228,6 +242,7 @@ export function TriviumGame({ coverUrl, hasRoundsView, daily = false }: GameComp
   function handlePick(index: number) {
     if (revealStage !== "alternatives" || phase !== "guessing" || alternativesShownAt === null) return
     const elapsed = Math.min(answerTimeMs, Math.round(performance.now() - alternativesShownAt))
+    setPendingIndex(index)
     submitGuess({ alternative: index, elapsed_ms: elapsed })
   }
 
@@ -303,6 +318,7 @@ export function TriviumGame({ coverUrl, hasRoundsView, daily = false }: GameComp
     : [undefined, undefined, undefined, undefined]
 
   const optionState = (index: number): TriviumOptionState => {
+    if (phase === "submitting") return index === pendingIndex ? "pending" : "muted"
     if (!revealed) return "idle"
     if (index === round.correct_index) return "correct"
     if (round.guess !== null && index === round.guess) return "wrong"
@@ -330,7 +346,7 @@ export function TriviumGame({ coverUrl, hasRoundsView, daily = false }: GameComp
             <PersonAvatar src={personThumbnailSrc} alt={params.person_name} size="lg" />
           )}
           {round.media.kind === "asset" && assetPhotoSrc && (
-            <div className="relative h-48 w-full overflow-hidden rounded-2xl md:h-64">
+            <div className="relative mx-auto aspect-square w-full max-w-[min(70vw,18rem)] overflow-hidden rounded-2xl md:max-w-sm">
               <AssetPhoto src={assetPhotoSrc} alt="" onReadyChange={setAssetPhotoReady} />
             </div>
           )}
@@ -338,12 +354,12 @@ export function TriviumGame({ coverUrl, hasRoundsView, daily = false }: GameComp
               opacity changes as revealedWordCount advances, so the text never shifts/reflows as
               it appears, unlike a literal typewriter that grows the string itself. */}
           <p className="text-xl font-bold text-ink md:text-2xl">
-            {questionWords.map((word, index) => (
+            {questionWords.map((segment, index) => (
               <span
                 key={index}
-                className={`transition-opacity duration-200 ${index < revealedWordCount ? "opacity-100" : "opacity-0"}`}
+                className={`transition-opacity duration-200 ${segment.bold ? "font-extrabold text-primary" : ""} ${index < revealedWordCount ? "opacity-100" : "opacity-0"}`}
               >
-                {word}
+                {segment.word}
                 {index < questionWords.length - 1 ? " " : ""}
               </span>
             ))}

@@ -14,7 +14,13 @@ import { ReportMenuItem } from "../shared/ReportMenuItem"
 import { RevealResultCard } from "../shared/RevealResultCard"
 import { RoundStepper } from "../rounds/RoundStepper"
 import { useRoundStepper } from "../shared/useRoundStepper"
-import { FACE_ONLY_ALTERNATIVE_KINDS, PERSON_ALTERNATIVE_KINDS, QUESTION_TEXT_KEYS, formatAlternative } from "./questionText"
+import {
+  FACE_ONLY_ALTERNATIVE_KINDS,
+  PERSON_ALTERNATIVE_KINDS,
+  QUESTION_TEXT_KEYS,
+  formatAlternative,
+  questionSegments,
+} from "./questionText"
 import type { TriviumOptionState } from "./TriviumOption"
 import { TriviumOption } from "./TriviumOption"
 
@@ -120,11 +126,18 @@ export function TriviumRounds({ game, onBack }: RoundsComponentProps) {
         <div className="flex w-full flex-col items-center gap-4 rounded-[22px] border border-line bg-surface p-6 text-center shadow-card md:rounded-3xl md:p-10">
           {round.media.kind === "person_thumbnail" && <PersonAvatar src={personThumbnailSrc} alt="" size="lg" />}
           {round.media.kind === "asset" && assetPhotoSrc && (
-            <div className="relative h-48 w-full overflow-hidden rounded-2xl md:h-64">
+            <div className="relative mx-auto aspect-square w-full max-w-[min(70vw,18rem)] overflow-hidden rounded-2xl md:max-w-sm">
               <AssetPhoto src={assetPhotoSrc} alt="" />
             </div>
           )}
-          <p className="text-xl font-bold text-ink md:text-2xl">{questionText}</p>
+          <p className="text-xl font-bold text-ink md:text-2xl">
+            {questionSegments(questionText).map((segment, index, segments) => (
+              <span key={index} className={segment.bold ? "font-extrabold text-primary" : undefined}>
+                {segment.word}
+                {index < segments.length - 1 ? " " : ""}
+              </span>
+            ))}
+          </p>
         </div>
       </div>
 

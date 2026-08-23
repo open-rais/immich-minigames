@@ -13,16 +13,38 @@ import type { DailySettingsOut, GameSettingsOut } from "../api/types/admin"
 import { Button } from "../games/shared/Button"
 import { Switch } from "../games/shared/Switch"
 import { SettingAccordion } from "./SettingAccordion"
+import { SettingInfo } from "./SettingInfo"
 
-// Setting labels live in two i18n namespaces - admin.games.settings.* for the knobs a normal game
-// already has (shared verbatim by the daily form below, since it's the exact same knob), and
-// admin.daily.settings.* for the two daily-only ones (no_repeat_days/chain_length). A key that
-// isn't in the first namespace comes back unchanged (i18next's fallback when nothing matches), so
-// checking for that is enough to know to look in the second one instead.
+// Both setting labels and their help text live in two i18n namespaces each - admin.games.<ns>.*
+// for the knobs a normal game already has (shared verbatim by the daily form below, since it's
+// the exact same knob), and admin.daily.<ns>.* for the two daily-only ones (no_repeat_days/
+// chain_length). A key that isn't in the first namespace comes back unchanged (i18next's fallback
+// when nothing matches), so checking for that is enough to know to look in the second one instead.
+function settingKey(t: (key: string) => string, key: string, namespace: "settings" | "settingsHelp"): string {
+  const gamesKey = `admin.games.${namespace}.${key}`
+  const value = t(gamesKey)
+  return value === gamesKey ? t(`admin.daily.${namespace}.${key}`) : value
+}
+
 function settingLabel(t: (key: string) => string, key: string): string {
-  const gamesKey = `admin.games.settings.${key}`
-  const label = t(gamesKey)
-  return label === gamesKey ? t(`admin.daily.settings.${key}`) : label
+  return settingKey(t, key, "settings")
+}
+
+// Description + (for anything but a bool, where "range 0-1" is noise on a checkbox) a
+// Default/range line composed from the DTO's own default/min_value/max_value - never hand-written
+// per key, so it can't drift from a SettingSpec change.
+function settingHelp(
+  t: (key: string, options?: Record<string, unknown>) => string,
+  setting: GameSettingsOut["settings"][number],
+): string {
+  const description = settingKey(t, setting.key, "settingsHelp")
+  if (setting.value_type === "bool") return description
+  const range = t("admin.games.settingsRangeTemplate", {
+    default: setting.default,
+    min: setting.min_value,
+    max: setting.max_value,
+  })
+  return `${description}\n${range}`
 }
 
 // Special-cased instead of using the generic bool value_type's plain checkbox (below) - the two
@@ -33,16 +55,19 @@ function StreakScoringToggle({
   id,
   checked,
   onChange,
+  helpText,
 }: {
   id: string
   checked: boolean
   onChange: (checked: boolean) => void
+  helpText: string
 }) {
   const { t } = useTranslation()
   return (
     <label htmlFor={id} className="flex cursor-pointer items-center gap-3 text-sm font-semibold text-body">
       <Switch id={id} checked={checked} onChange={onChange} />
       {t(checked ? "admin.games.settings.streak_scoring_on" : "admin.games.settings.streak_scoring_off")}
+      <SettingInfo helpText={helpText} />
     </label>
   )
 }
@@ -91,6 +116,7 @@ function SettingsForm({
               id={`${idPrefix}-${setting.key}`}
               checked={values[setting.key] === 1}
               onChange={(checked) => onChange(setting.key, checked ? 1 : 0)}
+              helpText={settingHelp(t, setting)}
             />
           ) : setting.value_type === "bool" ? (
             <label
@@ -106,14 +132,16 @@ function SettingsForm({
                 className="h-4 w-4 accent-primary"
               />
               {settingLabel(t, setting.key)}
+              <SettingInfo helpText={settingHelp(t, setting)} />
             </label>
           ) : (
             <div key={setting.key} className="flex flex-col gap-1.5">
               <label
                 htmlFor={`${idPrefix}-${setting.key}`}
-                className="text-sm font-semibold text-body"
+                className="flex items-center gap-1.5 text-sm font-semibold text-body"
               >
                 {settingLabel(t, setting.key)}
+                <SettingInfo helpText={settingHelp(t, setting)} />
               </label>
               <input
                 id={`${idPrefix}-${setting.key}`}

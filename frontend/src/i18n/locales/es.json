@@ -255,16 +255,16 @@
       "description": "Responde preguntas de trivia sobre tus fotos y las personas en ellas. Una respuesta equivocada - o quedarte sin tiempo - termina la partida."
     },
     "questions": {
-      "birthdayYear": "¿En qué año nació {{name}}?",
-      "birthdayDayMonth": "¿Cuándo cumple años {{name}}?",
-      "birthdayFullDate": "¿Qué día nació {{name}}?",
-      "photosTotalAssets": "¿Quién de estas personas tiene más fotos en total?",
-      "photosTogether": "¿Quién de estas personas tiene más fotos con {{name}}?",
-      "photosFirstAssetYear": "¿De qué año es la primera foto de {{name}}?",
-      "locationCountry": "¿En qué país fue tomada esta foto?",
-      "locationCity": "¿En qué ciudad fue tomada esta foto?",
-      "mixedFaceToName": "¿Cómo se llama esta persona?",
-      "mixedNameToFace": "¿Quién es {{name}}?"
+      "birthdayYear": "¿En qué **año** nació **{{name}}?**",
+      "birthdayDayMonth": "¿Cuándo **cumple años** **{{name}}?**",
+      "birthdayFullDate": "¿Qué **día** nació **{{name}}?**",
+      "photosTotalAssets": "¿Quién de estas personas tiene **más fotos** en total?",
+      "photosTogether": "¿Quién de estas personas tiene **más fotos** con **{{name}}?**",
+      "photosFirstAssetYear": "¿De qué año es la **primera foto** de **{{name}}?**",
+      "locationCountry": "¿En qué **país** fue tomada esta foto?",
+      "locationCity": "¿En qué **ciudad** fue tomada esta foto?",
+      "mixedFaceToName": "¿Cómo **se llama** esta persona?",
+      "mixedNameToFace": "¿Quién es **{{name}}?**"
     },
     "result": {
       "correct": "¡Correcto!",
@@ -362,6 +362,8 @@
       "loading": "Cargando juegos...",
       "noSettings": "Este juego todavía no tiene configuración disponible.",
       "reset": "Resetear por defecto",
+      "settingsHelpLabel": "Más información",
+      "settingsRangeTemplate": "Por defecto {{default}} · rango {{min}}–{{max}}",
       "settings": {
         "total_rounds": "Rondas totales",
         "max_score": "Puntaje máximo por ronda",
@@ -381,7 +383,35 @@
         "face_box_growth": "Crecimiento de las cajas de caras (1.0-1.5)",
         "tolerance_days": "Tolerancia de hueco (días)",
         "min_separation_days": "Separación mínima entre cartas (días)",
-        "max_cards": "Cartas máximas (0 = sin límite)"
+        "max_cards": "Cartas máximas (0 = sin límite)",
+        "max_points": "Puntaje máximo por ronda",
+        "min_points": "Puntaje mínimo por ronda",
+        "answer_time_seconds": "Tiempo límite para responder (segundos)",
+        "max_rounds": "Rondas máximas (0 = sin límite)"
+      },
+      "settingsHelp": {
+        "total_rounds": "Cuántas rondas dura una partida.",
+        "max_score": "Puntos otorgados por un acierto perfecto. Más alto significa puntajes más altos en general.",
+        "max_extra_assets": "Fotos extra del mismo lugar mostradas como pista. Más alto significa más pistas, más fácil.",
+        "flat_score_radius_km": "Los aciertos dentro de este radio igual dan el puntaje máximo. Más alto es más permisivo, más fácil.",
+        "decay_km": "Qué tan rápido baja el puntaje por km más allá del radio de puntaje máximo. Más alto es más permisivo (decae más lento), más bajo es más duro.",
+        "flat_score_days": "Los aciertos dentro de esta cantidad de días igual dan el puntaje máximo. Más alto es más permisivo, más fácil.",
+        "decay_days": "Qué tan rápido baja el puntaje por día más allá de la ventana de puntaje máximo. Más alto es más permisivo (decae más lento), más bajo es más duro.",
+        "starting_score": "Puntos con los que arranca la partida, antes de errores. Más alto da más margen para equivocarse.",
+        "wrong_guess_penalty": "Puntos perdidos por cada error. Más alto es más duro.",
+        "asset_count_weight": "Cuánto influye la cantidad de fotos de una persona o álbum en quién sale elegido (0 = uniforme, 1 = totalmente proporcional). Más alto hace que los más fotografiados aparezcan más seguido.",
+        "require_birth_date": "Elegir sólo personas misteriosas que tengan fecha de nacimiento.",
+        "total_people": "De cuántas personas distintas pregunta la partida completa. Más alto significa una partida más larga.",
+        "max_hidden_faces": "Caras tapadas como máximo en una ronda. Más alto es más difícil.",
+        "streak_scoring": "Si los puntos son una cantidad fija por acierto, o crecen mientras más larga sea la racha.",
+        "face_box_growth": "Cuánto más grande es la caja negra que la cara (1.0 = ajustada). Más alto tapa más de la foto, más difícil.",
+        "tolerance_days": "Cuántos días de margen puede tener una carta ubicada y aun así contar como correcta. Más alto es más permisivo, más fácil.",
+        "min_separation_days": "Separación mínima forzada entre las fechas de las cartas al elegir fotos, para que no queden apiladas. Más alto las separa más.",
+        "max_cards": "Tope de cuántas cartas puede alcanzar una partida (0 = sin límite).",
+        "max_points": "Puntos por responder al instante. Más alto significa puntajes más altos en general.",
+        "min_points": "Puntos otorgados por acertar justo al límite de tiempo, en vez de 0. Más alto premia más un acierto lento.",
+        "answer_time_seconds": "Tiempo límite para responder una pregunta, en segundos. Más alto da más tiempo, más fácil.",
+        "max_rounds": "Tope de cuántas rondas puede alcanzar una partida (0 = sin límite)."
       }
     },
     "daily": {
@@ -390,6 +420,10 @@
       "settings": {
         "no_repeat_days": "Ventana sin repetir (días)",
         "chain_length": "Tope de la cadena"
+      },
+      "settingsHelp": {
+        "no_repeat_days": "Cuántos días queda excluido un sujeto de repetirse en el desafío diario. Más alto necesita una biblioteca más grande.",
+        "chain_length": "Cuántas rondas tiene el desafío del día."
       }
     },
     "invites": {

@@ -2,6 +2,7 @@ import type { ReactNode } from "react"
 import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 
+import { setNotificationLanguage } from "../api/notifications"
 import { SegmentedControl } from "../games/shared/SegmentedControl"
 import i18n, { loadLanguage } from "../i18n"
 import type { ThemePreference } from "../theme/themeContext"
@@ -45,6 +46,11 @@ function LanguageSelector() {
     void loadLanguage(lang).then(() => {
       localStorage.setItem("minigames-lang", lang)
       i18n.changeLanguage(lang)
+      // Keeps push notification copy (composed server-side, see api/dto/notifications.py's
+      // SetLanguageIn) in sync with the UI language - best-effort: the interface's own language
+      // switch can't depend on this backend call succeeding, and the worst case is just today's
+      // pre-existing gap (push stays in the old language until this succeeds).
+      setNotificationLanguage(lang).catch(() => {})
     })
   }
 

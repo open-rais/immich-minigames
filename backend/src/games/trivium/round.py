@@ -13,10 +13,12 @@ from uuid import UUID
 from games.base import BaseRound
 from games.trivium.questions.base import GeneratedQuestion, MediaSpec
 
-# Defaults for the two admin-configurable knobs the scoring formula reads (games/trivium/
-# settings.py) - see calculate_score below (e.g. 100 pts / 10s -> 50 pts at 5s elapsed).
+# Defaults for the admin-configurable knobs the scoring formula reads (games/trivium/settings.py)
+# - see calculate_score below (e.g. 100 pts / 10s -> 50 pts at 5s elapsed). MIN_POINTS is the
+# floor a correct-but-slow answer lands on instead of always bottoming out at 0.
 MAX_POINTS = 100
 ANSWER_TIME_SECONDS = 10
+MIN_POINTS = 0
 
 
 @dataclass(frozen=True)
@@ -105,12 +107,17 @@ class TriviumRound(BaseRound):
         assert self.guess is not None
         settings = settings or {}
         max_points = settings.get("max_points", MAX_POINTS)
+        # Clamped against max_points, not validated against it - settings are validated per-key
+        # (services/game_settings_service.py), so an admin can save a min_points that exceeds
+        # max_points; falling back to max_points here keeps the formula from inverting instead.
+        min_points = min(settings.get("min_points", MIN_POINTS), max_points)
         answer_time_ms = settings.get("answer_time_seconds", ANSWER_TIME_SECONDS) * 1000
         # The clamp: negative elapsed (a suspended device, a clock change) counts as instant (max
-        # score); anything past the limit counts as the limit (0 score). Not anti-cheat - see the
-        # module docstring - just a safety net against clocks/lag/throttled background timers.
+        # score); anything past the limit counts as the limit (min_points score). Not anti-cheat -
+        # see the module docstring - just a safety net against clocks/lag/throttled background
+        # timers.
         elapsed_ms = max(0, min(self.guess.elapsed_ms, answer_time_ms))
-        return round(max_points * (1 - elapsed_ms / answer_time_ms))
+        return round(min_points + (max_points - min_points) * (1 - elapsed_ms / answer_time_ms))
 
     def to_payload(self) -> dict[str, Any]:
         return {

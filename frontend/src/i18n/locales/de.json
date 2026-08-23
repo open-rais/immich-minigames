@@ -255,16 +255,16 @@
       "description": "Beantworte Trivia-Fragen zu deinen Fotos und den Personen darauf. Eine falsche Antwort - oder abgelaufene Zeit - beendet das Spiel."
     },
     "questions": {
-      "birthdayYear": "In welchem Jahr wurde {{name}} geboren?",
-      "birthdayDayMonth": "Wann hat {{name}} Geburtstag?",
-      "birthdayFullDate": "An welchem Tag wurde {{name}} geboren?",
-      "photosTotalAssets": "Wer von diesen Personen hat insgesamt die meisten Fotos?",
-      "photosTogether": "Wer von diesen Personen hat die meisten Fotos mit {{name}}?",
-      "photosFirstAssetYear": "Aus welchem Jahr stammt {{name}}s erstes Foto?",
-      "locationCountry": "In welchem Land wurde dieses Foto aufgenommen?",
-      "locationCity": "In welcher Stadt wurde dieses Foto aufgenommen?",
-      "mixedFaceToName": "Wie heißt diese Person?",
-      "mixedNameToFace": "Wer ist {{name}}?"
+      "birthdayYear": "In welchem **Jahr** wurde **{{name}}** geboren?",
+      "birthdayDayMonth": "Wann hat **{{name}}** **Geburtstag?**",
+      "birthdayFullDate": "An welchem **Tag** wurde **{{name}}** geboren?",
+      "photosTotalAssets": "Wer von diesen Personen hat insgesamt die **meisten Fotos?**",
+      "photosTogether": "Wer von diesen Personen hat die **meisten Fotos** mit **{{name}}?**",
+      "photosFirstAssetYear": "Aus welchem Jahr stammt **{{name}}s** **erstes Foto?**",
+      "locationCountry": "In welchem **Land** wurde dieses Foto aufgenommen?",
+      "locationCity": "In welcher **Stadt** wurde dieses Foto aufgenommen?",
+      "mixedFaceToName": "Wie **heißt** diese Person?",
+      "mixedNameToFace": "Wer ist **{{name}}?**"
     },
     "result": {
       "correct": "Richtig!",
@@ -362,6 +362,8 @@
       "loading": "Spiele werden geladen...",
       "noSettings": "Dieses Spiel hat noch keine konfigurierbaren Einstellungen.",
       "reset": "Auf Standard zurücksetzen",
+      "settingsHelpLabel": "Mehr Informationen",
+      "settingsRangeTemplate": "Standard {{default}} · Bereich {{min}}–{{max}}",
       "settings": {
         "total_rounds": "Gesamtrunden",
         "max_score": "Maximale Punkte pro Runde",
@@ -381,7 +383,35 @@
         "face_box_growth": "Vergrößerung der Gesichtsboxen (1.0-1.5)",
         "tolerance_days": "Slot-Toleranz (Tage)",
         "min_separation_days": "Mindestabstand zwischen Karten (Tage)",
-        "max_cards": "Max Karten (0 = unbegrenzt)"
+        "max_cards": "Max Karten (0 = unbegrenzt)",
+        "max_points": "Maximale Punkte pro Runde",
+        "min_points": "Minimale Punkte pro Runde",
+        "answer_time_seconds": "Zeitlimit zum Antworten (Sekunden)",
+        "max_rounds": "Max Runden (0 = unbegrenzt)"
+      },
+      "settingsHelp": {
+        "total_rounds": "Wie viele Runden ein Spiel hat.",
+        "max_score": "Punkte für eine perfekte Schätzung. Höher bedeutet insgesamt höhere Punktzahlen.",
+        "max_extra_assets": "Zusätzliche Fotos vom selben Ort als Hinweis gezeigt. Höher bedeutet mehr Hinweise, leichter.",
+        "flat_score_radius_km": "Schätzungen innerhalb dieses Radius erhalten trotzdem die Maximalpunktzahl. Höher ist nachsichtiger, leichter.",
+        "decay_km": "Wie schnell die Punktzahl pro km jenseits des Radius mit Maximalpunkten sinkt. Höher ist nachsichtiger (langsamerer Verfall), niedriger ist härter.",
+        "flat_score_days": "Schätzungen innerhalb dieser Anzahl Tage erhalten trotzdem die Maximalpunktzahl. Höher ist nachsichtiger, leichter.",
+        "decay_days": "Wie schnell die Punktzahl pro Tag jenseits des Fensters mit Maximalpunkten sinkt. Höher ist nachsichtiger (langsamerer Verfall), niedriger ist härter.",
+        "starting_score": "Punkte, mit denen ein Spiel startet, vor falschen Rateversuchen. Höher gibt mehr Spielraum für Fehler.",
+        "wrong_guess_penalty": "Punkte, die pro falscher Antwort verloren gehen. Höher ist härter.",
+        "asset_count_weight": "Wie stark die Fotoanzahl einer Person oder eines Albums beeinflusst, wer ausgewählt wird (0 = einheitlich, 1 = vollständig proportional). Höher bedeutet, dass gut fotografierte Personen/Alben häufiger vorkommen.",
+        "require_birth_date": "Nur eine gesuchte Person mit gesetztem Geburtsdatum auswählen.",
+        "total_people": "Nach wie vielen verschiedenen Personen das gesamte Spiel fragt. Höher bedeutet ein längeres Spiel.",
+        "max_hidden_faces": "Maximal verdeckte Gesichter in einer Runde. Höher ist schwieriger.",
+        "streak_scoring": "Ob Punkte ein fester Betrag pro richtiger Antwort sind, oder mit der Länge der Serie wachsen.",
+        "face_box_growth": "Wie viel größer die schwarze Box als das Gesicht selbst ist (1.0 = eng anliegend). Höher verdeckt mehr vom Foto, schwieriger.",
+        "tolerance_days": "Um wie viele Tage eine platzierte Karte abweichen darf und trotzdem als richtig zählt. Höher ist nachsichtiger, leichter.",
+        "min_separation_days": "Mindestabstand zwischen den Daten der Karten bei der Fotoauswahl, damit sie nicht zu nah beieinander liegen. Höher verteilt sie weiter.",
+        "max_cards": "Obergrenze, wie viele Karten ein Durchlauf erreichen kann (0 = unbegrenzt).",
+        "max_points": "Punkte für eine sofortige richtige Antwort. Höher bedeutet insgesamt höhere Punktzahlen.",
+        "min_points": "Punkte für eine richtige Antwort genau am Zeitlimit, statt 0. Höher belohnt eine langsame, aber richtige Antwort stärker.",
+        "answer_time_seconds": "Zeitlimit zum Beantworten einer Frage, in Sekunden. Höher gibt mehr Zeit, leichter.",
+        "max_rounds": "Obergrenze, wie viele Runden ein Durchlauf erreichen kann (0 = unbegrenzt)."
       }
     },
     "daily": {
@@ -390,6 +420,10 @@
       "settings": {
         "no_repeat_days": "Fenster ohne Wiederholung (Tage)",
         "chain_length": "Kettenlängenbegrenzung"
+      },
+      "settingsHelp": {
+        "no_repeat_days": "Wie viele Tage ein Thema von einer Wiederholung in der täglichen Challenge ausgeschlossen bleibt. Höher braucht eine größere Bibliothek.",
+        "chain_length": "Wie viele Runden die tägliche Challenge enthält."
       }
     },
     "invites": {

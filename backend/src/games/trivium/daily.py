@@ -13,6 +13,7 @@ from uuid import UUID, uuid4
 
 from games.trivium.game import TriviumGame
 from games.trivium.modes import MODES
+from games.trivium.pooled_content import PooledContentQueries
 from games.trivium.questions.base import GeneratedQuestion
 from games.trivium.round import TriviumRound, media_from_payload, media_to_payload
 from services.immich import ContentQueries, ImmichService
@@ -74,8 +75,12 @@ def build_spec(mode: str, immich_service: ContentQueries, settings: dict[str, fl
     # - round count and question count are 1:1.
     chain_length = int(settings.get("chain_length", 100))
     question_types = MODES[mode]
+    # Pools/memoizes the handful of query shapes every question type re-issues from scratch on
+    # each generate() call - see PooledContentQueries' own docstring. Scoped to this build_spec
+    # call only; live games keep using immich_service straight (services/game_factory.py).
+    pooled_content = PooledContentQueries(immich_service)
     game = TriviumGame.start(
-        id=uuid4(), mode=mode, immich_service=immich_service, question_types=question_types, settings=settings
+        id=uuid4(), mode=mode, immich_service=pooled_content, question_types=question_types, settings=settings
     )
     while len(game.rounds) < chain_length:
         game.rounds.append(game.create_next_round())

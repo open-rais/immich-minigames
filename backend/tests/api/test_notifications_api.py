@@ -49,6 +49,33 @@ class TestPreferences:
         assert get_response.json() == body
 
 
+class TestSetLanguage:
+    def test_creates_the_row_with_every_toggle_off_when_none_existed(self, logged_client):
+        response = logged_client.patch("/api/v1/notifications/preferences/language", json={"language": "fr"})
+
+        assert response.status_code == 200
+        assert response.json() == {
+            "daily_reminders": False,
+            "birthdays": False,
+            "album_anniversary": False,
+            "language": "fr",
+        }
+
+    def test_preserves_existing_toggles_only_changing_language(self, logged_client):
+        put_body = {"daily_reminders": True, "birthdays": True, "album_anniversary": False, "language": "en"}
+        logged_client.put("/api/v1/notifications/preferences", json=put_body)
+
+        response = logged_client.patch("/api/v1/notifications/preferences/language", json={"language": "de"})
+
+        assert response.status_code == 200
+        assert response.json() == {**put_body, "language": "de"}
+
+    def test_rejects_an_unsupported_language(self, logged_client):
+        response = logged_client.patch("/api/v1/notifications/preferences/language", json={"language": "it"})
+
+        assert response.status_code == 422
+
+
 class TestSubscribe:
     def test_rejects_a_non_https_endpoint(self, logged_client):
         response = logged_client.post(

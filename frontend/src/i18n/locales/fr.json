@@ -255,16 +255,16 @@
       "description": "Répondez à des questions sur vos photos et les personnes qu'elles montrent. Une mauvaise réponse - ou un temps écoulé - termine la partie."
     },
     "questions": {
-      "birthdayYear": "En quelle année {{name}} est-il/elle né(e) ?",
-      "birthdayDayMonth": "Quand est l'anniversaire de {{name}} ?",
-      "birthdayFullDate": "Quel jour {{name}} est-il/elle né(e) ?",
-      "photosTotalAssets": "Laquelle de ces personnes a le plus de photos au total ?",
-      "photosTogether": "Laquelle de ces personnes a le plus de photos avec {{name}} ?",
-      "photosFirstAssetYear": "De quelle année est la première photo de {{name}} ?",
-      "locationCountry": "Dans quel pays cette photo a-t-elle été prise ?",
-      "locationCity": "Dans quelle ville cette photo a-t-elle été prise ?",
-      "mixedFaceToName": "Comment s'appelle cette personne ?",
-      "mixedNameToFace": "Qui est {{name}} ?"
+      "birthdayYear": "En quelle **année** **{{name}}** est-il/elle né(e) ?",
+      "birthdayDayMonth": "Quand est **l'anniversaire** de **{{name}}** ?",
+      "birthdayFullDate": "Quel **jour** **{{name}}** est-il/elle né(e) ?",
+      "photosTotalAssets": "Laquelle de ces personnes a **le plus de photos** au total ?",
+      "photosTogether": "Laquelle de ces personnes a **le plus de photos** avec **{{name}}** ?",
+      "photosFirstAssetYear": "De quelle année est la **première photo** de **{{name}}** ?",
+      "locationCountry": "Dans quel **pays** cette photo a-t-elle été prise ?",
+      "locationCity": "Dans quelle **ville** cette photo a-t-elle été prise ?",
+      "mixedFaceToName": "Comment **s'appelle** cette personne ?",
+      "mixedNameToFace": "Qui est **{{name}}** ?"
     },
     "result": {
       "correct": "Correct !",
@@ -362,6 +362,8 @@
       "loading": "Chargement des jeux...",
       "noSettings": "Ce jeu n'a pas de paramètres configurables pour le moment.",
       "reset": "Réinitialiser par défaut",
+      "settingsHelpLabel": "Plus d'informations",
+      "settingsRangeTemplate": "Par défaut {{default}} · plage {{min}}–{{max}}",
       "settings": {
         "total_rounds": "Manches totales",
         "max_score": "Score maximum par manche",
@@ -381,7 +383,35 @@
         "face_box_growth": "Agrandissement des cadres de visage (1.0-1.5)",
         "tolerance_days": "Tolérance d'emplacement (jours)",
         "min_separation_days": "Séparation minimale entre les cartes (jours)",
-        "max_cards": "Cartes maximum (0 = illimité)"
+        "max_cards": "Cartes maximum (0 = illimité)",
+        "max_points": "Score maximum par manche",
+        "min_points": "Score minimum par manche",
+        "answer_time_seconds": "Temps limite pour répondre (secondes)",
+        "max_rounds": "Manches maximum (0 = illimité)"
+      },
+      "settingsHelp": {
+        "total_rounds": "Combien de manches dure une partie.",
+        "max_score": "Points attribués pour une réponse parfaite. Plus c'est élevé, plus les scores globaux sont élevés.",
+        "max_extra_assets": "Photos supplémentaires du même endroit montrées comme indice. Plus c'est élevé, plus il y a d'indices, plus c'est facile.",
+        "flat_score_radius_km": "Les réponses dans ce rayon obtiennent quand même le score maximum. Plus c'est élevé, plus c'est indulgent, plus c'est facile.",
+        "decay_km": "À quelle vitesse le score baisse par km au-delà du rayon de score maximum. Plus c'est élevé, plus c'est indulgent (décroissance plus lente), plus c'est bas, plus c'est sévère.",
+        "flat_score_days": "Les réponses dans ce nombre de jours obtiennent quand même le score maximum. Plus c'est élevé, plus c'est indulgent, plus c'est facile.",
+        "decay_days": "À quelle vitesse le score baisse par jour au-delà de la fenêtre de score maximum. Plus c'est élevé, plus c'est indulgent (décroissance plus lente), plus c'est bas, plus c'est sévère.",
+        "starting_score": "Points de départ d'une partie, avant toute erreur. Plus c'est élevé, plus il y a de marge pour se tromper.",
+        "wrong_guess_penalty": "Points perdus par mauvaise réponse. Plus c'est élevé, plus c'est sévère.",
+        "asset_count_weight": "À quel point le nombre de photos d'une personne ou d'un album influence qui est choisi (0 = uniforme, 1 = entièrement proportionnel). Plus c'est élevé, plus les plus photographiés apparaissent souvent.",
+        "require_birth_date": "Choisir uniquement une personne mystère ayant une date de naissance renseignée.",
+        "total_people": "Combien de personnes différentes la partie complète interroge. Plus c'est élevé, plus la partie est longue.",
+        "max_hidden_faces": "Nombre maximum de visages masqués dans une manche. Plus c'est élevé, plus c'est difficile.",
+        "streak_scoring": "Si les points sont un montant fixe par bonne réponse, ou augmentent avec la longueur de la série.",
+        "face_box_growth": "De combien la boîte noire dépasse le visage (1.0 = ajustée). Plus c'est élevé, plus ça couvre la photo, plus c'est difficile.",
+        "tolerance_days": "De combien de jours une carte placée peut s'écarter et compter comme correcte. Plus c'est élevé, plus c'est indulgent, plus c'est facile.",
+        "min_separation_days": "Écart minimum imposé entre les dates des cartes lors du choix des photos, pour éviter qu'elles se regroupent. Plus c'est élevé, plus elles sont espacées.",
+        "max_cards": "Limite du nombre de cartes qu'une partie peut atteindre (0 = illimité).",
+        "max_points": "Points attribués pour une réponse instantanée. Plus c'est élevé, plus les scores globaux sont élevés.",
+        "min_points": "Points attribués pour une bonne réponse donnée juste à la limite de temps, au lieu de 0. Plus c'est élevé, plus une réponse lente mais correcte est récompensée.",
+        "answer_time_seconds": "Temps limite pour répondre à une question, en secondes. Plus c'est élevé, plus il y a de temps, plus c'est facile.",
+        "max_rounds": "Limite du nombre de manches qu'une partie peut atteindre (0 = illimité)."
       }
     },
     "daily": {
@@ -390,6 +420,10 @@
       "settings": {
         "no_repeat_days": "Fenêtre de non-répétition (jours)",
         "chain_length": "Limite de chaîne"
+      },
+      "settingsHelp": {
+        "no_repeat_days": "Combien de jours un sujet reste exclu de répétition dans le défi quotidien. Plus c'est élevé, plus il faut une grande bibliothèque.",
+        "chain_length": "Combien de manches contient le défi du jour."
       }
     },
     "invites": {

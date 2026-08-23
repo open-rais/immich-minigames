@@ -91,6 +91,26 @@ class NotificationService:
         self._session.commit()
         return preferences
 
+    def set_language(self, user_id: UUID, language: str) -> NotificationPreferences:
+        """Partial update - unlike update_preferences above (a full replace of all 4 columns),
+        this touches only `language`. Exists so the app's one language selector
+        (frontend/src/settings/SettingsPage.tsx) can sync it on every language change without a
+        GET-then-PUT that risks clobbering the toggles if the GET fails or hasn't resolved yet -
+        the exact trap frontend/src/pwa/useNotificationSettings.ts's own `activate` already
+        documents and avoids. No row yet means nothing was ever configured, so the toggles the
+        INSERT branch omits here correctly fall back to the columns' own `false` server_default."""
+        stmt = (
+            pg_insert(NotificationPreferencesModel)
+            .values(user_id=user_id, language=language, updated_at=sa.func.now())
+            .on_conflict_do_update(
+                index_elements=["user_id"],
+                set_={"language": language, "updated_at": sa.func.now()},
+            )
+        )
+        self._session.execute(stmt)
+        self._session.commit()
+        return self.get_preferences(user_id)
+
     def add_subscription(self, user_id: UUID, endpoint: str, p256dh: str, auth: str) -> None:
         """Idempotent by endpoint - resubscribing (e.g. every app load calling subscribe() again)
         just refreshes the same row instead of accumulating duplicates. Raises

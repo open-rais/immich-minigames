@@ -37,6 +37,33 @@ export const FACE_ONLY_ALTERNATIVE_KINDS = new Set(["mixed_name_to_face"])
 // formatted day shifting by the viewer's own timezone offset - these are calendar dates, not
 // instants. photos_total_assets/photos_together/mixed_name_to_face's alternatives are people -
 // just their name.
+export interface QuestionSegment {
+  word: string
+  bold: boolean
+}
+
+// Parses `**marked**` spans out of an already-interpolated question string (i18next fills in
+// {{name}} etc. before this ever sees the text - TriviumGame.tsx/TriviumRounds.tsx both call
+// t(questionTextKey, { name }) first) into a flat, ordered list of words each tagged with whether
+// it falls inside a bold span - the keyword and/or the person's name, per the 10 trivium.questions.*
+// locale strings. Splits on `**` first, alternating the bold flag, and only *then* splits each
+// resulting chunk on whitespace - never the other way around, since a mark can span more than one
+// word (an interpolated {{name}} like "Ana María" becomes **Ana María**, both words bold). Same
+// word count/order as a plain whitespace split on the marker-free text, so the word-by-word reveal
+// timing this feeds (TriviumGame.tsx's WORD_REVEAL_MS) doesn't change. A phrase with no `**` at all
+// (a locale that hasn't been updated yet) degrades to every word unbold rather than throwing.
+export function questionSegments(text: string): QuestionSegment[] {
+  const parts = text.split("**")
+  const segments: QuestionSegment[] = []
+  parts.forEach((part, i) => {
+    const bold = i % 2 === 1
+    for (const word of part.split(/\s+/)) {
+      if (word) segments.push({ word, bold })
+    }
+  })
+  return segments
+}
+
 export function formatAlternative(questionKind: string, value: unknown, language: string): string {
   if (PERSON_ALTERNATIVE_KINDS.has(questionKind)) {
     return (value as PersonRef).person_name
