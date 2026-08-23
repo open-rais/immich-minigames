@@ -10,6 +10,7 @@ from api.deps import get_notifications_service
 from api.dto.notifications import (
     NotificationPreferencesIn,
     NotificationPreferencesOut,
+    SetLanguageIn,
     SubscribeIn,
     UnsubscribeIn,
 )
@@ -45,6 +46,16 @@ def update_preferences(
     notifications_service: Annotated[NotificationService, Depends(get_notifications_service)],
 ) -> NotificationPreferencesOut:
     prefs = notifications_service.update_preferences(user.id, NotificationPreferences(**body.model_dump()))
+    return _to_preferences_out(prefs)
+
+
+@router.patch("/preferences/language", response_model=NotificationPreferencesOut)
+def set_language(
+    body: SetLanguageIn,
+    user: Annotated[UserModel, Depends(get_current_user)],
+    notifications_service: Annotated[NotificationService, Depends(get_notifications_service)],
+) -> NotificationPreferencesOut:
+    prefs = notifications_service.set_language(user.id, body.language)
     return _to_preferences_out(prefs)
 
 

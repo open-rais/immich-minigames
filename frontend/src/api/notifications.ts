@@ -13,6 +13,16 @@ export async function updateNotificationPreferences(
   return data
 }
 
+// Partial update (only `language`) - unlike the PUT above, which replaces every field. Lets the
+// app's one language selector (settings/SettingsPage.tsx) sync this without a GET-then-PUT that
+// risks clobbering real toggles if the GET hasn't resolved yet or fails.
+export async function setNotificationLanguage(language: string): Promise<NotificationPreferences> {
+  const { data } = await apiClient.patch<NotificationPreferences>("/notifications/preferences/language", {
+    language,
+  })
+  return data
+}
+
 export async function subscribeToPush(body: SubscribeIn): Promise<void> {
   await apiClient.post("/notifications/subscriptions", body)
 }
