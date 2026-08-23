@@ -43,6 +43,9 @@
       "nextDay": "Next day",
       "streak": "{{count}}-day streak"
     },
+    "followUp": {
+      "title": "Today's other dailies"
+    },
     "share": {
       "button": "Share",
       "copyButton": "Copy",

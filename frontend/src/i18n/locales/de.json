@@ -43,6 +43,9 @@
       "nextDay": "Nächster Tag",
       "streak": "{{count}}-Tage-Serie"
     },
+    "followUp": {
+      "title": "Die anderen Dailies von heute"
+    },
     "share": {
       "button": "Teilen",
       "copyButton": "Kopieren",

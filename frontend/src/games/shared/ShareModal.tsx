@@ -31,11 +31,11 @@ export function ShareModal({ text, onClose }: ShareModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-40 flex items-center justify-center bg-ink/40 px-6"
+      className="fixed inset-0 z-40 flex items-center justify-center bg-ink/40 px-6 animate-[modal-backdrop-in_200ms_ease-out]"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-2xl border border-line-soft bg-surface p-6 shadow-card"
+        className="w-full max-w-md rounded-2xl border border-line-soft bg-surface p-6 shadow-card animate-[modal-card-in_260ms_ease-out]"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-lg font-bold text-ink">{t("daily.share.button")}</h2>

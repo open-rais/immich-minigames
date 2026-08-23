@@ -7,6 +7,7 @@ import { peekCached, revalidate, setCached, updateCached, useLiveQuery } from ".
 import type { GameOut } from "../../api/types/common"
 import type { DailyStatusOut } from "../../api/types/daily"
 import type { GameRecordsOut } from "../../api/types/records"
+import { useDailyFinishedNotifier } from "./dailyFinishedContext"
 import { useGuardedRequests } from "./useGuardedRequests"
 
 export type Screen = "idle" | "playing" | "finished" | "error"
@@ -109,6 +110,10 @@ export function useGameSession({
   // anything - resumeGame() reads this instead of calling getCurrentGame (which never returns a
   // daily game).
   const dailyGameIdRef = useRef<string | null>(null)
+  // Set by markDailyFinished (the player's own guess ended today's daily), consumed by the effect
+  // below once the finished screen is actually on screen.
+  const justFinishedDailyRef = useRef(false)
+  const notifyDailyFinished = useDailyFinishedNotifier()
 
   const { isCurrent, guarded, discardInFlight } = useGuardedRequests()
   const startInFlightRef = useRef(false)
@@ -185,6 +190,17 @@ export function useGameSession({
     }
   }, [screen, gameType, mode, daily])
 
+  // Fires on the transition to the finished screen, not inside markDailyFinished itself:
+  // useRoundGame calls that one during the "revealed" phase, a whole revealHoldMs before the
+  // finished screen exists, and the follow-up modal is timed off that screen appearing.
+  // hydrateFinishedDaily's path (re-opening an already-played daily) never sets the ref, so
+  // revisiting a finished daily notifies nobody.
+  useEffect(() => {
+    if (screen !== "finished" || !justFinishedDailyRef.current) return
+    justFinishedDailyRef.current = false
+    notifyDailyFinished?.()
+  }, [screen, notifyDailyFinished])
+
   async function startGame() {
     await guarded(startInFlightRef, async (token) => {
       setBusy(true)
@@ -255,13 +271,17 @@ export function useGameSession({
   // null) - without passing it here, DailySection's "share all" would drop this mode until the next
   // real revalidation fills game_id back in. No-op for non-daily games.
   function markDailyFinished(gameId: string, score: number) {
+    if (!daily) return
+    // Marked before the cache guard below: even with nothing cached to update, the game really did
+    // just end, and the follow-up modal (menu/DailyGameRoute.tsx) fetches the day's status itself.
+    justFinishedDailyRef.current = true
     // Nothing to read-modify-write if this mode's status was never fetched yet (shouldn't happen in
     // practice: reaching a playable daily round means the idle screen's own useLiveQuery already
     // populated this key) - skip rather than fabricate a DailyStatusOut for the other modes we don't
     // know about; the next real revalidation (e.g. backToIdle's) fills it in correctly.
     const currentStatus =
       dailyStatusQuery.state.status === "loading" ? undefined : dailyStatusQuery.state.value
-    if (!daily || !currentStatus) return
+    if (!currentStatus) return
     updateCached<DailyStatusOut>(DAILY_STATUS_KEY, (prev) => {
       const base = prev ?? currentStatus
       return {

@@ -43,6 +43,9 @@
       "nextDay": "Día siguiente",
       "streak": "Racha de {{count}} días"
     },
+    "followUp": {
+      "title": "Otros dailies de hoy"
+    },
     "share": {
       "button": "Compartir",
       "copyButton": "Copiar",
