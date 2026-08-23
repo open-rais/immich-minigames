@@ -117,6 +117,47 @@ class TestTriviumRoundScoring:
         assert round_.calculate_score(None) == 100
         assert round_.calculate_score({}) == 100
 
+    def test_instant_answer_still_scores_max_points_with_a_min_points_floor(self):
+        round_ = _round(_question(correct_index=1))
+        round_.guess = Answer(alternative=1, elapsed_ms=0)
+        settings = {"max_points": 100, "min_points": 20, "answer_time_seconds": 10}
+        assert round_.calculate_score(settings) == 100
+
+    def test_elapsed_past_the_limit_lands_on_min_points_not_zero(self):
+        round_ = _round(_question(correct_index=1))
+        round_.guess = Answer(alternative=1, elapsed_ms=999_999)
+        settings = {"max_points": 100, "min_points": 20, "answer_time_seconds": 10}
+        assert round_.calculate_score(settings) == 20
+
+    def test_halfway_lands_between_min_and_max_points(self):
+        round_ = _round(_question(correct_index=1))
+        round_.guess = Answer(alternative=1, elapsed_ms=5000)
+        settings = {"max_points": 100, "min_points": 20, "answer_time_seconds": 10}
+        assert round_.calculate_score(settings) == 60
+
+    def test_min_points_defaults_to_zero_unchanged_from_before(self):
+        round_ = _round(_question(correct_index=1))
+        round_.guess = Answer(alternative=1, elapsed_ms=999_999)
+        assert round_.calculate_score({"max_points": 100, "answer_time_seconds": 10}) == 0
+
+    def test_min_points_above_max_points_clamps_to_max_points_instead_of_inverting(self):
+        round_ = _round(_question(correct_index=1))
+        round_.guess = Answer(alternative=1, elapsed_ms=999_999)
+        settings = {"max_points": 100, "min_points": 500, "answer_time_seconds": 10}
+        assert round_.calculate_score(settings) == 100
+
+    def test_wrong_answer_ignores_min_points_and_scores_zero(self):
+        round_ = _round(_question(correct_index=1))
+        round_.guess = Answer(alternative=0, elapsed_ms=0)
+        settings = {"max_points": 100, "min_points": 20, "answer_time_seconds": 10}
+        assert round_.calculate_score(settings) == 0
+
+    def test_timeout_ignores_min_points_and_scores_zero(self):
+        round_ = _round(_question(correct_index=1))
+        round_.guess = Answer(alternative=None, elapsed_ms=10_000)
+        settings = {"max_points": 100, "min_points": 20, "answer_time_seconds": 10}
+        assert round_.calculate_score(settings) == 0
+
     def test_correct_property_is_independent_of_score_delta(self):
         # A correct answer given right at the time limit still scores 0 points, but is still a
         # *win* for has_next_round()'s purposes, not a loss.

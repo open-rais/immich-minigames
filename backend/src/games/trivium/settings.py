@@ -5,13 +5,14 @@ services/game_settings_service.py for how they're read/written."""
 from games.settings_spec import CHAIN_LENGTH_SPEC, NO_REPEAT_DAYS_SPEC, SettingSpec
 from games.trivium.game import MAX_ROUNDS
 from games.trivium.modes import MODE_BIRTHDAY, MODE_LOCATION, MODE_MIXED, MODE_PHOTOS
-from games.trivium.round import ANSWER_TIME_SECONDS, MAX_POINTS
+from games.trivium.round import ANSWER_TIME_SECONDS, MAX_POINTS, MIN_POINTS
 
-# Same three knobs for every mode (they all share TriviumGame/TriviumRound - see games/trivium/
-# game.py's module docstring for why there's only one Game/Round pair) - defined once and reused
-# rather than four structurally-identical literal lists.
+# Same knobs for every mode (they all share TriviumGame/TriviumRound - see games/trivium/game.py's
+# module docstring for why there's only one Game/Round pair) - defined once and reused rather than
+# four structurally-identical literal lists.
 _MODE_SETTING_SPECS: list[SettingSpec] = [
     SettingSpec("max_points", MAX_POINTS, "int", 1, 1000),
+    SettingSpec("min_points", MIN_POINTS, "int", 0, 1000),
     # min_value=1 (not 0) - calculate_score divides by answer_time_seconds * 1000.
     SettingSpec("answer_time_seconds", ANSWER_TIME_SECONDS, "int", 1, 120),
     SettingSpec("max_rounds", MAX_ROUNDS, "int", 0, 500),  # 0 = no limit
