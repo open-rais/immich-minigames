@@ -362,6 +362,8 @@
       "loading": "Loading games...",
       "noSettings": "This game has no configurable settings yet.",
       "reset": "Reset to defaults",
+      "settingsHelpLabel": "More info",
+      "settingsRangeTemplate": "Default {{default}} · range {{min}}–{{max}}",
       "settings": {
         "total_rounds": "Total rounds",
         "max_score": "Max score per round",
@@ -381,7 +383,35 @@
         "face_box_growth": "Face box growth (1.0-1.5)",
         "tolerance_days": "Slot tolerance (days)",
         "min_separation_days": "Min. spread between cards (days)",
-        "max_cards": "Max cards (0 = unlimited)"
+        "max_cards": "Max cards (0 = unlimited)",
+        "max_points": "Max points per round",
+        "min_points": "Min points per round",
+        "answer_time_seconds": "Answer time limit (seconds)",
+        "max_rounds": "Max rounds (0 = unlimited)"
+      },
+      "settingsHelp": {
+        "total_rounds": "How many rounds one game has.",
+        "max_score": "Points awarded for a perfect guess. Higher means higher scores overall.",
+        "max_extra_assets": "Extra photos of the same spot shown as clues. Higher means more clues, easier.",
+        "flat_score_radius_km": "Guesses within this radius still score the max. Higher is more forgiving, easier.",
+        "decay_km": "How fast score drops per km past the max-score radius. Higher is more forgiving (slower decay), lower is harsher.",
+        "flat_score_days": "Guesses within this many days still score the max. Higher is more forgiving, easier.",
+        "decay_days": "How fast score drops per day past the max-score window. Higher is more forgiving (slower decay), lower is harsher.",
+        "starting_score": "Points a game starts with, before any wrong guesses. Higher gives more room to guess wrong.",
+        "wrong_guess_penalty": "Points lost per wrong guess. Higher is harsher.",
+        "asset_count_weight": "How much a person or album's photo count skews who gets picked (0 = uniform, 1 = fully proportional). Higher means well-photographed ones show up more.",
+        "require_birth_date": "Only pick a mystery person who has a birth date set.",
+        "total_people": "How many different people the whole game asks about. Higher means a longer game.",
+        "max_hidden_faces": "Max faces blacked out in a single round. Higher is harder.",
+        "streak_scoring": "Whether points award a flat amount per correct guess, or build a bonus the longer your streak goes.",
+        "face_box_growth": "How much bigger the blackout box is than the face itself (1.0 = tight fit). Higher covers more of the photo, harder.",
+        "tolerance_days": "How many days off a placed card can still count as correct. Higher is more forgiving, easier.",
+        "min_separation_days": "Minimum gap enforced between cards' dates when picking photos, so they don't cluster together. Higher spreads them further apart.",
+        "max_cards": "Cap on how many cards one run can reach (0 = unlimited).",
+        "max_points": "Points awarded for answering instantly. Higher means higher scores overall.",
+        "min_points": "Points awarded for a correct answer given right at the time limit, instead of 0. Higher rewards a slow-but-correct answer more.",
+        "answer_time_seconds": "Time limit to answer a question, in seconds. Higher gives more time, easier.",
+        "max_rounds": "Cap on how many rounds one run can reach (0 = unlimited)."
       }
     },
     "daily": {
@@ -390,6 +420,10 @@
       "settings": {
         "no_repeat_days": "No-repeat window (days)",
         "chain_length": "Chain length cap"
+      },
+      "settingsHelp": {
+        "no_repeat_days": "How many days a subject stays excluded from repeating in the daily challenge. Higher needs a bigger library.",
+        "chain_length": "How many rounds the day's challenge contains."
       }
     },
     "invites": {
