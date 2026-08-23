@@ -43,6 +43,9 @@
       "nextDay": "Día siguiente",
       "streak": "Racha de {{count}} días"
     },
+    "followUp": {
+      "title": "Otros dailies de hoy"
+    },
     "share": {
       "button": "Compartir",
       "copyButton": "Copiar",
@@ -64,6 +67,12 @@
   },
   "leaderboard": {
     "title": "Clasificación",
+    "nav": {
+      "previousGame": "Juego anterior",
+      "nextGame": "Juego siguiente",
+      "previousMode": "Modo anterior",
+      "nextMode": "Modo siguiente"
+    },
     "empty": "Todavía nadie ha jugado este modo en este período.",
     "window": {
       "all": "Histórico",
@@ -96,6 +105,16 @@
     "finished": {
       "title": "Juego terminado",
       "finalScore": "Puntaje final: {{score}}"
+    },
+    "tips": {
+      "dismiss": "Ocultar consejo",
+      "report": "¿Viste algo incorrecto? Puedes reportarlo desde “Ver juego”.",
+      "leaderboard": "¿Quieres ver cómo le fue a los demás? Entra a “Clasificación”.",
+      "relive": "Puedes revivir esta partida desde “Ver juego”.",
+      "profileHistory": "¿Quieres volver a ver este juego más tarde? Tus partidas pasadas están en tu perfil.",
+      "roundsImmich": "Desde “Ver juego” puedes recorrer cada ronda y abrir cada foto en Immich.",
+      "install": "¡Puedes añadir esta app a tu inicio y usarla como una aplicación nativa!",
+      "dailyShare": "Comparte tu resultado desde el botón “Compartir”. Si juegas todos los juegos diarios, aparecerá en el menú un botón con el resumen de todos tus resultados."
     },
     "error": {
       "message": "Algo salió mal al hablar con el servidor.",

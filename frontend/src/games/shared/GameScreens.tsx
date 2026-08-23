@@ -8,6 +8,8 @@ import { BackButton } from "./BackButton"
 import { Button } from "./Button"
 import { buildDailyShareMessage } from "./dailyShareText"
 import { ShareModal } from "./ShareModal"
+import { TipBadge } from "./TipBadge"
+import { canInstallApp, pickTip } from "./tips"
 
 // Every game is always rendered under the /:gameType/:mode route (see menu/GameRoute.tsx), so
 // IdleScreen/FinishedScreen can read these directly instead of every one of the 5 game components
@@ -187,6 +189,15 @@ export function FinishedScreen({
   const [shareBusy, setShareBusy] = useState(false)
   const [shareText, setShareText] = useState<string | null>(null)
   const [shareError, setShareError] = useState(false)
+  // Rolled once, when the finished screen mounts (lazy initializer) - re-rolling on every render
+  // would make the tip flicker in and out as the share request flips `shareBusy`.
+  const [tipKey] = useState(() =>
+    pickTip({
+      hasRoundsView: !!roundsHref,
+      isDaily: !!dailyShare,
+      canInstall: canInstallApp(),
+    }),
+  )
 
   async function handleShare() {
     if (!dailyShare) return
@@ -244,6 +255,7 @@ export function FinishedScreen({
           {t("common.leaderboards")}
         </Button>
       </div>
+      {tipKey && <TipBadge tipKey={tipKey} />}
       {shareError && (
         <p className="text-sm font-semibold text-rose-600">{t("daily.share.error")}</p>
       )}

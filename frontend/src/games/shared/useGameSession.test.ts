@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { AxiosError, AxiosHeaders } from "axios"
 import type { AxiosResponse } from "axios"
+import type { ReactNode } from "react"
 import { describe, expect, it, vi } from "vitest"
 import type { GameOut } from "../../api/types/common"
 import type { DailyModeStatusOut, DailyStatusOut } from "../../api/types/daily"
@@ -30,8 +31,14 @@ async function freshEnv() {
   const games = await import("../../api/games")
   const queryCache = await import("../../api/queryCache")
   const { useGameSession, DAILY_STATUS_KEY } = await import("./useGameSession")
+  const { DailyFinishedContext } = await import("./dailyFinishedContext")
+  // Same registry as the hook and as @testing-library/react - a React imported from the outer
+  // registry would be a second copy, and the provider below wouldn't reach the hook at all.
+  const react = await import("react")
   const rtl = await import("@testing-library/react")
   return {
+    DailyFinishedContext,
+    react,
     getDailyStatus: vi.mocked(daily.getDailyStatus),
     createDailyGame: vi.mocked(daily.createDailyGame),
     getCurrentGame: vi.mocked(games.getCurrentGame),
@@ -457,6 +464,69 @@ describe("markDailyFinished", () => {
     env.act(() => result.current.markDailyFinished("g5", 77))
 
     expect(env.queryCache.peekCached(env.DAILY_STATUS_KEY)).toBeUndefined()
+  })
+})
+
+describe("the finished-daily notice", () => {
+  // The wrapper is what menu/DailyGameRoute.tsx provides in the real app - the only consumer of
+  // this signal, and what opens the "what now?" modal off it.
+  function withNotifier(env: Awaited<ReturnType<typeof freshEnv>>, onFinished: () => void) {
+    return ({ children }: { children: ReactNode }) =>
+      env.react.createElement(env.DailyFinishedContext.Provider, { value: onFinished }, children)
+  }
+
+  it("fires once, when the finished screen appears and not before", async () => {
+    const env = await freshEnv()
+    env.getDailyStatus.mockResolvedValue(dailyStatus([modeStatus()]))
+    env.createDailyGame.mockResolvedValue(gameOut())
+    const onFinished = vi.fn()
+
+    const { result, rerender } = env.renderHook(() => env.useGameSession(config({ daily: true })), {
+      wrapper: withNotifier(env, onFinished),
+    })
+    await env.waitFor(() => expect(result.current.hasCurrentGame).toBe(false))
+    await env.act(() => result.current.startGame())
+
+    // useRoundGame marks the daily finished during its reveal hold, a beat before it switches
+    // screens - nothing may be announced yet at that point.
+    env.act(() => result.current.markDailyFinished("g1", 77))
+    expect(onFinished).not.toHaveBeenCalled()
+
+    env.act(() => result.current.setScreen("finished"))
+    expect(onFinished).toHaveBeenCalledTimes(1)
+
+    env.act(() => rerender())
+    expect(onFinished).toHaveBeenCalledTimes(1)
+  })
+
+  it("stays quiet when an already-finished daily is re-opened", async () => {
+    const env = await freshEnv()
+    env.getDailyStatus.mockResolvedValue(
+      dailyStatus([modeStatus({ status: "finished", game_id: "g9", score: 12 })]),
+    )
+    env.getGame.mockResolvedValue(gameOut({ id: "g9", finished: true, score: 12 }))
+    const onFinished = vi.fn()
+
+    const { result } = env.renderHook(() => env.useGameSession(config({ daily: true })), {
+      wrapper: withNotifier(env, onFinished),
+    })
+
+    await env.waitFor(() => expect(result.current.screen).toBe("finished"))
+    expect(onFinished).not.toHaveBeenCalled()
+  })
+
+  it("does nothing for a normal game finishing", async () => {
+    const env = await freshEnv()
+    env.getCurrentGame.mockResolvedValue(null)
+    const onFinished = vi.fn()
+
+    const { result } = env.renderHook(() => env.useGameSession(config()), {
+      wrapper: withNotifier(env, onFinished),
+    })
+    env.act(() => result.current.markDailyFinished("g5", 77))
+    env.act(() => result.current.setScreen("finished"))
+
+    expect(onFinished).not.toHaveBeenCalled()
   })
 })
 

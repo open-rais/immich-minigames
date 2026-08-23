@@ -17,7 +17,8 @@ interface ImmichLinkProps {
  * rows - it's meant to live inside that "..." popover, not stand alone.
  *
  * The href is always the web URL, so desktop, "open in new tab" and "copy link" all behave like a
- * plain link; a plain tap on a phone is intercepted to try the Immich app first (immichDeepLink.ts). */
+ * plain link; a plain tap on a phone is intercepted to try the Immich app first, in a tab of its own
+ * so the game's own tab survives either outcome (immichDeepLink.ts). */
 export function ImmichLink({ kind, id, className = "" }: ImmichLinkProps) {
   const { t } = useTranslation()
   const links = useImmichLinks()

@@ -43,6 +43,9 @@
       "nextDay": "Nächster Tag",
       "streak": "{{count}}-Tage-Serie"
     },
+    "followUp": {
+      "title": "Die anderen Dailies von heute"
+    },
     "share": {
       "button": "Teilen",
       "copyButton": "Kopieren",
@@ -64,6 +67,12 @@
   },
   "leaderboard": {
     "title": "Rangliste",
+    "nav": {
+      "previousGame": "Vorheriges Spiel",
+      "nextGame": "Nächstes Spiel",
+      "previousMode": "Vorheriger Modus",
+      "nextMode": "Nächster Modus"
+    },
     "empty": "Noch niemand hat diesen Modus in diesem Fenster gespielt.",
     "window": {
       "all": "Gesamtverlauf",
@@ -96,6 +105,16 @@
     "finished": {
       "title": "Spielende",
       "finalScore": "Endergebnis: {{score}}"
+    },
+    "tips": {
+      "dismiss": "Tipp ausblenden",
+      "report": "Etwas Falsches entdeckt? Du kannst es über „Spiel anzeigen“ melden.",
+      "leaderboard": "Neugierig, wie es den anderen ergangen ist? Schau in die „Ranglisten“.",
+      "relive": "Du kannst diese Partie über „Spiel anzeigen“ noch einmal erleben.",
+      "profileHistory": "Möchtest du dieses Spiel später noch einmal ansehen? Deine vergangenen Partien findest du in deinem Profil.",
+      "roundsImmich": "Über „Spiel anzeigen“ kannst du jede Runde durchgehen und jedes Foto in Immich öffnen.",
+      "install": "Du kannst diese App zu deinem Startbildschirm hinzufügen und wie eine native App nutzen!",
+      "dailyShare": "Teile dein Ergebnis über die Schaltfläche „Teilen“. Spiele alle Tagesspiele und im Menü erscheint eine Schaltfläche mit der Zusammenfassung all deiner Ergebnisse."
     },
     "error": {
       "message": "Etwas ist beim Kontakt mit dem Server schiefgelaufen.",

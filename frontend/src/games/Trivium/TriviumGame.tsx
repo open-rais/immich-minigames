@@ -336,24 +336,39 @@ export function TriviumGame({ coverUrl, hasRoundsView, daily = false }: GameComp
     // what pins the question to the top and the alternatives to the bottom with the gap between
     // them flexing - GuardedBackButton/ScoreBadge are `fixed`, so they don't count as flex children
     // and don't disturb this.
+    //
+    // Once there's no gap left to flex (a short viewport), the overflow is absorbed by the round's
+    // photo and nothing else: the answer block is `shrink-0` (the alternatives staying fully on
+    // screen is the whole point of this layout) and so is the question text, while the photo
+    // wrapper and every ancestor between it and here are `min-h-0` so the shrink can actually
+    // reach it. See the photo wrapper below for what that does to its shape.
     <div className="flex h-dvh flex-col justify-between overflow-hidden bg-app-bg px-6 pt-20 pb-8 md:px-10 md:pt-28 md:pb-12">
       <GuardedBackButton onExit={backToIdle} />
       <ScoreBadge label={t("common.score")} score={game.score} />
 
-      <div className="mx-auto flex w-full max-w-md flex-col items-center md:max-w-2xl">
-        <div className="flex w-full flex-col items-center gap-4 rounded-[22px] border border-line bg-surface p-6 text-center shadow-card md:rounded-3xl md:p-10">
+      <div className="mx-auto flex min-h-0 w-full max-w-md flex-col items-center md:max-w-2xl">
+        <div className="flex min-h-0 w-full flex-col items-center gap-4 rounded-[22px] border border-line bg-surface p-6 text-center shadow-card md:rounded-3xl md:p-10">
           {round.media.kind === "person_thumbnail" && (
             <PersonAvatar src={personThumbnailSrc} alt={params.person_name} size="lg" />
           )}
+          {/* Square at most (aspect-square takes its natural height from its own width), but also
+              the only shrinkable box on this screen: on a viewport too short to fit a square photo
+              *and* the alternatives, flex shrinks this box's height while its width stays put, so
+              it flattens back into the horizontal rectangle this used to be at every size. No floor
+              on that (`min-h-0`, which an aspect-ratio box needs explicitly - its automatic minimum
+              size is the square height, i.e. it wouldn't shrink at all otherwise): whatever this
+              box refuses to give up is height the card can't fit, so its own content would spill
+              out past the card's border instead. AssetPhoto is object-contain, so nothing is
+              cropped along the way - the photo just letterboxes into whatever box it gets. */}
           {round.media.kind === "asset" && assetPhotoSrc && (
-            <div className="relative mx-auto aspect-square w-full max-w-[min(70vw,18rem)] overflow-hidden rounded-2xl md:max-w-sm">
+            <div className="relative mx-auto aspect-square min-h-0 w-full max-w-[min(70vw,18rem)] overflow-hidden rounded-2xl md:max-w-sm">
               <AssetPhoto src={assetPhotoSrc} alt="" onReadyChange={setAssetPhotoReady} />
             </div>
           )}
           {/* Every word is always rendered (reserving its final layout position) - only its
               opacity changes as revealedWordCount advances, so the text never shifts/reflows as
               it appears, unlike a literal typewriter that grows the string itself. */}
-          <p className="text-xl font-bold text-ink md:text-2xl">
+          <p className="shrink-0 text-xl font-bold text-ink md:text-2xl">
             {questionWords.map((segment, index) => (
               <span
                 key={index}
@@ -378,40 +393,42 @@ export function TriviumGame({ coverUrl, hasRoundsView, daily = false }: GameComp
         />
       )}
 
-      <div className="mx-auto flex w-full max-w-md flex-col items-center gap-4 md:max-w-2xl">
-        {/* Mounted already during "holding" (positioned off-screen below the viewport) so the
-            flip to "alternatives" is a genuine transition between two committed states, not an
-            instant snap - see SLIDE_START_VH/SLIDE_TRANSITION_MS above. */}
-        {revealStage !== "revealing" && (
+      <div className="mx-auto flex w-full max-w-md shrink-0 flex-col items-center gap-4 md:max-w-2xl">
+        {/* Mounted from the very first frame of the round (positioned off-screen below the
+            viewport until "alternatives") so the flip to "alternatives" is a genuine transition
+            between two committed states, not an instant snap - see SLIDE_START_VH/
+            SLIDE_TRANSITION_MS above. Mounted this early rather than only at "holding" so it
+            occupies its real height for the whole round: that height is what the photo above
+            sizes itself against on a short viewport, and mounting it late would visibly shrink
+            the photo mid-question the moment it appeared. */}
+        <div
+          className="flex w-full flex-col items-center gap-4"
+          style={{
+            transform: revealStage === "alternatives" ? "translateY(0)" : `translateY(${SLIDE_START_VH}vh)`,
+            transition: `transform ${SLIDE_TRANSITION_MS}ms ease-out`,
+          }}
+        >
+          <TriviumTimerBar fraction={remainingMs / answerTimeMs} />
+          {/* Person alternatives are always a 2x2 grid (mobile included, "cuadrantes") since
+              they read as photo tiles, not a text list - every other kind keeps 1 column on
+              mobile, 2 on desktop. */}
           <div
-            className="flex w-full flex-col items-center gap-4"
-            style={{
-              transform: revealStage === "alternatives" ? "translateY(0)" : `translateY(${SLIDE_START_VH}vh)`,
-              transition: `transform ${SLIDE_TRANSITION_MS}ms ease-out`,
-            }}
+            className={`grid w-full gap-3 md:gap-5 ${hasPersonAlternatives ? "grid-cols-2" : "grid-cols-1 md:grid-cols-2"}`}
           >
-            <TriviumTimerBar fraction={remainingMs / answerTimeMs} />
-            {/* Person alternatives are always a 2x2 grid (mobile included, "cuadrantes") since
-                they read as photo tiles, not a text list - every other kind keeps 1 column on
-                mobile, 2 on desktop. */}
-            <div
-              className={`grid w-full gap-3 md:gap-5 ${hasPersonAlternatives ? "grid-cols-2" : "grid-cols-1 md:grid-cols-2"}`}
-            >
-              {alternativeLabels.map((label, index) => (
-                <TriviumOption
-                  key={index}
-                  state={optionState(index)}
-                  disabled={phase !== "guessing"}
-                  onClick={() => handlePick(index)}
-                  photoUrl={optionPhotoUrls[index]}
-                  hideCaption={FACE_ONLY_ALTERNATIVE_KINDS.has(round.question_kind)}
-                >
-                  {label}
-                </TriviumOption>
-              ))}
-            </div>
+            {alternativeLabels.map((label, index) => (
+              <TriviumOption
+                key={index}
+                state={optionState(index)}
+                disabled={phase !== "guessing"}
+                onClick={() => handlePick(index)}
+                photoUrl={optionPhotoUrls[index]}
+                hideCaption={FACE_ONLY_ALTERNATIVE_KINDS.has(round.question_kind)}
+              >
+                {label}
+              </TriviumOption>
+            ))}
           </div>
-        )}
+        </div>
       </div>
     </div>
   )

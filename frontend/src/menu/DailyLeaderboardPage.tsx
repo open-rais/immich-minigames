@@ -8,8 +8,10 @@ import type { DailyLeaderboardEntryOut } from "../api/types/leaderboard"
 import { useAuth } from "../auth/useAuth"
 import { GAME_CATALOG } from "../games/catalog"
 import { BackButton } from "../games/shared/BackButton"
-import { GameModeSubtitle } from "../games/shared/GameModeSubtitle"
+import { CycleNav } from "../games/shared/CycleNav"
 import { PersonAvatar } from "../games/shared/PersonAvatar"
+import { DAILY_CATEGORY, useLeaderboardNav } from "./leaderboardNav"
+import { LeaderboardTitleNav } from "./LeaderboardTitleNav"
 
 function toLocalIso(d: Date): string {
   const year = d.getFullYear()
@@ -29,9 +31,10 @@ function shiftDate(iso: string, days: number): string {
 }
 
 // /daily/:gameType/:mode/leaderboard. Close variant of menu/LeaderboardPage.tsx
-// (same entry-list/row shape) with a [<] {date} [>] navigator instead of the all/weekly/daily
-// SegmentedControl - a daily leaderboard is scoped to one specific day's challenge, not a rolling
-// window. The right arrow disables once past today, since there's nothing to navigate to yet.
+// (same entry-list/row shape, same [‹] game [›] / [‹] mode [›] header) with an extra [‹] date [›]
+// row instead of the all/weekly/daily SegmentedControl - a daily leaderboard is scoped to one
+// specific day's challenge, not a rolling window. Its right arrow disables once past today, since
+// there's nothing to navigate to yet; the two header rings above it wrap around instead.
 export function DailyLeaderboardPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -43,6 +46,14 @@ export function DailyLeaderboardPage() {
 
   const game = GAME_CATALOG.find((g) => g.gameType === gameType)
   const catalogMode = game?.modes.find((m) => m.mode === mode)
+  // The chosen day rides along when cycling to another daily board (or back into the daily
+  // category from a normal one), so you keep comparing the same date across games.
+  const nav = useLeaderboardNav(
+    DAILY_CATEGORY,
+    gameType ?? "",
+    mode ?? "",
+    date === todayIso() ? "" : `?date=${date}`,
+  )
 
   useEffect(() => {
     if (!gameType || !mode) return
@@ -68,33 +79,25 @@ export function DailyLeaderboardPage() {
     <div className="flex min-h-screen flex-col items-center gap-6 bg-app-bg px-6 py-10">
       <BackButton label={t("common.back")} onClick={() => navigate(`/daily/${gameType}/${mode}`)} />
 
-      <div className="mt-14 text-center md:mt-0">
-        <h1 className="text-3xl font-bold text-ink">{t("leaderboard.title")}</h1>
-        <GameModeSubtitle
+      <div className="mt-14 w-full max-w-xs md:mt-0">
+        <h1 className="text-center text-3xl font-bold text-ink">{t("leaderboard.title")}</h1>
+        <LeaderboardTitleNav
+          nav={nav}
           gameTitle={t(game.gameTitleKey)}
           modeTitle={t(catalogMode.modeTitleKey)}
         />
       </div>
 
-      <div className="flex w-full max-w-xs items-center justify-between">
-        <button
-          type="button"
-          onClick={() => setSearchParams({ date: shiftDate(date, -1) })}
-          className="rounded-full p-2 text-xl text-ink transition-colors hover:bg-hover-tint"
-          aria-label={t("daily.leaderboard.previousDay")}
+      <div className="w-full max-w-xs">
+        <CycleNav
+          prevLabel={t("daily.leaderboard.previousDay")}
+          nextLabel={t("daily.leaderboard.nextDay")}
+          onPrev={() => setSearchParams({ date: shiftDate(date, -1) })}
+          onNext={() => setSearchParams({ date: shiftDate(date, 1) })}
+          nextDisabled={isToday}
         >
-          ‹
-        </button>
-        <span className="font-mono text-sm font-semibold text-ink">{date}</span>
-        <button
-          type="button"
-          onClick={() => !isToday && setSearchParams({ date: shiftDate(date, 1) })}
-          disabled={isToday}
-          className="rounded-full p-2 text-xl text-ink transition-colors hover:bg-hover-tint disabled:opacity-30 disabled:hover:bg-transparent"
-          aria-label={t("daily.leaderboard.nextDay")}
-        >
-          ›
-        </button>
+          <span className="font-mono text-sm font-semibold text-ink">{date}</span>
+        </CycleNav>
       </div>
 
       <div className="w-full max-w-md rounded-3xl border border-line bg-surface p-4 shadow-card">

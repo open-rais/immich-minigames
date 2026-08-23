@@ -4,15 +4,13 @@ import { useNavigate } from "react-router-dom"
 
 import { getDailyStatus } from "../api/daily"
 import { apiErrorMessage } from "../api/errors"
-import { getGame } from "../api/games"
 import { useLiveQuery } from "../api/queryCache"
-import type { GameOut } from "../api/types/common"
 import type { DailyModeStatusOut, DailyStatusOut } from "../api/types/daily"
 import { findCatalogMode, GAME_CATALOG } from "../games/catalog"
-import { buildDailyShareAllMessage } from "../games/shared/dailyShareText"
 import { ShareModal } from "../games/shared/ShareModal"
 import { DAILY_STATUS_KEY } from "../games/shared/useGameSession"
 import { isCollapsed, setCollapsed } from "./collapsedSections"
+import { buildShareAllText, dailyShareLink } from "./dailyShareAll"
 import { DailyCountdown } from "./DailyCountdown"
 import { ModeCard } from "./ModeCard"
 
@@ -117,8 +115,8 @@ export function DailySection() {
   }
 
   // A combined "share all results" summary line - only offered once every enabled mode has been
-  // played, fetching each one's full GameOut (rounds)
-  // on demand rather than keeping them all loaded just in case.
+  // played. The text itself is built by menu/dailyShareAll.ts, shared with the modal that opens
+  // after the day's last daily is finished.
   const allFinished = status.modes.every((m) => m.status === "finished")
 
   function toggle() {
@@ -133,28 +131,7 @@ export function DailySection() {
     if (!status) return
     setShareBusy(true)
     try {
-      const entries = await Promise.all(
-        status.modes.map(
-          async (
-            modeStatus,
-          ): Promise<{ gameTitle: string; modeTitle: string; game: GameOut } | null> => {
-            if (!modeStatus.game_id) return null
-            const catalogGame = GAME_CATALOG.find((g) => g.gameType === modeStatus.game_type)
-            const catalogMode = findCatalogMode(modeStatus.game_type, modeStatus.mode)
-            const game = await getGame(modeStatus.game_id)
-            return {
-              gameTitle: catalogGame ? t(catalogGame.gameTitleKey) : modeStatus.game_type,
-              modeTitle: catalogMode ? t(catalogMode.modeTitleKey) : modeStatus.mode,
-              game,
-            }
-          },
-        ),
-      )
-      const nonNull = entries.filter(
-        (e): e is { gameTitle: string; modeTitle: string; game: GameOut } => e !== null,
-      )
-      const link = `${window.location.origin}/`
-      setShareText(buildDailyShareAllMessage(t, nonNull, link))
+      setShareText(await buildShareAllText(t, status, dailyShareLink()))
     } catch {
       // best-effort - same silent-fail convention as this section's own load() above.
     } finally {

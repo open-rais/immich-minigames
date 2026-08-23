@@ -124,6 +124,34 @@ body {
   }
 }
 
+/*
+ * Modal entrance (menu/DailyFollowUpModal.tsx, games/shared/ShareModal.tsx): the dimmed backdrop
+ * fades in while the card itself rises the last few pixels into place, instead of both snapping in
+ * at full opacity. Same "play once on mount, land on the element's own resting style" shape as the
+ * Immichdle keyframes above - the card's `to` is exactly where it sits with no animation at all,
+ * so nothing needs `animation-fill-mode: forwards`. Kept as two keyframes rather than one on the
+ * overlay alone: the backdrop must not slide, only the card.
+ */
+@keyframes modal-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .dark {
   --color-app-bg: oklch(0.16 0.006 260);
   --color-surface: oklch(0.24 0.008 260);
