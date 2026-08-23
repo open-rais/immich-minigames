@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 
 import { GameType } from "../../api/types/common"
@@ -33,6 +34,16 @@ export function GeoguessrRounds({ game, onBack }: RoundsComponentProps) {
   // check: there's nothing to reveal for it.
   const stepper = useRoundStepper(game, isGeoguessrRound, (r) => r.actual_latitude !== null)
 
+  // Which of round.asset_ids the carousel currently shows - AssetCarousel is a controlled
+  // component now (see its own docstring). useRoundStepper's prev/next don't go through a
+  // synchronous "new round" callback the way useRoundGame's onNewRound does (GeoguessrGame.tsx's
+  // own reset), so this resets via an effect on the round's id instead - the same reset
+  // key={round.id} used to give this component for free before AssetCarousel had any state of its
+  // own to reset. Declared before the `!stepper` early return below (hooks can't follow it) -
+  // `stepper?.round.id` is undefined until a round exists, which is harmless as a dependency.
+  const [assetIndex, setAssetIndex] = useState(0)
+  useEffect(() => setAssetIndex(0), [stepper?.round.id])
+
   if (!stepper) return null
   const { round, index, total, prev, next } = stepper
 
@@ -48,7 +59,13 @@ export function GeoguessrRounds({ game, onBack }: RoundsComponentProps) {
   return (
     <div className="h-dvh w-full overflow-hidden bg-app-bg">
       <div className="fixed inset-0">
-        <AssetCarousel key={round.id} assetIds={round.asset_ids} alt={t("geoguessr.title")} />
+        <AssetCarousel
+          key={round.id}
+          assetIds={round.asset_ids}
+          alt={t("geoguessr.title")}
+          index={assetIndex}
+          onIndexChange={setAssetIndex}
+        />
       </div>
 
       <BackButton label={t("common.back")} onClick={() => onBack?.()} />
@@ -56,8 +73,8 @@ export function GeoguessrRounds({ game, onBack }: RoundsComponentProps) {
 
       <div className="fixed top-[18px] right-[18px] z-30 md:top-7 md:right-10">
         <EntryOptionsMenu>
-          <ImmichLink kind="asset" id={round.asset_ids[0]} />
-          <ReportMenuItem kind="asset" id={round.asset_ids[0]} />
+          <ImmichLink kind="asset" id={round.asset_ids[assetIndex]} />
+          <ReportMenuItem kind="asset" id={round.asset_ids[assetIndex]} />
         </EntryOptionsMenu>
       </div>
 

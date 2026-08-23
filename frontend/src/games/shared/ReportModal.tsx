@@ -30,9 +30,10 @@ function formatDate(value: string, language: string): string {
   )
 }
 
-const PERSONS_PREVIEW_COUNT = 3
+const PERSONS_PREVIEW_COUNT = 1
 
-// Shows up to PERSONS_PREVIEW_COUNT names; "show N more" expands to the rest in place instead of
+// One name per line (confirmed by the owner - stacked, not comma-joined on one line); collapsed to
+// just PERSONS_PREVIEW_COUNT by default, "show N more" expands the rest in place instead of
 // truncating with an ellipsis - a name list is exactly the kind of content a player would want to
 // actually read (e.g. to recognize whose face is mislabeled), not just know exists.
 function PersonsList({ persons }: { persons: string[] }) {
@@ -42,13 +43,21 @@ function PersonsList({ persons }: { persons: string[] }) {
   const remaining = persons.length - shown.length
 
   return (
-    <div>
-      <p className={expanded ? "" : "truncate"}>{shown.join(", ")}</p>
+    <div className="flex flex-col">
+      {shown.map((name, i) => (
+        <p key={i} className="truncate">
+          - {name}
+        </p>
+      ))}
       {remaining > 0 && (
         <button
           type="button"
           onClick={() => setExpanded(true)}
-          className="text-xs font-semibold text-primary hover:text-primary-hover"
+          // self-start: a <button> stretches full-width by default inside a flex column
+          // (align-items: stretch) and centers its own text - self-start shrinks it back to its
+          // content width so "text-left" actually has an effect, lining it up with the names
+          // above instead of centering in the row.
+          className="self-start text-left text-xs font-semibold text-primary hover:text-primary-hover"
         >
           {t("reports.modal.showMore", { count: remaining })}
         </button>
