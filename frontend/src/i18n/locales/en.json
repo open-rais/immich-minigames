@@ -93,6 +93,7 @@
     "leaderboards": "Leaderboards",
     "previousPhoto": "Previous photo",
     "nextPhoto": "Next photo",
+    "photoFailed": "Couldn't load this photo.",
     "previousRound": "Previous round",
     "nextRound": "Next round",
     "viewInImmich": "View in Immich",

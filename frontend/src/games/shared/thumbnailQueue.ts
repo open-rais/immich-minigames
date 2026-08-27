@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
+
+import { IMAGE_TIMEOUT_MS, MAX_IMAGE_ATTEMPTS } from "./imageLoading"
 
 // Matches the browser's own per-host HTTP/1.1 concurrency limit - generous for what Immich needs
 // to serve, while still capping how many requests this app can pile onto the backend at once.
@@ -42,19 +44,27 @@ const inFlight = new Map<string, Promise<CacheEntry>>()
 const controllers = new Map<string, AbortController>()
 const subscribers = new Map<string, Set<(entry: CacheEntry) => void>>()
 
-async function fetchQueued(url: string, signal: AbortSignal): Promise<CacheEntry> {
+async function fetchQueued(url: string, controller: AbortController): Promise<CacheEntry> {
   await acquire()
+  // Armed only once a slot is actually held, so the budget measures the network rather than the
+  // wait behind other requests. Without it a connection that stalls instead of failing keeps its
+  // slot forever, and since there are only MAX_CONCURRENT of them, four such requests strand every
+  // thumbnail for the rest of the session on `{ url: null, failed: false }` - which the consumer
+  // cannot tell apart from "still loading". The abort is what frees the slot, via the finally
+  // below.
+  const timer = setTimeout(() => controller.abort(), IMAGE_TIMEOUT_MS)
   try {
-    if (signal.aborted) {
+    if (controller.signal.aborted) {
       throw new DOMException("aborted", "AbortError")
     }
-    const response = await fetch(url, { credentials: "same-origin", signal })
+    const response = await fetch(url, { credentials: "same-origin", signal: controller.signal })
     if (!response.ok) {
       throw new Error(`thumbnail fetch failed: ${response.status}`)
     }
     const blob = await response.blob()
     return { objectUrl: URL.createObjectURL(blob), fetchedAt: Date.now() }
   } finally {
+    clearTimeout(timer)
     release()
   }
 }
@@ -74,7 +84,7 @@ function getQueuedThumbnail(url: string): Promise<CacheEntry> {
   if (!promise) {
     const controller = new AbortController()
     controllers.set(url, controller)
-    promise = fetchQueued(url, controller.signal)
+    promise = fetchQueued(url, controller)
       .then((entry) => {
         cache.set(url, entry)
         notify(url, entry)
@@ -171,8 +181,18 @@ const IDLE: QueuedThumbnail = { url: null, failed: false }
 // true - a fetch error never reaches an `<img onError>` (the `<img>` isn't the one making the
 // request), so this is the only way the caller's own failed-placeholder state can find out; wire it
 // in directly instead of an `onError` handler.
-export function useQueuedThumbnail(url: string | null): QueuedThumbnail {
+//
+// `failed` only goes true once the whole retry budget is spent: a fetch that fails or times out is
+// retried MAX_IMAGE_ATTEMPTS times first, silently, exactly like the <img> path in imageLoading.ts
+// (and for the same reason - the retry is usually served from a copy the browser or the service
+// worker already holds, so it costs almost nothing and resolves instantly). `retry` re-runs the
+// whole thing with a fresh budget, for a caller that offers the player a button; a caller that
+// shows only a placeholder can ignore it.
+export function useQueuedThumbnail(url: string | null): QueuedThumbnail & { retry: () => void } {
   const [state, setState] = useState<QueuedThumbnail>(IDLE)
+  // Bumped by `retry` to re-run the effect below with a clean slate. A new `url` does that on its
+  // own, so this only ever exists for a manual retry of the same one.
+  const [retryNonce, setRetryNonce] = useState(0)
 
   useEffect(() => {
     setState(IDLE)
@@ -195,18 +215,32 @@ export function useQueuedThumbnail(url: string | null): QueuedThumbnail {
         revalidate(url)
       }
     } else {
-      getQueuedThumbnail(url).catch(() => {
-        if (!cancelled) {
-          setState({ url: null, failed: true })
-        }
-      })
+      // The budget lives here rather than in state on purpose: one effect run is one budget, so a
+      // new url (or a manual retry) starts over without any extra bookkeeping.
+      let spent = 0
+      const attempt = () => {
+        getQueuedThumbnail(url).catch(() => {
+          if (cancelled) {
+            return
+          }
+          spent++
+          if (spent < MAX_IMAGE_ATTEMPTS) {
+            attempt()
+          } else {
+            setState({ url: null, failed: true })
+          }
+        })
+      }
+      attempt()
     }
 
     return () => {
       cancelled = true
       unsubscribe(url, applyEntry)
     }
-  }, [url])
+  }, [url, retryNonce])
 
-  return state
+  const retry = useCallback(() => setRetryNonce((nonce) => nonce + 1), [])
+
+  return { ...state, retry }
 }

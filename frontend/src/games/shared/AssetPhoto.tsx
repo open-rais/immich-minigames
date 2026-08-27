@@ -3,18 +3,13 @@ import { useEffect, useRef, useState } from "react"
 
 import { fitBox as computeFitBox } from "./fitBox"
 import type { Size } from "./fitBox"
+import { useImageLoad } from "./imageLoading"
+import { PhotoError } from "./PhotoError"
 import { Spinner } from "./Spinner"
 import { useElementSize } from "./useElementSize"
 import { useNonPassiveWheel } from "./useNonPassiveWheel"
 import type { Point } from "./usePointerGestures"
 import { usePointerGestures } from "./usePointerGestures"
-
-// Mirrors games/MoreOrLess/PersonPhoto.tsx's failed-image placeholder pattern, fullscreen instead
-// of a card.
-const placeholderStyle = {
-  backgroundImage:
-    "repeating-linear-gradient(135deg, var(--color-placeholder-a), var(--color-placeholder-a) 10px, var(--color-placeholder-b) 10px, var(--color-placeholder-b) 20px)",
-}
 
 // Same "zoom anchored under the cursor/pinch midpoint" UX principle as
 // games/Dateguessr/TimelineRuler.tsx, just 2D (translate x/y + scale) instead of its 1D
@@ -53,35 +48,36 @@ export function AssetPhoto({
   // Fired whenever "loaded or failed" changes - a caller that needs to know when this photo is
   // done loading (e.g. Trivium's location questions, which hold their countdown until every
   // photo on screen is ready) hooks into this instead of duplicating the load/error tracking
-  // below. A failed load still counts as "ready": the placeholder it falls back to needs no
-  // further waiting.
+  // below. A failed load still counts as "ready": the error state it falls back to needs no
+  // further waiting. Note that "failed" now means the whole retry budget is spent
+  // (imageLoading.ts), so a photo that never arrives holds this back for a few attempts rather
+  // than resolving on the first hiccup.
   onReadyChange?: (ready: boolean) => void
 }) {
-  const [failed, setFailed] = useState(false)
-  const [loaded, setLoaded] = useState(false)
+  // Load/timeout/retry lives in the shared hook - see its docstring for why an <img> alone can
+  // sit on a spinner forever, and why a retry has to remount the element via `imgKey`.
+  const { status, imgRef, imgKey, onLoad, onError, retry } = useImageLoad(src)
+  const loaded = status === "loaded"
   const containerRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
   const [translate, setTranslate] = useState<Point>({ x: 0, y: 0 })
 
-  // A caller that doesn't key this component by src (AssetCarousel.tsx does; WhosThatPersonGame's
-  // IncognitoPhoto doesn't) would otherwise keep this same <img> node across a round change - reset
-  // here too so the loading spinner/fade-in and the failed placeholder both react to a real photo
-  // change instead of the previous round's resolved state (mirrors Timeline/TimelineCard.tsx's own
-  // per-assetId reset). Also resets any pan/zoom left over from the previous photo (confirmed by
-  // the owner: Trivium's location photo kept a pinch-zoom applied across rounds) - a caller that
-  // *does* key by src never sees this fire on a photo change at all (the whole component remounts
-  // instead, which already starts scale/translate fresh), so this is only ever a no-op there.
+  // Resets any pan/zoom left over from the previous photo (confirmed by the owner: Trivium's
+  // location photo kept a pinch-zoom applied across rounds) for a caller that doesn't key this
+  // component by src (AssetCarousel.tsx does; WhosThatPersonGame's IncognitoPhoto doesn't) and so
+  // keeps this same node across a round change. A caller that *does* key by src never sees this
+  // fire on a photo change at all - the whole component remounts, already starting fresh - so it's
+  // only ever a no-op there. The matching reset of the load state lives in useImageLoad, which has
+  // to check whether the new photo is already decoded before assuming it needs loading.
   useEffect(() => {
-    setFailed(false)
-    setLoaded(false)
     setScale(1)
     setTranslate({ x: 0, y: 0 })
   }, [src])
 
   useEffect(() => {
-    onReadyChange?.(loaded || failed)
+    onReadyChange?.(status !== "loading")
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded, failed])
+  }, [status])
 
   // Natural (source) image size and the container's own rendered size - both needed to compute
   // fitBox below. Only relevant when `overlay` is used; harmless to always track otherwise.
@@ -178,8 +174,8 @@ export function AssetPhoto({
     },
   })
 
-  if (failed) {
-    return <div className="absolute inset-0" style={placeholderStyle} />
+  if (status === "failed") {
+    return <PhotoError onRetry={retry} />
   }
 
   // When there's an overlay to keep pixel-aligned to the photo (e.g. Who'sThatPerson's face
@@ -199,15 +195,19 @@ export function AssetPhoto({
         className="relative h-full w-full"
       >
         <img
+          // A retry has to be a brand-new element, not the same one with the same src reassigned -
+          // that's the whole point of imgKey, see imageLoading.ts.
+          key={imgKey}
+          ref={imgRef}
           src={src}
           alt={alt}
-          onError={() => setFailed(true)}
+          onError={onError}
           onLoad={(e) => {
             setNaturalSize({
               width: e.currentTarget.naturalWidth,
               height: e.currentTarget.naturalHeight,
             })
-            setLoaded(true)
+            onLoad()
           }}
           draggable={false}
           className={`h-full w-full object-contain transition-opacity duration-150 ${

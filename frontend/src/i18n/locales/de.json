@@ -93,6 +93,7 @@
     "leaderboards": "Ranglisten",
     "previousPhoto": "Vorheriges Foto",
     "nextPhoto": "Nächstes Foto",
+    "photoFailed": "Dieses Foto konnte nicht geladen werden.",
     "previousRound": "Vorherige Runde",
     "nextRound": "Nächste Runde",
     "viewInImmich": "In Immich anzeigen",

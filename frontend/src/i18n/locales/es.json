@@ -93,6 +93,7 @@
     "leaderboards": "Clasificación",
     "previousPhoto": "Foto anterior",
     "nextPhoto": "Foto siguiente",
+    "photoFailed": "No se pudo cargar esta foto.",
     "previousRound": "Ronda anterior",
     "nextRound": "Ronda siguiente",
     "viewInImmich": "Ver en Immich",

@@ -10,6 +10,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 // keep working for real.
 const FRESH_MS = 30 * 60 * 1000
 const MAX_CONCURRENT = 4
+// Mirrored from games/shared/imageLoading.ts, same as MAX_CONCURRENT is mirrored from the module
+// under test - importing them would tie these tests to the very module they are pinning down.
+const IMAGE_TIMEOUT_MS = 8_000
+const MAX_IMAGE_ATTEMPTS = 3
 const START = new Date("2026-08-13T10:00:00Z")
 
 interface PendingFetch {
@@ -56,6 +60,13 @@ beforeEach(() => {
             reject(error)
           },
         }
+        // A real fetch rejects with AbortError when its signal fires; the queue's timeout depends
+        // on that, so the mock has to do it too rather than staying pending forever.
+        init.signal.addEventListener("abort", () => {
+          if (entry.settled) return
+          entry.settled = true
+          reject(new DOMException("aborted", "AbortError"))
+        })
         pending.push(entry)
       }),
   )
@@ -88,6 +99,16 @@ function settleFor(url: string) {
   const entry = pendingFor(url)
   entry.resolve()
   return entry
+}
+
+// Fails `url` as many times as the retry budget allows, which is what it takes for the hook to
+// report `failed` - anything less is retried silently.
+async function exhaustAttempts(env: Awaited<ReturnType<typeof freshEnv>>, url: string) {
+  for (let i = 0; i < MAX_IMAGE_ATTEMPTS; i++) {
+    await env.act(async () => {
+      pendingFor(url).reject(new Error("boom"))
+    })
+  }
 }
 
 describe("the concurrency cap", () => {
@@ -201,16 +222,36 @@ describe("sharing and caching", () => {
 })
 
 describe("failures", () => {
-  it("reports a failed fetch as failed, with no url", async () => {
+  it("reports a failed fetch as failed, with no url, once the retries are spent", async () => {
     const env = await freshEnv()
     const { result } = env.renderHook(() => env.useQueuedThumbnail("a"))
     await env.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
 
+    await exhaustAttempts(env, "a")
+
+    expect(result.current).toMatchObject({ url: null, failed: true })
+  })
+
+  it("retries silently before reporting anything to the caller", async () => {
+    const env = await freshEnv()
+    const { result } = env.renderHook(() => env.useQueuedThumbnail("a"))
+    await env.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+
+    for (let attempt = 1; attempt < MAX_IMAGE_ATTEMPTS; attempt++) {
+      await env.act(async () => {
+        pendingFor("a").reject(new Error("boom"))
+      })
+      // Still "loading" as far as the caller is concerned - it must not flash a broken photo for
+      // something that is about to succeed on the next attempt.
+      expect(result.current.failed).toBe(false)
+      expect(fetchMock).toHaveBeenCalledTimes(attempt + 1)
+    }
+
     await env.act(async () => {
-      pendingFor("a").reject(new Error("boom"))
+      settleFor("a")
     })
 
-    expect(result.current).toEqual({ url: null, failed: true })
+    expect(result.current.url).toBe("blob:1")
   })
 
   it("reports a non-ok response as failed", async () => {
@@ -218,11 +259,32 @@ describe("failures", () => {
     const { result } = env.renderHook(() => env.useQueuedThumbnail("a"))
     await env.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
 
+    for (let i = 0; i < MAX_IMAGE_ATTEMPTS; i++) {
+      await env.act(async () => {
+        pendingFor("a").respondWith({ ok: false, status: 404 })
+      })
+    }
+
+    expect(result.current).toMatchObject({ url: null, failed: true })
+  })
+
+  it("retry() starts over with a fresh budget after the automatic ones ran out", async () => {
+    const env = await freshEnv()
+    const { result } = env.renderHook(() => env.useQueuedThumbnail("a"))
+    await env.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    await exhaustAttempts(env, "a")
+    expect(result.current.failed).toBe(true)
+
     await env.act(async () => {
-      pendingFor("a").respondWith({ ok: false, status: 404 })
+      result.current.retry()
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(MAX_IMAGE_ATTEMPTS + 1)
+
+    await env.act(async () => {
+      settleFor("a")
     })
 
-    expect(result.current).toEqual({ url: null, failed: true })
+    expect(result.current).toMatchObject({ url: "blob:1", failed: false })
   })
 
   it("keeps showing the stale copy when a background refresh fails", async () => {
@@ -242,7 +304,52 @@ describe("failures", () => {
       pendingFor("a").reject(new Error("boom"))
     })
 
-    expect(second.result.current).toEqual({ url: "blob:1", failed: false })
+    expect(second.result.current).toMatchObject({ url: "blob:1", failed: false })
+  })
+})
+
+describe("the network timeout", () => {
+  // The only block that fakes setTimeout - the rest of the file deliberately doesn't (see the
+  // header), so the timeout has to be exercised on its own, without waitFor's real scheduling.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] })
+    vi.setSystemTime(START)
+  })
+
+  it("aborts a stalled fetch instead of letting it hold its slot forever", async () => {
+    const env = await freshEnv()
+    const urls = ["a", "b", "c", "d", "e"]
+    urls.forEach((url) => env.renderHook(() => env.useQueuedThumbnail(url)))
+    await env.act(async () => {})
+
+    // "e" is queued behind the four running requests, none of which will ever answer.
+    expect(fetchMock).toHaveBeenCalledTimes(MAX_CONCURRENT)
+    expect(pendingFor("a").signal.aborted).toBe(false)
+
+    await env.act(async () => {
+      vi.advanceTimersByTime(IMAGE_TIMEOUT_MS)
+    })
+
+    // Before the timeout existed this was the permanent deadlock: four stalled requests and every
+    // later thumbnail in the session waiting on a slot that never came back.
+    expect(fetchMock.mock.calls.map((call) => call[0])).toContain("e")
+  })
+
+  it("does not abort a fetch that answered in time", async () => {
+    const env = await freshEnv()
+    const { result } = env.renderHook(() => env.useQueuedThumbnail("a"))
+    await env.act(async () => {})
+    const entry = pendingFor("a")
+
+    await env.act(async () => {
+      entry.resolve()
+    })
+    await env.act(async () => {
+      vi.advanceTimersByTime(IMAGE_TIMEOUT_MS * 2)
+    })
+
+    expect(entry.signal.aborted).toBe(false)
+    expect(result.current.url).toBe("blob:1")
   })
 })
 
@@ -290,7 +397,7 @@ describe("no url", () => {
     const { result } = env.renderHook(() => env.useQueuedThumbnail(null))
     await env.act(async () => {})
 
-    expect(result.current).toEqual({ url: null, failed: false })
+    expect(result.current).toMatchObject({ url: null, failed: false })
     expect(fetchMock).not.toHaveBeenCalled()
   })
 })

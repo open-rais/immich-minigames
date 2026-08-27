@@ -2,14 +2,9 @@ import type { ReactNode } from "react"
 import { useTranslation } from "react-i18next"
 
 import { assetThumbnailUrl } from "../../api/games"
+import { PhotoError } from "../shared/PhotoError"
 import { Spinner } from "../shared/Spinner"
 import { useQueuedThumbnail } from "../shared/thumbnailQueue"
-
-// Mirrors MoreOrLess/PersonPhoto.tsx's failed-image placeholder pattern.
-const placeholderStyle = {
-  backgroundImage:
-    "repeating-linear-gradient(135deg, var(--color-placeholder-a), var(--color-placeholder-a) 10px, var(--color-placeholder-b) 10px, var(--color-placeholder-b) 20px)",
-}
 
 // The central "card to place" is a plain AssetPhoto now (TimelineGame.tsx), not a TimelineCard -
 // this component only renders track cards: the live-play track's small cards ("sm") and the
@@ -70,7 +65,7 @@ export function TimelineCard({
   onClick,
 }: TimelineCardProps) {
   const { i18n } = useTranslation()
-  const { url, failed } = useQueuedThumbnail(assetThumbnailUrl(assetId))
+  const { url, failed, retry } = useQueuedThumbnail(assetThumbnailUrl(assetId))
 
   // Two lines - "month, day" on top, "year" below - rather than one combined string, per the
   // roadmap's request for a taller/more legible date strip.
@@ -112,7 +107,11 @@ export function TimelineCard({
       )}
       <div className="relative flex-1 overflow-hidden bg-app-bg">
         {failed ? (
-          <div className="absolute inset-0" style={placeholderStyle} />
+          // stopPropagation so tapping "Reintentar" doesn't also fire the card's own onClick (which
+          // opens the full-photo modal), same as the actions menu above.
+          <div className="absolute inset-0" onClick={(e) => e.stopPropagation()}>
+            <PhotoError onRetry={retry} compact={size === "sm"} />
+          </div>
         ) : url ? (
           <img
             src={url}
