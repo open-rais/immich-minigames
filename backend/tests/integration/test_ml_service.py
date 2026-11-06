@@ -21,7 +21,7 @@ _PERSON_AVG_BEFORE_QUERY = text("""
     SELECT avg(fs.embedding)::text AS avg_embedding, count(*) AS n
     FROM asset_face af
     JOIN face_search fs ON fs."faceId" = af.id
-    WHERE af."personId" = :person_id AND af."deletedAt" IS NULL AND af."isVisible" AND af."updatedAt" <= :watermark
+    WHERE af."personGroupId" = :person_id AND af."deletedAt" IS NULL AND af."isVisible" AND af."updatedAt" <= :watermark
 """)
 
 
@@ -212,7 +212,11 @@ class TestStalePersonIds:
 
     def test_eligible_only_false_returns_the_full_person_universe(self, ml_service, immich_engine):
         with immich_engine.connect() as conn:
-            total_persons = conn.execute(sa.select(sa.func.count()).select_from(person_table)).scalar_one()
+            # One per person_group, not one per `person` row - several rows can share a group once
+            # people are shared between Immich users.
+            total_persons = conn.execute(
+                sa.select(sa.func.count(sa.distinct(person_table.c.personGroupId)))
+            ).scalar_one()
 
         result = ml_service.stale_person_ids(eligible_only=False)
 
@@ -310,7 +314,7 @@ class TestIncrementalMatchesFullRecompute:
                         text(
                             'SELECT DISTINCT af."updatedAt" FROM asset_face af '
                             'JOIN face_search fs ON fs."faceId" = af.id '
-                            'WHERE af."personId" = :person_id AND af."deletedAt" IS NULL AND af."isVisible" '
+                            'WHERE af."personGroupId" = :person_id AND af."deletedAt" IS NULL AND af."isVisible" '
                             'ORDER BY af."updatedAt"'
                         ),
                         {"person_id": str(candidate.id)},
