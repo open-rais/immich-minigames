@@ -25,11 +25,16 @@ from audit import audit
 from config import get_settings
 from logging_setup import configure_logging
 from persistence.base import get_session_factory
+from persistence.immich_db import get_immich_engine
 from services.admin_bootstrap import ensure_admin
+from services.immich.compatibility import check_compatibility
 
 
 @asynccontextmanager
 async def _lifespan(_: FastAPI) -> AsyncIterator[None]:
+    # Refuses to start against an Immich whose schema lacks a column the games read (see
+    # services/immich/compatibility.py), instead of failing later on whichever game hits it first.
+    check_compatibility(get_immich_engine())
     # Idempotent (see services/admin_bootstrap.py), so it's safe to run on every startup - dev's
     # --reload included, and the packaged image's docker-entrypoint.sh (after `alembic upgrade
     # head`, migration 0003 adds the column this depends on).

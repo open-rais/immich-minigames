@@ -339,7 +339,10 @@ class TestGetRandomAssetWithNamedFaces:
         # test_returns_empty_when_no_eligible_asset_exists) so this exercises those assets, not just
         # whichever one random() happens to land on.
         with immich_engine.connect() as conn:
-            hidden_ids = {row.id for row in conn.execute(select(person.c.id).where(person.c.isHidden.is_(True)))}
+            hidden_ids = {
+                row.id
+                for row in conn.execute(select(person.c.personGroupId.label("id")).where(person.c.isHidden.is_(True)))
+            }
         assert hidden_ids, "dev data must include at least one hidden named person to exercise this"
 
         excluded = set()
@@ -364,7 +367,10 @@ class TestHasNamedFacesAsset:
         # discover and exclude each asset in turn.
         with immich_engine.connect() as conn:
             named_ids = {
-                row.id for row in conn.execute(select(person.c.id).where(person.c.name != "", ~person.c.isHidden))
+                row.id
+                for row in conn.execute(
+                    select(person.c.personGroupId.label("id")).where(person.c.name != "", ~person.c.isHidden)
+                )
             }
         assert named_ids, "dev data must have at least one named, non-hidden person to exercise this"
 
@@ -501,3 +507,14 @@ class TestSearchPersons:
         results = immich_service.search_persons(folded_query, limit=100)
 
         assert owner.id in {p.id for p in results}
+
+
+class TestImmichCompatibility:
+    def test_the_dev_immich_schema_has_every_column_this_app_reads(self, immich_engine):
+        from services.immich.compatibility import check_compatibility, inspect_compatibility
+
+        report = inspect_compatibility(immich_engine)
+
+        assert report.missing_columns == frozenset()
+        assert report.detected_version is not None
+        check_compatibility(immich_engine)  # must not raise

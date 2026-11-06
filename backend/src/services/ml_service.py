@@ -22,8 +22,9 @@ from sqlalchemy.engine import Engine, Row
 from perf import timed
 from persistence.base import get_app_engine
 from persistence.immich_db import get_immich_engine
-from persistence.immich_tables import album, album_asset, asset_face, person
+from persistence.immich_tables import album, album_asset, asset_face
 from persistence.ml_cache import AlbumEmbeddingCacheModel, PersonFaceEmbeddingCacheModel
+from services.immich._resolved_person import resolved_person
 
 _CACHE_TABLE = PersonFaceEmbeddingCacheModel.__table__
 _ALBUM_CACHE_TABLE = AlbumEmbeddingCacheModel.__table__
@@ -37,14 +38,14 @@ _NOW_QUERY = text("SELECT now()")
 # are counted/read (see services/immich/faces.py's get_random_asset_with_named_faces).
 _FACE_COUNT_QUERY = text("""
     SELECT count(*) FROM asset_face
-    WHERE "personId" = :person_id AND "deletedAt" IS NULL AND "isVisible"
+    WHERE "personGroupId" = :person_id AND "deletedAt" IS NULL AND "isVisible"
 """)
 
 # Same filter as _FACE_COUNT_QUERY, restricted to faces that already existed (by updatedAt) at the
 # given watermark - "still part of whatever the cached average was last computed from".
 _PERSON_INTACT_COUNT_QUERY = text("""
     SELECT count(*) FROM asset_face
-    WHERE "personId" = :person_id AND "deletedAt" IS NULL AND "isVisible" AND "updatedAt" <= :watermark
+    WHERE "personGroupId" = :person_id AND "deletedAt" IS NULL AND "isVisible" AND "updatedAt" <= :watermark
 """)
 
 # Element-wise average over every visible face's embedding for this person (pgvector's own
@@ -61,7 +62,7 @@ _AVG_EMBEDDING_QUERY = text("""
     SELECT avg(fs.embedding)::text AS avg_embedding, count(*) AS embedding_count
     FROM asset_face af
     JOIN face_search fs ON fs."faceId" = af.id
-    WHERE af."personId" = :person_id AND af."deletedAt" IS NULL AND af."isVisible"
+    WHERE af."personGroupId" = :person_id AND af."deletedAt" IS NULL AND af."isVisible"
 """)
 
 # Same join as _AVG_EMBEDDING_QUERY, restricted to faces added since the given watermark - the
@@ -70,7 +71,7 @@ _PERSON_NEW_AVG_EMBEDDING_QUERY = text("""
     SELECT avg(fs.embedding)::text AS avg_embedding, count(*) AS new_count
     FROM asset_face af
     JOIN face_search fs ON fs."faceId" = af.id
-    WHERE af."personId" = :person_id AND af."deletedAt" IS NULL AND af."isVisible" AND af."updatedAt" > :watermark
+    WHERE af."personGroupId" = :person_id AND af."deletedAt" IS NULL AND af."isVisible" AND af."updatedAt" > :watermark
 """)
 
 
@@ -389,20 +390,24 @@ class MLService:
         people a game can actually target/guess (named, not hidden, with a thumbnail - the same
         filter get_persons(named_only=True) applies) - the admin panel's default; the "include
         unnamed/hidden" checkbox passes False for the full person universe."""
+        # One row per person_group (see services/immich/_resolved_person.py) - `person` itself can
+        # hold several rows per group once people are shared between Immich users, which would
+        # multiply each person's face count by its row count here.
+        rp = resolved_person
         stmt = (
-            sa.select(person.c.id, sa.func.count(sa.func.distinct(asset_face.c.id)).label("face_count"))
+            sa.select(rp.c.id, sa.func.count(sa.func.distinct(asset_face.c.id)).label("face_count"))
             .select_from(
-                person.outerjoin(
+                rp.outerjoin(
                     asset_face,
-                    (asset_face.c.personId == person.c.id)
+                    (asset_face.c.personGroupId == rp.c.id)
                     & asset_face.c.deletedAt.is_(None)
                     & asset_face.c.isVisible.is_(True),
                 )
             )
-            .group_by(person.c.id)
+            .group_by(rp.c.id)
         )
         if eligible_only:
-            stmt = stmt.where(person.c.isHidden.is_(False), person.c.thumbnailPath != "", person.c.name != "")
+            stmt = stmt.where(rp.c.isHidden.is_(False), rp.c.hasThumbnail.is_(True), rp.c.name != "")
         with self._engine.connect() as conn:
             current_counts = {row.id: row.face_count for row in conn.execute(stmt)}
 

@@ -67,8 +67,10 @@ Full implementation roadmap is in [`docs/TODO/ROADMAP.md`](./docs/TODO/ROADMAP.m
 
 ### Prerequisites
 
-- An existing [Immich](https://immich.app) instance running Postgres (this project targets the
-  Postgres 14 image Immich itself ships) and Immich-ML
+- An existing [Immich](https://immich.app) instance, **v3.3.0 or newer**, running Postgres (this
+  project targets the Postgres 14 image Immich itself ships) and Immich-ML. The backend checks this
+  on startup and refuses to start against an older Immich (see `docs/INSTALL.md`'s "Upgrading
+  Immich itself")
 - Docker and Docker Compose
 
 There are two separate Compose files - use one or both depending on your situation:
