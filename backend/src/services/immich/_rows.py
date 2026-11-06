@@ -48,7 +48,7 @@ def row_to_face(row: Row) -> Face:
     return Face(
         id=row.id,
         asset_id=row.assetId,
-        person_id=row.personId,
+        person_id=row.personGroupId,
         person_name=row.name,
         image_width=row.imageWidth,
         image_height=row.imageHeight,

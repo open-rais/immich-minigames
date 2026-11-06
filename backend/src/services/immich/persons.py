@@ -7,8 +7,9 @@ from sqlalchemy import Date, cast, func, select
 from sqlalchemy.engine import Engine
 
 from domain.person import Person
-from persistence.immich_tables import asset, asset_face, person
+from persistence.immich_tables import asset, asset_face
 
+from ._resolved_person import resolved_person
 from ._rows import row_to_person
 from ._text import word_prefix_conditions
 
@@ -30,31 +31,31 @@ def get_persons(
     asset_count = asset_count_agg.label("asset_count")
 
     stmt = (
-        select(person.c.id, person.c.name, person.c.birthDate, asset_count)
+        select(resolved_person.c.id, resolved_person.c.name, resolved_person.c.birthDate, asset_count)
         .select_from(
-            person.outerjoin(
+            resolved_person.outerjoin(
                 asset_face,
-                (asset_face.c.personId == person.c.id)
+                (asset_face.c.personGroupId == resolved_person.c.id)
                 & asset_face.c.deletedAt.is_(None)
                 & asset_face.c.isVisible.is_(True),
             )
         )
-        .where(person.c.isHidden.is_(False), person.c.thumbnailPath != "")
-        .group_by(person.c.id, person.c.name, person.c.birthDate)
+        .where(resolved_person.c.isHidden.is_(False), resolved_person.c.hasThumbnail.is_(True))
+        .group_by(resolved_person.c.id, resolved_person.c.name, resolved_person.c.birthDate)
     )
 
     if named_only:
-        stmt = stmt.where(person.c.name != "")
+        stmt = stmt.where(resolved_person.c.name != "")
     if with_birthdate is True:
-        stmt = stmt.where(person.c.birthDate.is_not(None))
+        stmt = stmt.where(resolved_person.c.birthDate.is_not(None))
     elif with_birthdate is False:
-        stmt = stmt.where(person.c.birthDate.is_(None))
+        stmt = stmt.where(resolved_person.c.birthDate.is_(None))
     if name_query:
-        stmt = stmt.where(person.c.name.ilike(f"%{name_query}%"))
+        stmt = stmt.where(resolved_person.c.name.ilike(f"%{name_query}%"))
     if ids is not None:
-        stmt = stmt.where(person.c.id.in_(ids))
+        stmt = stmt.where(resolved_person.c.id.in_(ids))
     if exclude_ids:
-        stmt = stmt.where(person.c.id.notin_(exclude_ids))
+        stmt = stmt.where(resolved_person.c.id.notin_(exclude_ids))
     if min_asset_count is not None:
         stmt = stmt.having(asset_count >= min_asset_count)
 
@@ -68,7 +69,7 @@ def get_persons(
     elif randomize:
         stmt = stmt.order_by(func.random())
     else:
-        stmt = stmt.order_by(person.c.name)
+        stmt = stmt.order_by(resolved_person.c.name)
     stmt = stmt.limit(limit)
 
     with engine.connect() as conn:
@@ -87,25 +88,30 @@ def get_persons_with_birthday_on(engine: Engine, month: int, day: int) -> list[P
     (current_year - birth_year) is the caller's job, not this query's - it doesn't know "today"."""
     asset_count_agg = func.count(func.distinct(asset_face.c.assetId))
     stmt = (
-        select(person.c.id, person.c.name, person.c.birthDate, asset_count_agg.label("asset_count"))
+        select(
+            resolved_person.c.id,
+            resolved_person.c.name,
+            resolved_person.c.birthDate,
+            asset_count_agg.label("asset_count"),
+        )
         .select_from(
-            person.outerjoin(
+            resolved_person.outerjoin(
                 asset_face,
-                (asset_face.c.personId == person.c.id)
+                (asset_face.c.personGroupId == resolved_person.c.id)
                 & asset_face.c.deletedAt.is_(None)
                 & asset_face.c.isVisible.is_(True),
             )
         )
         .where(
-            person.c.isHidden.is_(False),
-            person.c.thumbnailPath != "",
-            person.c.name != "",
-            person.c.birthDate.is_not(None),
-            func.extract("month", person.c.birthDate) == month,
-            func.extract("day", person.c.birthDate) == day,
+            resolved_person.c.isHidden.is_(False),
+            resolved_person.c.hasThumbnail.is_(True),
+            resolved_person.c.name != "",
+            resolved_person.c.birthDate.is_not(None),
+            func.extract("month", resolved_person.c.birthDate) == month,
+            func.extract("day", resolved_person.c.birthDate) == day,
         )
-        .group_by(person.c.id, person.c.name, person.c.birthDate)
-        .order_by(person.c.name)
+        .group_by(resolved_person.c.id, resolved_person.c.name, resolved_person.c.birthDate)
+        .order_by(resolved_person.c.name)
     )
     with engine.connect() as conn:
         rows = conn.execute(stmt).all()
@@ -118,30 +124,30 @@ def search_persons(engine: Engine, query: str, *, offset: int = 0, limit: int = 
     get_persons - its existing name_query is a plain substring filter, and nothing else needs this
     word-prefix mode. Paginated via offset/limit (small pages, e.g. for infinite scroll UIs),
     ordered by name for a stable scroll order."""
-    token_conditions = word_prefix_conditions(person.c.name, query)
+    token_conditions = word_prefix_conditions(resolved_person.c.name, query)
     if not token_conditions:
         return []
 
     asset_count = func.count(func.distinct(asset_face.c.assetId)).label("asset_count")
 
     stmt = (
-        select(person.c.id, person.c.name, person.c.birthDate, asset_count)
+        select(resolved_person.c.id, resolved_person.c.name, resolved_person.c.birthDate, asset_count)
         .select_from(
-            person.outerjoin(
+            resolved_person.outerjoin(
                 asset_face,
-                (asset_face.c.personId == person.c.id)
+                (asset_face.c.personGroupId == resolved_person.c.id)
                 & asset_face.c.deletedAt.is_(None)
                 & asset_face.c.isVisible.is_(True),
             )
         )
         .where(
-            person.c.isHidden.is_(False),
-            person.c.thumbnailPath != "",
-            person.c.name != "",
+            resolved_person.c.isHidden.is_(False),
+            resolved_person.c.hasThumbnail.is_(True),
+            resolved_person.c.name != "",
             *token_conditions,
         )
-        .group_by(person.c.id, person.c.name, person.c.birthDate)
-        .order_by(person.c.name)
+        .group_by(resolved_person.c.id, resolved_person.c.name, resolved_person.c.birthDate)
+        .order_by(resolved_person.c.name)
         .offset(offset)
         .limit(limit)
     )
@@ -161,7 +167,7 @@ def get_person_first_asset_date(engine: Engine, person_id: UUID) -> date | None:
         select(func.min(local_date))
         .select_from(asset_face.join(asset, asset.c.id == asset_face.c.assetId))
         .where(
-            asset_face.c.personId == person_id,
+            asset_face.c.personGroupId == person_id,
             asset_face.c.deletedAt.is_(None),
             asset_face.c.isVisible.is_(True),
             asset.c.status == "active",
@@ -182,10 +188,10 @@ def get_assets_together_count(engine: Engine, person_a_id: UUID, person_b_id: UU
         select(func.count(func.distinct(face_a.c.assetId)))
         .select_from(face_a.join(face_b, face_a.c.assetId == face_b.c.assetId))
         .where(
-            face_a.c.personId == person_a_id,
+            face_a.c.personGroupId == person_a_id,
             face_a.c.deletedAt.is_(None),
             face_a.c.isVisible.is_(True),
-            face_b.c.personId == person_b_id,
+            face_b.c.personGroupId == person_b_id,
             face_b.c.deletedAt.is_(None),
             face_b.c.isVisible.is_(True),
         )
@@ -205,25 +211,27 @@ def get_top_co_occurring_persons(
     face_b = asset_face.alias("face_b")
     count = func.count(func.distinct(face_a.c.assetId)).label("together_count")
     stmt = (
-        select(face_b.c.personId, person.c.name, count)
+        select(face_b.c.personGroupId, resolved_person.c.name, count)
         .select_from(
-            face_a.join(face_b, face_a.c.assetId == face_b.c.assetId).join(person, person.c.id == face_b.c.personId)
+            face_a.join(face_b, face_a.c.assetId == face_b.c.assetId).join(
+                resolved_person, resolved_person.c.id == face_b.c.personGroupId
+            )
         )
         .where(
-            face_a.c.personId == person_id,
+            face_a.c.personGroupId == person_id,
             face_a.c.deletedAt.is_(None),
             face_a.c.isVisible.is_(True),
             face_b.c.deletedAt.is_(None),
             face_b.c.isVisible.is_(True),
-            face_b.c.personId != person_id,
-            person.c.isHidden.is_(False),
-            person.c.name != "",
+            face_b.c.personGroupId != person_id,
+            resolved_person.c.isHidden.is_(False),
+            resolved_person.c.name != "",
         )
     )
     if exclude_ids:
-        stmt = stmt.where(face_b.c.personId.notin_(exclude_ids))
-    stmt = stmt.group_by(face_b.c.personId, person.c.name).order_by(count.desc()).limit(limit)
+        stmt = stmt.where(face_b.c.personGroupId.notin_(exclude_ids))
+    stmt = stmt.group_by(face_b.c.personGroupId, resolved_person.c.name).order_by(count.desc()).limit(limit)
 
     with engine.connect() as conn:
         rows = conn.execute(stmt).all()
-    return [(row.personId, row.name, row.together_count) for row in rows]
+    return [(row.personGroupId, row.name, row.together_count) for row in rows]

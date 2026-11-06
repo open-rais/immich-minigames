@@ -6,13 +6,14 @@ from sqlalchemy import Select, distinct, exists, select
 from sqlalchemy.engine import Engine
 
 from domain.face import Face
-from persistence.immich_tables import asset, asset_face, person
+from persistence.immich_tables import asset, asset_face
 
 from ._random import sample_by_id_pivot
+from ._resolved_person import resolved_person
 from ._rows import row_to_face
 
 _visible_face = asset_face.c.isVisible.is_(True) & asset_face.c.deletedAt.is_(None)
-_named_face = asset_face.join(person, person.c.id == asset_face.c.personId)
+_named_face = asset_face.join(resolved_person, resolved_person.c.id == asset_face.c.personGroupId)
 
 
 def _eligible_asset_id_stmt(
@@ -33,14 +34,14 @@ def _eligible_asset_id_stmt(
             asset.c.visibility == "timeline",
             asset.c.deletedAt.is_(None),
             _visible_face,
-            person.c.name != "",
-            person.c.isHidden.is_(False),
+            resolved_person.c.name != "",
+            resolved_person.c.isHidden.is_(False),
         )
     )
     if exclude_asset_ids:
         stmt = stmt.where(asset.c.id.notin_(exclude_asset_ids))
     if exclude_person_ids:
-        stmt = stmt.where(person.c.id.notin_(exclude_person_ids))
+        stmt = stmt.where(resolved_person.c.id.notin_(exclude_person_ids))
     return stmt
 
 
@@ -93,8 +94,8 @@ def get_random_asset_with_named_faces(
             select(
                 asset_face.c.id,
                 asset_face.c.assetId,
-                asset_face.c.personId,
-                person.c.name,
+                asset_face.c.personGroupId,
+                resolved_person.c.name,
                 asset_face.c.imageWidth,
                 asset_face.c.imageHeight,
                 asset_face.c.boundingBoxX1,
@@ -106,12 +107,12 @@ def get_random_asset_with_named_faces(
             .where(
                 asset_face.c.assetId == asset_row.id,
                 _visible_face,
-                person.c.name != "",
-                person.c.isHidden.is_(False),
+                resolved_person.c.name != "",
+                resolved_person.c.isHidden.is_(False),
             )
         )
         if exclude_person_ids:
-            faces_stmt = faces_stmt.where(person.c.id.notin_(exclude_person_ids))
+            faces_stmt = faces_stmt.where(resolved_person.c.id.notin_(exclude_person_ids))
         face_rows = conn.execute(faces_stmt).all()
 
     return [row_to_face(row) for row in face_rows]
@@ -124,15 +125,15 @@ def get_named_persons_in_asset(engine: Engine, asset_id: UUID) -> list[str]:
     report modal's "who's in this photo" context - not part of round generation."""
     visible_face = asset_face.c.isVisible.is_(True) & asset_face.c.deletedAt.is_(None)
     stmt = (
-        select(distinct(person.c.name))
-        .select_from(asset_face.join(person, person.c.id == asset_face.c.personId))
+        select(distinct(resolved_person.c.name))
+        .select_from(asset_face.join(resolved_person, resolved_person.c.id == asset_face.c.personGroupId))
         .where(
             asset_face.c.assetId == asset_id,
             visible_face,
-            person.c.name != "",
-            person.c.isHidden.is_(False),
+            resolved_person.c.name != "",
+            resolved_person.c.isHidden.is_(False),
         )
-        .order_by(person.c.name)
+        .order_by(resolved_person.c.name)
     )
     with engine.connect() as conn:
         return list(conn.scalars(stmt))

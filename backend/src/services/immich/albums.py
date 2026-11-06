@@ -7,8 +7,9 @@ from sqlalchemy import Date, cast, func, select
 from sqlalchemy.engine import Engine
 
 from domain.album import Album
-from persistence.immich_tables import album, album_asset, asset, asset_face, person
+from persistence.immich_tables import album, album_asset, asset, asset_face
 
+from ._resolved_person import resolved_person
 from ._rows import row_to_album
 from ._text import word_prefix_conditions
 
@@ -168,22 +169,22 @@ def get_album_named_face_counts(engine: Engine, album_id: UUID) -> list[tuple[UU
     in games/immichdle/albumdle.py, not here) and, via len(), its unique_face_count clue."""
     distinct_asset_count = func.count(func.distinct(asset_face.c.assetId)).label("distinct_asset_count")
     stmt = (
-        select(person.c.id, person.c.name, distinct_asset_count)
+        select(resolved_person.c.id, resolved_person.c.name, distinct_asset_count)
         .select_from(
             album_asset.join(asset, asset.c.id == album_asset.c.assetId)
             .join(asset_face, asset_face.c.assetId == asset.c.id)
-            .join(person, person.c.id == asset_face.c.personId)
+            .join(resolved_person, resolved_person.c.id == asset_face.c.personGroupId)
         )
         .where(
             album_asset.c.albumId == album_id,
             _ASSET_ELIGIBLE,
             asset_face.c.deletedAt.is_(None),
             asset_face.c.isVisible.is_(True),
-            person.c.isHidden.is_(False),
-            person.c.thumbnailPath != "",
-            person.c.name != "",
+            resolved_person.c.isHidden.is_(False),
+            resolved_person.c.hasThumbnail.is_(True),
+            resolved_person.c.name != "",
         )
-        .group_by(person.c.id, person.c.name)
+        .group_by(resolved_person.c.id, resolved_person.c.name)
         .order_by(distinct_asset_count.desc())
     )
     with engine.connect() as conn:
@@ -197,19 +198,21 @@ def get_persons_present_in_album(engine: Engine, album_id: UUID, person_ids: fro
     if not person_ids:
         return frozenset()
     stmt = (
-        select(asset_face.c.personId)
+        select(asset_face.c.personGroupId)
         .distinct()
-        .select_from(album_asset.join(asset, asset.c.id == album_asset.c.assetId).join(
-            asset_face, asset_face.c.assetId == asset.c.id
-        ))
+        .select_from(
+            album_asset.join(asset, asset.c.id == album_asset.c.assetId).join(
+                asset_face, asset_face.c.assetId == asset.c.id
+            )
+        )
         .where(
             album_asset.c.albumId == album_id,
             _ASSET_ELIGIBLE,
             asset_face.c.deletedAt.is_(None),
             asset_face.c.isVisible.is_(True),
-            asset_face.c.personId.in_(person_ids),
+            asset_face.c.personGroupId.in_(person_ids),
         )
     )
     with engine.connect() as conn:
         rows = conn.execute(stmt).all()
-    return frozenset(row.personId for row in rows)
+    return frozenset(row.personGroupId for row in rows)
