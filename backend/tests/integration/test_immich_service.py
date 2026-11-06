@@ -507,3 +507,14 @@ class TestSearchPersons:
         results = immich_service.search_persons(folded_query, limit=100)
 
         assert owner.id in {p.id for p in results}
+
+
+class TestImmichCompatibility:
+    def test_the_dev_immich_schema_has_every_column_this_app_reads(self, immich_engine):
+        from services.immich.compatibility import check_compatibility, inspect_compatibility
+
+        report = inspect_compatibility(immich_engine)
+
+        assert report.missing_columns == frozenset()
+        assert report.detected_version is not None
+        check_compatibility(immich_engine)  # must not raise
