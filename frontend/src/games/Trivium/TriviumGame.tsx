@@ -7,10 +7,8 @@ import { GameType, Mode } from "../../api/types/common"
 import type { RoundOut } from "../../api/types/common"
 import type { PersonRef, TriviumPlayRoundIn, TriviumRoundOut } from "../../api/types/trivium"
 import type { GameComponentProps } from "../catalog"
-import { AssetPhoto } from "../shared/AssetPhoto"
 import { ErrorScreen, FinishedScreen, IdleScreen } from "../shared/GameScreens"
 import { GuardedBackButton } from "../shared/GuardedBackButton"
-import { PersonAvatar } from "../shared/PersonAvatar"
 import { RevealResultCard } from "../shared/RevealResultCard"
 import { ScoreBadge } from "../shared/ScoreBadge"
 import { useQueuedThumbnail } from "../shared/thumbnailQueue"
@@ -22,6 +20,8 @@ import {
   formatAlternative,
   questionSegments,
 } from "./questionText"
+import { TriviumBoard } from "./TriviumBoard"
+import type { TriviumBoardMedia } from "./TriviumBoard"
 import type { TriviumOptionState } from "./TriviumOption"
 import { TriviumOption } from "./TriviumOption"
 import { TriviumTimerBar } from "./TriviumTimerBar"
@@ -45,11 +45,6 @@ const QUESTION_HOLD_MS = 3000
 // Reveal speed - ms per revealed word.
 const WORD_REVEAL_MS = 90
 const REVEAL_HOLD_MS = 1500
-// How far below the viewport the alternatives start their slide-up from, and how long that takes.
-// A viewport-relative unit (not a percentage of the block's own height) so it clears the bottom of
-// the screen regardless of how tall the alternatives block ends up being.
-const SLIDE_START_VH = 60
-const SLIDE_TRANSITION_MS = 450
 
 function isTriviumRound(round: RoundOut): round is TriviumRoundOut {
   return round.game_type === GameType.Trivium
@@ -317,6 +312,10 @@ export function TriviumGame({ coverUrl, hasRoundsView, daily = false }: GameComp
     ? alternativePhotoUrls.map((url) => url ?? undefined) // never actually null in this branch
     : [undefined, undefined, undefined, undefined]
 
+  // Whether the alternatives are up and answerable - drives both the slide and everything that
+  // must not be reachable while they're off-screen (see the block itself, below).
+  const alternativesUp = revealStage === "alternatives"
+
   const optionState = (index: number): TriviumOptionState => {
     if (phase === "submitting") return index === pendingIndex ? "pending" : "muted"
     if (!revealed) return "idle"
@@ -332,104 +331,52 @@ export function TriviumGame({ coverUrl, hasRoundsView, daily = false }: GameComp
       : "trivium.result.wrong"
 
   return (
-    // justify-between + exactly two flex children below (the question block, the answer block) is
-    // what pins the question to the top and the alternatives to the bottom with the gap between
-    // them flexing - GuardedBackButton/ScoreBadge are `fixed`, so they don't count as flex children
-    // and don't disturb this.
-    //
-    // Once there's no gap left to flex (a short viewport), the overflow is absorbed by the round's
-    // photo and nothing else: the answer block is `shrink-0` (the alternatives staying fully on
-    // screen is the whole point of this layout) and so is the question text, while the photo
-    // wrapper and every ancestor between it and here are `min-h-0` so the shrink can actually
-    // reach it. See the photo wrapper below for what that does to its shape.
-    <div className="flex h-dvh flex-col justify-between overflow-hidden bg-app-bg px-6 pt-20 pb-8 md:px-10 md:pt-28 md:pb-12">
-      <GuardedBackButton onExit={backToIdle} />
-      <ScoreBadge label={t("common.score")} score={game.score} />
-
-      <div className="mx-auto flex min-h-0 w-full max-w-md flex-col items-center md:max-w-2xl">
-        <div className="flex min-h-0 w-full flex-col items-center gap-4 rounded-[22px] border border-line bg-surface p-6 text-center shadow-card md:rounded-3xl md:p-10">
-          {round.media.kind === "person_thumbnail" && (
-            <PersonAvatar src={personThumbnailSrc} alt={params.person_name} size="lg" />
+    <TriviumBoard
+      media={boardMedia(personThumbnailSrc, assetPhotoSrc, setAssetPhotoReady)}
+      questionWords={questionWords}
+      revealedWordCount={revealedWordCount}
+      hasPersonAlternatives={hasPersonAlternatives}
+      alternativesUp={alternativesUp}
+      aboveAlternatives={<TriviumTimerBar fraction={remainingMs / answerTimeMs} />}
+      overlay={
+        <>
+          <GuardedBackButton onExit={backToIdle} />
+          <ScoreBadge label={t("common.score")} score={game.score} />
+          {/* Top-right, just below ScoreBadge - same floating reveal card Geoguessr/Dateguessr/
+              Timeline use. */}
+          {revealed && round.score_delta !== null && (
+            <RevealResultCard
+              positionClassName="top-[70px] right-[18px] md:top-24 md:right-10"
+              scoreDelta={round.score_delta}
+              subtitle={t(resultKey)}
+            />
           )}
-          {/* Square at most (aspect-square takes its natural height from its own width), but also
-              the only shrinkable box on this screen: on a viewport too short to fit a square photo
-              *and* the alternatives, flex shrinks this box's height while its width stays put, so
-              it flattens back into the horizontal rectangle this used to be at every size. No floor
-              on that (`min-h-0`, which an aspect-ratio box needs explicitly - its automatic minimum
-              size is the square height, i.e. it wouldn't shrink at all otherwise): whatever this
-              box refuses to give up is height the card can't fit, so its own content would spill
-              out past the card's border instead. AssetPhoto is object-contain, so nothing is
-              cropped along the way - the photo just letterboxes into whatever box it gets. */}
-          {round.media.kind === "asset" && assetPhotoSrc && (
-            <div className="relative mx-auto aspect-square min-h-0 w-full max-w-[min(70vw,18rem)] overflow-hidden rounded-2xl md:max-w-sm">
-              <AssetPhoto src={assetPhotoSrc} alt="" onReadyChange={setAssetPhotoReady} />
-            </div>
-          )}
-          {/* Every word is always rendered (reserving its final layout position) - only its
-              opacity changes as revealedWordCount advances, so the text never shifts/reflows as
-              it appears, unlike a literal typewriter that grows the string itself. */}
-          <p className="shrink-0 text-xl font-bold text-ink md:text-2xl">
-            {questionWords.map((segment, index) => (
-              <span
-                key={index}
-                className={`transition-opacity duration-200 ${segment.bold ? "font-extrabold text-primary" : ""} ${index < revealedWordCount ? "opacity-100" : "opacity-0"}`}
-              >
-                {segment.word}
-                {index < questionWords.length - 1 ? " " : ""}
-              </span>
-            ))}
-          </p>
-        </div>
-      </div>
-
-      {/* Floating (fixed), not in normal flow - same "doesn't shift anything around it" shell
-          Geoguessr/Dateguessr/Timeline's own reveal card uses. Top-right, just below ScoreBadge
-          (same right offset, top offset cleared to sit under it rather than overlap). */}
-      {revealed && round.score_delta !== null && (
-        <RevealResultCard
-          positionClassName="top-[70px] right-[18px] md:top-24 md:right-10"
-          scoreDelta={round.score_delta}
-          subtitle={t(resultKey)}
-        />
-      )}
-
-      <div className="mx-auto flex w-full max-w-md shrink-0 flex-col items-center gap-4 md:max-w-2xl">
-        {/* Mounted from the very first frame of the round (positioned off-screen below the
-            viewport until "alternatives") so the flip to "alternatives" is a genuine transition
-            between two committed states, not an instant snap - see SLIDE_START_VH/
-            SLIDE_TRANSITION_MS above. Mounted this early rather than only at "holding" so it
-            occupies its real height for the whole round: that height is what the photo above
-            sizes itself against on a short viewport, and mounting it late would visibly shrink
-            the photo mid-question the moment it appeared. */}
-        <div
-          className="flex w-full flex-col items-center gap-4"
-          style={{
-            transform: revealStage === "alternatives" ? "translateY(0)" : `translateY(${SLIDE_START_VH}vh)`,
-            transition: `transform ${SLIDE_TRANSITION_MS}ms ease-out`,
-          }}
+        </>
+      }
+      alternatives={alternativeLabels.map((label, index) => (
+        <TriviumOption
+          key={index}
+          state={optionState(index)}
+          // Not only while answering is closed: through revealing/holding the phase is already
+          // "guessing", and these would otherwise be Tab-focusable while slid off-screen.
+          disabled={!alternativesUp || phase !== "guessing"}
+          onClick={() => handlePick(index)}
+          photoUrl={optionPhotoUrls[index]}
+          hideCaption={FACE_ONLY_ALTERNATIVE_KINDS.has(round.question_kind)}
         >
-          <TriviumTimerBar fraction={remainingMs / answerTimeMs} />
-          {/* Person alternatives are always a 2x2 grid (mobile included, "cuadrantes") since
-              they read as photo tiles, not a text list - every other kind keeps 1 column on
-              mobile, 2 on desktop. */}
-          <div
-            className={`grid w-full gap-3 md:gap-5 ${hasPersonAlternatives ? "grid-cols-2" : "grid-cols-1 md:grid-cols-2"}`}
-          >
-            {alternativeLabels.map((label, index) => (
-              <TriviumOption
-                key={index}
-                state={optionState(index)}
-                disabled={phase !== "guessing"}
-                onClick={() => handlePick(index)}
-                photoUrl={optionPhotoUrls[index]}
-                hideCaption={FACE_ONLY_ALTERNATIVE_KINDS.has(round.question_kind)}
-              >
-                {label}
-              </TriviumOption>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
+          {label}
+        </TriviumOption>
+      ))}
+    />
   )
+}
+
+function boardMedia(
+  personSrc: string | null,
+  assetSrc: string | null,
+  onAssetReadyChange: (ready: boolean) => void,
+): TriviumBoardMedia {
+  if (assetSrc) return { kind: "asset", src: assetSrc, onReadyChange: onAssetReadyChange }
+  if (personSrc) return { kind: "person", src: personSrc }
+  return { kind: "none" }
 }

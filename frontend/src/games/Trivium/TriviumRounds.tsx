@@ -5,11 +5,9 @@ import { GameType } from "../../api/types/common"
 import type { RoundOut } from "../../api/types/common"
 import type { PersonRef, TriviumRoundOut } from "../../api/types/trivium"
 import type { RoundsComponentProps } from "../catalog"
-import { AssetPhoto } from "../shared/AssetPhoto"
 import { BackButton } from "../shared/BackButton"
 import { EntryOptionsMenu } from "../shared/EntryOptionsMenu"
 import { ImmichLink } from "../shared/ImmichLink"
-import { PersonAvatar } from "../shared/PersonAvatar"
 import { ReportMenuItem } from "../shared/ReportMenuItem"
 import { RevealResultCard } from "../shared/RevealResultCard"
 import { RoundStepper } from "../rounds/RoundStepper"
@@ -21,6 +19,8 @@ import {
   formatAlternative,
   questionSegments,
 } from "./questionText"
+import { TriviumBoard } from "./TriviumBoard"
+import type { TriviumBoardMedia } from "./TriviumBoard"
 import type { TriviumOptionState } from "./TriviumOption"
 import { TriviumOption } from "./TriviumOption"
 
@@ -52,9 +52,8 @@ function entityFor(round: TriviumRoundOut): { kind: "asset" | "person"; id: stri
 }
 
 // Steps through an already-finished Trivium game's rounds, one at a time, exactly as they looked
-// right after their reveal - mirrors TriviumGame.tsx's own revealed-round layout (same card,
-// same TriviumOption states), minus the reveal animation/timer, which have nothing left to do once
-// every round is already answered. "fullscreen" family (own stepper state, own BackButton), same
+// right after their reveal - the same TriviumBoard layout TriviumGame.tsx plays on, minus the reveal
+// animation/timer, which have nothing left to do once every round is already answered. "fullscreen" family (own stepper state, own BackButton), same
 // shape as Geoguessr/Dateguessr/Who'sThatPerson's rounds review.
 export function TriviumRounds({ game, onBack }: RoundsComponentProps) {
   const { t, i18n } = useTranslation()
@@ -103,70 +102,55 @@ export function TriviumRounds({ game, onBack }: RoundsComponentProps) {
 
   const entity = entityFor(round)
 
+  const media: TriviumBoardMedia = assetPhotoSrc
+    ? { kind: "asset", src: assetPhotoSrc }
+    : personThumbnailSrc
+      ? { kind: "person", src: personThumbnailSrc }
+      : { kind: "none" }
+
   return (
-    <div className="flex h-dvh flex-col justify-between overflow-hidden bg-app-bg px-6 pt-20 pb-8 md:px-10 md:pt-28 md:pb-12">
-      <BackButton label={t("common.back")} onClick={() => onBack?.()} />
-      <RoundStepper current={index + 1} total={total} onPrev={prev} onNext={next} />
-
-      {entity && (
-        // z-40 (not the usual z-30 wrapper - see Geoguessr/WhosThatPersonRounds) - this wrapper's
-        // own `fixed` positioning makes it a stacking context, which would otherwise trap
-        // EntryOptionsMenu's popover (internally z-40) below RevealResultCard's z-30 once open:
-        // elsewhere the two never overlap (opposite corners), but here they're both top-right and
-        // close together, so the trap was actually visible.
-        <div className="fixed top-[18px] right-[18px] z-40 md:top-7 md:right-10">
-          <EntryOptionsMenu>
-            <ImmichLink kind={entity.kind} id={entity.id} />
-            <ReportMenuItem kind={entity.kind} id={entity.id} />
-          </EntryOptionsMenu>
-        </div>
-      )}
-
-      <div className="mx-auto flex w-full max-w-md flex-col items-center md:max-w-2xl">
-        <div className="flex w-full flex-col items-center gap-4 rounded-[22px] border border-line bg-surface p-6 text-center shadow-card md:rounded-3xl md:p-10">
-          {round.media.kind === "person_thumbnail" && <PersonAvatar src={personThumbnailSrc} alt="" size="lg" />}
-          {round.media.kind === "asset" && assetPhotoSrc && (
-            <div className="relative mx-auto aspect-square w-full max-w-[min(70vw,18rem)] overflow-hidden rounded-2xl md:max-w-sm">
-              <AssetPhoto src={assetPhotoSrc} alt="" />
+    <TriviumBoard
+      media={media}
+      questionWords={questionSegments(questionText)}
+      hasPersonAlternatives={hasPersonAlternatives}
+      overlay={
+        <>
+          <BackButton label={t("common.back")} onClick={() => onBack?.()} />
+          <RoundStepper current={index + 1} total={total} onPrev={prev} onNext={next} />
+          {entity && (
+            // z-40 (not the usual z-30 wrapper - see Geoguessr/WhosThatPersonRounds) - this wrapper's
+            // own `fixed` positioning makes it a stacking context, which would otherwise trap
+            // EntryOptionsMenu's popover (internally z-40) below RevealResultCard's z-30 once open:
+            // elsewhere the two never overlap (opposite corners), but here they're both top-right and
+            // close together, so the trap was actually visible.
+            <div className="fixed top-[18px] right-[18px] z-40 md:top-7 md:right-10">
+              <EntryOptionsMenu>
+                <ImmichLink kind={entity.kind} id={entity.id} />
+                <ReportMenuItem kind={entity.kind} id={entity.id} />
+              </EntryOptionsMenu>
             </div>
           )}
-          <p className="text-xl font-bold text-ink md:text-2xl">
-            {questionSegments(questionText).map((segment, index, segments) => (
-              <span key={index} className={segment.bold ? "font-extrabold text-primary" : undefined}>
-                {segment.word}
-                {index < segments.length - 1 ? " " : ""}
-              </span>
-            ))}
-          </p>
-        </div>
-      </div>
-
-      {round.score_delta !== null && (
-        <RevealResultCard
-          positionClassName="top-[70px] right-[18px] md:top-24 md:right-10"
-          scoreDelta={round.score_delta}
-          subtitle={t(resultKey)}
-          detail={detail}
-        />
-      )}
-
-      <div className="mx-auto flex w-full max-w-md flex-col items-center gap-4 md:max-w-2xl">
-        <div
-          className={`grid w-full gap-3 md:gap-5 ${hasPersonAlternatives ? "grid-cols-2" : "grid-cols-1 md:grid-cols-2"}`}
+          {round.score_delta !== null && (
+            <RevealResultCard
+              positionClassName="top-[70px] right-[18px] md:top-24 md:right-10"
+              scoreDelta={round.score_delta}
+              subtitle={t(resultKey)}
+              detail={detail}
+            />
+          )}
+        </>
+      }
+      alternatives={alternativeLabels.map((label, i) => (
+        <TriviumOption
+          key={i}
+          state={optionState(i)}
+          disabled
+          photoUrl={optionPhotoUrls[i]}
+          hideCaption={FACE_ONLY_ALTERNATIVE_KINDS.has(round.question_kind)}
         >
-          {alternativeLabels.map((label, i) => (
-            <TriviumOption
-              key={i}
-              state={optionState(i)}
-              disabled
-              photoUrl={optionPhotoUrls[i]}
-              hideCaption={FACE_ONLY_ALTERNATIVE_KINDS.has(round.question_kind)}
-            >
-              {label}
-            </TriviumOption>
-          ))}
-        </div>
-      </div>
-    </div>
+          {label}
+        </TriviumOption>
+      ))}
+    />
   )
 }

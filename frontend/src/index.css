@@ -98,6 +98,14 @@ body {
  * tokens directly via var() in its inline styles, no separate sync needed there.
  */
 /*
+ * A viewport with little height for its width: a laptop or desktop window dragged short, a tablet
+ * or phone in landscape. A screen that has to fit a stack of content into a fixed height (Trivium)
+ * switches to a side-by-side layout here instead of squashing the stack. Aspect ratio rather than a
+ * min-width so that a short portrait phone, which is tall for its width, never matches.
+ */
+@custom-variant short-wide (@media (max-height: 700px) and (min-aspect-ratio: 4/3));
+
+/*
  * Immichdle's guess-reveal sequence (games/Immichdle/AnimatedGuessRow.tsx) - the project's first
  * @keyframes. Both play once on mount and land exactly on the element's normal resting style (no
  * `animation-fill-mode: forwards` needed): `immichdle-row-grow`'s "to" is the same `1fr` the row's

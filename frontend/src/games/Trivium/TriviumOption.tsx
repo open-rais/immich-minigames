@@ -9,6 +9,12 @@ import { PersonAvatar } from "../shared/PersonAvatar"
 // reveal states Button has no concept of.
 export type TriviumOptionState = "idle" | "pending" | "correct" | "wrong" | "muted"
 
+// Fluid, like the question (see TriviumBoard.tsx's QUESTION_FONT_SIZE). `break-words` below is
+// what keeps a long alternative - a full date spelled out in Spanish, a three-part name - inside
+// its button; the size doesn't have to.
+const LABEL_FONT_SIZE = "clamp(1.1rem, min(4vw, 5dvh), 1.5rem)"
+const CAPTION_FONT_SIZE = "clamp(0.8rem, min(3vw, 4dvh), 1.25rem)"
+
 const STATE_CLASS: Record<TriviumOptionState, string> = {
   // Filled with the app's existing "badge" family (bg-badge-bg/text-badge-value) - indigo-tinted
   // like everything else in the app, but not the CTA indigo (--color-primary) itself, and reads
@@ -54,10 +60,14 @@ export function TriviumOption({ state, disabled, onClick, photoUrl, hideCaption,
         onClick={onClick}
         disabled={disabled}
         aria-label={hideCaption && typeof children === "string" ? children : undefined}
-        className={`flex w-full flex-col items-center gap-2 rounded-2xl border p-3 text-center transition-colors disabled:cursor-not-allowed md:gap-3 md:rounded-3xl md:p-4 ${STATE_CLASS[state]}`}
+        className={`flex w-full flex-col items-center gap-2 rounded-2xl border p-2 text-center transition-colors disabled:cursor-not-allowed sm:p-3 md:gap-3 md:rounded-3xl md:p-4 short-wide:gap-1 short-wide:p-2 ${STATE_CLASS[state]}`}
       >
-        <PersonAvatar src={photoUrl} alt="" size="lg" />
-        {!hideCaption && <span className="text-base font-bold md:text-xl">{children}</span>}
+        <PersonAvatar src={photoUrl} alt="" size="fluid" />
+        {!hideCaption && (
+          <span className="font-bold break-words" style={{ fontSize: CAPTION_FONT_SIZE }}>
+            {children}
+          </span>
+        )}
       </button>
     )
   }
@@ -67,7 +77,12 @@ export function TriviumOption({ state, disabled, onClick, photoUrl, hideCaption,
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`w-full rounded-2xl border px-5 py-4 text-lg font-bold transition-colors disabled:cursor-not-allowed md:min-h-28 md:rounded-3xl md:px-8 md:py-6 md:text-2xl ${STATE_CLASS[state]}`}
+      // Height follows the screen's height, not a fixed size per breakpoint: a tall screen gets
+      // generous tap targets, a short one gives that height back to the round's media, which is
+      // the only other thing competing for it (a fixed md:min-h-28 used to leave a location photo
+      // ~100px tall on a 1280x720 laptop). The floor is a comfortable 48px tap target.
+      className={`flex min-h-[clamp(3rem,8dvh,6rem)] w-full items-center justify-center rounded-2xl border px-3 py-2 font-bold break-words transition-colors disabled:cursor-not-allowed sm:px-5 sm:py-3 md:rounded-3xl md:px-8 short-wide:px-4 short-wide:py-2 ${STATE_CLASS[state]}`}
+      style={{ fontSize: LABEL_FONT_SIZE }}
     >
       {children}
     </button>
