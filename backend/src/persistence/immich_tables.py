@@ -67,11 +67,17 @@ asset_file = Table(
     Column("type", String),
 )
 
+# Since Immich v3.2 a person is a `person_group` (its id is the public person id - the one the REST
+# API, `/people/{id}` links and this app's own stored ids all use, carried over unchanged from the
+# old `person.id`), and `person` holds one row *per Immich user who sees that person*, keyed by
+# (ownerId, personGroupId), each with its own name/birthDate/isHidden. Several rows can therefore
+# share a personGroupId once people are shared between users (v3.3) - see
+# docs/ARCHITECTURE/IMMICH.md for how the queries pick one row per group.
 person = Table(
     "person",
     metadata,
-    Column("id", Uuid, primary_key=True),
-    Column("ownerId", Uuid),
+    Column("ownerId", Uuid, primary_key=True),
+    Column("personGroupId", Uuid, primary_key=True),
     Column("name", String),
     Column("birthDate", Date),
     Column("thumbnailPath", String),
@@ -82,7 +88,7 @@ album = Table(
     "album",
     metadata,
     Column("id", Uuid, primary_key=True),
-    Column("ownerId", Uuid),
+    # No ownerId: Immich v3.0 dropped album."ownerId" in favor of an 'owner' row in album_user.
     Column("albumName", String),
     # The album's chosen cover asset (nullable - Immich falls back to the first asset). Used by
     # MoreOrLess's albumAssets mode to serve an album thumbnail - see immich_service.get_albums.
@@ -103,9 +109,16 @@ asset_face = Table(
     metadata,
     Column("id", Uuid, primary_key=True),
     Column("assetId", Uuid),
-    Column("personId", Uuid),
+    # Points at person_group.id (Immich v3.2+, formerly `personId` -> person.id), not at a `person`
+    # row - see the note on `person` above.
+    Column("personGroupId", Uuid),
     Column("isVisible", Boolean),
     Column("deletedAt", DateTime(timezone=True)),
+    # Copied from the face's asset by Immich's own triggers (v3.3+), so face queries can filter on
+    # the asset's owner/visibility/soft-delete without joining `asset`.
+    Column("ownerId", Uuid),
+    Column("assetVisibility", asset_visibility_enum),
+    Column("assetDeletedAt", DateTime(timezone=True)),
     # Resolution the face detection was computed on (not necessarily the asset's own resolution -
     # the bounding box below must be scaled proportionally against whichever resolution it's drawn
     # on) and the box itself. Used by Who'sThatPerson to black out faces - see
@@ -116,4 +129,26 @@ asset_face = Table(
     Column("boundingBoxY1", Integer),
     Column("boundingBoxX2", Integer),
     Column("boundingBoxY2", Integer),
+)
+
+# Immich's own accounts (not this app's - see persistence/users.py). Read only to rank which
+# `person` row represents a person_group: the Immich admin's row first, then the oldest account's.
+user = Table(
+    "user",
+    metadata,
+    Column("id", Uuid, primary_key=True),
+    Column("isAdmin", Boolean),
+    Column("createdAt", DateTime(timezone=True)),
+)
+
+# One row per Immich version this database has run, written by Immich's microservices worker on
+# startup - *after* its migrations, so for a few seconds after an upgrade the newest row can lag
+# behind the schema. Only used to make the startup compatibility error readable; the check itself
+# relies on the schema, not on this table.
+version_history = Table(
+    "version_history",
+    metadata,
+    Column("id", Uuid, primary_key=True),
+    Column("version", String),
+    Column("createdAt", DateTime(timezone=True)),
 )
